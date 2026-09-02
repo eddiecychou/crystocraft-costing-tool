@@ -523,12 +523,17 @@ export default async function handler(req) {
         seo_desc_set: !!metaVal(p.meta_data, '_yoast_wpseo_metadesc'),
         seo_focus_kw: metaVal(p.meta_data, '_yoast_wpseo_focuskw'),
         // WPML (confirmed via probe). `lang` = this product's own language;
-        // `translations` = { langCode: postId } for every language it exists
-        // in — flattened to the list of codes, self included.
+        // `translations` = { langCode: postId } for every language it exists in.
+        // We keep BOTH the flattened code list (`translations`, self included)
+        // and the raw { code: id } map (`translations_map`) so the client can
+        // join each language's own product row back into one translation group.
         lang: p.lang || '',
         translations: (p.translations && typeof p.translations === 'object')
           ? [...new Set([p.lang, ...Object.keys(p.translations)].filter(Boolean))]
           : (p.lang ? [p.lang] : []),
+        translations_map: (p.translations && typeof p.translations === 'object')
+          ? Object.fromEntries(Object.entries(p.translations).map(([c, v]) => [c, Number(v)]).filter(([, v]) => Number.isFinite(v)))
+          : {},
         variations: vars.map(v => ({
           variation_id: v.id, sku: v.sku || '',
           attributes: attrPairs(v.attributes),

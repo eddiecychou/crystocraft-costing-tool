@@ -28,8 +28,10 @@ function stems(code) {
 // (Ecommerce, admin). Read-only. Cached (chunked) to woo_cache so it loads
 // without waiting on the slow WordPress admin. SEO tab shows the real Yoast
 // title / meta description (v28.4) alongside heuristics; Translations tab
-// shows which of the site's WPML languages each published product exists in.
-// Both confirmed available via the Diagnostics probe.
+// classifies each published English product's language pages as translated /
+// draft / stub / missing (see classifyLang — WPML's own "translation exists"
+// flag is set even for the empty draft duplicates it auto-creates, so it can't
+// be trusted alone). Both confirmed available via the Diagnostics probe.
 
 const fmtWhen = (d) => {
   if (!d) return ''
@@ -60,6 +62,35 @@ function priceRange(p) {
 const LANG_LABEL = { en: 'EN', fr: 'FR', ja: 'JA', es: 'ES', 'zh-hans': '简', 'zh-hant': '繁', de: 'DE', it: 'IT' }
 const LANG_ORDER = ['en', 'zh-hans', 'zh-hant', 'fr', 'ja', 'es', 'de', 'it']
 const langLabel = (c) => LANG_LABEL[c] || c.toUpperCase()
+
+// Per-language translation state for one product, judged against the source
+// (default-language) row. WPML records a `translations` entry the moment a
+// translation POST exists — including the empty draft duplicates it
+// auto-creates — so the raw flag reads "complete" even when nothing was
+// translated. We classify instead:
+//   source  — this IS the default-language row
+//   missing — no product row for this language
+//   draft   — a row exists but isn't published
+//   stub    — published, but no body text OR the name is byte-identical to the
+//             English name (a duplicate that was never actually translated)
+//   ok      — published, has a description, and the name differs from English
+const norm = (s) => String(s || '').trim().toLowerCase()
+function classifyLang(group, code, srcName) {
+  const srcCode = group.canonical.lang || 'en'
+  if (code === srcCode) return 'source'
+  const row = group.byLang.get(code)
+  if (!row) return 'missing'
+  if (row.status !== 'publish') return 'draft'
+  if (!row.description_words || norm(row.name) === norm(srcName)) return 'stub'
+  return 'ok'
+}
+const LANG_GLYPH = {
+  source:  { t: '·', cls: 'text-platinum', title: 'Default language' },
+  ok:      { t: '✓', cls: 'text-green-600', title: 'Translated (published, has content, name differs)' },
+  stub:    { t: 'S', cls: 'text-amber-600 font-semibold', title: 'Stub — published but no body text, or name identical to English' },
+  draft:   { t: 'D', cls: 'text-amber-600 font-semibold', title: 'Draft — translation exists but is not published' },
+  missing: { t: '·', cls: 'text-platinum', title: 'No page in this language' },
+}
 
 // SEO heuristic — flags computed from what the WC REST product carries,
 // including the real Yoast title / meta description (Yoast v28.4).
@@ -192,24 +223,59 @@ export default function WooCatalogue() {
     // hitting a Crystocraft product that merely mentions Swarovski crystals
     // ("T-shirt with Swarovski Crystal Fabric" stays).
     const isSwar = (p) => (p.categories || []).some(c => /swarovski/i.test(c)) || /^swarovski\b/i.test((p.name || '').trim())
-    const swarCount = rows.filter(isSwar).length
+    // Count swarovski as PRODUCTS (default-language rows), not language variants.
+    const swarCount = rows.filter(p => isSwar(p) && (p.lang || 'en') === 'en').length
     const base = hideSwarovski ? rows.filter(p => !isSwar(p)) : rows
-    const withSeo = base.map(p => ({ ...p, _flags: seoFlags(p), _price: priceRange(p), _swar: isSwar(p) }))
-    const seen = new Set()
-    for (const p of base) for (const c of (p.translations || [])) seen.add(c)
-    const langs = [...LANG_ORDER.filter(c => seen.has(c)), ...[...seen].filter(c => !LANG_ORDER.includes(c))]
-    const pub = base.filter(p => p.status === 'publish')
-    const langCoverage = langs.map(c => ({
-      code: c,
-      translated: pub.filter(p => (p.translations || []).includes(c)).length,
-      total: pub.length,
+
+    // ── group every language's own product row into one translation group ──
+    // `catalogue_page` now returns lang:'all', so a translated product comes
+    // back as its own row; `translations_map` = { code: postId } lets us join
+    // them. WPML puts the full map on every member, so all members hash to the
+    // same key.
+    const groupsByKey = new Map()
+    for (const p of base) {
+      const ids = new Set([p.product_id])
+      for (const v of Object.values(p.translations_map || {})) if (Number.isFinite(v)) ids.add(v)
+      const key = [...ids].sort((a, b) => a - b).join(',')
+      let g = groupsByKey.get(key)
+      if (!g) { g = { key, byLang: new Map(), rows: [] }; groupsByKey.set(key, g) }
+      g.rows.push(p)
+      const code = p.lang || 'en'
+      if (!g.byLang.has(code)) g.byLang.set(code, p)
+    }
+    const groupList = [...groupsByKey.values()]
+    for (const g of groupList) {
+      g.canonical = g.byLang.get('en') || [...g.rows].sort((a, b) => a.product_id - b.product_id)[0]
+    }
+
+    // One row per product (its default-language row) for every non-translation tab.
+    const withSeo = groupList.map(g => ({
+      ...g.canonical,
+      _flags: seoFlags(g.canonical),
+      _price: priceRange(g.canonical),
+      _swar: isSwar(g.canonical),
+      _group: g,
     }))
+
+    const seen = new Set()
+    for (const g of groupList) for (const c of g.byLang.keys()) seen.add(c)
+    for (const p of base) for (const c of Object.keys(p.translations_map || {})) seen.add(c)
+    const langs = [...LANG_ORDER.filter(c => seen.has(c)), ...[...seen].filter(c => !LANG_ORDER.includes(c))]
+
+    const pubGroups = groupList.filter(g => g.canonical.status === 'publish')
+    const langCoverage = langs
+      .filter(c => c !== 'en')
+      .map(c => ({
+        code: c,
+        translated: pubGroups.filter(g => classifyLang(g, c, g.canonical.name) === 'ok').length,
+        total: pubGroups.length,
+      }))
     const counts = {
-      total: base.length,
-      publish: pub.length,
-      draft: base.filter(p => p.status === 'draft').length,
-      other: base.filter(p => !['publish', 'draft'].includes(p.status)).length,
-      variations: base.reduce((n, p) => n + (p.variations?.length || 0), 0),
+      total: groupList.length,
+      publish: pubGroups.length,
+      draft: groupList.filter(g => g.canonical.status === 'draft').length,
+      other: groupList.filter(g => !['publish', 'draft'].includes(g.canonical.status)).length,
+      variations: groupList.reduce((n, g) => n + (g.canonical.variations?.length || 0), 0),
       seoIssues: withSeo.filter(p => p.status === 'publish' && p._flags.length).length,
       swarHidden: hideSwarovski ? swarCount : 0,
     }
@@ -273,16 +339,27 @@ export default function WooCatalogue() {
     downloadCsv('woo-catalogue-seo', cols, seoRows)
   }
 
+  const translationLangs = useMemo(() => (model ? model.langs.filter(c => c !== 'en') : []), [model])
+
   const translationRows = useMemo(() => {
     if (!model) return []
     const q = search.trim().toUpperCase()
     return model.withSeo
       .filter(p => (statusFilter !== 'all' ? p.status === statusFilter : p.status === 'publish'))
       .filter(p => (q ? `${p.name} ${p.sku}`.toUpperCase().includes(q) : true))
-      .map(p => ({ ...p, _missing: model.langs.filter(c => !(p.translations || []).includes(c)) }))
-      .filter(p => (issuesOnly ? p._missing.length > 0 : true))
-      .sort((a, b) => b._missing.length - a._missing.length)
-  }, [model, search, statusFilter, issuesOnly])
+      .map(p => {
+        const state = {}
+        const incomplete = []
+        for (const c of translationLangs) {
+          const s = classifyLang(p._group, c, p.name)
+          state[c] = s
+          if (s === 'missing' || s === 'draft' || s === 'stub') incomplete.push(c)
+        }
+        return { ...p, _langState: state, _incomplete: incomplete }
+      })
+      .filter(p => (issuesOnly ? p._incomplete.length > 0 : true))
+      .sort((a, b) => b._incomplete.length - a._incomplete.length)
+  }, [model, translationLangs, search, statusFilter, issuesOnly])
 
   function exportTranslations() {
     if (!model) return
@@ -290,8 +367,8 @@ export default function WooCatalogue() {
       { label: 'Product', value: r => r.name },
       { label: 'SKU', value: r => r.sku, text: true },
       { label: 'Status', value: r => r.status },
-      ...model.langs.map(c => ({ label: langLabel(c), value: r => ((r.translations || []).includes(c) ? 'yes' : '') })),
-      { label: 'Missing', value: r => r._missing.map(langLabel).join(' ') },
+      ...translationLangs.map(c => ({ label: langLabel(c), value: r => r._langState[c] })),
+      { label: 'Incomplete', value: r => r._incomplete.map(langLabel).join(' ') },
       { label: 'URL', value: r => r.permalink || '' },
     ]
     downloadCsv('woo-catalogue-translations', cols, translationRows)
@@ -619,10 +696,16 @@ export default function WooCatalogue() {
                     <div className="text-sm font-semibold tabular-nums">
                       {l.translated}<span className="text-ink-60 font-normal">/{l.total}</span>
                     </div>
-                    <div className="text-2xs uppercase tracking-wide text-ink-60">{langLabel(l.code)} translated</div>
+                    <div className="text-2xs uppercase tracking-wide text-ink-60">{langLabel(l.code)} done</div>
                   </div>
                 ))}
               </div>
+              <p className="text-2xs text-ink-60 mb-2">
+                Against published English products. <span className="text-green-600">✓</span> translated ·
+                <span className="text-amber-600 font-semibold"> D</span> draft ·
+                <span className="text-amber-600 font-semibold"> S</span> stub (published but empty / name = English) ·
+                <span className="text-platinum"> ·</span> no page
+              </p>
               <div className="card overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -630,13 +713,13 @@ export default function WooCatalogue() {
                       <tr className="text-2xs uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
                         <th className="px-3 py-2 text-left">Product</th>
                         <th className="px-3 py-2 text-left">Status</th>
-                        {model.langs.map(c => <th key={c} className="px-2 py-2 text-center">{langLabel(c)}</th>)}
-                        <th className="px-3 py-2 text-right">Missing</th>
+                        {translationLangs.map(c => <th key={c} className="px-2 py-2 text-center">{langLabel(c)}</th>)}
+                        <th className="px-3 py-2 text-right">Incomplete</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-warm-grey">
                       {translationRows.map(p => (
-                        <tr key={p.product_id} className={p._missing.length >= 3 ? 'bg-amber-50/40' : 'hover:bg-ivory/40'}>
+                        <tr key={p.product_id} className={p._incomplete.length >= 3 ? 'bg-amber-50/40' : 'hover:bg-ivory/40'}>
                           <td className="px-3 py-2 max-w-[280px]">
                             <span className="text-ink truncate inline-block max-w-full align-middle">{p.name}</span>
                             {p.permalink && (
@@ -648,23 +731,23 @@ export default function WooCatalogue() {
                           <td className="px-3 py-2">
                             <span className={`text-2xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE[p.status] || 'bg-ivory text-ink-70'}`}>{p.status}</span>
                           </td>
-                          {model.langs.map(c => {
-                            const has = (p.translations || []).includes(c)
+                          {translationLangs.map(c => {
+                            const g = LANG_GLYPH[p._langState[c]] || LANG_GLYPH.missing
                             return (
                               <td key={c} className="px-2 py-2 text-center">
-                                <span className={has ? 'text-green-600' : 'text-platinum'}>{has ? '✓' : '·'}</span>
+                                <span className={g.cls} title={g.title}>{g.t}</span>
                               </td>
                             )
                           })}
                           <td className="px-3 py-2 text-right text-xs">
-                            {p._missing.length
-                              ? <span className="text-amber-700">{p._missing.map(langLabel).join(' ')}</span>
+                            {p._incomplete.length
+                              ? <span className="text-amber-700">{p._incomplete.map(langLabel).join(' ')}</span>
                               : <span className="text-green-700">complete</span>}
                           </td>
                         </tr>
                       ))}
                       {translationRows.length === 0 && (
-                        <tr><td colSpan={model.langs.length + 3} className="px-3 py-4 text-center text-xs text-ink-60">Nothing missing.</td></tr>
+                        <tr><td colSpan={translationLangs.length + 3} className="px-3 py-4 text-center text-xs text-ink-60">Nothing to show.</td></tr>
                       )}
                     </tbody>
                   </table>
