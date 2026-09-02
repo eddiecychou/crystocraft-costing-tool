@@ -93,6 +93,21 @@ export default function Layout({ children, user }) {
   const location  = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
 
+  // Swipe-down-to-dismiss for the mobile "All sections" sheet. Handlers live
+  // on the header only, so a swipe inside the scrollable grid still scrolls.
+  const [dragY, setDragY] = useState(0)
+  const dragStart = useState({ y: 0, active: false })[0]
+  const onSheetTouchStart = (e) => { dragStart.y = e.touches[0].clientY; dragStart.active = true }
+  const onSheetTouchMove = (e) => {
+    if (!dragStart.active) return
+    setDragY(Math.max(0, e.touches[0].clientY - dragStart.y))
+  }
+  const onSheetTouchEnd = () => {
+    dragStart.active = false
+    setDragY((dy) => { if (dy > 70) setMoreOpen(false); return 0 })
+  }
+  useEffect(() => { if (moreOpen) setDragY(0) }, [moreOpen])
+
   // Live count of SEO batches from DSH awaiting review — surfaced as a badge
   // on the "SEO Review" nav item. Admin-gated (seo_batches read = isAdmin);
   // skip the subscription for anyone else so it doesn't permission-deny.
@@ -241,9 +256,17 @@ export default function Layout({ children, user }) {
         {moreOpen && (
           <>
             <div className="md:hidden fixed inset-0 z-30 bg-black/30" onClick={() => setMoreOpen(false)} />
-            <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-2xl rounded-t-xl overflow-hidden flex flex-col max-h-[72vh]">
-              <div className="flex flex-col items-center pt-2 pb-1 shrink-0">
-                <span className="w-9 h-1 rounded-full bg-ivory-dark mb-2" />
+            <div
+              className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-2xl rounded-t-xl overflow-hidden flex flex-col max-h-[72vh]"
+              style={{ transform: `translateY(${dragY}px)`, transition: dragY ? 'none' : 'transform 0.22s ease' }}
+            >
+              <div
+                className="flex flex-col items-center pt-2 pb-1 shrink-0 touch-none cursor-grab active:cursor-grabbing"
+                onTouchStart={onSheetTouchStart}
+                onTouchMove={onSheetTouchMove}
+                onTouchEnd={onSheetTouchEnd}
+              >
+                <span className="w-10 h-1.5 rounded-full bg-ivory-dark mb-2" />
                 <p className="text-xs font-medium text-ink-60 uppercase tracking-[0.12em] font-label">All sections</p>
               </div>
               <div className="grid grid-cols-4 gap-1 p-3 pt-1 overflow-y-auto">
