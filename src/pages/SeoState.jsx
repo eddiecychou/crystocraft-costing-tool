@@ -74,33 +74,44 @@ export default function SeoState() {
       // WooCommerce products too — the SEO batches also write `kind:'product'`
       // (Yoast titles etc.), so reconcile needs them in the same store. Pulled
       // via the woo-sync catalogue op (wc/v3, Yoast read from meta_data by key)
-      // and mapped to the seo_state row shape.
-      for (let page = 1; page <= 100; page++) {
-        const { rows: r, has_more } = await wooCataloguePage(page)
-        for (const p of (r || [])) {
-          acc.push({
-            id: p.product_id,
-            kind: 'product',
-            lang: p.lang || 'en',
-            slug: p.slug || '',
-            status: p.status || '',
-            link: p.permalink || '',
-            modified: p.date_modified || '',
-            title: p.name || '',
-            seo_title: p.seo_title || '',
-            seo_desc: p.seo_desc || '',
-            seo_title_set: !!p.seo_title_set,
-            seo_desc_set: !!p.seo_desc_set,
-            focus_kw: p.seo_focus_kw || '',
-            elementor_len: 0,
-            elementor_hash: null, // catalogue_page doesn't fetch _elementor_data for products
-          })
+      // and mapped to the seo_state row shape. wc/v3 returns ONE language per
+      // call, so loop the same language list as posts/pages above.
+      for (const l of langs) {
+        for (let page = 1; page <= 100; page++) {
+          const { rows: r, has_more } = await wooCataloguePage(page, l.code === 'en' ? undefined : l.code)
+          for (const p of (r || [])) {
+            acc.push({
+              id: p.product_id,
+              kind: 'product',
+              lang: p.lang || l.code || 'en',
+              slug: p.slug || '',
+              status: p.status || '',
+              link: p.permalink || '',
+              modified: p.date_modified || '',
+              title: p.name || '',
+              seo_title: p.seo_title || '',
+              seo_desc: p.seo_desc || '',
+              seo_title_set: !!p.seo_title_set,
+              seo_desc_set: !!p.seo_desc_set,
+              focus_kw: p.seo_focus_kw || '',
+              elementor_len: 0,
+              elementor_hash: null, // catalogue_page doesn't fetch _elementor_data for products
+            })
+          }
+          setProgress(`${l.code} · products · ${acc.length} rows…`)
+          if (!has_more) break
         }
-        setProgress(`products · ${acc.length} rows…`)
-        if (!has_more) break
       }
-      setRows(acc); setFetchedAt(new Date()); setFromCache(false)
-      const res = await saveSeoState(acc)
+      // Dedupe by kind:id — a WPML site can return an untranslated product
+      // under a ?lang= call, and the same post id twice is never meaningful.
+      const seenRow = new Set()
+      const deduped = acc.filter(r => {
+        const k = `${r.kind}:${r.id}`
+        if (seenRow.has(k)) return false
+        seenRow.add(k); return true
+      })
+      setRows(deduped); setFetchedAt(new Date()); setFromCache(false)
+      const res = await saveSeoState(deduped)
       if (res.skipped === 'too_large') setError(`${acc.length} rows — too large to cache, will re-read next visit`)
     } catch (e) {
       setError(e.message || 'Could not read WordPress state.')

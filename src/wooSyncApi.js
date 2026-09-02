@@ -49,8 +49,10 @@ export const wooProductsPage = (page) => wooSync('products_page', { page })
 
 // One page of the catalogue as PRODUCT-shaped rows (variations nested) plus
 // the fields an SEO heuristic needs — for the catalogue overview
-// (WooCatalogue.jsx). Client-paginated. Returns { rows, has_more, ... }.
-export const wooCataloguePage = (page) => wooSync('catalogue_page', { page })
+// (WooCatalogue.jsx). Client-paginated, and looped per WPML language by the
+// caller (`lang` = one language code; omitted → the site's default language).
+// Returns { rows, has_more, ... }.
+export const wooCataloguePage = (page, lang) => wooSync('catalogue_page', lang ? { page, lang } : { page })
 
 // Diagnostic: whether the WordPress site exposes translation status
 // (WPML / Polylang) and SEO meta (Yoast / RankMath) over REST. Returns

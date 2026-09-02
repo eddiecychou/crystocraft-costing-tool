@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { wooCataloguePage, wooProbeI18nSeo } from '../wooSyncApi'
+import { seoLanguages } from '../seoStateApi'
 import { loadWooCatalogueOverviewCache, saveWooCatalogueOverviewCache } from '../wooCache'
 import { loadB2cStock } from '../b2cStock'
 import { downloadCsv } from '../exportCsv'
@@ -31,7 +32,9 @@ function stems(code) {
 // classifies each published English product's language pages as translated /
 // draft / stub / missing (see classifyLang — WPML's own "translation exists"
 // flag is set even for the empty draft duplicates it auto-creates, so it can't
-// be trusted alone). Both confirmed available via the Diagnostics probe.
+// be trusted alone). wc/v3 serves one language per call, so the catalogue is
+// fetched once per active WPML language (Simplified Chinese excluded — not
+// planned). Both confirmed available via the Diagnostics probe.
 
 const fmtWhen = (d) => {
   if (!d) return ''
@@ -60,8 +63,15 @@ function priceRange(p) {
 
 // WPML language codes → short display labels. Order = display order.
 const LANG_LABEL = { en: 'EN', fr: 'FR', ja: 'JA', es: 'ES', 'zh-hans': '简', 'zh-hant': '繁', de: 'DE', it: 'IT' }
-const LANG_ORDER = ['en', 'zh-hans', 'zh-hant', 'fr', 'ja', 'es', 'de', 'it']
+const LANG_ORDER = ['en', 'zh-hant', 'fr', 'ja', 'es', 'de', 'it']
 const langLabel = (c) => LANG_LABEL[c] || c.toUpperCase()
+// Languages we deliberately do NOT translate into — excluded from the fetch,
+// the coverage cards and the matrix. Simplified Chinese: not planned (owner).
+const SKIP_LANGS = new Set(['zh-hans'])
+// The site's frontend languages (per the 2026-09-02 WPML probe) — used when
+// seoLanguages() isn't reachable (it's admin-only; a `woo` staff account
+// can't call it).
+const SITE_LANGS = ['en', 'zh-hant', 'fr', 'ja', 'es']
 
 // Per-language translation state for one product, judged against the source
 // (default-language) row. WPML records a `translations` entry the moment a
@@ -75,14 +85,23 @@ const langLabel = (c) => LANG_LABEL[c] || c.toUpperCase()
 //             English name (a duplicate that was never actually translated)
 //   ok      — published, has a description, and the name differs from English
 const norm = (s) => String(s || '').trim().toLowerCase()
-function classifyLang(group, code, srcName) {
+function classifyLang(group, code, src) {
   const srcCode = group.canonical.lang || 'en'
   if (code === srcCode) return 'source'
   const row = group.byLang.get(code)
   if (!row) return 'missing'
   if (row.status !== 'publish') return 'draft'
-  if (!row.description_words || norm(row.name) === norm(srcName)) return 'stub'
-  return 'ok'
+  // "Really translated" = published AND at least one visible field diverges
+  // from English. WPML's auto-created duplicates copy every field verbatim, so
+  // a straight copy (no divergence) is a stub, not a translation.
+  const localized =
+    norm(row.name) !== norm(src.name) ||
+    (row.description_words > 0 && row.description_words !== src.description_words) ||
+    (row.short_description_words > 0 && row.short_description_words !== src.short_description_words) ||
+    (!!row.seo_title && norm(row.seo_title) !== norm(src.seo_title)) ||
+    (!!row.seo_desc && norm(row.seo_desc) !== norm(src.seo_desc)) ||
+    (!!row.slug && !!src.slug && row.slug !== src.slug)
+  return localized ? 'ok' : 'stub'
 }
 const LANG_GLYPH = {
   source:  { t: '·', cls: 'text-platinum', title: 'Default language' },
@@ -187,14 +206,22 @@ export default function WooCatalogue() {
   useEffect(() => { if (tab === 'match' && !internal && !loadingInternal) loadInternal() }, [tab, internal, loadingInternal, loadInternal])
 
   const load = useCallback(async () => {
-    setLoading(true); setError(''); setProgress('Fetching page 1…')
+    setLoading(true); setError(''); setProgress('Reading languages…')
     const acc = []
     try {
-      for (let page = 1; page <= 100; page++) {
-        const { rows: r, has_more } = await wooCataloguePage(page)
-        acc.push(...(r || []))
-        setProgress(`Fetched ${acc.length} products (page ${page})…`)
-        if (!has_more) break
+      // wc/v3 returns one language per call, so loop the active WPML languages
+      // (the default language first, so its row wins as each group's canonical).
+      let langs = []
+      try { langs = (await seoLanguages()).map(l => l.code).filter(Boolean) } catch { /* fall through */ }
+      if (!langs.length) langs = [...SITE_LANGS]
+      langs = ['en', ...langs.filter(c => c !== 'en' && !SKIP_LANGS.has(c))]
+      for (const lang of langs) {
+        for (let page = 1; page <= 100; page++) {
+          const { rows: r, has_more } = await wooCataloguePage(page, lang === 'en' ? undefined : lang)
+          acc.push(...(r || []))
+          setProgress(`${lang} · ${acc.length} products (page ${page})…`)
+          if (!has_more) break
+        }
       }
       setRows(acc); setFetchedAt(new Date()); setFromCache(false)
       const res = await saveWooCatalogueOverviewCache(acc)
@@ -260,6 +287,7 @@ export default function WooCatalogue() {
     const seen = new Set()
     for (const g of groupList) for (const c of g.byLang.keys()) seen.add(c)
     for (const p of base) for (const c of Object.keys(p.translations_map || {})) seen.add(c)
+    for (const c of SKIP_LANGS) seen.delete(c)
     const langs = [...LANG_ORDER.filter(c => seen.has(c)), ...[...seen].filter(c => !LANG_ORDER.includes(c))]
 
     const pubGroups = groupList.filter(g => g.canonical.status === 'publish')
@@ -267,7 +295,7 @@ export default function WooCatalogue() {
       .filter(c => c !== 'en')
       .map(c => ({
         code: c,
-        translated: pubGroups.filter(g => classifyLang(g, c, g.canonical.name) === 'ok').length,
+        translated: pubGroups.filter(g => classifyLang(g, c, g.canonical) === 'ok').length,
         total: pubGroups.length,
       }))
     const counts = {
@@ -351,7 +379,7 @@ export default function WooCatalogue() {
         const state = {}
         const incomplete = []
         for (const c of translationLangs) {
-          const s = classifyLang(p._group, c, p.name)
+          const s = classifyLang(p._group, c, p)
           state[c] = s
           if (s === 'missing' || s === 'draft' || s === 'stub') incomplete.push(c)
         }
@@ -703,7 +731,7 @@ export default function WooCatalogue() {
               <p className="text-2xs text-ink-60 mb-2">
                 Against published English products. <span className="text-green-600">✓</span> translated ·
                 <span className="text-amber-600 font-semibold"> D</span> draft ·
-                <span className="text-amber-600 font-semibold"> S</span> stub (published but empty / name = English) ·
+                <span className="text-amber-600 font-semibold"> S</span> stub (published but a byte-for-byte copy of English) ·
                 <span className="text-platinum"> ·</span> no page
               </p>
               <div className="card overflow-hidden">
