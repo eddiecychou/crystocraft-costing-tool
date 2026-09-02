@@ -40,17 +40,23 @@ export default async function handler(req) {
   const ext = name.split('.').pop().toLowerCase()
 
   let upstream
-  try { upstream = await fetch(src) } catch (err) { return new Response(String(err), { status: 502 }) }
-  if (!upstream.ok) return new Response('Upstream error', { status: upstream.status })
+  try { upstream = await fetch(src, { redirect: 'follow' }) } catch (err) {
+    return new Response(String(err), { status: 502 })
+  }
+  if (!upstream.ok) return new Response(`Upstream ${upstream.status}`, { status: 502 })
 
-  return new Response(upstream.body, {
-    headers: {
-      'Content-Type': CONTENT_TYPE[ext] || upstream.headers.get('content-type') || 'application/octet-stream',
-      'Content-Disposition': `inline; filename="${name.replace(/"/g, '')}"`,
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'public, max-age=600',
-    },
-  })
+  // Buffer so we can send an explicit Content-Length — the Office Online
+  // viewer rejects a chunked / length-less response for an Office file.
+  const bytes = await upstream.arrayBuffer()
+  const headers = {
+    'Content-Type': CONTENT_TYPE[ext] || upstream.headers.get('content-type') || 'application/octet-stream',
+    'Content-Length': String(bytes.byteLength),
+    'Content-Disposition': `inline; filename="${name.replace(/"/g, '')}"`,
+    'Accept-Ranges': 'bytes',
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'public, max-age=600',
+  }
+  return new Response(bytes, { headers })
 }
 
 export const config = { path: '/api/office-file/*' }

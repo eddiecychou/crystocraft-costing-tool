@@ -58,7 +58,7 @@ const isPdf = (type, name) => type === 'application/pdf' || extOf(name) === 'pdf
 // Microsoft's servers to render; supplier catalogs / lookbooks / price lists
 // only (owner: nothing sensitive).
 const proxiedFileUrl = c =>
-  `${window.location.origin}/api/office-file/${encodeURIComponent(c.file_name)}?src=${encodeURIComponent(c.file_url)}`
+  `${window.location.origin}/api/office-file/${encodeURIComponent(c.file_name)}?id=${c.id}&src=${encodeURIComponent(c.file_url)}`
 const officeEmbedUrl = c =>
   `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(proxiedFileUrl(c))}`
 
