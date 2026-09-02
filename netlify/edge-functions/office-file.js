@@ -45,6 +45,11 @@ export default async function handler(req) {
   }
   if (!upstream.ok) return new Response(`Upstream ${upstream.status}`, { status: 502 })
 
+  // The MS Office Online viewer caps at ~10 MB anyway; refuse bigger so a
+  // huge supplier deck can't OOM the edge function buffering it.
+  const declared = parseInt(upstream.headers.get('content-length') || '0', 10)
+  if (declared > 15 * 1024 * 1024) return new Response('Too large to preview', { status: 413 })
+
   // Buffer so we can send an explicit Content-Length — the Office Online
   // viewer rejects a chunked / length-less response for an Office file.
   const bytes = await upstream.arrayBuffer()

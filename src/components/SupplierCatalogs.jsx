@@ -51,6 +51,14 @@ const isOffice = (type, name) => OFFICE_EXT.has(extOf(name)) ||
   /officedocument|ms-excel|ms-powerpoint|msword/.test(type || '')
 const isPdf = (type, name) => type === 'application/pdf' || extOf(name) === 'pdf'
 
+// Microsoft's Office Online embed viewer rejects files over ~10 MB with a
+// misleading "not publicly accessible" error. PDFs render in the browser's
+// own viewer (no MS, no size ceiling that matters here).
+const MS_VIEWER_MAX = 10 * 1024 * 1024
+const canPreview = c =>
+  isPdf(c.file_type, c.file_name) ||
+  (isOffice(c.file_type, c.file_name) && c.file_size > 0 && c.file_size <= MS_VIEWER_MAX)
+
 // Microsoft's public Office Online viewer. It fetches the file from its OWN
 // servers, and chokes on a raw Firebase download URL (no trailing extension,
 // stored as octet-stream). /api/office-file/<name> re-serves it at a clean,
@@ -145,7 +153,7 @@ export default function SupplierCatalogs({ supplierId }) {
         </label>
       </div>
 
-      <p className="text-xs text-ink-60 mb-4">Upload supplier product catalogs, lookbooks, or price lists — PDF, images, or Office files (Excel / PowerPoint / Word). Office files preview in-app through Microsoft's viewer.</p>
+      <p className="text-xs text-ink-60 mb-4">Upload supplier product catalogs, lookbooks, or price lists — PDF, images, or Office files (Excel / PowerPoint / Word). PDFs and Office files under 10 MB preview in-app; larger files download.</p>
 
       {/* In-progress uploads */}
       {uploads.map(u => (
@@ -178,8 +186,8 @@ export default function SupplierCatalogs({ supplierId }) {
                 />
               ) : (
                 <span
-                  className={`text-ink-60 shrink-0 ${(isOffice(c.file_type, c.file_name) || isPdf(c.file_type, c.file_name)) ? 'cursor-pointer' : ''}`}
-                  onClick={() => (isOffice(c.file_type, c.file_name) || isPdf(c.file_type, c.file_name)) && setViewer(c)}
+                  className={`text-ink-60 shrink-0 ${canPreview(c) ? 'cursor-pointer' : ''}`}
+                  onClick={() => canPreview(c) && setViewer(c)}
                 ><FileTypeIcon type={c.file_type} name={c.file_name} size={24} /></span>
               )}
 
@@ -191,7 +199,7 @@ export default function SupplierCatalogs({ supplierId }) {
 
               {/* Actions */}
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                {(isOffice(c.file_type, c.file_name) || isPdf(c.file_type, c.file_name)) && (
+                {canPreview(c) && (
                   <button
                     type="button"
                     onClick={() => setViewer(c)}
