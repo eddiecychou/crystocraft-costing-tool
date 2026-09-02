@@ -1,10 +1,20 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useB2cStock, setWooLink } from '../b2cStock'
 import { wooProductsPage } from '../wooSyncApi'
+import { loadWooCatalogueCache, saveWooCatalogueCache } from '../wooCache'
 import { downloadCsv } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
 import { RefreshCcw, Download, Link2, X, AlertTriangle, ShoppingCart } from 'lucide-react'
+
+const fmtWhen = (d) => {
+  if (!d) return ''
+  const mins = Math.round((Date.now() - d.getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
+  if (mins < 1440) return `${Math.round(mins / 60)} h ago`
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 // WooCommerce ↔ Finished-Goods stock reconciliation (Phase 6 of
 // WooCommerce_B2C_Sync_Spec.md). READ-ONLY against WooCommerce — the only
@@ -35,9 +45,21 @@ export default function WooStockReconcile() {
   const [linkFor, setLinkFor] = useState(null) // b2c item id whose picker is open
   const [showWooOnly, setShowWooOnly] = useState(false)
   const [search, setSearch] = useState('')
+  const [fetchedAt, setFetchedAt] = useState(null) // Date of the loaded snapshot (cache or fresh)
+  const [fromCache, setFromCache] = useState(false)
+  const [cacheNote, setCacheNote] = useState('') // e.g. "too large to save"
+
+  // Restore the last saved catalogue snapshot on open — no WooCommerce call.
+  useEffect(() => {
+    let live = true
+    loadWooCatalogueCache().then((c) => {
+      if (live && c?.rows?.length) { setWoo(c.rows); setFetchedAt(c.fetchedAt); setFromCache(true) }
+    })
+    return () => { live = false }
+  }, [])
 
   const loadWoo = useCallback(async () => {
-    setLoadingWoo(true); setError(''); setProgress('Fetching page 1…')
+    setLoadingWoo(true); setError(''); setCacheNote(''); setProgress('Fetching page 1…')
     const acc = []
     try {
       for (let page = 1; page <= 100; page++) {
@@ -46,7 +68,9 @@ export default function WooStockReconcile() {
         setProgress(`Fetched ${acc.length} rows (page ${page})…`)
         if (!has_more) break
       }
-      setWoo(acc)
+      setWoo(acc); setFetchedAt(new Date()); setFromCache(false)
+      const res = await saveWooCatalogueCache(acc)
+      if (res.skipped === 'too_large') setCacheNote(`${acc.length} rows — too large to save, will refetch next visit`)
     } catch (e) {
       setError(e.message || 'Could not load WooCommerce products.')
     } finally {
@@ -181,8 +205,13 @@ export default function WooStockReconcile() {
         <button onClick={loadWoo} disabled={busy}
                 className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
           <RefreshCcw size={14} className={loadingWoo ? 'animate-spin' : ''} />
-          {woo ? 'Reload WooCommerce products' : 'Load WooCommerce products'}
+          {woo ? 'Refresh from WooCommerce' : 'Load WooCommerce products'}
         </button>
+        {fetchedAt && !loadingWoo && (
+          <span className="text-xs text-ink-60">
+            {fromCache ? 'Saved snapshot' : 'Fetched'} · {fmtWhen(fetchedAt)}
+          </span>
+        )}
         {model && (
           <button onClick={exportCsv}
                   className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
@@ -190,6 +219,7 @@ export default function WooStockReconcile() {
           </button>
         )}
         {progress && <span className="text-xs text-ink-60">{progress}</span>}
+        {cacheNote && <span className="text-xs text-amber-700 inline-flex items-center gap-1"><AlertTriangle size={12} />{cacheNote}</span>}
       </div>
 
       {model && (

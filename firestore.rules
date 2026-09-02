@@ -307,6 +307,15 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Cached WooCommerce API pulls (order sync + product-catalogue/stock
+    // reconciliation) so the pages restore the last fetch instead of hitting
+    // WooCommerce on every visit — "Refresh" refetches. Admin-only, matching
+    // the `woo` module. Pure cache: nothing downstream reads it, safe to
+    // wipe. Docs: `orders`, `product_catalogue`.
+    match /woo_cache/{doc} {
+      allow read, write: if isAdmin();
+    }
+
     match /customers/{customerId} {
       // Front office (admin + sales, V8.13). Sales owns the customer relationship
       // and all its correspondence/CRM below; the supply side stays walled off.

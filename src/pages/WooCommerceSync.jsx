@@ -1,6 +1,7 @@
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, useEffect, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { listWooOrders, searchWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
+import { loadWooOrdersCache, saveWooOrdersCache } from '../wooCache'
 import { importWooOrder, checkImportedWooOrders, linkCustomerToWoo } from '../wooImport'
 import { importWooRefund, checkImportedWooRefunds } from '../wooRefundImport'
 import { downloadCsv, exportStem } from '../exportCsv'
@@ -49,6 +50,8 @@ export default function WooCommerceSync() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null) // { rows, refunds, skipped_unpaid, total_fetched }
+  const [cachedAt, setCachedAt] = useState(null)   // Date of the currently-shown result
+  const [resultIsCached, setResultIsCached] = useState(false) // restored from woo_cache, not this session
   const [metaFor, setMetaFor] = useState(null)     // order_id currently expanded (raw meta inspector)
   const [meta, setMeta] = useState(null)           // { order_id, payment_method, transaction_id, meta } or 'loading' or error string
   const [detailsFor, setDetailsFor] = useState(null) // order_id currently expanded (line items / addresses) — no fetch, already in `result`
@@ -175,11 +178,29 @@ export default function WooCommerceSync() {
     }
   }
 
+  // Restore the last saved sync on open — no WooCommerce call. The saved
+  // range replaces the default month so "Refresh" re-fetches exactly what's
+  // shown; change the dates and refetch for a different window.
+  useEffect(() => {
+    let live = true
+    loadWooOrdersCache().then((c) => {
+      if (!live || !c?.rows) return
+      setResult({ rows: c.rows, refunds: c.refunds || [], skipped_unpaid: c.skipped_unpaid ?? 0, total_fetched: c.total_fetched ?? 0 })
+      if (c.from && c.to) setRange({ from: c.from, to: c.to })
+      setCachedAt(c.fetchedAt); setResultIsCached(true)
+      if (c.rows.length) checkImportedWooOrders(c.rows.map(o => o.id)).then(setImportedIds)
+      if ((c.refunds || []).length) checkImportedWooRefunds(c.refunds.map(rf => rf.id)).then(setImportedRefundIds)
+    })
+    return () => { live = false }
+  }, [])
+
   async function fetchOrders() {
     setLoading(true); setError(''); setResult(null); setImportedIds(new Set()); setImportedRefundIds(new Set())
     try {
       const r = await listWooOrders(from, to)
       setResult(r)
+      setResultIsCached(false); setCachedAt(new Date())
+      saveWooOrdersCache(from, to, r)
       if (r.rows.length) checkImportedWooOrders(r.rows.map(o => o.id)).then(setImportedIds)
       if (r.refunds.length) checkImportedWooRefunds(r.refunds.map(rf => rf.id)).then(setImportedRefundIds)
       // Live rates for the "By item" report's turnover-in-HKD conversion
@@ -651,6 +672,12 @@ export default function WooCommerceSync() {
               {result.rows.length} paid order{result.rows.length === 1 ? '' : 's'}
               {result.skipped_unpaid > 0 && <span> · {result.skipped_unpaid} unpaid/cancelled fetched and excluded</span>}
               {result.refunds.length > 0 && <span> · {result.refunds.length} refund{result.refunds.length === 1 ? '' : 's'}</span>}
+              {cachedAt && (
+                <span className="text-ink-60">
+                  {' · '}{resultIsCached ? 'saved snapshot' : 'fetched'} {fmtDate(cachedAt)}
+                  {resultIsCached && <span> — <span className="font-medium">Fetch from WooCommerce</span> to refresh</span>}
+                </span>
+              )}
             </p>
 
             {result.rows.length === 0 ? (
