@@ -390,6 +390,38 @@ When changing the Blog or Product image UI (`BlogGenerator.jsx`,
   titles/captions; never bake text into the image, and never assume the image
   already contains a title.
 
+### 6.6 The SEO control plane — MANDATORY path for WordPress writes (2026-09-02)
+
+Full spec: **`docs/skills/SEO-CONTROL-PLANE.md`** + `seo-control-plane/README.md`.
+This exists because the external pipeline's failures (Workbench
+`SEO/LESSONS-LEARNED.md` B1–B53) are all the same shape — output written live,
+damage found hours/days later, no restorable state. The state store, the
+approval record, and verification now live on the OC (code-reviewed) side;
+DSH stays the sole WordPress writer but goes through this loop:
+
+1. **Snapshot first.** Before any bulk change, `/seo-state` → Read → **Save
+   snapshot** (with a note). `seo_state_history` is append-only — the rollback
+   reference.
+2. **Validate every payload.** Run it through `seo-control-plane/validate-payload.mjs`
+   (vendored verbatim). 15 checks, each mapped to a lesson (B6 length anomaly,
+   B12 placeholder, B20 stale-layout, B33/B35 CJK leak, L-09 double-brand,
+   Rule 4 never-publish-unlinked-translation…). A failing payload does not get
+   written.
+3. **Batch + human approval.** POST the batch to `/api/seo-batch`
+   (`op:'create'`, Bearer `SEO_BATCH_SECRET`). The owner approves/rejects
+   per-item at `/seo-review` against a real `before → after` diff, then "Send
+   to DSH".
+4. **Execute through `safeWrite`.** `op:'poll'` for approved batches; every
+   write goes through `seo-control-plane/safe-write.mjs` — it aborts the batch
+   if any field outside `expectedFields` drifts (B52 variation-price wipe).
+   POST results back (`op:'result'`).
+5. **Reconcile.** `/seo-reconcile` — current state vs the snapshot ("has
+   anything drifted?") and vs the executed batch ("did our changes stay?").
+
+The OC **never** writes WordPress. DSH **never** writes anything but
+`seo_batches` (via `/api/seo-batch`). Operator-run wp-cli (WPML link, cache
+clear, host purge) is unchanged.
+
 ## Change Log
 
 | Date | Change |
@@ -399,3 +431,4 @@ When changing the Blog or Product image UI (`BlogGenerator.jsx`,
 | 2026-09-01 | §6.2 Product Truth flagged as DETERMINISTIC on DeepSeek's side (code classifier + human gate) vs prompt-only in our enhance-image — cross-links ARCHITECTURE-RULES §8. |
 | 2026-09-02 | Added §6.1a — DSH's three-layer prompt technique ([FOUNDATION]/[NARRATIVE]/[ANCHORS]), percentage-based visual anchoring + margin-safety to stop truncation/drift, and the "rewrite the ANCHORS layer, don't just re-ask" failure-recovery rule. Folded from an external `DETERMINISTIC-ART-GEN.md` draft; its "no invented products" line noted as a restatement of §6.2, not a new rule. |
 | 2026-09-02 | §4 Product Truth: recorded the DETERMINISTIC-ART-GEN audit outcome applied to the in-repo retoucher — `enhance-image.js` gained a `FRAMING` anti-reframe anchor, a consolidated `EXCLUDE` negative-constraint block, `temperature 0` for the faithful modes, and a PNG/JPEG-header reframe guard that surfaces `reframed:true` as an amber UI warning. |
+| 2026-09-02 | Added **§6.6 — the SEO control plane**, the mandatory path for every WordPress write from the external pipeline: snapshot → `validate-payload` → batch → human approval at `/seo-review` → `safeWrite` → `/seo-reconcile`. Backed by `docs/skills/SEO-CONTROL-PLANE.md`, `seo-control-plane/` (vendored validators), Firestore `seo_state` / `seo_state_history` / `seo_batches`, and the `/api/seo-batch` Node function. Replaces "DSH shows a contact sheet in chat, writes live, state in prose". |
