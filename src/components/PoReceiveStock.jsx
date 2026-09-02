@@ -3,6 +3,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { computePoReceive, receivePo, reversePoReceive } from '../poReceive'
 import { PackagePlus, RotateCcw, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
+import { useT } from '../i18n'
 
 // Receive-to-stock card on the Purchase Order (V7.13a). When a PU's goods
 // arrive, receive them into inventory: each line posts a receipt movement to the
@@ -13,6 +14,7 @@ const fmt = n => (Number.isFinite(Number(n)) ? Number(n).toLocaleString() : '0')
 const CLASS_BADGE = { metal: 'bg-ivory text-ink-70', crystal: 'bg-brand-50 text-brand-700', packaging: 'bg-sky-50 text-sky-700' }
 
 export default function PoReceiveStock({ po }) {
+  const t = useT()
   const poId = po.id
   const poNumber = po.pu_number || po.id
   const [state, setState] = useState({ received: false, at: null, lines: [] })
@@ -35,9 +37,9 @@ export default function PoReceiveStock({ po }) {
     try {
       const r = await computePoReceive(po)
       setPreview({ ...r, items: r.items.map(it => ({ ...it, recv: String(it.qty) })) })
-    } catch (e) { setError(e.message || 'Could not match lines to inventory.') }
+    } catch (e) { setError(e.message || t('Could not match lines to inventory.')) }
     finally { setLoading(false) }
-  }, [po])
+  }, [po]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (open && !state.received && !preview) loadPreview() }, [open, state.received, preview, loadPreview])
 
@@ -47,18 +49,18 @@ export default function PoReceiveStock({ po }) {
     const lines = (preview?.items || [])
       .map(it => ({ cls: it.cls, sku_id: it.sku_id, code: it.code, qty: Number(it.recv) }))
       .filter(l => l.qty > 0)
-    if (!lines.length) { setError('Enter at least one quantity to receive.'); return }
-    if (!window.confirm(`Receive ${lines.length} line(s) from PU ${poNumber} into stock?`)) return
+    if (!lines.length) { setError(t('Enter at least one quantity to receive.')); return }
+    if (!window.confirm(t('Receive {n} line(s) from PU {po} into stock?', { n: lines.length, po: poNumber }))) return
     setBusy(true); setError('')
     try { await receivePo(poId, poNumber, lines); setPreview(null) }
-    catch (e) { setError(e.message || 'Receive failed.') }
+    catch (e) { setError(e.message || t('Receive failed.')) }
     finally { setBusy(false) }
   }
   async function doReverse() {
-    if (!window.confirm(`Reverse the stock receipt for PU ${poNumber}? The received quantities are removed from stock.`)) return
+    if (!window.confirm(t('Reverse the stock receipt for PU {po}? The received quantities are removed from stock.', { po: poNumber }))) return
     setBusy(true); setError('')
     try { await reversePoReceive(poId, poNumber) }
-    catch (e) { setError(e.message || 'Reverse failed.') }
+    catch (e) { setError(e.message || t('Reverse failed.')) }
     finally { setBusy(false) }
   }
 
@@ -69,18 +71,18 @@ export default function PoReceiveStock({ po }) {
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-2 text-left">
         <span className="flex items-center gap-2 text-sm font-semibold text-ink-80">
           {open ? <ChevronDown size={15} className="text-ink-60" /> : <ChevronRight size={15} className="text-ink-60" />}
-          Receive to stock
+          {t('Receive to stock')}
         </span>
         {state.received
-          ? <span className="inline-flex items-center gap-1 text-xs text-green-700"><CheckCircle2 size={13} /> Received{dateStr ? ` · ${dateStr}` : ''}</span>
-          : <span className="text-xs text-ink-60">not received</span>}
+          ? <span className="inline-flex items-center gap-1 text-xs text-green-700"><CheckCircle2 size={13} /> {t('Received')}{dateStr ? ` · ${dateStr}` : ''}</span>
+          : <span className="text-xs text-ink-60">{t('not received')}</span>}
       </button>
 
       {open && (
         <div className="mt-3">
           {state.received ? (
             <>
-              <p className="text-xs text-ink-60 mb-2">{state.lines.length} line(s) added to stock from this PU.</p>
+              <p className="text-xs text-ink-60 mb-2">{t('{n} line(s) added to stock from this PU.', { n: state.lines.length })}</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-warm-grey">
                   {state.lines.map((l, i) => (
@@ -94,27 +96,27 @@ export default function PoReceiveStock({ po }) {
               </table>
               <button type="button" onClick={doReverse} disabled={busy}
                 className="mt-3 inline-flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-800 disabled:opacity-50">
-                <RotateCcw size={14} /> {busy ? 'Reversing…' : 'Reverse receipt (remove from stock)'}
+                <RotateCcw size={14} /> {busy ? t('Reversing…') : t('Reverse receipt (remove from stock)')}
               </button>
             </>
           ) : loading ? (
-            <p className="text-sm text-ink-60 py-3 text-center">Matching lines to inventory…</p>
+            <p className="text-sm text-ink-60 py-3 text-center">{t('Matching lines to inventory…')}</p>
           ) : preview ? (
             <>
               {preview.items.length === 0 ? (
-                <p className="text-sm text-ink-60 py-2">No PU lines match an inventory SKU by code. Add the SKUs in Components / Crystal Stock / Packaging Stock first.</p>
+                <p className="text-sm text-ink-60 py-2">{t('No PU lines match an inventory SKU by code. Add the SKUs in Components / Crystal Stock / Packaging Stock first.')}</p>
               ) : (
                 <>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="text-2xs uppercase tracking-wide text-ink-60 text-left border-b border-warm-grey">
-                          <th className="py-1.5 pr-2 font-medium">Class</th>
-                          <th className="py-1.5 pr-2 font-medium">Code</th>
-                          <th className="py-1.5 pr-2 font-medium">Name</th>
-                          <th className="py-1.5 pr-2 font-medium text-right">In stock</th>
-                          <th className="py-1.5 pr-2 font-medium text-right">Ordered</th>
-                          <th className="py-1.5 font-medium text-right">Receive</th>
+                          <th className="py-1.5 pr-2 font-medium">{t('Class')}</th>
+                          <th className="py-1.5 pr-2 font-medium">{t('Code')}</th>
+                          <th className="py-1.5 pr-2 font-medium">{t('Name')}</th>
+                          <th className="py-1.5 pr-2 font-medium text-right">{t('In stock')}</th>
+                          <th className="py-1.5 pr-2 font-medium text-right">{t('Ordered')}</th>
+                          <th className="py-1.5 font-medium text-right">{t('Receive')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-warm-grey">
@@ -135,14 +137,14 @@ export default function PoReceiveStock({ po }) {
                     </table>
                   </div>
                   <button type="button" onClick={doReceive} disabled={busy} className="mt-3 inline-flex items-center gap-1.5 btn-primary text-sm">
-                    <PackagePlus size={14} /> {busy ? 'Receiving…' : 'Receive to stock'}
+                    <PackagePlus size={14} /> {busy ? t('Receiving…') : t('Receive to stock')}
                   </button>
                 </>
               )}
               {preview.unmatched?.length > 0 && (
                 <div className="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                  <div>{preview.unmatched.length} line(s) not in inventory — won’t be received: {preview.unmatched.map(u => u.code).join(', ')}. Add them as an SKU first.</div>
+                  <div>{t('{n} line(s) not in inventory — won’t be received:', { n: preview.unmatched.length })} {preview.unmatched.map(u => u.code).join(', ')}. {t('Add them as an SKU first.')}</div>
                 </div>
               )}
             </>

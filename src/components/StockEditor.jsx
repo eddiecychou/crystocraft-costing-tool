@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { postMovement } from '../stockLedger'
 import { Minus, Plus, Check } from 'lucide-react'
+import { useT } from '../i18n'
 
 // Inline stock editor — type a new qty (or use −/+); on blur it posts a
 // stock-take movement to the ledger (stockLedger.js), so a quick reconcile from
 // a list stays fully audited instead of overwriting the number in place. Shared
 // by the metal Critical Components list and the generic inventory stock tabs.
 export default function StockEditor({ component: c, collectionPath = 'range_components' }) {
+  const t = useT()
   const current = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
   const [val, setVal]       = useState(String(current))
   const [saving, setSaving] = useState(false)
@@ -56,12 +58,12 @@ export default function StockEditor({ component: c, collectionPath = 'range_comp
                 className="w-6 h-6 rounded-none border border-ivory-dark text-ink-60 hover:bg-ivory flex items-center justify-center"><Plus size={13} /></button>
       </div>
       <div className="w-12 text-right leading-tight">
-        <p className="text-2xs text-ink-60">pcs</p>
+        <p className="text-2xs text-ink-60">{t('pcs')}</p>
         {saving
-          ? <p className="text-2xs text-ink-60">saving…</p>
+          ? <p className="text-2xs text-ink-60">{t('saving…')}</p>
           : saved
-            ? <p className="inline-flex items-center gap-0.5 text-2xs text-green-600"><Check size={11} />saved</p>
-            : <p className="text-2xs text-ink-60">{c.lead_time_weeks != null ? `${c.lead_time_weeks}wk lead` : '—'}</p>}
+            ? <p className="inline-flex items-center gap-0.5 text-2xs text-green-600"><Check size={11} />{t('saved')}</p>
+            : <p className="text-2xs text-ink-60">{c.lead_time_weeks != null ? t('{n}wk lead', { n: c.lead_time_weeks }) : '—'}</p>}
       </div>
     </div>
   )

@@ -14,15 +14,16 @@ import { CURRENCIES, RANGE_FORMAT_CODES } from '../constants'
 import { useComponentCategories, saveComponentCategories } from '../componentCategories'
 import { useCrystalUnitCosts, saveCrystalUnitCosts } from '../crystalCosting'
 import { Puzzle, ArrowUp, ArrowDown, X } from 'lucide-react'
+import { useT } from '../i18n'
 
 export default function Components() {
+  const t = useT()
   const [tab, setTab] = useState('critical')
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6">
-      <h1 className="text-xl mb-1">Components</h1>
+      <h1 className="text-xl mb-1">{t('Components')}</h1>
       <p className="text-sm text-ink-60 mb-4">
-        Shared libraries for the Figurine range — the critical parts that drive the production
-        promise, crystal colours (a display attribute), and crystal unit costs by size &amp; brand.
+        {t('Shared libraries for the Figurine range — the critical parts that drive the production promise, crystal colours (a display attribute), and crystal unit costs by size & brand.')}
       </p>
 
       <div className="flex gap-1 border-b border-ivory-dark mb-5 overflow-x-auto overflow-y-hidden whitespace-nowrap">
@@ -30,7 +31,7 @@ export default function Components() {
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${
  tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
@@ -50,6 +51,7 @@ export default function Components() {
 // ── Categories tab ───────────────────────────────────────────────────────────
 
 function ComponentCategories() {
+  const t = useT()
   const { categories, loading } = useComponentCategories()
   const [list, setList] = useState(null)   // null until hydrated from the store
   const [saving, setSaving] = useState(false)
@@ -67,32 +69,31 @@ function ComponentCategories() {
   }
   async function save() {
     setSaving(true); setMsg('')
-    try { await saveComponentCategories(rows); setMsg('Categories saved.'); setTimeout(() => setMsg(''), 3000) }
+    try { await saveComponentCategories(rows); setMsg(t('Categories saved.')); setTimeout(() => setMsg(''), 3000) }
     catch (e) { setMsg('Error: ' + e.message) }
     finally { setSaving(false) }
   }
 
-  if (loading && list === null) return <p className="text-sm text-ink-60">Loading…</p>
+  if (loading && list === null) return <p className="text-sm text-ink-60">{t('Loading…')}</p>
 
   return (
     <div className="max-w-lg">
       <p className="text-sm text-ink-60 mb-3">
-        Categories offered when tagging a component. Existing components keep their saved
-        category even if you rename or remove one here — re-tag them to move them across.
+        {t('Categories offered when tagging a component. Existing components keep their saved category even if you rename or remove one here — re-tag them to move them across.')}
       </p>
       <div className="space-y-2">
         {rows.map((c, i) => (
           <div key={i} className="flex items-center gap-2">
-            <input className="input text-sm flex-1" value={c} onChange={e => update(i, e.target.value)} placeholder="Category name" />
-            <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="text-ink-60 hover:text-ink disabled:opacity-30" title="Move up"><ArrowUp size={15} /></button>
-            <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-ink-60 hover:text-ink disabled:opacity-30" title="Move down"><ArrowDown size={15} /></button>
-            <button type="button" onClick={() => remove(i)} className="text-red-300 hover:text-red-500" title="Remove"><X size={15} /></button>
+            <input className="input text-sm flex-1" value={c} onChange={e => update(i, e.target.value)} placeholder={t('Category name')} />
+            <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="text-ink-60 hover:text-ink disabled:opacity-30" title={t('Move up')}><ArrowUp size={15} /></button>
+            <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-ink-60 hover:text-ink disabled:opacity-30" title={t('Move down')}><ArrowDown size={15} /></button>
+            <button type="button" onClick={() => remove(i)} className="text-red-300 hover:text-red-500" title={t('Remove')}><X size={15} /></button>
           </div>
         ))}
       </div>
-      <button type="button" onClick={add} className="mt-2 text-xs text-brand-600 hover:underline">+ Add category</button>
+      <button type="button" onClick={add} className="mt-2 text-xs text-brand-600 hover:underline">{t('+ Add category')}</button>
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={save} disabled={saving} className="btn-primary text-sm">{saving ? 'Saving…' : 'Save Categories'}</button>
+        <button onClick={save} disabled={saving} className="btn-primary text-sm">{saving ? t('Saving…') : t('Save Categories')}</button>
         {msg && <span className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</span>}
       </div>
     </div>
@@ -108,6 +109,7 @@ function ComponentCategories() {
 const newCcId = () => 'cc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
 function CrystalCosts() {
+  const t = useT()
   const { items, loading } = useCrystalUnitCosts()
   const [rows, setRows] = useState(null)   // null until hydrated
   const [saving, setSaving] = useState(false)
@@ -120,12 +122,12 @@ function CrystalCosts() {
   const remove = i => setRows(list.filter((_, j) => j !== i))
   async function save() {
     setSaving(true); setMsg('')
-    try { await saveCrystalUnitCosts(list); setMsg('Crystal costs saved.'); setTimeout(() => setMsg(''), 3000) }
+    try { await saveCrystalUnitCosts(list); setMsg(t('Crystal costs saved.')); setTimeout(() => setMsg(''), 3000) }
     catch (e) { setMsg('Error: ' + e.message) }
     finally { setSaving(false) }
   }
 
-  if (loading && rows === null) return <p className="text-sm text-ink-60">Loading…</p>
+  if (loading && rows === null) return <p className="text-sm text-ink-60">{t('Loading…')}</p>
 
   // Grouped by size purely for readability — still one flat list underneath.
   const bySize = new Map()
@@ -134,8 +136,7 @@ function CrystalCosts() {
   return (
     <div className="max-w-2xl">
       <p className="text-sm text-ink-60 mb-3">
-        Unit price per stone, by size and brand. Add a row for any new size or brand — this list
-        drives the Crystal cost BOM on each figurine's costing page (qty × unit cost).
+        {t("Unit price per stone, by size and brand. Add a row for any new size or brand — this list drives the Crystal cost BOM on each figurine's costing page (qty × unit cost).")}
       </p>
       <div className="space-y-4">
         {[...bySize.entries()].map(([size, idxs]) => (
@@ -147,15 +148,15 @@ function CrystalCosts() {
                 return (
                   <div key={r.id} className="flex items-center gap-2 flex-wrap">
                     <input className="input text-sm flex-1 min-w-[140px]" value={r.size}
-                           onChange={e => update(i, { size: e.target.value })} placeholder="Size, e.g. 14mm Octagon" />
+                           onChange={e => update(i, { size: e.target.value })} placeholder={t('Size, e.g. 14mm Octagon')} />
                     <input className="input text-sm flex-1 min-w-[140px]" value={r.brand}
-                           onChange={e => update(i, { brand: e.target.value })} placeholder="Brand, e.g. Bohemia" />
+                           onChange={e => update(i, { brand: e.target.value })} placeholder={t('Brand, e.g. Bohemia')} />
                     <input className="input text-sm w-24" inputMode="decimal" value={r.cost ?? ''}
                            onChange={e => update(i, { cost: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
                     <select className="input text-sm w-20" value={r.currency} onChange={e => update(i, { currency: e.target.value })}>
                       {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <button type="button" onClick={() => remove(i)} className="text-red-300 hover:text-red-500" title="Remove"><X size={15} /></button>
+                    <button type="button" onClick={() => remove(i)} className="text-red-300 hover:text-red-500" title={t('Remove')}><X size={15} /></button>
                   </div>
                 )
               })}
@@ -163,9 +164,9 @@ function CrystalCosts() {
           </div>
         ))}
       </div>
-      <button type="button" onClick={add} className="mt-3 text-xs text-brand-600 hover:underline">+ Add row</button>
+      <button type="button" onClick={add} className="mt-3 text-xs text-brand-600 hover:underline">{t('+ Add row')}</button>
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={save} disabled={saving} className="btn-primary text-sm">{saving ? 'Saving…' : 'Save Crystal Costs'}</button>
+        <button onClick={save} disabled={saving} className="btn-primary text-sm">{saving ? t('Saving…') : t('Save Crystal Costs')}</button>
         {msg && <span className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</span>}
       </div>
     </div>
@@ -175,6 +176,7 @@ function CrystalCosts() {
 // ── Critical Components tab ──────────────────────────────────────────────────
 
 function CriticalComponents() {
+  const t = useT()
   const { components, loading } = useComponents()
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
@@ -206,29 +208,29 @@ function CriticalComponents() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <input className="input text-sm flex-1 min-w-[180px]" placeholder="Search code, name, supplier…"
+        <input className="input text-sm flex-1 min-w-[180px]" placeholder={t('Search code, name, supplier…')}
                value={search} onChange={e => setSearch(e.target.value)} />
         <select className="input text-sm w-auto" value={cat} onChange={e => setCat(e.target.value)}>
-          <option value="">All categories</option>
+          <option value="">{t('All categories')}</option>
           {cats.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <button onClick={() => setStockImport(true)} className="btn-secondary text-sm">Import stock list</button>
-        <Link to="/components/critical/new" className="btn-primary text-sm">+ New</Link>
+        <button onClick={() => setStockImport(true)} className="btn-secondary text-sm">{t('Import stock list')}</button>
+        <Link to="/components/critical/new" className="btn-primary text-sm">{t('+ New')}</Link>
       </div>
 
       <p className="text-xs text-ink-60 mb-2">
-        {loading ? 'Loading…' : (
+        {loading ? t('Loading…') : (
           <>
-            {filtered.length} of {components.length} component{components.length === 1 ? '' : 's'} · {totals.onHand.toLocaleString()} on hand
-            {totals.reserved > 0 && <> · <span className="text-amber-600">{totals.reserved.toLocaleString()} reserved</span> · <span className="text-green-700">{(totals.onHand - totals.reserved).toLocaleString()} available</span></>}
-            {totals.oversold > 0 && <> · <span className="text-red-600 font-medium">{totals.oversold} to reorder</span></>}
+            {t('{a} of {b} components', { a: filtered.length, b: components.length })} · {t('{n} on hand', { n: totals.onHand.toLocaleString() })}
+            {totals.reserved > 0 && <> · <span className="text-amber-600">{t('{n} reserved', { n: totals.reserved.toLocaleString() })}</span> · <span className="text-green-700">{t('{n} available', { n: (totals.onHand - totals.reserved).toLocaleString() })}</span></>}
+            {totals.oversold > 0 && <> · <span className="text-red-600 font-medium">{t('{n} to reorder', { n: totals.oversold })}</span></>}
           </>
         )}
       </p>
 
       {!loading && components.length === 0 ? (
         <div className="card p-6 text-center text-sm text-ink-60">
-          No components yet. Add your long-lead / tooling parts, or <button onClick={() => setStockImport(true)} className="text-brand-600 hover:underline">import a stock list</button>.
+          {t('No components yet. Add your long-lead / tooling parts, or import a stock list.')}
         </div>
       ) : (
         <div className="card divide-y divide-ivory-dark overflow-hidden">
@@ -242,11 +244,11 @@ function CriticalComponents() {
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm text-ink truncate">{c.code}</span>
                     {c.plating_code && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 shrink-0">{c.plating_code}</span>}
-                    {c.category && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.category}</span>}
+                    {c.category && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{t(c.category)}</span>}
                   </div>
                   <p className="text-xs text-ink-60 truncate">
                     {c.name || '—'}{c.supplierName ? ` · ${c.supplierName}` : ''}
-                    {c.used_by?.length > 0 && <span className="text-ink-60"> · used by {c.used_by.slice(0, 2).join(', ')}{c.used_by.length > 2 ? ` +${c.used_by.length - 2}` : ''}</span>}
+                    {c.used_by?.length > 0 && <span className="text-ink-60"> · {t('used by')} {c.used_by.slice(0, 2).join(', ')}{c.used_by.length > 2 ? ` +${c.used_by.length - 2}` : ''}</span>}
                     {(() => {
                       const onHand = Number(c.stock_qty) || 0
                       const reserved = Number(c.reserved_qty) || 0
@@ -299,6 +301,7 @@ function parseStockList(text) {
 }
 
 function StockListImportModal({ components, onClose }) {
+  const t = useT()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
@@ -347,30 +350,27 @@ function StockListImportModal({ components, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-none shadow-lg w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
-        <h2 className="text-base mb-1">Import component stock list</h2>
+        <h2 className="text-base mb-1">{t('Import component stock list')}</h2>
         <p className="text-xs text-ink-60 mb-3">
-          Paste straight from your Excel (select the data, copy). Columns:
-          {' '}<code className="text-ink-80">Product Item Code · Plating · Component Main Item Code · Description · Qty · Lead Time (wks)</code>.
-          Components key on the <b>main item code</b>; stock, plating, and lead time update in place — safe to
-          re-run as a stock-take. Cost is never touched. Lead time &lt; 4 wks = not a buildable bottleneck.
+          {t('Paste straight from your Excel (select the data, copy). Columns: Product Item Code · Plating · Component Main Item Code · Description · Qty · Lead Time (wks). Components key on the main item code; stock, plating, and lead time update in place — safe to re-run as a stock-take. Cost is never touched. Lead time < 4 wks = not a buildable bottleneck.')}
         </p>
         <textarea className="input min-h-[160px] font-mono text-xs" value={text}
                   onChange={e => setText(e.target.value)}
                   placeholder={'D0001-001-C | Chrome (C) | FM-KB(1)-ORNT(C) | 蝴蝶 | 44 | 6'} />
         <p className="text-xs text-ink-60 mt-1">
-          {rows.length} row{rows.length === 1 ? '' : 's'} · {diff.unique} unique component{diff.unique === 1 ? '' : 's'}
-          {diff.unique > 0 && <> — <span className="text-green-600">{diff.created} new</span>, <span className="text-blue-600">{diff.updated} update</span></>}
+          {t('{n} rows', { n: rows.length })} · {t('{n} unique components', { n: diff.unique })}
+          {diff.unique > 0 && <> — <span className="text-green-600">{t('{n} new', { n: diff.created })}</span>, <span className="text-blue-600">{t('{n} update', { n: diff.updated })}</span></>}
         </p>
         {diff.unique > 0 && (
           <p className="text-xs text-ink-60">
-            {rangeProducts == null ? 'Loading products…'
-              : <>Products: <span className="text-green-600">{diff.matched} matched</span>{diff.unmatched > 0 && <>, <span className="text-amber-600">{diff.unmatched} unmatched</span> (skipped)</>}</>}
+            {rangeProducts == null ? t('Loading products…')
+              : <>{t('Products:')} <span className="text-green-600">{t('{n} matched', { n: diff.matched })}</span>{diff.unmatched > 0 && <>, <span className="text-amber-600">{t('{n} unmatched', { n: diff.unmatched })}</span> ({t('skipped')})</>}</>}
           </p>
         )}
         {result && <p className={`text-sm mt-2 ${result.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{result}</p>}
         {unmatched.length > 0 && (
           <details className="mt-2">
-            <summary className="text-xs text-amber-700 cursor-pointer">{unmatched.length} unmatched product code{unmatched.length === 1 ? '' : 's'} (not found in Figurine products) — view</summary>
+            <summary className="text-xs text-amber-700 cursor-pointer">{t('{n} unmatched product codes (not found in Figurine products) — view', { n: unmatched.length })}</summary>
             <div className="mt-1 max-h-32 overflow-auto border border-ivory-dark rounded-none p-2 font-mono text-2xs text-ink-60">
               {unmatched.join(', ')}
             </div>
@@ -378,9 +378,9 @@ function StockListImportModal({ components, onClose }) {
         )}
         <div className="flex items-center gap-3 mt-4">
           <button onClick={run} disabled={busy || !diff.unique} className="btn-primary text-sm">
-            {busy ? 'Importing…' : `Import ${diff.unique || ''}`}
+            {busy ? t('Importing…') : t('Import {n}', { n: diff.unique || '' })}
           </button>
-          <button onClick={onClose} className="btn-secondary text-sm">{result ? 'Done' : 'Cancel'}</button>
+          <button onClick={onClose} className="btn-secondary text-sm">{result ? t('Done') : t('Cancel')}</button>
         </div>
       </div>
     </div>
@@ -390,6 +390,7 @@ function StockListImportModal({ components, onClose }) {
 // ── Crystal Colours tab ─────────────────────────────────────────────────────
 
 function CrystalColours() {
+  const t = useT()
   const [rows, setRows] = useState([])
   const [saved, setSaved] = useState([])
   const [loading, setLoading] = useState(true)
@@ -416,7 +417,7 @@ function CrystalColours() {
     try {
       const clean = await saveCrystalColors(rows)
       setRows(clean); setSaved(clean)
-      setMsg(`Saved ${clean.length} colour${clean.length === 1 ? '' : 's'}.`)
+      setMsg(t('Saved {n} colours.', { n: clean.length }))
       setTimeout(() => setMsg(null), 3000)
     } catch (e) { setMsg('Error saving: ' + e.message) }
     finally { setSaving(false) }
@@ -425,24 +426,23 @@ function CrystalColours() {
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-sm text-ink-80">Crystal Colour Library</h2>
-        <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">+ Add colour</button>
+        <h2 className="text-sm text-ink-80">{t('Crystal Colour Library')}</h2>
+        <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">{t('+ Add colour')}</button>
       </div>
       <p className="text-xs text-ink-60 mb-4">
-        Selectable colour attribute on Figurine products. Colours don't create separate SKUs, stock,
-        or price changes. For a colour that costs more, add a separate variation with its own price.
+        {t("Selectable colour attribute on Figurine products. Colours don't create separate SKUs, stock, or price changes. For a colour that costs more, add a separate variation with its own price.")}
       </p>
 
       {loading ? (
-        <p className="text-xs text-ink-60">Loading…</p>
+        <p className="text-xs text-ink-60">{t('Loading…')}</p>
       ) : rows.length === 0 ? (
-        <p className="text-xs text-ink-60">No colours yet — add one.</p>
+        <p className="text-xs text-ink-60">{t('No colours yet — add one.')}</p>
       ) : (
         <div className="space-y-2">
           <div className="hidden sm:flex items-center gap-2 text-2xs uppercase tracking-wide text-ink-60 px-1">
-            <span className="w-16 shrink-0">Code</span>
-            <span className="flex-1">Name</span>
-            <span className="w-14 shrink-0">Swatch</span>
+            <span className="w-16 shrink-0">{t('Code')}</span>
+            <span className="flex-1">{t('Name')}</span>
+            <span className="w-14 shrink-0">{t('Swatch')}</span>
             <span className="w-16 shrink-0" />
           </div>
           {rows.map((r, i) => (
@@ -463,11 +463,11 @@ function CrystalColours() {
               </div>
               <div className="flex items-center gap-0.5 w-16 shrink-0 justify-end">
                 <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
-                        className="text-ink-60 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up"><ArrowUp size={14} /></button>
+                        className="text-ink-60 hover:text-ink-70 disabled:opacity-30 px-1" title={t('Move up')}><ArrowUp size={14} /></button>
                 <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1}
-                        className="text-ink-60 hover:text-ink-70 disabled:opacity-30 px-1" title="Move down"><ArrowDown size={14} /></button>
+                        className="text-ink-60 hover:text-ink-70 disabled:opacity-30 px-1" title={t('Move down')}><ArrowDown size={14} /></button>
                 <button type="button" onClick={() => removeRow(i)}
-                        className="text-red-400 hover:text-red-600 px-1 leading-none" title="Remove"><X size={15} /></button>
+                        className="text-red-400 hover:text-red-600 px-1 leading-none" title={t('Remove')}><X size={15} /></button>
               </div>
             </div>
           ))}
@@ -476,9 +476,9 @@ function CrystalColours() {
 
       <div className="mt-5 flex items-center gap-3 flex-wrap">
         <button onClick={handleSave} disabled={saving || !dirty} className="btn-primary text-sm">
-          {saving ? 'Saving…' : 'Save Colours'}
+          {saving ? t('Saving…') : t('Save Colours')}
         </button>
-        {dirty && <span className="text-xs text-amber-500">unsaved changes</span>}
+        {dirty && <span className="text-xs text-amber-500">{t('unsaved changes')}</span>}
         {msg && <p className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
       </div>
     </div>
@@ -488,6 +488,7 @@ function CrystalColours() {
 // ── Format MOQs tab ─────────────────────────────────────────────────────────
 
 function FormatMoqs() {
+  const t = useT()
   const [rows, setRows] = useState([])     // [{ code, label, moq }]  (all strings)
   const [saved, setSaved] = useState([])
   const [loading, setLoading] = useState(true)
@@ -548,7 +549,7 @@ function FormatMoqs() {
       await setDoc(doc(db, 'settings', 'format_moq'), { formats, moq, labels, updatedAt: serverTimestamp() })
       const asRows = formats.map(f => ({ code: f.code, label: f.label, moq: f.moq > 0 ? String(f.moq) : '' }))
       setRows(asRows); setSaved(asRows)
-      setMsg('Format MOQs saved.')
+      setMsg(t('Format MOQs saved.'))
       setTimeout(() => setMsg(null), 3000)
     } catch (e) {
       setMsg('Error saving: ' + e.message)
@@ -560,25 +561,23 @@ function FormatMoqs() {
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-sm text-ink-80">Format Minimum Order Quantities</h2>
-        <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">+ Add format</button>
+        <h2 className="text-sm text-ink-80">{t('Format Minimum Order Quantities')}</h2>
+        <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">{t('+ Add format')}</button>
       </div>
       <p className="text-xs text-ink-60 mb-4">
-        Minimum run for each format base component (music box, freestand, bible…). On a customer
-        enquiry these pool across every design sharing the format, so the customer is told to combine
-        designs to reach the minimum. Leave the MOQ blank for no format minimum.
+        {t('Minimum run for each format base component (music box, freestand, bible…). On a customer enquiry these pool across every design sharing the format, so the customer is told to combine designs to reach the minimum. Leave the MOQ blank for no format minimum.')}
       </p>
 
       {loading ? (
-        <p className="text-xs text-ink-60">Loading…</p>
+        <p className="text-xs text-ink-60">{t('Loading…')}</p>
       ) : rows.length === 0 ? (
-        <p className="text-xs text-ink-60">No formats yet — add one.</p>
+        <p className="text-xs text-ink-60">{t('No formats yet — add one.')}</p>
       ) : (
         <div className="space-y-2">
           <div className="hidden sm:flex items-center gap-2 text-2xs uppercase tracking-wide text-ink-60 px-1">
-            <span className="w-20 shrink-0">Code</span>
-            <span className="flex-1">Name</span>
-            <span className="w-28 shrink-0">MOQ (pcs)</span>
+            <span className="w-20 shrink-0">{t('Code')}</span>
+            <span className="flex-1">{t('Name')}</span>
+            <span className="w-28 shrink-0">{t('MOQ (pcs)')}</span>
             <span className="w-6 shrink-0" />
           </div>
           {rows.map((r, i) => (
@@ -593,10 +592,10 @@ function FormatMoqs() {
                        className="input pr-9 text-right tabular-nums"
                        value={r.moq}
                        onChange={e => update(i, 'moq', e.target.value.replace(/[^\d]/g, ''))} />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-60 pointer-events-none">pcs</span>
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-60 pointer-events-none">{t('pcs')}</span>
               </div>
               <button type="button" onClick={() => removeRow(i)}
-                      className="text-red-400 hover:text-red-600 px-1 leading-none shrink-0" title="Remove"><X size={15} /></button>
+                      className="text-red-400 hover:text-red-600 px-1 leading-none shrink-0" title={t('Remove')}><X size={15} /></button>
             </div>
           ))}
         </div>
@@ -604,9 +603,9 @@ function FormatMoqs() {
 
       <div className="mt-5 flex items-center gap-3 flex-wrap">
         <button onClick={save} disabled={saving || !dirty} className="btn-primary text-sm">
-          {saving ? 'Saving…' : 'Save Format MOQs'}
+          {saving ? t('Saving…') : t('Save Format MOQs')}
         </button>
-        {dirty && <span className="text-xs text-amber-500">unsaved changes</span>}
+        {dirty && <span className="text-xs text-amber-500">{t('unsaved changes')}</span>}
         {msg && <p className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
       </div>
     </div>

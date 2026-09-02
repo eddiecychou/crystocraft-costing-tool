@@ -1,4 +1,5 @@
 import { Download } from 'lucide-react'
+import { useT } from '../i18n'
 
 // Date-range + type filter with an export button. Shared by Purchase Orders,
 // the UC registry and Sales Invoices so the three exports Cindy asked for
@@ -12,20 +13,22 @@ import { Download } from 'lucide-react'
 export default function ExportFilterBar({
   from, to, onFrom, onTo,
   typeLabel, typeValue, onType, typeOptions,   // optional second filter
-  count, total, noun = 'rows',
+  count, total, noun,
   onExport, disabled,
 }) {
+  const t = useT()
+  const unit = noun || t('rows')
   const filtered = count !== total
 
   return (
     <div className="flex flex-wrap items-end gap-2 mb-3">
       <label className="flex flex-col gap-1">
-        <span className="text-2xs font-medium text-ink-60 uppercase tracking-wide">From</span>
+        <span className="text-2xs font-medium text-ink-60 uppercase tracking-wide">{t('From')}</span>
         <input type="date" value={from} onChange={(e) => onFrom(e.target.value)}
           className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-2xs font-medium text-ink-60 uppercase tracking-wide">To</span>
+        <span className="text-2xs font-medium text-ink-60 uppercase tracking-wide">{t('To')}</span>
         <input type="date" value={to} onChange={(e) => onTo(e.target.value)}
           className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
       </label>
@@ -35,7 +38,7 @@ export default function ExportFilterBar({
           <span className="text-2xs font-medium text-ink-60 uppercase tracking-wide">{typeLabel}</span>
           <select value={typeValue} onChange={(e) => onType(e.target.value)}
             className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40">
-            <option value="">All</option>
+            <option value="">{t('All')}</option>
             {typeOptions.map((o) => (
               <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>
             ))}
@@ -46,20 +49,20 @@ export default function ExportFilterBar({
       {(from || to || typeValue) && (
         <button type="button" onClick={() => { onFrom(''); onTo(''); onType?.('') }}
           className="px-2.5 py-1.5 text-sm text-ink-60 hover:text-ink-80 hover:bg-ivory-dark rounded-none">
-          Clear
+          {t('Clear')}
         </button>
       )}
 
       <div className="ml-auto flex items-center gap-3">
         <span className="text-xs text-ink-60">
           {filtered
-            ? <><strong className="font-medium text-ink-80">{count}</strong> of {total} {noun}</>
-            : <>{total} {noun}</>}
+            ? <><strong className="font-medium text-ink-80">{count}</strong> {t('of')} {total} {unit}</>
+            : <>{total} {unit}</>}
         </span>
         <button type="button" onClick={onExport} disabled={disabled || !count}
           className="btn-secondary text-sm inline-flex items-center gap-1.5 disabled:opacity-40"
-          title={count ? `Export these ${count} ${noun} to CSV` : `Nothing to export`}>
-          <Download size={15} /> Export CSV
+          title={count ? t('Export these {n} {noun} to CSV', { n: count, noun: unit }) : t('Nothing to export')}>
+          <Download size={15} /> {t('Export CSV')}
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MOVEMENT_TYPES, movementDelta, postMovement, useMovements } from '../stockLedger'
 import { PackagePlus, PackageMinus, ClipboardCheck, Pencil, Lock, Unlock, Factory } from 'lucide-react'
+import { useT } from '../i18n'
 
 // Stock ledger panel (V7.13a R1) — the append-only movement history for one SKU,
 // plus a form to post a manual on-hand movement. The item now tracks two
@@ -13,6 +14,7 @@ const TYPE_LABEL = { receipt: 'Receipt', issue: 'Issue', adjustment: 'Adjustment
 const ICONS = { receipt: PackagePlus, issue: PackageMinus, adjustment: Pencil, stocktake: ClipboardCheck, reserve: Lock, release: Unlock, produce: Factory }
 
 export default function StockLedger({ componentId, currentStock = 0, currentReserved = 0, collectionPath = 'range_components' }) {
+  const t = useT()
   const { movements, loading } = useMovements(collectionPath, componentId)
   const [type, setType] = useState('receipt')
   const [qty, setQty] = useState('')
@@ -32,7 +34,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
 
   async function submit(e) {
     e.preventDefault()
-    if (qty === '' || !Number.isFinite(Number(qty))) { setError('Enter a quantity.'); return }
+    if (qty === '' || !Number.isFinite(Number(qty))) { setError(t('Enter a quantity.')); return }
     setSaving(true); setError('')
     try {
       await postMovement(collectionPath, componentId, {
@@ -43,7 +45,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
       })
       setQty(''); setNote('')
     } catch (err) {
-      setError(err.message || 'Could not post movement.')
+      setError(err.message || t('Could not post movement.'))
     } finally {
       setSaving(false)
     }
@@ -59,11 +61,11 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-4 gap-4">
-        <h2 className="text-sm text-ink-80">Stock Ledger</h2>
+        <h2 className="text-sm text-ink-80">{t('Stock Ledger')}</h2>
         <div className="flex items-center gap-5">
-          <Stat label="On hand" value={onHand} cls={onHand < 0 ? 'text-red-600' : 'text-ink'} />
-          <Stat label="Reserved" value={reserved} cls={reserved > 0 ? 'text-amber-600' : 'text-ink-60'} />
-          <Stat label="Available" value={available} cls={available < 0 ? 'text-red-600' : 'text-green-700'} />
+          <Stat label={t('On hand')} value={onHand} cls={onHand < 0 ? 'text-red-600' : 'text-ink'} />
+          <Stat label={t('Reserved')} value={reserved} cls={reserved > 0 ? 'text-amber-600' : 'text-ink-60'} />
+          <Stat label={t('Available')} value={available} cls={available < 0 ? 'text-red-600' : 'text-green-700'} />
         </div>
       </div>
 
@@ -82,34 +84,34 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
         <div className="flex flex-col sm:flex-row gap-2">
           <input className="input text-sm sm:w-28" inputMode="numeric" value={qty}
                  onChange={e => setQty(e.target.value.replace(isStocktake || type === 'adjustment' ? /[^\d.\-]/g : /[^\d.]/g, ''))}
-                 placeholder={isStocktake ? 'Counted qty' : type === 'adjustment' ? '± qty' : 'Qty'} />
+                 placeholder={isStocktake ? t('Counted qty') : type === 'adjustment' ? t('± qty') : t('Qty')} />
           <input type="date" className="input text-sm sm:w-40" value={date} onChange={e => setDate(e.target.value)} />
           <input className="input text-sm flex-1" value={note} onChange={e => setNote(e.target.value)}
-                 placeholder="Note (PU no., reason, order…)" />
-          <button type="submit" disabled={saving} className="btn-primary text-sm shrink-0">{saving ? 'Posting…' : 'Post'}</button>
+                 placeholder={t('Note (PU no., reason, order…)')} />
+          <button type="submit" disabled={saving} className="btn-primary text-sm shrink-0">{saving ? t('Posting…') : t('Post')}</button>
         </div>
         {preview != null && (
-          <p className="text-2xs text-ink-60">New on-hand would be <span className={`font-mono font-medium ${preview < 0 ? 'text-red-600' : 'text-ink-80'}`}>{fmt(preview)}</span></p>
+          <p className="text-2xs text-ink-60">{t('New on-hand would be')} <span className={`font-mono font-medium ${preview < 0 ? 'text-red-600' : 'text-ink-80'}`}>{fmt(preview)}</span></p>
         )}
         {error && <p className="text-xs text-red-600">{error}</p>}
       </form>
 
       {/* History */}
       {loading ? (
-        <p className="text-sm text-ink-60 py-4 text-center">Loading…</p>
+        <p className="text-sm text-ink-60 py-4 text-center">{t('Loading…')}</p>
       ) : movements.length === 0 ? (
-        <p className="text-sm text-ink-60 py-4 text-center">No movements yet. Post a receipt or stock-take to start the ledger.</p>
+        <p className="text-sm text-ink-60 py-4 text-center">{t('No movements yet. Post a receipt or stock-take to start the ledger.')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm whitespace-nowrap">
             <thead>
               <tr className="text-2xs uppercase tracking-wide text-ink-60 text-left border-b border-ivory-dark">
-                <th className="py-1.5 pr-2 font-medium">Date</th>
-                <th className="py-1.5 pr-2 font-medium">Type</th>
-                <th className="py-1.5 pr-2 font-medium text-right">Change</th>
-                <th className="py-1.5 pr-2 font-medium text-right">On-hand</th>
-                <th className="py-1.5 pr-2 font-medium text-right">Reserved</th>
-                <th className="py-1.5 font-medium whitespace-normal">Note</th>
+                <th className="py-1.5 pr-2 font-medium">{t('Date')}</th>
+                <th className="py-1.5 pr-2 font-medium">{t('Type')}</th>
+                <th className="py-1.5 pr-2 font-medium text-right">{t('Change')}</th>
+                <th className="py-1.5 pr-2 font-medium text-right">{t('On-hand')}</th>
+                <th className="py-1.5 pr-2 font-medium text-right">{t('Reserved')}</th>
+                <th className="py-1.5 font-medium whitespace-normal">{t('Note')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-warm-grey">
@@ -123,7 +125,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
                   <tr key={m.id} className="align-top">
                     <td className="py-1.5 pr-2 text-ink-60">{m.date || '—'}</td>
                     <td className="py-1.5 pr-2">
-                      <span className="inline-flex items-center gap-1 text-ink-70"><Icon size={12} className="text-ink-60" />{TYPE_LABEL[m.type] || m.type}</span>
+                      <span className="inline-flex items-center gap-1 text-ink-70"><Icon size={12} className="text-ink-60" />{t(TYPE_LABEL[m.type] || m.type)}</span>
                     </td>
                     <td className={`py-1.5 pr-2 text-right font-mono tabular-nums ${primary > 0 ? 'text-green-700' : primary < 0 ? 'text-red-600' : 'text-ink-60'}`}>
                       {primary > 0 ? '+' : ''}{fmt(primary)}{isRes ? ' res' : ''}

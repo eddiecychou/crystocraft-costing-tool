@@ -3,6 +3,7 @@ import { parseStockPaste } from '../inventoryClass'
 import StockEditor from './StockEditor'
 import StockLedger from './StockLedger'
 import { Gem, Box, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
+import { useT } from '../i18n'
 
 // Generic stock tab for a simple inventory class (crystals, packaging). Driven
 // entirely by an `inv` config (see crystals.js / packaging.js): list + search,
@@ -18,6 +19,7 @@ const needsReorder = (available, reorderPoint) => {
 }
 
 export default function InventoryStockTab({ inv }) {
+  const t = useT()
   const { items, loading } = inv.useItems()
   const [search, setSearch] = useState('')
   const [attrFilter, setAttrFilter] = useState('')
@@ -55,33 +57,33 @@ export default function InventoryStockTab({ inv }) {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <input className="input text-sm flex-1 min-w-[180px]" placeholder={`Search code, name, ${inv.attrLabel.toLowerCase()}…`}
+        <input className="input text-sm flex-1 min-w-[180px]" placeholder={t('Search code, name, {attr}…', { attr: inv.attrLabel.toLowerCase() })}
                value={search} onChange={e => setSearch(e.target.value)} />
         {attrValues.length > 1 && (
           <select className="input text-sm w-auto" value={attrFilter} onChange={e => setAttrFilter(e.target.value)}>
-            <option value="">All {inv.attrLabel.toLowerCase()}s</option>
+            <option value="">{t('All {attr}', { attr: inv.attrLabel.toLowerCase() })}</option>
             {attrValues.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         )}
-        <button onClick={() => setImporting(true)} className="btn-secondary text-sm">Import stock</button>
-        <button onClick={() => setAdding(a => !a)} className="btn-primary text-sm">+ New</button>
+        <button onClick={() => setImporting(true)} className="btn-secondary text-sm">{t('Import stock')}</button>
+        <button onClick={() => setAdding(a => !a)} className="btn-primary text-sm">{t('+ New')}</button>
       </div>
 
       {adding && <AddRow inv={inv} onDone={() => setAdding(false)} />}
 
       <p className="text-xs text-ink-60 mb-2">
-        {loading ? 'Loading…' : (
+        {loading ? t('Loading…') : (
           <>
-            {filtered.length} of {items.length} item{items.length === 1 ? '' : 's'} · {totals.onHand.toLocaleString()} on hand
-            {totals.reserved > 0 && <> · <span className="text-amber-600">{totals.reserved.toLocaleString()} reserved</span> · <span className="text-green-700">{(totals.onHand - totals.reserved).toLocaleString()} available</span></>}
-            {totals.oversold > 0 && <> · <span className="text-red-600 font-medium">{totals.oversold} to reorder</span></>}
+            {t('{a} of {b} items', { a: filtered.length, b: items.length })} · {t('{n} on hand', { n: totals.onHand.toLocaleString() })}
+            {totals.reserved > 0 && <> · <span className="text-amber-600">{t('{n} reserved', { n: totals.reserved.toLocaleString() })}</span> · <span className="text-green-700">{t('{n} available', { n: (totals.onHand - totals.reserved).toLocaleString() })}</span></>}
+            {totals.oversold > 0 && <> · <span className="text-red-600 font-medium">{t('{n} to reorder', { n: totals.oversold })}</span></>}
           </>
         )}
       </p>
 
       {!loading && items.length === 0 ? (
         <div className="card p-6 text-center text-sm text-ink-60">
-          Nothing here yet. <button onClick={() => setImporting(true)} className="text-brand-600 hover:underline">Import a stock list</button> to seed the master, or add one.
+          {t('Nothing here yet. Import a stock list to seed the master, or add one.')}
         </div>
       ) : (
         <div className="card divide-y divide-ivory-dark overflow-hidden">
@@ -120,9 +122,9 @@ export default function InventoryStockTab({ inv }) {
                 <div className="px-3 pb-3 bg-ivory/30">
                   <EditRow inv={inv} item={c} />
                   <StockLedger componentId={c.id} currentStock={c.stock_qty || 0} currentReserved={c.reserved_qty || 0} collectionPath={inv.collectionPath} />
-                  <button onClick={() => { if (window.confirm(`Delete ${c.code}? Its ledger history stays but the SKU is removed.`)) inv.remove(c.id) }}
+                  <button onClick={() => { if (window.confirm(t('Delete {code}? Its ledger history stays but the SKU is removed.', { code: c.code }))) inv.remove(c.id) }}
                           className="mt-2 inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700">
-                    <Trash2 size={12} /> Delete
+                    <Trash2 size={12} /> {t('Delete')}
                   </button>
                 </div>
               )}
@@ -146,6 +148,7 @@ export default function InventoryStockTab({ inv }) {
 // Stock is deliberately not here. `save` writes descriptive fields only;
 // quantity belongs to the ledger, via StockEditor and StockLedger below.
 function EditRow({ inv, item }) {
+  const t = useT()
   const rf = inv.retailField   // e.g. 'retail_price' for Finished Goods; undefined otherwise
   const retailOf = it => (rf && it[rf] != null && it[rf] !== '' ? String(it[rf]) : '')
   const initial = () => ({
@@ -176,21 +179,21 @@ function EditRow({ inv, item }) {
   return (
     <div className="pt-3 pb-2">
       <div className="flex items-baseline justify-between mb-1.5">
-        <label className="text-2xs uppercase tracking-wide text-ink-60">Details</label>
+        <label className="text-2xs uppercase tracking-wide text-ink-60">{t('Details')}</label>
         {/* Shown on a successful write, not on `!dirty`. `dirty` compares
             against the subscribed item, which only refreshes when the snapshot
             comes back — so gating on it left the user with no feedback at all
             between clicking Save and the round trip completing. */}
-        {saved && <span className="text-2xs text-green-600">saved</span>}
+        {saved && <span className="text-2xs text-green-600">{t('saved')}</span>}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
         <div>
-          <label className="label text-xs">Code</label>
+          <label className="label text-xs">{t('Code')}</label>
           <input className="input text-sm font-mono uppercase" value={f.code}
                  onChange={e => { setF(x => ({ ...x, code: e.target.value.toUpperCase() })); setSaved(false) }} />
         </div>
         <div className="sm:col-span-2">
-          <label className="label text-xs">Name</label>
+          <label className="label text-xs">{t('Name')}</label>
           <input className="input text-sm" value={f.name} onChange={set('name')} />
         </div>
         <div>
@@ -200,14 +203,14 @@ function EditRow({ inv, item }) {
         </div>
         {rf && (
           <div>
-            <label className="label text-xs">Retail (¥)</label>
-            <input className="input text-sm" inputMode="decimal" value={f.retail} onChange={set('retail')} placeholder="China ref." />
+            <label className="label text-xs">{t('Retail (¥)')}</label>
+            <input className="input text-sm" inputMode="decimal" value={f.retail} onChange={set('retail')} placeholder={t('China ref.')} />
           </div>
         )}
         <div className="flex gap-2">
-          <input className="input text-sm flex-1" value={f.size} onChange={set('size')} placeholder="Size" />
+          <input className="input text-sm flex-1" value={f.size} onChange={set('size')} placeholder={t('Size')} />
           <button onClick={save} disabled={saving || !dirty || !f.code.trim()}
-                  className="btn-secondary text-sm shrink-0">{saving ? '…' : 'Save'}</button>
+                  className="btn-secondary text-sm shrink-0">{saving ? '…' : t('Save')}</button>
         </div>
       </div>
     </div>
@@ -215,6 +218,7 @@ function EditRow({ inv, item }) {
 }
 
 function AddRow({ inv, onDone }) {
+  const t = useT()
   const [f, setF] = useState({ code: '', name: '', attr: '', size: '' })
   const [saving, setSaving] = useState(false)
   const set = k => e => setF(x => ({ ...x, [k]: e.target.value }))
@@ -226,18 +230,19 @@ function AddRow({ inv, onDone }) {
   }
   return (
     <div className="card p-3 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
-      <div><label className="label text-xs">Code *</label><input className="input text-sm font-mono uppercase" value={f.code} onChange={e => setF(x => ({ ...x, code: e.target.value.toUpperCase() }))} placeholder={inv.codePlaceholder} /></div>
-      <div><label className="label text-xs">Name</label><input className="input text-sm" value={f.name} onChange={set('name')} placeholder={inv.namePlaceholder} /></div>
+      <div><label className="label text-xs">{t('Code *')}</label><input className="input text-sm font-mono uppercase" value={f.code} onChange={e => setF(x => ({ ...x, code: e.target.value.toUpperCase() }))} placeholder={inv.codePlaceholder} /></div>
+      <div><label className="label text-xs">{t('Name')}</label><input className="input text-sm" value={f.name} onChange={set('name')} placeholder={inv.namePlaceholder} /></div>
       <div><label className="label text-xs">{inv.attrLabel}</label><input className="input text-sm" value={f.attr} onChange={set('attr')} placeholder={inv.attrPlaceholder} /></div>
       <div className="flex gap-2">
-        <input className="input text-sm flex-1" value={f.size} onChange={set('size')} placeholder="Size" />
-        <button onClick={save} disabled={saving || !f.code.trim()} className="btn-primary text-sm shrink-0">{saving ? '…' : 'Add'}</button>
+        <input className="input text-sm flex-1" value={f.size} onChange={set('size')} placeholder={t('Size')} />
+        <button onClick={save} disabled={saving || !f.code.trim()} className="btn-primary text-sm shrink-0">{saving ? '…' : t('Add')}</button>
       </div>
     </div>
   )
 }
 
 function ImportModal({ inv, onClose }) {
+  const t = useT()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
@@ -252,19 +257,19 @@ function ImportModal({ inv, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-none max-w-lg w-full p-5 max-h-[85vh] overflow-y-auto">
-        <h3 className="text-base mb-1">Import stock</h3>
+        <h3 className="text-base mb-1">{t('Import stock')}</h3>
         <p className="text-xs text-ink-60 mb-3">
           {inv.parsePaste
-            ? <>Paste the full stock export <em>including its header row</em> — columns are matched by name. Each row is an absolute count and posts a stock-take; re-run any time.</>
-            : <>Paste rows as <span className="font-mono">code · name · qty</span> (tab or comma separated). Each row is an absolute count and posts a stock-take to the ledger; re-run any time.</>}
+            ? t('Paste the full stock export including its header row — columns are matched by name. Each row is an absolute count and posts a stock-take; re-run any time.')
+            : t('Paste rows as code · name · qty (tab or comma separated). Each row is an absolute count and posts a stock-take to the ledger; re-run any time.')}
         </p>
         <textarea className="input font-mono text-xs h-40" value={text} onChange={e => setText(e.target.value)}
                   placeholder={inv.importExample} />
-        {rows.length > 0 && <p className="text-xs text-ink-60 mt-2">{rows.length} row{rows.length === 1 ? '' : 's'} parsed.</p>}
-        {result && <p className="text-sm text-green-700 mt-2">Imported — {result.created} new, {result.updated} updated.</p>}
+        {rows.length > 0 && <p className="text-xs text-ink-60 mt-2">{t('{n} rows parsed.', { n: rows.length })}</p>}
+        {result && <p className="text-sm text-green-700 mt-2">{t('Imported — {a} new, {b} updated.', { a: result.created, b: result.updated })}</p>}
         <div className="flex justify-end gap-2 mt-4">
-          {!result && <button onClick={run} disabled={busy || rows.length === 0} className="btn-primary text-sm">{busy ? 'Importing…' : `Import ${rows.length || ''}`.trim()}</button>}
-          <button onClick={onClose} className="btn-secondary text-sm">{result ? 'Done' : 'Cancel'}</button>
+          {!result && <button onClick={run} disabled={busy || rows.length === 0} className="btn-primary text-sm">{busy ? t('Importing…') : t('Import {n}', { n: rows.length || '' })}</button>}
+          <button onClick={onClose} className="btn-secondary text-sm">{result ? t('Done') : t('Cancel')}</button>
         </div>
       </div>
     </div>
