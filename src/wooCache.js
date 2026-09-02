@@ -52,3 +52,20 @@ export const saveWooOrdersCache = (from, to, result) =>
     skipped_unpaid: result.skipped_unpaid ?? 0,
     total_fetched: result.total_fetched ?? 0,
   })
+
+// ── "Scan order history" → classified retail-buyer list (WooCommerceSync) ───
+// The all-time paid-order scan is the most expensive call on the page. The
+// classification (new / possible B2B match / linked) can drift after "Create
+// retail customers", but createWooRetailCustomers is an idempotent merge that
+// skips 'linked', so a stale 'new' is a cosmetic count until the next scan,
+// not a double-create. `matchedContact` is trimmed to its id before saving —
+// the full lead doc is only needed live.
+export const loadWooCustomerScanCache = () => load('customer_scan')
+export const saveWooCustomerScanCache = (rows) =>
+  save('customer_scan', {
+    rows: (rows || []).map((e) => {
+      const m = e.matchedContact
+      return m ? { ...e, matchedContact: { id: m.id, first_name: m.first_name ?? null, company: m.company ?? null } } : e
+    }),
+    row_count: (rows || []).length,
+  })

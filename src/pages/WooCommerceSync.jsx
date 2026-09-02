@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { listWooOrders, searchWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
-import { loadWooOrdersCache, saveWooOrdersCache } from '../wooCache'
+import { loadWooOrdersCache, saveWooOrdersCache, loadWooCustomerScanCache, saveWooCustomerScanCache } from '../wooCache'
 import { importWooOrder, checkImportedWooOrders, linkCustomerToWoo } from '../wooImport'
 import { importWooRefund, checkImportedWooRefunds } from '../wooRefundImport'
 import { downloadCsv, exportStem } from '../exportCsv'
@@ -147,6 +147,8 @@ export default function WooCommerceSync() {
   const [customerSyncBusy, setCustomerSyncBusy] = useState(false)
   const [customerSyncDone, setCustomerSyncDone] = useState(null) // count created, once confirmed
   const [customerSyncError, setCustomerSyncError] = useState('')
+  const [customerScanAt, setCustomerScanAt] = useState(null)     // Date of the shown scan
+  const [customerScanCached, setCustomerScanCached] = useState(false)
   async function scanCustomers() {
     setCustomerScan({ scanning: true, page: 0, ordersScanned: 0, uniqueCount: 0 })
     setCustomerSyncDone(null)
@@ -157,7 +159,10 @@ export default function WooCommerceSync() {
       ])
       if (customers == null) setCustomers(existing)
       const classified = await classifyWooCustomers(entries, existing)
-      setCustomerScan(classified.sort((a, b) => b.orderCount - a.orderCount))
+      const sorted = classified.sort((a, b) => b.orderCount - a.orderCount)
+      setCustomerScan(sorted)
+      setCustomerScanAt(new Date()); setCustomerScanCached(false)
+      saveWooCustomerScanCache(sorted)
     } catch (e) {
       setCustomerScan({ error: e.message || 'Scan failed.' })
     }
@@ -170,7 +175,11 @@ export default function WooCommerceSync() {
       setCustomerSyncDone(n)
       // Re-classify in place so the review table immediately reflects the
       // new 'linked' status — no need to re-scan WooCommerce to see it.
-      setCustomerScan(prev => prev.map(e => (e.status !== 'linked' ? { ...e, status: 'linked' } : e)))
+      setCustomerScan(prev => {
+        const next = prev.map(e => (e.status !== 'linked' ? { ...e, status: 'linked' } : e))
+        saveWooCustomerScanCache(next)
+        return next
+      })
     } catch (e) {
       setCustomerSyncError(e.message || 'Create failed.')
     } finally {
@@ -190,6 +199,10 @@ export default function WooCommerceSync() {
       setCachedAt(c.fetchedAt); setResultIsCached(true)
       if (c.rows.length) checkImportedWooOrders(c.rows.map(o => o.id)).then(setImportedIds)
       if ((c.refunds || []).length) checkImportedWooRefunds(c.refunds.map(rf => rf.id)).then(setImportedRefundIds)
+    })
+    loadWooCustomerScanCache().then((c) => {
+      if (!live || !Array.isArray(c?.rows) || !c.rows.length) return
+      setCustomerScan(c.rows); setCustomerScanAt(c.fetchedAt); setCustomerScanCached(true)
     })
     return () => { live = false }
   }, [])
@@ -566,6 +579,12 @@ export default function WooCommerceSync() {
                     {customerScan.length} unique buyers found — <span className="text-green-700 font-medium">{counts.new} new</span>,{' '}
                     <span className="text-amber-700 font-medium">{counts.possible_match} possible B2B match</span>,{' '}
                     <span className="text-ink-60">{counts.linked} already linked</span>
+                    {customerScanAt && (
+                      <span className="text-ink-60">
+                        {' · '}{customerScanCached ? 'saved snapshot' : 'scanned'} {fmtDate(customerScanAt)}
+                        {customerScanCached && <span> — Scan order history to refresh</span>}
+                      </span>
+                    )}
                   </p>
                   {(counts.new + counts.possible_match) > 0 && (
                     <button type="button" onClick={confirmCustomerSync} disabled={customerSyncBusy}
