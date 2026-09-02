@@ -36,6 +36,13 @@ Firestore REST check of `users/{uid}.role`). A newer set —
 Worth converging on the shared one over time rather than adding another
 inline copy.
 
+**Node functions** have a parallel version of this: `portal-invite.js`
+carries its own `normalizePkcs8` + `initAdminApp` (deliberately, per its
+comment). `seo-batch.js` (2026-09-02) imports them from the new
+`netlify/functions/lib/firebaseAdmin.js` instead. Migrate `portal-invite.js`
+to that shared helper when it's next touched — until then there are two
+copies of the PEM-repair idiom.
+
 **V8.13 code-review fix:** 14 functions
 (`send-campaign`, `send-personal-email`, `generate-outreach-drafts`,
 `draft-outreach-topic`, `discuss-outreach-draft`, `discuss-customer-email`,

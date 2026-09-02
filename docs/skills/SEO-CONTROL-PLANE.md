@@ -19,7 +19,7 @@
 | Step | What | Where | Status |
 |---|---|---|---|
 | 1 | **State store + snapshot** — a structured "what's live now" for posts/pages, snapshottable for rollback | OC page `/seo-state`, edge fn `seo-state`, Firestore `seo_state` + `seo_state_history` | **BUILT 2026-09-02** |
-| 2 | **Batch / review contract** — DSH prepares a change batch, the human approves it per-item in the OC against a real diff | Firestore `seo_batches`, OC "SEO Review Queue" page | planned |
+| 2 | **Batch / review contract** — DSH prepares a change batch, the human approves it per-item in the OC against a real diff | Firestore `seo_batches`, Node fn `seo-batch`, OC page `/seo-review` | **BUILT 2026-09-02** |
 | 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | DSH side; OC supplies the spec | planned |
 | 4 | **Reconciliation** — live state vs last-approved batch; flags a reverted page, a broken trid, a reappeared EN link | OC page, same pattern as Woo Stock Match | planned |
 
@@ -63,27 +63,54 @@ reverts a slug, flips a status, wipes SEO meta, or replaces a layout, the
 snapshot row says what it was — diff `elementor_hash` / `slug` / `status` /
 `seo_*` against the current read.
 
-## Step 2 — batch / review contract (planned)
+## Step 2 — batch / review contract (BUILT)
 
-`seo_batches/{autoId}`:
+### `seo-batch` Node function (`/api/seo-batch`)
+A **Node** Lambda (writes Firestore via the Admin SDK, same as
+`portal-invite.js`; shares `netlify/functions/lib/firebaseAdmin.js`).
+**Auth is a shared secret, not a Firebase session** — the caller is a machine:
+`Authorization: Bearer <SEO_BATCH_SECRET>`. Set `SEO_BATCH_SECRET` (≥16 chars)
+on Netlify **and** in the Workbench `.env`.
+
+DSH ops (POST JSON):
+- `{ op: 'create', batch: { note, items: [...] } }` → `{ id }`. Each item:
+  `{ id, kind, lang, endpoint, summary, payload, before, validation }`
+  (≤500 items). Stored with `decision: 'pending'`, `result: null`,
+  `status: 'pending_review'`.
+- `{ op: 'poll' }` → batches where `status === 'approved'` (execute these).
+- `{ op: 'get', id }` → one batch.
+- `{ op: 'result', id, results: [{ index, ok, after, verified, error }] }` →
+  merges results; `status` → `executed` (all approved OK) or `partial`.
+
+### `seo_batches/{autoId}` (Firestore)
 ```
 {
-  created_by: 'dsh',
-  created_at, note,
+  created_by: 'dsh', created_at, note, item_count,
   status: 'pending_review' | 'approved' | 'rejected' | 'executed' | 'partial',
   items: [{
-    id, kind, lang, endpoint,          // the WP write DSH intends
-    payload,                            // exact body
-    before,                            // snapshot of the touched fields, pre-write
-    validation: { passed: bool, checks: [...] },   // from validate-payload
-    decision: 'pending' | 'approve' | 'reject',
-    result: null | { ok, after, verified, error }  // filled by DSH post-write
+    index, id, kind, lang, endpoint, summary,
+    payload,                                       // exact WP write body
+    before,                                        // touched fields pre-write
+    validation: { passed: bool|null, checks: [{name, ok}] },
+    decision: 'pending' | 'approve' | 'reject',    // set by the human in /seo-review
+    result: null | { ok, after, verified, error, at }
   }]
 }
 ```
-The OC renders each item as a `before → payload` diff; the human approves per
-item; `status` flips to `approved`; DSH polls, executes approved items through
-`safeWrite`, writes `result` back. The OC then runs Step 4 reconciliation.
+Rules: `read, update` if admin (the human, via `/seo-review`); `create, delete`
+denied (DSH creates via Admin SDK, bypassing rules).
+
+### `/seo-review` (OC page, admin)
+Lists batches; for the selected one, renders each item as a `before → after`
+field diff with per-item Approve / Reject (plus "approve all passing
+validation" / "reject all"). **Send to DSH** flips `status` to `approved` (if
+≥1 approved) or `rejected` — only when every item has a decision. After DSH
+executes, each item shows its `result`.
+
+### Contract flow
+DSH prepares → `create` → human reviews at `/seo-review` → Send to DSH →
+DSH `poll` → executes each approved item through **`safeWrite`** (Step 3) →
+`result` back. Step 4 reconciliation then confirms live state matches.
 
 ## Step 3 — `safeWrite` + `validate-payload` (planned, DSH side)
 

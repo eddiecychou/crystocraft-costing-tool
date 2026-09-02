@@ -326,6 +326,13 @@ service cloud.firestore {
       allow read, create: if isAdmin();
       allow update, delete: if false;
     }
+    // SEO control plane Step 2 — DSH-prepared change batches. Created by the
+    // seo-batch Node function (Admin SDK, bypasses rules); the human reads and
+    // sets per-item decisions + status from SeoReview.jsx. No client create.
+    match /seo_batches/{doc} {
+      allow read, update: if isAdmin();
+      allow create, delete: if false;
+    }
 
     match /customers/{customerId} {
       // Front office (admin + sales, V8.13). Sales owns the customer relationship
