@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
-import { auth } from '../firebase'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { auth, db } from '../firebase'
 import logo from '../assets/logo.png'
 import { APP_NAME, APP_VERSION, versionLabel } from '../appInfo'
 import { canAccess, useRole } from '../access'
@@ -83,6 +84,7 @@ function useVisibleNav() {
 }
 
 export default function Layout({ children, user }) {
+  const role = useRole()
   const visibleNav = useVisibleNav()
   const navItems = visibleNav.filter(n => n.to)
   const mainNav  = navItems.filter(n => n.primary)
@@ -90,6 +92,17 @@ export default function Layout({ children, user }) {
   const navigate  = useNavigate()
   const location  = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
+
+  // Live count of SEO batches from DSH awaiting review — surfaced as a badge
+  // on the "SEO Review" nav item. Admin-gated (seo_batches read = isAdmin);
+  // skip the subscription for anyone else so it doesn't permission-deny.
+  const [seoPending, setSeoPending] = useState(0)
+  useEffect(() => {
+    if (!canAccess(role, 'woo')) { setSeoPending(0); return }
+    const q = query(collection(db, 'seo_batches'), where('status', '==', 'pending_review'))
+    return onSnapshot(q, snap => setSeoPending(snap.size), () => setSeoPending(0))
+  }, [role])
+  const badgeFor = (to) => (to === '/seo-review' && seoPending > 0 ? seoPending : 0)
   const moreActive = moreNav.some(n => location.pathname.startsWith(n.to))
 
   async function handleSignOut() {
@@ -154,7 +167,12 @@ export default function Layout({ children, user }) {
                 }
               >
                 <item.Icon size={18} strokeWidth={1.75} className="shrink-0" />
-                {item.label}
+                <span className="truncate">{item.label}</span>
+                {badgeFor(item.to) > 0 && (
+                  <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-2xs font-semibold flex items-center justify-center leading-none">
+                    {badgeFor(item.to)}
+                  </span>
+                )}
               </NavLink>
             )
           ))}
@@ -209,10 +227,11 @@ export default function Layout({ children, user }) {
           {/* More button */}
           <button
             onClick={() => setMoreOpen(o => !o)}
-            className={`flex-1 min-w-0 flex flex-col items-center justify-center py-2 gap-1 transition-colors ${
+            className={`relative flex-1 min-w-0 flex flex-col items-center justify-center py-2 gap-1 transition-colors ${
  moreActive || moreOpen ? 'text-white' : 'text-ivory/40'
             }`}
           >
+            {seoPending > 0 && <span className="absolute top-1.5 right-1/2 translate-x-3 w-2 h-2 rounded-full bg-red-500" />}
             <MoreHorizontal size={20} strokeWidth={1.75} />
             <span className="text-2xs font-medium leading-none">More</span>
           </button>
@@ -234,11 +253,16 @@ export default function Layout({ children, user }) {
                     to={to}
                     onClick={() => setMoreOpen(false)}
                     className={({ isActive }) =>
-                      `flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-none text-center transition-colors ${
+                      `relative flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-none text-center transition-colors ${
                         isActive ? 'bg-brand-50 text-brand-600' : 'text-ink-70 hover:bg-ivory active:bg-ivory'
                       }`
                     }
                   >
+                    {badgeFor(to) > 0 && (
+                      <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-2xs font-semibold flex items-center justify-center leading-none">
+                        {badgeFor(to)}
+                      </span>
+                    )}
                     <Icon size={24} strokeWidth={1.6} className="shrink-0" />
                     <span className="text-2xs font-medium leading-tight line-clamp-2">{short}</span>
                   </NavLink>
