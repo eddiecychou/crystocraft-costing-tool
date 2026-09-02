@@ -68,6 +68,7 @@ customer, narrower than admin). *public* = no session check.
 - `scrape-images.js` (`/api/scrape-images`) — Server-side fetch of crystocraft.com pages to pull full-size product images (sidesteps browser CORS). Auth: admin. Called from `src/pages/ImportImages.jsx`.
 - `download-image.js` (`/api/download-image`) — Forces a "Save As" download of a file in this app's own Storage bucket (works around cross-origin `<a download>` limits). Auth: public by necessity (plain anchor click, no Authorization header) — validates the URL belongs to this app's own bucket instead. Called from 10+ export/gallery components.
 - `image-proxy.js` (`/api/image-proxy`) — Proxies Storage/WordPress images to the browser to dodge CORS (e.g. loading into a canvas). Auth: public, restricted to an allowlist of source hosts. Called from `src/components/ManualAdjust.jsx`, `src/pages/BlogGenerator.jsx`.
+- `office-file.js` (`/api/office-file/*`) — Re-serves a Firebase Storage Office/PDF file at a clean, extension-terminated URL with the correct MIME type so Microsoft's Office Online viewer (`view.officeapps.live.com`) can fetch it (a raw Firebase download URL fails). Streams the body through. Auth: public, `src` host-allowlisted to `firebasestorage.googleapis.com`. Called from `src/components/SupplierCatalogs.jsx`.
 
 ## Integrations
 

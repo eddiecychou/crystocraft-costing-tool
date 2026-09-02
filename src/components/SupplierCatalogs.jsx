@@ -34,16 +34,33 @@ const FileTypeIcon = ({ type, name, size }) => {
 
 const OFFICE_EXT = new Set(['xlsx', 'xls', 'csv', 'pptx', 'ppt', 'docx', 'doc'])
 const extOf = name => (name || '').split('.').pop()?.toLowerCase() || ''
+
+// Some OSes hand a file-input an empty file.type for Office files; store an
+// accurate Content-Type anyway so the object isn't saved as octet-stream.
+const CONTENT_TYPE_BY_EXT = {
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xls: 'application/vnd.ms-excel',
+  csv: 'text/csv',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  ppt: 'application/vnd.ms-powerpoint',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  doc: 'application/msword',
+  pdf: 'application/pdf',
+}
 const isOffice = (type, name) => OFFICE_EXT.has(extOf(name)) ||
   /officedocument|ms-excel|ms-powerpoint|msword/.test(type || '')
 const isPdf = (type, name) => type === 'application/pdf' || extOf(name) === 'pdf'
 
-// Microsoft's public Office Online viewer. Needs a URL it can fetch itself —
-// Firebase download URLs carry their own token and are publicly reachable, so
-// this works as-is. The file transits Microsoft's servers to be rendered;
-// supplier catalogs / lookbooks / price lists only (owner: nothing sensitive).
-const officeEmbedUrl = fileUrl =>
-  `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`
+// Microsoft's public Office Online viewer. It fetches the file from its OWN
+// servers, and chokes on a raw Firebase download URL (no trailing extension,
+// stored as octet-stream). /api/office-file/<name> re-serves it at a clean,
+// extension-terminated URL with the right MIME type. The file transits
+// Microsoft's servers to render; supplier catalogs / lookbooks / price lists
+// only (owner: nothing sensitive).
+const proxiedFileUrl = c =>
+  `${window.location.origin}/api/office-file/${encodeURIComponent(c.file_name)}?src=${encodeURIComponent(c.file_url)}`
+const officeEmbedUrl = c =>
+  `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(proxiedFileUrl(c))}`
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`
@@ -75,7 +92,8 @@ export default function SupplierCatalogs({ supplierId }) {
 
       setUploads(prev => [...prev, { uid, name: file.name, progress: 0, size: file.size, type: file.type }])
 
-      const task = uploadBytesResumable(sRef, file)
+      const contentType = file.type || CONTENT_TYPE_BY_EXT[extOf(file.name)] || 'application/octet-stream'
+      const task = uploadBytesResumable(sRef, file, { contentType })
 
       task.on('state_changed',
         snapshot => {
@@ -91,7 +109,7 @@ export default function SupplierCatalogs({ supplierId }) {
             file_url: url,
             storage_path: path,
             file_name: file.name,
-            file_type: file.type,
+            file_type: contentType,
             file_size: file.size,
             uploaded_at: serverTimestamp(),
           })
@@ -215,7 +233,7 @@ export default function SupplierCatalogs({ supplierId }) {
           </div>
           <iframe
             title={viewer.file_name}
-            src={isPdf(viewer.file_type, viewer.file_name) ? viewer.file_url : officeEmbedUrl(viewer.file_url)}
+            src={isPdf(viewer.file_type, viewer.file_name) ? viewer.file_url : officeEmbedUrl(viewer)}
             className="flex-1 w-full bg-white border-0"
             onClick={e => e.stopPropagation()}
           />
