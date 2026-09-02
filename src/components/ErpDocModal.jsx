@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { erpLines } from '../erpApi'
 import { X, Database } from 'lucide-react'
+import { useT } from '../i18n'
 
 // Read-only detail for a document that lives in JES, not the app — a sales
 // order or a sales invoice from the ERP mirror.
@@ -27,6 +28,7 @@ const fmtDate = (d) => {
 }
 
 export default function ErpDocModal({ of, doc, onClose }) {
+  const t = useT()
   const [lines, setLines] = useState([])
   const [surcharges, setSurcharges] = useState([])
   const [loading, setLoading] = useState(true)
@@ -40,7 +42,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
     setLoading(true); setError('')
     erpLines(of, code)
       .then((r) => { if (alive) { setLines(r.rows || []); setSurcharges(r.surcharges || []) } })
-      .catch((e) => { if (alive) setError(e.message || 'Could not load the document lines.') })
+      .catch((e) => { if (alive) setError(e.message || t('Could not load the document lines.')) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [of, code])
@@ -68,7 +70,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg text-ink font-mono">{code}</h2>
               <span className="text-2xs font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
-                <Database size={10} /> JES · read-only
+                <Database size={10} /> {t('JES · read-only')}
               </span>
               {(doc.status || '').trim().toUpperCase() === 'VOID' && (
                 <span className="text-2xs font-medium text-red-600 border border-red-200 bg-red-50 rounded-full px-2 py-0.5">VOID</span>
@@ -76,24 +78,24 @@ export default function ErpDocModal({ of, doc, onClose }) {
             </div>
             <p className="text-sm text-ink-70 mt-1 truncate">{doc.customer || '—'}</p>
           </div>
-          <button type="button" onClick={onClose} className="text-ink-60 hover:text-ink-80 shrink-0" aria-label="Close">
+          <button type="button" onClick={onClose} className="text-ink-60 hover:text-ink-80 shrink-0" aria-label={t('Close')}>
             <X size={20} />
           </button>
         </div>
 
         <div className="px-5 py-3 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-sm border-b border-ivory-dark bg-ivory/40">
-          <Field label="Date" value={fmtDate(doc.date)} />
-          <Field label="Currency" value={doc.currency || '—'} />
+          <Field label={t('Date')} value={fmtDate(doc.date)} />
+          <Field label={t('Currency')} value={doc.currency || '—'} />
           <Field label="UC#" value={(doc.ref || '').trim() || '—'} mono />
-          <Field label={isInvoice ? 'Status' : 'Status'} value={(doc.status || '').trim() || '—'} />
-          {doc.customer_po && <Field label="Customer PO" value={doc.customer_po} mono />}
-          {doc.customer_code && <Field label="Customer Code" value={doc.customer_code} mono />}
-          {doc.salesperson && <Field label="Salesperson" value={doc.salesperson} />}
-          {doc.payment_terms && <Field label="Terms" value={doc.payment_terms} />}
+          <Field label={t('Status')} value={(doc.status || '').trim() || '—'} />
+          {doc.customer_po && <Field label={t('Customer PO')} value={doc.customer_po} mono />}
+          {doc.customer_code && <Field label={t('Customer Code')} value={doc.customer_code} mono />}
+          {doc.salesperson && <Field label={t('Salesperson')} value={doc.salesperson} />}
+          {doc.payment_terms && <Field label={t('Terms')} value={doc.payment_terms} />}
         </div>
 
         <div className="px-5 py-4">
-          {loading && <p className="text-sm text-ink-60 py-6 text-center">Loading lines…</p>}
+          {loading && <p className="text-sm text-ink-60 py-6 text-center">{t('Loading lines…')}</p>}
           {error && <p className="text-sm text-red-600 py-4">{error}</p>}
 
           {!loading && !error && (
@@ -102,11 +104,11 @@ export default function ErpDocModal({ of, doc, onClose }) {
                 <thead>
                   <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                     <th className="py-2 pr-3 font-medium">#</th>
-                    <th className="py-2 pr-3 font-medium whitespace-nowrap">Item Code</th>
-                    <th className="py-2 pr-3 font-medium">Description</th>
-                    <th className="py-2 pr-3 font-medium text-right whitespace-nowrap">Qty</th>
-                    <th className="py-2 pr-3 font-medium text-right whitespace-nowrap">Unit Price</th>
-                    <th className="py-2 font-medium text-right whitespace-nowrap">Amount</th>
+                    <th className="py-2 pr-3 font-medium whitespace-nowrap">{t('Item Code')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('Description')}</th>
+                    <th className="py-2 pr-3 font-medium text-right whitespace-nowrap">{t('Qty')}</th>
+                    <th className="py-2 pr-3 font-medium text-right whitespace-nowrap">{t('Unit Price')}</th>
+                    <th className="py-2 font-medium text-right whitespace-nowrap">{t('Amount')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-warm-grey">
@@ -124,7 +126,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
                     </tr>
                   ))}
                   {lines.length === 0 && (
-                    <tr><td colSpan={6} className="py-6 text-center text-ink-60">No lines recorded on this document.</td></tr>
+                    <tr><td colSpan={6} className="py-6 text-center text-ink-60">{t('No lines recorded on this document.')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -138,7 +140,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
                     {surcharges.map((sc, i) => (
                       <tr key={i}>
                         <td className="py-2 pr-3 text-ink-60">
-                          {(sc.description || '').trim() || (sc.code || '').trim() || 'Surcharge'}
+                          {(sc.description || '').trim() || (sc.code || '').trim() || t('Surcharge')}
                           {sc.description && sc.code && (
                             <span className="ml-1.5 font-mono text-2xs text-ink-60">{(sc.code || '').trim()}</span>
                           )}
@@ -151,9 +153,9 @@ export default function ErpDocModal({ of, doc, onClose }) {
               )}
 
               <div className="flex justify-end gap-6 mt-4 pt-3 border-t border-warm-grey text-sm">
-                <span className="text-ink-60">Line total</span>
+                <span className="text-ink-60">{t('Line total')}</span>
                 <span className="font-mono tabular-nums text-ink-80">{fmtMoney(lineSum)}</span>
-                <span className="text-ink-60">Document total</span>
+                <span className="text-ink-60">{t('Document total')}</span>
                 <span className="font-mono tabular-nums font-semibold text-ink">
                   {doc.currency} {fmtMoney(doc.amount)}
                 </span>
@@ -163,7 +165,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
                   reporting it as one. */}
               {Math.abs(lineSum - (Number(doc.amount) || 0)) > 0.02 && (
                 <p className="text-xs text-ink-60 text-right mt-1">
-                  Lines and document total differ — the header also carries discount, surcharges and tax.
+                  {t('Lines and document total differ — the header also carries discount, surcharges and tax.')}
                 </p>
               )}
             </div>

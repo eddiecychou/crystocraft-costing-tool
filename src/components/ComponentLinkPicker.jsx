@@ -3,6 +3,7 @@ import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useComponents } from '../criticalComponents'
 import { Puzzle, Package, X } from 'lucide-react'
+import { useT } from '../i18n'
 
 // Load every corp-gift component (products/{p}/components/{c}). Follows the
 // codebase convention of fanning out over products instead of a collectionGroup
@@ -27,6 +28,7 @@ async function loadCorpComponents() {
 }
 
 export default function ComponentLinkPicker({ onPick, onClose }) {
+  const t = useT()
   const { components: rangeComps } = useComponents()
   const [corp, setCorp] = useState(null)   // null = loading
   const [search, setSearch] = useState('')
@@ -51,18 +53,18 @@ export default function ComponentLinkPicker({ onPick, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-none shadow-lg w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="text-base">Link to a component</h2>
+          <h2 className="text-base">{t('Link to a component')}</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
         </div>
 
         <div className="px-5 pt-3">
-          <input autoFocus type="text" className="input w-full text-sm" placeholder="Search component or product…"
+          <input autoFocus type="text" className="input w-full text-sm" placeholder={t('Search component or product…')}
                  value={search} onChange={e => setSearch(e.target.value)} />
           <div className="flex gap-1 mt-3 border-b border-warm-grey">
             {[['corp', 'Corp Gift'], ['range', 'Figurine']].map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
                 className={`px-3 py-1.5 text-sm font-medium -mb-px border-b-2 ${tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
-                {label} {k === 'corp' ? (corp ? `(${corpFiltered.length})` : '…') : `(${rangeFiltered.length})`}
+                {t(label)} {k === 'corp' ? (corp ? `(${corpFiltered.length})` : '…') : `(${rangeFiltered.length})`}
               </button>
             ))}
           </div>
@@ -70,8 +72,8 @@ export default function ComponentLinkPicker({ onPick, onClose }) {
 
         <div className="overflow-y-auto px-2 py-2 flex-1">
           {tab === 'corp' ? (
-            corp == null ? <p className="text-sm text-ink-60 text-center py-8">Loading components…</p>
-            : corpFiltered.length === 0 ? <p className="text-sm text-ink-60 text-center py-8">No matching components.</p>
+            corp == null ? <p className="text-sm text-ink-60 text-center py-8">{t('Loading components…')}</p>
+            : corpFiltered.length === 0 ? <p className="text-sm text-ink-60 text-center py-8">{t('No matching components.')}</p>
             : corpFiltered.map(c => (
               <button key={`${c.product_id}:${c.component_id}`} onClick={() => onPick({ type: 'corp', product_id: c.product_id, component_id: c.component_id, label: c.component_name })}
                       className="w-full text-left flex items-start gap-2 px-3 py-2 rounded-none hover:bg-ivory">
@@ -83,7 +85,7 @@ export default function ComponentLinkPicker({ onPick, onClose }) {
               </button>
             ))
           ) : (
-            rangeFiltered.length === 0 ? <p className="text-sm text-ink-60 text-center py-8">No matching components.</p>
+            rangeFiltered.length === 0 ? <p className="text-sm text-ink-60 text-center py-8">{t('No matching components.')}</p>
             : rangeFiltered.slice(0, 300).map(c => (
               <button key={c.id} onClick={() => onPick({ type: 'range', component_id: c.id, label: c.code || c.name })}
                       className="w-full text-left flex items-start gap-2 px-3 py-2 rounded-none hover:bg-ivory">
