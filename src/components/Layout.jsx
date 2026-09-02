@@ -24,8 +24,8 @@ const nav = [
   { to: '/dashboard',  label: 'Dashboard',     short: 'Home',     Icon: LayoutDashboard, primary: true, module: 'dashboard' },
 
   { group: 'Catalogue' },
-  { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true, module: 'products' },
   { to: '/range',      label: 'Figurine Gifts',short: 'Figurine', Icon: Gem, primary: true, module: 'figurine' },
+  { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true, module: 'products' },
   { to: '/swatch-library', label: 'Swatch Library', short: 'Swatches', Icon: Sparkles, module: 'swatch' },
 
   { group: 'Sales' },
