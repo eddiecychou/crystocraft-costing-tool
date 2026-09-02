@@ -351,7 +351,7 @@ export default function WooCatalogue() {
                               )}
                             </div>
                           </td>
-                          <td className="px-3 py-2 font-mono text-xs text-ink-60 whitespace-nowrap">{p.sku || '—'}</td>
+                          <td className="px-3 py-2 font-mono text-2xs text-ink-60 truncate max-w-[110px]" title={p.sku || ''}>{p.sku || '—'}</td>
                           <td className="px-3 py-2">
                             <span className={`text-2xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE[p.status] || 'bg-ivory text-ink-70'}`}>{p.status}</span>
                             {p.catalog_visibility && p.catalog_visibility !== 'visible' && (
