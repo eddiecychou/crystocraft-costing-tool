@@ -12,6 +12,7 @@ import ErpDocModal from '../components/ErpDocModal'
 import { FileText, Database, ArrowUp, ArrowDown } from 'lucide-react'
 import ExportFilterBar from '../components/ExportFilterBar'
 import { downloadCsv, exportStem, inDateRange } from '../exportCsv'
+import { useT } from '../i18n'
 
 const STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
 
@@ -58,6 +59,7 @@ function rowTotals(row) {
 }
 
 export default function PurchaseOrders() {
+  const t = useT()
   const [pos, setPos] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -215,13 +217,13 @@ export default function PurchaseOrders() {
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl text-ink">Purchase Orders</h1>
+          <h1 className="text-xl md:text-2xl text-ink">{t('Purchase Orders')}</h1>
           <p className="text-sm text-ink-60 mt-0.5">
-            {filtered.length} of {pos.length} app POs
-            {jesOnlyCount > 0 && <> · {jesOnlyCount} more from JES{erp.loading ? ' (loading…)' : ''}</>}
+            {t('{a} of {b} app POs', { a: filtered.length, b: pos.length })}
+            {jesOnlyCount > 0 && <> · {t('{n} more from JES', { n: jesOnlyCount })}{erp.loading ? ` ${t('(loading…)')}` : ''}</>}
           </p>
         </div>
-        <Link to="/purchase-orders/new" className="btn-primary text-sm whitespace-nowrap">+ New PO</Link>
+        <Link to="/purchase-orders/new" className="btn-primary text-sm whitespace-nowrap">{t('+ New PO')}</Link>
       </div>
 
       {/* JES-duplicate cleanup — see checkErpDuplicates() above for why. */}
@@ -229,21 +231,21 @@ export default function PurchaseOrders() {
         {dupCheck === null ? (
           <button type="button" onClick={checkErpDuplicates} disabled={checkingDup || pos.length === 0}
                   className="text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50">
-            {checkingDup ? 'Checking against JES…' : 'Check app POs for JES duplicates'}
+            {checkingDup ? t('Checking against JES…') : t('Check app POs for JES duplicates')}
           </button>
         ) : dupError ? (
-          <p className="text-xs text-amber-600">Could not check — {dupError}</p>
+          <p className="text-xs text-amber-600">{t('Could not check —')} {dupError}</p>
         ) : dupCheck.length === 0 ? (
-          <p className="text-xs text-ink-60">No app PO duplicates an existing JES record.</p>
+          <p className="text-xs text-ink-60">{t('No app PO duplicates an existing JES record.')}</p>
         ) : (
           <div className="card border-amber-200 bg-amber-50 p-3">
             <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
               <p className="text-sm font-medium text-amber-800">
-                {dupCheck.length} app PO{dupCheck.length === 1 ? '' : 's'} duplicate{dupCheck.length === 1 ? 's' : ''} an existing JES record
+                {t('{n} app PO(s) duplicate an existing JES record', { n: dupCheck.length })}
               </p>
               <button type="button" onClick={deleteAllDuplicates} disabled={deletingDup}
                       className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50">
-                {deletingDup ? 'Deleting…' : `Delete all ${dupCheck.length}`}
+                {deletingDup ? t('Deleting…') : t('Delete all {n}', { n: dupCheck.length })}
               </button>
             </div>
             <div className="space-y-1.5">
@@ -257,13 +259,13 @@ export default function PurchaseOrders() {
                       <span className="font-mono font-medium text-ink">{po.pu_number}</span>
                       <span className="text-ink-60 ml-2 truncate">{po.supplier_name}</span>
                       {mismatch && (
-                        <span className="text-red-600 ml-2" title="App total differs from the JES amount">
-                          app {fmtMoney(appTotal, po.currency || 'RMB')} ≠ JES {fmtMoney(erpAmount, e.currency || 'RMB')}
+                        <span className="text-red-600 ml-2" title={t('App total differs from the JES amount')}>
+                          {t('app')} {fmtMoney(appTotal, po.currency || 'RMB')} ≠ JES {fmtMoney(erpAmount, e.currency || 'RMB')}
                         </span>
                       )}
                     </div>
                     <button type="button" onClick={() => deleteDuplicate(po.id)}
-                            className="text-red-500 hover:text-red-700 shrink-0">Delete</button>
+                            className="text-red-500 hover:text-red-700 shrink-0">{t('Delete')}</button>
                   </div>
                 )
               })}
@@ -274,21 +276,21 @@ export default function PurchaseOrders() {
 
       <ExportFilterBar
         from={from} to={to} onFrom={setFrom} onTo={setTo}
-        count={merged.length} total={pos.length + (erp.rows?.length || 0)} noun="POs"
+        count={merged.length} total={pos.length + (erp.rows?.length || 0)} noun={t('POs')}
         onExport={exportPos} disabled={loading}
       />
 
       {erp.error && (
-        <p className="text-xs text-amber-600 mb-2">JES history unavailable — {erp.error}</p>
+        <p className="text-xs text-amber-600 mb-2">{t('JES history unavailable —')} {erp.error}</p>
       )}
 
       <div className="flex flex-col sm:flex-row gap-2 mb-2">
-        <input type="text" placeholder="Search PU no. or supplier…" className="input w-full sm:flex-1"
+        <input type="text" placeholder={t('Search PU no. or supplier…')} className="input w-full sm:flex-1"
                value={search} onChange={e => setSearch(e.target.value)} />
         {/* Only affects the unfiltered JES fetch (search narrows the query
             itself, capped separately at 200 — see useErpPurchaseOrders). */}
-        <label className="flex items-center gap-1.5 text-xs text-ink-60 shrink-0" title="How many JES purchase orders to fetch when not searching">
-          JES limit
+        <label className="flex items-center gap-1.5 text-xs text-ink-60 shrink-0" title={t('How many JES purchase orders to fetch when not searching')}>
+          {t('JES limit')}
           <select className="input py-1.5 text-xs w-auto" value={historyLimit} disabled={!!search.trim()}
                   onChange={e => setHistoryLimit(Number(e.target.value))}>
             {[50, 100, 500, 1000].map(n => <option key={n} value={n}>{n}</option>)}
@@ -299,7 +301,7 @@ export default function PurchaseOrders() {
             <button key={s.value || 'all'} onClick={() => setStatusFilter(s.value)}
               className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
  statusFilter === s.value ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'}`}>
-              {s.label}
+              {t(s.label)}
             </button>
           ))}
         </div>
@@ -309,7 +311,7 @@ export default function PurchaseOrders() {
 
       {!loading && merged.length === 0 && !erp.loading ? (
         <div className="card p-8 text-center text-sm text-ink-60">
-          No purchase orders yet. <Link to="/purchase-orders/new" className="text-brand-600 hover:underline">Create your first PO</Link>.
+          {t('No purchase orders yet.')} <Link to="/purchase-orders/new" className="text-brand-600 hover:underline">{t('Create your first PO')}</Link>.
         </div>
       ) : (
         <div className="card overflow-hidden">
@@ -317,12 +319,12 @@ export default function PurchaseOrders() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-2xs uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
-                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="pu" label="PU No." />
-                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="supplier" label="Supplier" />
-                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="supplier_code" label="Supplier code" />
-                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="date" label="Date" />
-                  <th className="px-3 py-2 font-medium text-left">Status</th>
-                  <th className="px-3 py-2 font-medium text-right">Amount</th>
+                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="pu" label={t('PU No.')} />
+                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="supplier" label={t('Supplier')} />
+                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="supplier_code" label={t('Supplier code')} />
+                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="date" label={t('Date')} />
+                  <th className="px-3 py-2 font-medium text-left">{t('Status')}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t('Amount')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-warm-grey">
@@ -355,6 +357,7 @@ function Th({ sortKey, sortDir, onSort, k, label, align = 'left' }) {
 }
 
 function AppPoRow({ p, onNavigate }) {
+  const t = useT()
   const meta = STATUS_META[p.status || 'draft'] || STATUS_META.draft
   const { balance } = poTotals(p)
   const navigate = useNavigate()
@@ -364,7 +367,7 @@ function AppPoRow({ p, onNavigate }) {
       <td className="px-3 py-2.5">
         <span className="inline-flex items-center gap-2">
           <FileText size={14} className="text-platinum shrink-0" />
-          <span className="font-mono text-sm font-medium text-ink">{p.pu_number || '(no PU no.)'}</span>
+          <span className="font-mono text-sm font-medium text-ink">{p.pu_number || t('(no PU no.)')}</span>
         </span>
       </td>
       <td className="px-3 py-2.5 text-ink-80">
@@ -373,9 +376,9 @@ function AppPoRow({ p, onNavigate }) {
       <td className="px-3 py-2.5 text-ink-60 font-mono text-xs">{p.supplier_erp_code || '—'}</td>
       <td className="px-3 py-2.5 text-ink-60 whitespace-nowrap">{p.issued_date ? fmtDate(p.issued_date) : '—'}</td>
       <td className="px-3 py-2.5">
-        <span className={`text-2xs px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
+        <span className={`text-2xs px-1.5 py-0.5 rounded-full ${meta.badge}`}>{t(meta.label)}</span>
         {!p.pu_number && (
-          <span className="ml-1 text-2xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Needs PU #</span>
+          <span className="ml-1 text-2xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{t('Needs PU #')}</span>
         )}
       </td>
       <td className="px-3 py-2.5 text-right tabular-nums text-ink font-medium whitespace-nowrap">
@@ -389,6 +392,7 @@ function AppPoRow({ p, onNavigate }) {
 // (same component Shipping.jsx and SalesInvoices.jsx already use for their own
 // JES history) rather than the app's PO editor, which can't amend a JES doc.
 function JesPoRow({ r, onOpen }) {
+  const t = useT()
   const void_ = (r.status || '').trim().toUpperCase() === 'VOID'
   return (
     <tr onClick={onOpen} className={`hover:bg-ivory transition-colors cursor-pointer ${void_ ? 'opacity-60' : ''}`}>
@@ -396,7 +400,7 @@ function JesPoRow({ r, onOpen }) {
         <span className="inline-flex items-center gap-2">
           <Database size={14} className="text-platinum shrink-0" />
           <span className="font-mono text-sm font-medium text-ink">{(r.code || '').trim()}</span>
-          <span title="Historical purchase order from JES — read-only archive"
+          <span title={t('Historical purchase order from JES — read-only archive')}
                 className="text-2xs font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
             <Database size={10} /> JES
           </span>
@@ -407,7 +411,7 @@ function JesPoRow({ r, onOpen }) {
       <td className="px-3 py-2.5 text-ink-60 whitespace-nowrap">{r.date ? fmtDate(r.date) : '—'}</td>
       <td className="px-3 py-2.5">
         {void_
-          ? <span className="text-2xs px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">Void</span>
+          ? <span className="text-2xs px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">{t('Void')}</span>
           : <span className="text-xs text-ink-60">{(r.status || '').trim() || '—'}</span>}
       </td>
       <td className="px-3 py-2.5 text-right tabular-nums text-ink font-medium whitespace-nowrap">
