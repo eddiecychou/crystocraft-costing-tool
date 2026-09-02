@@ -64,6 +64,10 @@
   path = "/api/image-proxy"
 
 [[edge_functions]]
+  function = "office-file"
+  path = "/api/office-file/*"
+
+[[edge_functions]]
   function = "rewrite-section"
   path = "/api/rewrite-section"
 
