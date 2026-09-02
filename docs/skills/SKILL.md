@@ -226,7 +226,14 @@ the fast path from a request to the exact code.
 ### WooCommerce B2C sync → see `ARCHITECTURE-RULES.md` §Woo-to-invoice
 - Pages: `WooCommerceSync.jsx`, `WooStockReconcile.jsx`, `WooCatalogue.jsx` (`/woo-catalogue` — catalogue overview + Yoast SEO checklist + WPML translation coverage; site runs **WPML** (6 langs: en/zh-hans/zh-hant/fr/ja/es) + **Yoast v28.4**, both exposed inline on `wc/v3/products` as `lang`/`translations`/`yoast_head_json`) · Logic: `src/wooSyncApi.js`, `src/wooImport.js`, `src/wooRefundImport.js`, `src/wooCustomerSync.js`, `src/wooCache.js` · Edge fns: `woo-sync` (read-only: orders/refunds Phase 1, `products_page` Phase 6, `catalogue_page` + `probe_i18n_seo` 2026-09-02)
 - Spec: `WooCommerce_B2C_Sync_Spec.md`. Pointer: `customers.woo_customer_id`. Shared shop customer: `online-crystocraft-o07`.
-- **`woo_cache/{doc}`** (admin-only, pure cache): `orders`, `product_catalogue`, `customer_scan` each hold the last pull so the pages restore on open instead of re-hitting WooCommerce; the fetch/scan button refreshes. Size-guarded at ~900 KB. Nothing downstream reads it — safe to wipe.
+- **`woo_cache/{doc}`** (admin-only, pure cache): `orders`, `product_catalogue`, `customer_scan`, `catalogue_overview` (+ chunk docs) each hold the last pull so the pages restore on open instead of re-hitting WooCommerce; the fetch/scan button refreshes. Size-guarded at ~900 KB. Nothing downstream reads it — safe to wipe.
+
+### SEO control plane (OC ⟷ DeepSeek Workbench) → `docs/skills/SEO-CONTROL-PLANE.md`
+- Pages: `SeoState.jsx` (`/seo-state`), `SeoReview.jsx` (`/seo-review`), `SeoReconcile.jsx` (`/seo-reconcile`) — all Ecommerce group, `module:'woo'`, admin.
+- Logic: `src/seoStateApi.js`, `src/seoCache.js`. Edge fn: `seo-state` (read-only WP posts/pages state, WP Application Password). **Node fn**: `netlify/functions/seo-batch.js` (`/api/seo-batch`, Bearer `SEO_BATCH_SECRET`) + shared `netlify/functions/lib/firebaseAdmin.js`.
+- Collections: `seo_state` (chunked cache), `seo_state_history` (append-only snapshots), `seo_batches` (DSH-prepared change batches, human-approved).
+- Vendored contract: `seo-control-plane/` — `validate-payload.mjs` (15 checks), `safe-write.mjs` (drift guard + B52), `DSH-BRIEFING.md`. DSH copies these verbatim; a new failure mode adds a check here.
+- Governance: `MARKETING-WORKFLOW.md` §6.6 (the mandatory WP-write loop).
 
 ### Bank / Logistics / Catalogues / Settings
 - Bank: `BankAccounts.jsx`, `BankDetailsAudit.jsx`, `src/bankAccounts.js`, `bank` fn.
@@ -245,3 +252,4 @@ authoritative detail stays in the doc it points to. Update the Change Log below.
 | Date | Change |
 |---|---|
 | 2026-08-31 | Skill system created and the root `INDEX.md` merged into it — SKILL.md absorbs the feature-area router + session start; cross-cutting/verify/deploy → `ARCHITECTURE-RULES.md`; mistakes → `LESSONS-LEARNED.md`. Grounded in codebase as of V8.12. |
+| 2026-09-02 | V8.14 — added §5 feature areas: **SEO control plane** (`/seo-state` · `/seo-review` · `/seo-reconcile`, `seo-state` edge fn, `seo-batch` Node fn, `seo_state`/`seo_state_history`/`seo_batches`, vendored `seo-control-plane/`) and extended **WooCommerce B2C** (Woo Catalogue + Yoast/WPML, `woo_cache` chunked). New docs `SEO-CONTROL-PLANE.md`, `MARKETING-WORKFLOW.md` §6.6. |

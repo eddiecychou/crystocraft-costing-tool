@@ -87,6 +87,99 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.14 — Ecommerce catalogue visibility + the SEO control plane (2026-09-02)
+
+One long session, several threads. The headline is the **SEO control plane** —
+a structured contract between the Operation Center and the external DeepSeek
+Workbench (DSH) so DSH's WordPress writes stop being "written live, damage found
+days later, no restorable state" (its own `SEO/LESSONS-LEARNED.md` B1–B53).
+
+### The SEO control plane — Steps 1–4, all built
+
+Full spec: **`docs/skills/SEO-CONTROL-PLANE.md`**; DSH handoff:
+**`seo-control-plane/DSH-BRIEFING.md`**; governance: `MARKETING-WORKFLOW.md` §6.6.
+The OC never writes WordPress; DSH stays the sole writer but goes through:
+snapshot → validate → batch → human approval → `safeWrite` → reconcile.
+
+1. **State store** — `/seo-state` (Ecommerce, admin) reads live WordPress
+   state for blog posts + pages per language (slug, status, Yoast title/desc
+   + whether hand-written, FNV-1a hash of `_elementor_data` as a layout
+   fingerprint) via the new `seo-state` edge fn (WP Application Password, not
+   the WooCommerce key). Cached chunked in `seo_state`; **"Save snapshot"**
+   writes an append-only `seo_state_history` doc — the rollback reference to
+   take before any bulk change.
+2. **Batch / review** — DSH posts a batch of intended writes to the new
+   `/api/seo-batch` **Node function** (Bearer `SEO_BATCH_SECRET`); it lands in
+   `seo_batches` as `pending_review`. The owner approves/rejects per item at
+   **`/seo-review`** against a real `before → after` field diff, then "Send to
+   DSH" flips it to `approved`. DSH `poll`s, executes, posts `result` back.
+   New shared `netlify/functions/lib/firebaseAdmin.js` (portal-invite migrates
+   to it later — TECH-DEBT).
+3. **The code gate** — `seo-control-plane/` (dependency-free ESM, OC-owned
+   SSOT, DSH vendors verbatim): `validate-payload.mjs` — 15 checks each mapped
+   to a B-lesson (B6 length anomaly, B12 placeholder, B20 stale-layout, B33/B35
+   CJK leak, L-09 double-brand, Rule 4 never-publish-unlinked-translation…),
+   11-case test all green; `safe-write.mjs` — snapshot → write → re-read →
+   abort on drift outside `expectedFields`, with a dedicated variation
+   id/price-hash guard for B52 (the whiskey-3194 price wipe).
+4. **Reconciliation** — `/seo-reconcile`: current state vs a history snapshot
+   ("has anything drifted since T?") or vs an executed batch ("did our approved
+   changes land and stay?"). Buckets: changed/new/gone, or held/drifted/failed.
+
+**Deploy note:** this cycle changed `firestore.rules` **three times**
+(`woo_cache`, `seo_state`/`seo_state_history`, `seo_batches`) — each deployed
+`--only firestore:rules` **before** the Netlify push (L-11). `SEO_BATCH_SECRET`
+was set on Netlify + the Workbench `.env` by the owner.
+
+**Still to do (DSH side):** vendor the two `.mjs` files, wrap its `wp-api.mjs`
+write path so nothing writes WordPress except through `safeWrite`, add the
+batch calls to its pipeline, paste the `§4c` block into its
+`MASTER-SKILL-ALIGNMENT.md`, and run one small real batch end-to-end first.
+
+### Ecommerce catalogue visibility (the reason the owner can now *see* Woo)
+
+- **Woo Catalogue** (`/woo-catalogue`) — every product regardless of status,
+  variations nested, price range, sales, stock; **SEO checklist** tab (real
+  Yoast title/meta-desc + heuristics: missing alt, thin description, no
+  category, weak slug, over-long title); **Translations** tab — the site runs
+  **WPML** (en/es/zh-hant/ja/fr) + **Yoast v28.4**, both exposed inline on
+  `wc/v3/products` as `lang`/`translations`/`yoast_head_json` (confirmed by the
+  Diagnostics probe). New `catalogue_page` + `probe_i18n_seo` ops on
+  `woo-sync.js`. Sortable columns, chunked cache.
+- **Woo Stock Match** (`/woo-stock`) — WooCommerce catalogue stock vs the
+  `b2c_stock` Finished Goods collection. Match = one-time manual SKU link
+  first (most B2C products are variable products with blank variation SKUs),
+  then exact normalised SKU. `products_page` op; `setWooLink` on `b2c_stock`.
+- **`woo_cache/{doc}`** — pure cache (admin only): `orders`,
+  `product_catalogue`, `customer_scan`, `catalogue_overview` (+ chunks).
+  WooCommerce Sync, the "Scan order history" bulk scan, Stock Match and
+  Catalogue all **restore on open** instead of re-hitting WooCommerce every
+  visit; the fetch/scan button refreshes. Size-guarded ~900 KB/doc.
+
+### Other threads
+
+- **Supplier document viewer** — `SupplierCatalogs.jsx` "View" opens a modal:
+  Office files (≤10 MB) via Microsoft's Office Online embed through a new
+  `/api/office-file/*` proxy (a raw Firebase download URL fails MS — no
+  extension, octet-stream Content-Type); PDF at any size; larger Office files
+  just download (MS caps at ~10 MB — the two live supplier decks are 53/98 MB).
+  Upload now sets an accurate `contentType`.
+- **Password reset** — the login page's "Forgot password?" now sends a branded
+  email from `noreply@crystocraft.com` via Resend (new public
+  `request_password_reset` action in `portal-invite.js`) instead of Firebase's
+  default `noreply@<project>.firebaseapp.com` template, which was landing in
+  junk. Never reveals whether an account exists.
+- **Blog publish quality** (generator side — audit of two live posts in
+  `MARKETING-WORKFLOW.md` §3): CTA is a burgundy square `<a>` not `wp:button`
+  (the theme renders `wp:button` as a hard-black rounded pill); gallery columns
+  capped at 2, `is-cropped` dropped, captions kept; `paraBlock` trims + `\n`→`<br>`;
+  publish blocked until a hero + ≥1 content image. The washed-out `#666`
+  body/heading colour and tight line-height are theme-side (DSH).
+- **Sidebar regroup** — Catalogue order Figurine → Corp Gifts → Swatch; new
+  **Finance** group (Sales Invoices, Credit Notes, UC Registry — pulled out of
+  Sales); new **Ecommerce** group (Woo Catalogue, SEO State, SEO Review, SEO
+  Reconcile, WooCommerce Sync, Woo Stock Match).
+
 ## V8.12 — Role-Based Access Control (the `production` role) + PI print fix — UNDER REVIEW as of 2026-08-28
 
 Two unrelated threads in one session (2026-08-28):
