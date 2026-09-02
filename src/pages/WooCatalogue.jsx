@@ -104,6 +104,7 @@ export default function WooCatalogue() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [issuesOnly, setIssuesOnly] = useState(true)
+  const [hideSwarovski, setHideSwarovski] = useState(true)
   const [sort, setSort] = useState({ key: null, dir: 'asc' })
   const [expanded, setExpanded] = useState(null)
   const [probe, setProbe] = useState(null)
@@ -183,28 +184,37 @@ export default function WooCatalogue() {
 
   const model = useMemo(() => {
     if (!rows) return null
-    const withSeo = rows.map(p => ({ ...p, _flags: seoFlags(p), _price: priceRange(p) }))
-    // Languages actually in use (union of every product's translations), in
-    // the preferred order, unknown codes appended.
+    // Swarovski listings are SEO-only — resale brand, retired, never entering
+    // the internal range. Filtered out of every tab + count unless the owner
+    // unticks "Hide Swarovski".
+    // Category is the authoritative signal (there's a "Swarovski" WooCommerce
+    // category); the name-PREFIX catches any uncategorised resale item without
+    // hitting a Crystocraft product that merely mentions Swarovski crystals
+    // ("T-shirt with Swarovski Crystal Fabric" stays).
+    const isSwar = (p) => (p.categories || []).some(c => /swarovski/i.test(c)) || /^swarovski\b/i.test((p.name || '').trim())
+    const swarCount = rows.filter(isSwar).length
+    const base = hideSwarovski ? rows.filter(p => !isSwar(p)) : rows
+    const withSeo = base.map(p => ({ ...p, _flags: seoFlags(p), _price: priceRange(p), _swar: isSwar(p) }))
     const seen = new Set()
-    for (const p of rows) for (const c of (p.translations || [])) seen.add(c)
+    for (const p of base) for (const c of (p.translations || [])) seen.add(c)
     const langs = [...LANG_ORDER.filter(c => seen.has(c)), ...[...seen].filter(c => !LANG_ORDER.includes(c))]
-    const pub = rows.filter(p => p.status === 'publish')
+    const pub = base.filter(p => p.status === 'publish')
     const langCoverage = langs.map(c => ({
       code: c,
       translated: pub.filter(p => (p.translations || []).includes(c)).length,
       total: pub.length,
     }))
     const counts = {
-      total: rows.length,
+      total: base.length,
       publish: pub.length,
-      draft: rows.filter(p => p.status === 'draft').length,
-      other: rows.filter(p => !['publish', 'draft'].includes(p.status)).length,
-      variations: rows.reduce((n, p) => n + (p.variations?.length || 0), 0),
+      draft: base.filter(p => p.status === 'draft').length,
+      other: base.filter(p => !['publish', 'draft'].includes(p.status)).length,
+      variations: base.reduce((n, p) => n + (p.variations?.length || 0), 0),
       seoIssues: withSeo.filter(p => p.status === 'publish' && p._flags.length).length,
+      swarHidden: hideSwarovski ? swarCount : 0,
     }
     return { withSeo, counts, langs, langCoverage }
-  }, [rows])
+  }, [rows, hideSwarovski])
 
   const SORT_VAL = {
     product: p => (p.name || '').toLowerCase(),
@@ -403,6 +413,11 @@ export default function WooCatalogue() {
                 <option value="pending">Pending</option>
                 <option value="private">Private</option>
               </select>
+              <label className="text-xs text-ink-60 inline-flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={hideSwarovski} onChange={e => setHideSwarovski(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded-sm border-warm-grey text-brand-600" />
+                Hide Swarovski{model.counts.swarHidden ? ` (${model.counts.swarHidden})` : ''}
+              </label>
               {(tab === 'seo' || tab === 'translations' || tab === 'match') && (
                 <>
                   <label className="text-xs text-ink-60 inline-flex items-center gap-1.5 cursor-pointer">
