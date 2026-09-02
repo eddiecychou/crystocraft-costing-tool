@@ -49,13 +49,13 @@ copies of the PEM-repair idiom.
 `route-email-question`, `compose-email-answer`, `suggest-tag-merges`,
 `transcribe-whatsapp-audio`, `refresh-{email,whatsapp,alibaba}-summary`,
 `uc.js`) had a *local* helper literally named `isAdmin()` whose body had
-quietly widened to `['admin','sales'].includes(role)` — so "isAdmin-gated"
-read as owner-only when it was actually front-office. **Renamed to
-`isFrontOffice()`** in place (the honest name; `lib/auth.js` already exports
-a real `requireFrontOffice`). `send-email.js` keeps `isAdmin` — its check is
-genuinely `role === 'admin'`. Migrating the 14 renamed locals to the shared
-`requireFrontOffice()` is the next step, not done (14× call-shape change,
-low urgency now the name is truthful).
+quietly widened to `['admin','sales'].includes(role)`. **V8.14 (2026-09-02)**
+broadened each in place to `isFrontOffice(uid, token, PROJECT_ID, moduleKey)`
+— admin / legacy production|sales (shim) / `staff` holding `moduleKey`. Still
+13 near-identical inline copies (uc.js is the 14th): converge them onto the
+shared `requireModule()` from `lib/auth.js` when next touched. The 10
+functions that already used the shared helper were retagged
+`requireFrontOffice` → `requireModule(req, key)` in the same commit.
 
 V8.12 added a *third* shape: `erp.js` now has `getRole()` (returns the
 role string, not a bool) because it needs to distinguish `production` from
@@ -66,28 +66,28 @@ role string, not a bool) because it needs to distinguish `production` from
 **Where:** compare any inline `isAdmin()` / `isFrontOffice()` block against
 `netlify/edge-functions/lib/auth.js`; `erp.js`'s `getRole()`.
 
-## RBAC (`production` role) — client capability map vs server rules can drift
+## RBAC — client capability map vs server rules can drift
 
-V8.12's `production` role is enforced in **four** places that must agree,
-with no single source:
-1. `src/access.js` (`PRODUCTION_MODULES`) — nav + route gates.
-2. `firestore.rules` (`isStaff()` / `isProduction()`) — the real boundary
-   for Firestore.
-3. `storage.rules` (`isStaff()`) — the boundary for object uploads; must
-   track (2) path-for-path or a production user can edit a record but not
-   attach its files (found in the V8.12 DeepSeek review — storage.rules had
-   no `isStaff()` at first).
-4. `netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`) — the ERP proxy;
-   its own header comment adds that `ErpLookup.jsx`'s
-   `PRODUCTION_ERP_ENTITIES` is a **fifth** partial copy (UI tab list, a
-   subset of the server set).
+V8.14 model (`admin | staff | customer` + `users/{uid}.modules[]`) is enforced
+in places that must agree, with no single source:
+1. `src/access.js` (`MODULE_GROUPS` / `resolveModules` / `canAccess`) — nav + route gates.
+2. `firestore.rules` (`can(m)` / `moduleList()`) — the real Firestore boundary.
+3. `storage.rules` (`can(m)`) — object uploads; must track (2) path-for-path
+   (V8.12 DeepSeek review — storage.rules had no staff helper at first).
+4. `netlify/edge-functions/lib/auth.js` (`requireModule`) + each edge fn's key;
+   `erp.js` checks `erp` for the full surface.
+
+**Legacy shim to delete:** `LEGACY_PRODUCTION` / `LEGACY_SALES` literal arrays
+are duplicated in (1)(2)(3)(4). Remove all four together once no `production` /
+`sales` account remains (currently 2: `2647939198@qq.com`, `pack5@uart.com.hk`).
 
 `qa/rbac-rules.test.mjs` covers the Firestore layer only — not storage, not
 the edge function, not the UI map. Adding a module to `access.js` without
 the matching rule opens a menu that permission-denies; the reverse grants
 data with no way to reach it. Keep them in sync by hand and re-run the
-emulator test on any `firestore.rules` change. See `PROJECT-PLAN.md` V8.12
-§2 and the `rbac-production-role` memory.
+emulator test on any `firestore.rules` change. See `PROJECT-PLAN.md` V8.14
+RBAC subsection, `docs/skills/ARCHITECTURE-RULES.md` §2, and the
+`rbac-production-role` memory.
 
 **Where:** `src/access.js`, `firestore.rules` + `storage.rules` (search
 `isStaff`), `netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`),

@@ -94,6 +94,28 @@ a structured contract between the Operation Center and the external DeepSeek
 Workbench (DSH) so DSH's WordPress writes stop being "written live, damage found
 days later, no restorable state" (its own `SEO/LESSONS-LEARNED.md` B1–B53).
 
+### RBAC V8.14 — flat `admin | staff | customer` + per-user modules[]
+
+The fixed `production` (V8.12) and `sales` (V8.13) roles are retired. Now every
+non-customer non-admin account is `role:'staff'` with a `users/{uid}.modules[]`
+array of module keys an admin toggles on the account page (`AccountEdit.jsx` →
+"Role & access" card). 17 keys grouped in `src/access.js` `MODULE_GROUPS`
+(`supply` is one key for Components+Suppliers+POs+Inventory; `erp` is
+all-or-nothing). Legacy production/sales accounts keep working via a shim
+(`LEGACY_PRODUCTION` / `LEGACY_SALES` literal arrays in access.js +
+firestore.rules + storage.rules + `netlify/edge-functions/lib/auth.js`) until
+hand-migrated. Contract: `firestore.rules`/`storage.rules` `can(m)` +
+`moduleList()` (deployed 2026-09-02); `lib/auth.js` `requireModule(req, key)`
+with 24 edge functions retagged off `requireFrontOffice`/inline `isFrontOffice`.
+Commit 49a90cb. Full spec: `docs/skills/ARCHITECTURE-RULES.md` §2 + §2·legacy;
+locked decisions in `RBAC-FLEX-PLAN.md`.
+
+**Open:** migrate the 2 live accounts (`2647939198@qq.com` sales,
+`pack5@uart.com.hk` production) to `role:'staff'` + explicit modules, then
+delete the shim. Note `/range/:id/costing` is now gated on `pricing`, absent
+from `LEGACY_PRODUCTION` — pack5 loses figurine costing unless admin ticks
+`pricing`.
+
 ### The SEO control plane — Steps 1–4, all built
 
 Full spec: **`docs/skills/SEO-CONTROL-PLANE.md`**; DSH handoff:

@@ -57,37 +57,67 @@ call. Never gate confidentiality on anything a model or the client decides.
 
 ## 2. RBAC — roles and the multi-file contract
 
-Roles live on `users/{uid}.role`. The **capability map `src/access.js`
-(`canAccess(role, moduleKey)`) is the single source of truth for UI**, read by
-both the sidebar (`Layout.jsx`) and route guards (`App.jsx` `<Gate module>`), so
-a hidden menu can't point at a live URL. But **the UI is not the security
-boundary — `firestore.rules` + `storage.rules` are.**
+Roles live on `users/{uid}.role`. As of **V8.14** there are only three:
+`admin | staff | customer`. A `staff` account's access is a **per-user
+`users/{uid}.modules[]` list** (17 keys), toggled by an admin on the account
+page (`AccountEdit.jsx` → "Role & access" card). The old fixed `production` /
+`sales` roles are retired but still resolve, via a **shim**, to an equivalent
+module set until the last of those accounts is hand-migrated.
 
-| Role | Sees | Hard walls |
-|---|---|---|
-| `admin` | Everything | — |
-| `production` (V8.12, factory floor) | Supply side: dashboard, products, components, suppliers, inventory, **figurine (incl. wholesale price + costing)**, purchase_orders, ERP Lookup (items/stock only) | customers, quotes, invoices, credit_notes, portal, marketing, settings, UC registry, woo, corp-gift `pricing` |
-| `customer` | Storefront/portal only; own orders + published proposal | all admin/staff data |
-| `sales` (V8.13, front office) | Customer-facing everything: customers + all CRM/message ingestion, quotes, marketing, printed catalogues, catalogue **edit** (product/figurine customer-facing fields + images), **pricing VIEW** (reads tier/customer prices to quote), fulfilment (shipping/orders), finance (invoices/credit notes), read-only Portal **Login-activity** | components/BOM, suppliers, purchase_orders, inventory (supply); the cost-derived **pricing-tier editor** + figurine **costing** (need supplier costs); `settings` write, ERP Lookup, UC Registry page, WooCommerce; `settings/pricing_groups`; Portal account/invitation management; **writing `users` roles/status** (hard line — no escalation) |
+The **capability map `src/access.js` is the single source of truth for UI**:
+`resolveModules(profile)` (role → module list, applying the shim) and
+`canAccess(role, moduleKey, modules)`. Read by the sidebar (`Layout.jsx`) and
+route guards (`App.jsx` `<Gate module>`), so a hidden menu can't point at a live
+URL. But **the UI is not the security boundary — `firestore.rules` +
+`storage.rules` are.**
 
-**MUST — the 5-place sync.** The `production` role is enforced in five files that
-have no single source and MUST agree; changing one without the others either
-opens a menu that permission-denies, or grants data with no way to reach it:
-1. `src/access.js` — `PRODUCTION_MODULES` (nav + route gates).
-2. `firestore.rules` — `isProduction()` / `isStaff()` (the real boundary).
-3. `storage.rules` — `isStaff()` (object uploads; MUST track (2) path-for-path,
-   or a production user can edit a record but not attach its files).
-4. `netlify/edge-functions/erp.js` — `PRODUCTION_ENTITIES` (ERP proxy).
-5. `src/pages/ErpLookup.jsx` — `PRODUCTION_ERP_ENTITIES` (UI tab subset).
+| Role | Access |
+|---|---|
+| `admin` | Everything (`canAccess` short-circuits true; rules `isAdmin()`) |
+| `staff` | Exactly the module keys in `users/{uid}.modules[]` |
+| `customer` | Storefront/portal only; own orders + published proposal |
+
+**The 17 module keys** (grouped in `MODULE_GROUPS`), `†` = sensitive:
+Catalogue — `products`, `figurine`, `swatch`, `catalogues`, `pricing†`;
+Front office — `customers†`, `quotes`, `marketing`, `portal`;
+Fulfilment & finance — `shipping`, `invoices†`, `credit_notes†`, `uc†`;
+Supply — `supply` (one key = Components + Suppliers + POs + Inventory);
+Ecommerce — `woo`; System — `dashboard`, `erp†`, `settings†`.
+`erp` is all-or-nothing (a staff account with `erp` gets the FULL ERP surface —
+no per-entity split; the old `PRODUCTION_ENTITIES` / `SALES_ENTITIES` tiers only
+still apply to legacy production/sales via the shim).
+
+**MUST — the multi-place sync.** No single source; these MUST agree or a menu
+opens onto a permission-denied page, or data is granted with no way to reach it:
+1. `src/access.js` — `MODULE_GROUPS` / `resolveModules` / `canAccess` (nav + gates).
+2. `firestore.rules` — `can(m)` / `moduleList()` (the real boundary).
+3. `storage.rules` — `can(m)` (object uploads; MUST track (2) path-for-path).
+4. `netlify/edge-functions/lib/auth.js` — `requireModule(req, key)`; each edge fn
+   passes its own key. `erp.js` checks `erp` for the full surface.
+5. The **legacy shim** — `LEGACY_PRODUCTION` / `LEGACY_SALES` literal arrays
+   appear in all four of the above; delete them together once no `production` /
+   `sales` account remains.
 
 **MUST** re-run `qa/rbac-rules.test.mjs` (emulator, needs a scratch JRE) on any
 `firestore.rules`/`storage.rules` change. It covers Firestore + Storage, **not**
 the edge fn or the UI map — those you keep in sync by hand. (`TECH-DEBT.md`
 "RBAC … can drift"; memory `rbac-production-role`.)
 
-`AccessContext` defaults to `'admin'` (fails **open**) on purpose — the rules are
-the boundary, so a provider-less render degrades to staff tooling rather than a
-white screen. **MUST NOT** rely on the UI gate for confidentiality.
+`AccessContext` defaults to `{ role: 'admin', modules: [] }` (fails **open**) on
+purpose — the rules are the boundary, so a provider-less render degrades to staff
+tooling rather than a white screen. **MUST NOT** rely on the UI gate for
+confidentiality.
+
+### 2·legacy — the `production` (V8.12) and `sales` (V8.13) roles
+
+Retired in V8.14; kept alive by the shim. `LEGACY_PRODUCTION` =
+`dashboard, products, figurine, supply, erp`. `LEGACY_SALES` =
+`dashboard, customers, quotes, marketing, catalogues, products, figurine,
+shipping, invoices, credit_notes, portal`. To migrate an account: set
+`role:'staff'` and copy the matching array into `modules[]` (or tick boxes on
+the account page). Note `/range/:id/costing` is now gated on `pricing`, which is
+**not** in `LEGACY_PRODUCTION` — a migrated ex-production account loses figurine
+costing unless the admin also ticks `pricing`.
 
 ### 2a. The `sales` role — BUILT (V8.13)
 
