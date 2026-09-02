@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
@@ -140,7 +140,18 @@ export default function Login() {
   async function handleReset() {
     if (!email) { setError('Enter your email address first.'); return }
     try {
-      await sendPasswordResetEmail(auth, email)
+      // Server-side (portal-invite.js) so the mail comes from
+      // noreply@crystocraft.com through Resend, branded, instead of
+      // Firebase's default noreply@<project>.firebaseapp.com template that
+      // lands in spam. Always resolves ok — it never reveals whether the
+      // address has an account.
+      const res = await fetch('/api/portal-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'request_password_reset', email }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) throw new Error(data.error || 'reset failed')
       setResetSent(true); setError('')
     } catch {
       setError('Could not send reset email. Check the address and try again.')

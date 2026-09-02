@@ -222,6 +222,18 @@ function googleApprovedEmailHtml({ companyName, portalUrl }) {
   ].join(''))
 }
 
+// Deliberately generic ("your Crystocraft account", not "customer portal") —
+// /login is shared by portal customers and internal staff, and both use this
+// same forgot-password path.
+function resetEmailHtml({ resetUrl }) {
+  return emailShell('Reset your password', [
+    emailP('We received a request to reset the password on your Crystocraft account.'),
+    emailP('Click below to choose a new password. This link is single-use and expires soon, for your security.'),
+    `<p style="margin:20px 0;">${emailBtn(resetUrl, 'Reset your password')}</p>`,
+    emailP('<span style="color:#888;font-size:12px;">If you didn\'t ask to reset your password, you can ignore this email — nothing will change.</span>'),
+  ].join(''))
+}
+
 // ── actions ─────────────────────────────────────────────────────────────
 
 async function createInvitation(body, adminUid) {
@@ -835,6 +847,49 @@ async function googleApprovedNotification(ref, inv, adminUid) {
   return json({ ok: true })
 }
 
+// Public: the login page's "Forgot password?" — replaces the client's
+// firebase/auth sendPasswordResetEmail(), whose mail comes from
+// noreply@<project>.firebaseapp.com with Firebase's default template (lands
+// in spam, carries the raw firebaseapp.com action URL). This sends the same
+// branded email as the approval flow, from noreply@crystocraft.com through
+// Resend, with our own clean /portal/set-password?oobCode=… link (same
+// generate → extract oobCode → rebuild shape as
+// setupLinkForApprovedInvitation).
+//
+// Never reveals whether an account exists: an unknown/malformed email
+// returns { ok: true } exactly like a real one (same posture as
+// claim_invitation).
+async function requestPasswordReset(body) {
+  const email = normEmail(body?.email)
+  if (!EMAIL_RE.test(email)) return json({ ok: true })
+
+  try {
+    await getAuth().getUserByEmail(email)
+  } catch {
+    return json({ ok: true }) // no such account — silent no-op, don't leak
+  }
+
+  const PORTAL_URL = process.env.PORTAL_URL || 'https://portal.crystocraft.com'
+  try {
+    const rawLink = await getAuth().generatePasswordResetLink(email, {
+      url: `${PORTAL_URL}/portal/set-password`, handleCodeInApp: true,
+    })
+    const oobCode = new URL(rawLink).searchParams.get('oobCode')
+    if (!oobCode) throw new Error('No oobCode in the generated link')
+    const resetUrl = `${PORTAL_URL}/portal/set-password?oobCode=${encodeURIComponent(oobCode)}`
+    const send = await sendResendEmail({
+      to: email, subject: 'Reset your Crystocraft password',
+      html: resetEmailHtml({ resetUrl }),
+      text: `Reset your Crystocraft password: ${resetUrl}\n\nIf you didn't ask to reset your password, you can ignore this email.`,
+      tags: [{ name: 'type', value: 'password_reset', prefix: 'portal' }],
+    })
+    if (!send.ok) return json({ ok: false, error: 'Could not send the reset email. Please try again.' }, 502)
+  } catch (e) {
+    return json({ ok: false, error: `Could not start a password reset: ${String(e?.message || e).slice(0, 200)}` }, 502)
+  }
+  return json({ ok: true })
+}
+
 async function approveInvitation(body, adminUid) {
   const id = String(body?.invitationId || '').trim()
   const suppliedCustomerId = body?.customerId ? String(body.customerId).trim() : null
@@ -950,14 +1005,18 @@ export default async function handler(req) {
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
   const action = String(body?.action || '')
 
-  // claim_invitation is the one fully PUBLIC action — an unauthenticated
-  // visitor presenting the raw claim token from their invitation email/link.
+  // claim_invitation, get_invitation, apply_for_account and
+  // request_password_reset are the fully PUBLIC actions — an unauthenticated
+  // visitor (an invitation link, a new-account form, or the login page's
+  // "Forgot password?"). request_password_reset never reveals whether an
+  // account exists.
   // apply_for_account_google / claim_invitation_google require a signed-in-
   // but-not-yet-admin session (the visitor just completed Sign in with
   // Google); every remaining action requires an admin session.
   if (action === 'claim_invitation') return claimInvitation(body)
   if (action === 'get_invitation') return getInvitationPreview(body)
   if (action === 'apply_for_account') return applyForAccount(body)
+  if (action === 'request_password_reset') return requestPasswordReset(body)
   if (action === 'claim_invitation_google') {
     const { uid, email, error } = await requireAuth(req)
     if (error) return error

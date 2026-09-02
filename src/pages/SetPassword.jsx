@@ -96,7 +96,7 @@ export default function SetPassword() {
     return (
       <Shell>
         <h2 className="text-lg text-ink mb-2">Password set</h2>
-        <p className="text-sm text-ink-70">You're signed in — taking you to the portal…</p>
+        <p className="text-sm text-ink-70">You're signed in — taking you through…</p>
       </Shell>
     )
   }
