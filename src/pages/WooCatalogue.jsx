@@ -1,9 +1,18 @@
 import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../firebase'
 import { wooCataloguePage, wooProbeI18nSeo } from '../wooSyncApi'
 import { loadWooCatalogueOverviewCache, saveWooCatalogueOverviewCache } from '../wooCache'
+import { loadB2cStock } from '../b2cStock'
 import { downloadCsv } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
 import { RefreshCcw, Download, AlertTriangle, ShoppingCart, ExternalLink, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react'
+
+// A product code's stem: leading 0-2 letters + digits, before any suffix.
+// "U0265-001" → "U0265"  ·  "D0268-001-GC1" → "D0268". Per owner, the
+// U/D/A prefix and the format/colour suffix aren't load-bearing for "is this
+// in our catalogue" — the design stem is the join key.
+const stem = (s) => (String(s || '').toUpperCase().match(/^[A-Z]{0,2}\d{3,6}/) || [''])[0]
 
 // WooCommerce catalogue overview + SEO checklist + WPML translation coverage
 // (Ecommerce, admin). Read-only. Cached (chunked) to woo_cache so it loads
@@ -89,6 +98,8 @@ export default function WooCatalogue() {
   const [expanded, setExpanded] = useState(null)
   const [probe, setProbe] = useState(null)
   const [probing, setProbing] = useState(false)
+  const [internal, setInternal] = useState(null) // { figurine, corp, b2c } stem→{name} maps
+  const [loadingInternal, setLoadingInternal] = useState(false)
 
   useEffect(() => {
     let live = true
@@ -97,6 +108,37 @@ export default function WooCatalogue() {
     })
     return () => { live = false }
   }, [])
+
+  // Lazy: pull the internal catalogues only when the Match tab is first opened.
+  const loadInternal = useCallback(async () => {
+    setLoadingInternal(true)
+    try {
+      const [rangeSnap, corpSnap, b2c] = await Promise.all([
+        getDocs(collection(db, 'range_products')),
+        getDocs(collection(db, 'products')),
+        loadB2cStock(),
+      ])
+      const idx = (arr, codeOf, nameOf) => {
+        const m = new Map()
+        for (const x of arr) {
+          const s = stem(codeOf(x))
+          if (s && !m.has(s)) m.set(s, { name: nameOf(x) || s, code: codeOf(x) })
+        }
+        return m
+      }
+      setInternal({
+        figurine: idx(rangeSnap.docs.map(d => d.data()), x => x.design_code || x.sku, x => x.design_name || x.description),
+        corp: idx(corpSnap.docs.map(d => d.data()), x => x.sku || x.code || x.model_no || '', x => x.name),
+        b2c: idx(b2c || [], x => x.code, x => x.name),
+      })
+    } catch (e) {
+      setError(e.message || 'Could not load the internal catalogues.')
+    } finally {
+      setLoadingInternal(false)
+    }
+  }, [])
+
+  useEffect(() => { if (tab === 'match' && !internal && !loadingInternal) loadInternal() }, [tab, internal, loadingInternal, loadInternal])
 
   const load = useCallback(async () => {
     setLoading(true); setError(''); setProgress('Fetching page 1…')
@@ -231,6 +273,51 @@ export default function WooCatalogue() {
     downloadCsv('woo-catalogue-translations', cols, translationRows)
   }
 
+  // ── catalogue match: which Woo products are in our internal catalogues ────
+  const matchModel = useMemo(() => {
+    if (!model || !internal) return null
+    const rows = model.withSeo.map(p => {
+      const s = stem(p.sku)
+      const hits = []
+      if (s && internal.figurine.has(s)) hits.push({ src: 'figurine', ...internal.figurine.get(s) })
+      if (s && internal.corp.has(s)) hits.push({ src: 'corp', ...internal.corp.get(s) })
+      if (s && internal.b2c.has(s)) hits.push({ src: 'b2c', ...internal.b2c.get(s) })
+      return { ...p, _stem: s, _hits: hits }
+    })
+    const used = new Set(rows.flatMap(r => (r._hits.length ? [r._stem] : [])))
+    const counts = {
+      figurine: rows.filter(r => r._hits.some(h => h.src === 'figurine')).length,
+      corp: rows.filter(r => r._hits.some(h => h.src === 'corp')).length,
+      b2c: rows.filter(r => r._hits.some(h => h.src === 'b2c')).length,
+      unmatched: rows.filter(r => r._hits.length === 0).length,
+      internalOnly: [...internal.figurine.keys(), ...internal.corp.keys(), ...internal.b2c.keys()]
+        .filter((s, i, a) => a.indexOf(s) === i && !used.has(s)).length,
+    }
+    return { rows, counts }
+  }, [model, internal])
+
+  const matchRows = useMemo(() => {
+    if (!matchModel) return []
+    const q = search.trim().toUpperCase()
+    return matchModel.rows
+      .filter(p => (statusFilter !== 'all' ? p.status === statusFilter : true))
+      .filter(p => (issuesOnly ? p._hits.length === 0 : true))
+      .filter(p => (q ? `${p.name} ${p.sku}`.toUpperCase().includes(q) : true))
+      .sort((a, b) => a._hits.length - b._hits.length || (a.sku || '').localeCompare(b.sku || ''))
+  }, [matchModel, search, statusFilter, issuesOnly])
+
+  function exportMatch() {
+    downloadCsv('woo-catalogue-match', [
+      { label: 'Product', value: r => r.name },
+      { label: 'Woo SKU', value: r => r.sku, text: true },
+      { label: 'Stem', value: r => r._stem, text: true },
+      { label: 'In catalogue', value: r => r._hits.map(h => h.src).join(', ') || 'NOT FOUND' },
+      { label: 'Internal name', value: r => r._hits.map(h => h.name).join(' / ') },
+      { label: 'Status', value: r => r.status },
+      { label: 'URL', value: r => r.permalink || '' },
+    ], matchRows)
+  }
+
   const Tab = ({ id, label }) => (
     <button onClick={() => setTab(id)}
       className={`text-sm px-3 py-1.5 rounded-none border-b-2 ${tab === id ? 'border-brand-600 text-ink' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
@@ -244,8 +331,9 @@ export default function WooCatalogue() {
         <ShoppingCart size={20} className="text-brand-500" /> WooCommerce Catalogue
       </h1>
       <p className="text-sm text-ink-60 mb-4">
-        Everything you're selling online — active, draft and private — with a Yoast SEO checklist and
-        WPML translation coverage. Read-only, cached so it loads without waiting on WordPress admin.
+        Everything you're selling online — active, draft and private — matched against your internal
+        catalogue, with a Yoast SEO checklist and WPML translation coverage. Read-only, cached so it
+        loads without waiting on WordPress admin.
       </p>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -283,6 +371,7 @@ export default function WooCatalogue() {
 
           <div className="flex items-center gap-1 border-b border-warm-grey mb-3">
             <Tab id="catalogue" label="Catalogue" />
+            <Tab id="match" label={`In catalogue${matchModel?.counts.unmatched ? ` (${matchModel.counts.unmatched} not)` : ''}`} />
             <Tab id="seo" label={`SEO checklist${model.counts.seoIssues ? ` (${model.counts.seoIssues})` : ''}`} />
             <Tab id="translations" label="Translations" />
             <Tab id="diagnostics" label="Diagnostics" />
@@ -299,14 +388,14 @@ export default function WooCatalogue() {
                 <option value="pending">Pending</option>
                 <option value="private">Private</option>
               </select>
-              {(tab === 'seo' || tab === 'translations') && (
+              {(tab === 'seo' || tab === 'translations' || tab === 'match') && (
                 <>
                   <label className="text-xs text-ink-60 inline-flex items-center gap-1.5 cursor-pointer">
                     <input type="checkbox" checked={issuesOnly} onChange={e => setIssuesOnly(e.target.checked)}
                       className="w-3.5 h-3.5 rounded-sm border-warm-grey text-brand-600" />
-                    {tab === 'seo' ? 'Issues only' : 'Missing only'}
+                    {tab === 'seo' ? 'Issues only' : tab === 'translations' ? 'Missing only' : 'Not in catalogue only'}
                   </label>
-                  <button onClick={tab === 'seo' ? exportSeo : exportTranslations}
+                  <button onClick={tab === 'seo' ? exportSeo : tab === 'translations' ? exportTranslations : exportMatch}
                     className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
                     <Download size={13} /> CSV
                   </button>
@@ -385,6 +474,59 @@ export default function WooCatalogue() {
                 </table>
               </div>
             </div>
+          )}
+
+          {tab === 'match' && (
+            loadingInternal || !matchModel ? (
+              <div className="card p-6 text-sm text-ink-60">{loadingInternal ? 'Loading the internal catalogues…' : 'Preparing…'}</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+                  <Stat label="In figurine range" value={matchModel.counts.figurine} tone="green" />
+                  <Stat label="In corp gifts" value={matchModel.counts.corp} tone="green" />
+                  <Stat label="In finished goods" value={matchModel.counts.b2c} />
+                  <Stat label="Not in any catalogue" value={matchModel.counts.unmatched} tone={matchModel.counts.unmatched ? 'amber' : undefined} />
+                  <Stat label="Catalogue, not on Woo" value={matchModel.counts.internalOnly} />
+                </div>
+                <p className="text-2xs text-ink-60 mb-2">Matched on the design stem (leading letters + digits of the SKU, suffix ignored) against figurine <code className="font-mono">range_products</code>, corp <code className="font-mono">products</code>, and <code className="font-mono">b2c_stock</code>.</p>
+                <div className="card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-2xs uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
+                          <th className="px-3 py-2 text-left">Woo product</th>
+                          <th className="px-3 py-2 text-left">SKU</th>
+                          <th className="px-3 py-2 text-left">Stem</th>
+                          <th className="px-3 py-2 text-left">In catalogue</th>
+                          <th className="px-3 py-2 text-left">Matched to</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-warm-grey">
+                        {matchRows.map(p => (
+                          <tr key={p.product_id} className={p._hits.length ? 'hover:bg-ivory/40' : 'bg-amber-50/40'}>
+                            <td className="px-3 py-2 max-w-[260px]">
+                              <span className="text-ink truncate inline-block max-w-full align-middle">{p.name}</span>
+                              {p.permalink && <a href={p.permalink} target="_blank" rel="noreferrer" className="ml-1 text-platinum hover:text-brand-600 inline-block align-middle"><ExternalLink size={11} /></a>}
+                            </td>
+                            <td className="px-3 py-2 font-mono text-2xs text-ink-60 truncate max-w-[110px]" title={p.sku}>{p.sku || '—'}</td>
+                            <td className="px-3 py-2 font-mono text-2xs text-ink-60">{p._stem || '—'}</td>
+                            <td className="px-3 py-2">
+                              {p._hits.length
+                                ? p._hits.map(h => <span key={h.src} className="text-2xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 mr-1">{h.src}</span>)
+                                : <span className="text-2xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">not found</span>}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-ink-60 truncate max-w-[240px]">{p._hits.map(h => h.name).join(' / ') || '—'}</td>
+                          </tr>
+                        ))}
+                        {matchRows.length === 0 && (
+                          <tr><td colSpan={5} className="px-3 py-4 text-center text-xs text-ink-60">Nothing matches.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )
           )}
 
           {tab === 'seo' && (
