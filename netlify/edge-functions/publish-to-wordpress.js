@@ -188,9 +188,17 @@ export default async function handler(req) {
     return `<!-- wp:image {"id":${media.wp_id},"sizeSlug":"${size}"${linkAttr}} -->\n<figure class="${cls}">${figInner}${caption}</figure>\n<!-- /wp:image -->\n\n`
   }
 
+  // CTA — a plain styled anchor inside a paragraph, NOT wp:button. The live
+  // theme renders wp:button as a hard-black fully-rounded pill (its
+  // .wp-block-button__link rules override the block's own inline colours), which
+  // is off every axis of the Crystocraft language (square corners, burgundy,
+  // uppercase). A bare <a> with inline styles matches the in-app preview's
+  // .btn and the theme's low-specificity link rules leave it alone.
   function buttonBlock(text, url) {
     if (!url || !text) return ''
-    return `<!-- wp:buttons -->\n<div class="wp-block-buttons">\n<!-- wp:button {"backgroundColor":"black","textColor":"white","style":{"color":{"background":"#111111","text":"#ffffff"}}} -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button has-white-color has-black-background-color has-text-color has-background" href="${url}" target="_blank" rel="noreferrer noopener" style="background-color:#111111;color:#ffffff">${text}</a></div>\n<!-- /wp:button -->\n</div>\n<!-- /wp:buttons -->\n\n`
+    const style = 'display:inline-block;background:#6E2433;color:#F7F4EF;padding:.7em 1.5em;'
+      + 'text-decoration:none;text-transform:uppercase;letter-spacing:.1em;font-size:.85em;border-radius:0'
+    return `<!-- wp:paragraph {"className":"crysto-cta"} -->\n<p class="crysto-cta"><a href="${url}" target="_blank" rel="noreferrer noopener" style="${style}">${text}</a></p>\n<!-- /wp:paragraph -->\n\n`
   }
 
   function headingBlock(text) {
@@ -199,29 +207,25 @@ export default async function handler(req) {
   }
 
   function paraBlock(text) {
-    if (!text) return ''
-    const inner = text.replace(/\n\n/g, '</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>')
-    return `<!-- wp:paragraph -->\n<p>${inner}</p>\n<!-- /wp:paragraph -->\n\n`
+    // Split on blank lines → separate paragraph blocks; single newlines → <br>.
+    // Trims and drops empties so a trailing "\n\n" can't emit an empty <p>.
+    const paras = String(text || '').split(/\n\n+/).map(s => s.trim()).filter(Boolean)
+    return paras
+      .map(p => `<!-- wp:paragraph -->\n<p>${p.replace(/\n/g, '<br>')}</p>\n<!-- /wp:paragraph -->\n\n`)
+      .join('')
   }
 
-  // 1 image: wp:columns — text (60%) left, image (40%) right
-  function columnsBlock(heading, body, media) {
-    const textBlocks = (heading ? headingBlock(heading) : '') + paraBlock(body)
-    const imgCol = imgBlock(media, 'medium')
-    return `<!-- wp:columns {"isStackedOnMobile":true} -->\n<div class="wp-block-columns is-layout-flex">\n` +
-      `<!-- wp:column {"width":"60%"} -->\n<div class="wp-block-column" style="flex-basis:60%">\n${textBlocks}</div>\n<!-- /wp:column -->\n\n` +
-      `<!-- wp:column {"width":"40%"} -->\n<div class="wp-block-column" style="flex-basis:40%">\n${imgCol}</div>\n<!-- /wp:column -->\n</div>\n<!-- /wp:columns -->\n\n`
-  }
-
-  // 2–3 images: text then wp:gallery
-  function galleryBlock(heading, body, mediaArr) {
-    const n = mediaArr.length
-    const innerImgs = mediaArr.map(m =>
-      `<!-- wp:image {"id":${m.wp_id},"sizeSlug":"medium"} -->\n<figure class="wp-block-image size-medium"><img src="${m.wp_url}" alt="${m.alt_text || ''}" /></figure>\n<!-- /wp:image -->`
-    ).join('\n')
-    return (heading ? headingBlock(heading) : '') +
-      paraBlock(body) +
-      `<!-- wp:gallery {"columns":${n},"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-${n} is-cropped">\n${innerImgs}\n</figure>\n<!-- /wp:gallery -->\n\n`
+  // 2+ images → wp:gallery. Columns capped at 2 so rows wrap instead of the
+  // thumbnails shrinking (3-up rendered ~220px squares live); no is-cropped
+  // (it square-crops tall product shots); captions kept (the old inline
+  // builder dropped them).
+  function galleryFrag(mediaArr) {
+    const cols = Math.min(mediaArr.length, 2)
+    const inner = mediaArr.map(m => {
+      const cap = m.caption ? `<figcaption class="wp-element-caption">${m.caption}</figcaption>` : ''
+      return `<!-- wp:image {"id":${m.wp_id},"sizeSlug":"large"} -->\n<figure class="wp-block-image size-large"><img src="${m.wp_url}" alt="${m.alt_text || ''}" />${cap}</figure>\n<!-- /wp:image -->`
+    }).join('\n')
+    return `<!-- wp:gallery {"columns":${cols},"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-${cols}">\n${inner}\n</figure>\n<!-- /wp:gallery -->\n\n`
   }
 
   try {
@@ -270,7 +274,7 @@ export default async function handler(req) {
         if (imgs.length === 1) {
           html += linkedHeading + paraBlock(section.body) + imgBlock(imgs[0], 'large', '', linkUrl)
         } else if (imgs.length >= 2) {
-          html += linkedHeading + paraBlock(section.body) + `<!-- wp:gallery {"columns":${imgs.length},"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-${imgs.length} is-cropped">\n${imgs.map(m => `<!-- wp:image {"id":${m.wp_id},"sizeSlug":"medium"} -->\n<figure class="wp-block-image size-medium"><img src="${m.wp_url}" alt="${m.alt_text || ''}" /></figure>\n<!-- /wp:image -->`).join('\n')}\n</figure>\n<!-- /wp:gallery -->\n\n`
+          html += linkedHeading + paraBlock(section.body) + galleryFrag(imgs)
         } else {
           html += linkedHeading + paraBlock(section.body)
         }
@@ -316,7 +320,7 @@ export default async function handler(req) {
         if (imgs.length === 1) {
           html += linkedHeading + paraBlock(item.body) + imgBlock(imgs[0], 'large', '', linkUrl)
         } else if (imgs.length >= 2) {
-          html += linkedHeading + paraBlock(item.body) + `<!-- wp:gallery {"columns":${imgs.length},"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-${imgs.length} is-cropped">\n${imgs.map(m => `<!-- wp:image {"id":${m.wp_id},"sizeSlug":"medium"} -->\n<figure class="wp-block-image size-medium"><img src="${m.wp_url}" alt="${m.alt_text || ''}" /></figure>\n<!-- /wp:image -->`).join('\n')}\n</figure>\n<!-- /wp:gallery -->\n\n`
+          html += linkedHeading + paraBlock(item.body) + galleryFrag(imgs)
         } else {
           html += linkedHeading + paraBlock(item.body)
         }

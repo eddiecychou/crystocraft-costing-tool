@@ -83,6 +83,23 @@ Verified SEO/publish patterns (from V3.0, still current):
 - Banned opener words in AI copy: "Elevate", "Discover", "Introducing",
   "Transform", "Unleash" (varied openings requirement).
 
+**Two renderers, keep them converged.** `BlogGenerator.jsx`'s
+`buildSpotlightPreviewHTML` / `buildRoundupPreviewHTML` (the "Preview HTML"
+modal) is the *design intent* — Crystocraft fonts, burgundy square CTA,
+hairline section dividers, captioned flex image rows. `publish-to-wordpress.js`
+emits the *shipped* Gutenberg blocks and had drifted cruder. Sep-2026 audit
+(2 live posts) + generator-side fixes:
+- CTA is a burgundy square `<a>` in a paragraph, **not `wp:button`** — the live
+  theme renders `wp:button` as a hard-black fully-rounded pill and overrides its
+  inline colours.
+- Gallery: columns capped at **2** (3-up rendered ~220px squares), no
+  `is-cropped`, captions kept.
+- `paraBlock` trims + drops empty paragraphs; single `\n` → `<br>`.
+- Publish is blocked until a hero **and** ≥1 content image are set (a roundup
+  shipped as a wall of grey text).
+- Still theme-side (DSH): body/heading colour is `#666` washed-out with no
+  tonal hierarchy, body `line-height` 1.375 in Questrial, no lede styling.
+
 ## 4. Image work — two SEPARATE systems (do not conflate)
 
 There are **two distinct image systems**, in two environments, serving two

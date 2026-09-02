@@ -625,6 +625,11 @@ function SpotlightTab({ preloadedProduct }) {
 
   const previewHTML = result ? buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl, ctaText) : ''
 
+  // Don't let a post go out as a wall of text — needs a hero + at least one
+  // section image (post #1 in the Sep audit shipped with zero body images).
+  const sectionImgCount = sectionImages.reduce((n, s) => n + (s?.length || 0), 0)
+  const imagesReady = !!heroImage && sectionImgCount >= 1
+
   return (
     <div className="space-y-5">
       {/* Controls */}
@@ -738,7 +743,10 @@ function SpotlightTab({ preloadedProduct }) {
                 <Eye size={13} />Preview HTML
               </button>
             </div>
-            <WPPublishButton payload={wpPayload} />
+            <WPPublishButton payload={wpPayload} disabled={!imagesReady} />
+            {!imagesReady && (
+              <p className="text-xs text-amber-600">Add a hero image and at least one content image before publishing.</p>
+            )}
           </div>
         </div>
       )}
@@ -895,6 +903,10 @@ function RoundupTab() {
   } : null
 
   const previewHTML = result ? buildRoundupPreviewHTML(result, selected, heroImage, itemImages, productUrl, ctaText) : ''
+
+  // Needs a hero + at least one item image — no wall-of-text posts (Sep audit).
+  const itemImgCount = Object.values(itemImages).reduce((n, a) => n + (a?.length || 0), 0)
+  const imagesReady = !!heroImage && itemImgCount >= 1
 
   return (
     <div className="space-y-5">
@@ -1089,7 +1101,10 @@ function RoundupTab() {
                 <Eye size={13} />Preview HTML
               </button>
             </div>
-            <WPPublishButton payload={wpPayload} />
+            <WPPublishButton payload={wpPayload} disabled={!imagesReady} />
+            {!imagesReady && (
+              <p className="text-xs text-amber-600">Add a hero image and at least one content image before publishing.</p>
+            )}
           </div>
         </div>
       )}
