@@ -21,7 +21,7 @@
 | 1 | **State store + snapshot** — a structured "what's live now" for posts/pages, snapshottable for rollback | OC page `/seo-state`, edge fn `seo-state`, Firestore `seo_state` + `seo_state_history` | **BUILT 2026-09-02** |
 | 2 | **Batch / review contract** — DSH prepares a change batch, the human approves it per-item in the OC against a real diff | Firestore `seo_batches`, Node fn `seo-batch`, OC page `/seo-review` | **BUILT 2026-09-02** |
 | 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | Reference impls in `seo-control-plane/` (OC-owned, DSH vendors) | **BUILT 2026-09-02** |
-| 4 | **Reconciliation** — live state vs last-approved batch; flags a reverted page, a broken trid, a reappeared EN link | OC page, same pattern as Woo Stock Match | planned |
+| 4 | **Reconciliation** — live state vs a history snapshot or an executed batch; flags a reverted page, a clobbered layout, a disappeared SEO field | OC page `/seo-reconcile` | **BUILT 2026-09-02** |
 
 Products are already covered by `woo-sync.js` `catalogue_page` → the **Woo Catalogue** page (Yoast title/desc + WPML `translations` per product). This control plane adds **blog posts and pages**.
 
@@ -139,9 +139,22 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   `seo_batches` `result` op. **No Workbench script writes WordPress any other
   way.**
 
-## Step 4 — reconciliation (planned)
+## Step 4 — reconciliation (BUILT — `/seo-reconcile`)
 
-OC page: pull current `seo-state`, diff against the last `executed` batch and
-against the last history snapshot. Flag: status changed, slug changed,
-`elementor_hash` changed unexpectedly, `seo_*_set` went false, a page that had a
-translation now doesn't. Same shape as `WooStockReconcile.jsx`.
+Diffs the **current** `seo_state` (SEO State page's cache — only as fresh as
+the last read there) against a chosen baseline. Two modes:
+
+- **vs Snapshot** — pick a `seo_state_history` entry. Per content row, compares
+  `status` / `slug` / `seo_title_set` / `seo_desc_set` / `elementor_hash`.
+  Buckets: `unchanged` / `changed` (with per-field from→to) / `new` (in current,
+  not snapshot) / `gone` (in snapshot, not current). Answers "has anything
+  drifted since T?" regardless of cause — a reverted page, a clobbered layout,
+  SEO meta that vanished.
+- **vs Batch** — pick an `executed` / `partial` batch. Per approved item,
+  compares the current row against `result.after` (the `safeWrite` fingerprint
+  taken right after the write): `slug` / `status` / layout hash changed *since
+  execution*, or a Yoast title/meta-desc we wrote that is no longer set, or the
+  execution itself failed (`result.ok === false`). Buckets: `held` / `drifted` /
+  `failed`. Answers "did our approved changes land and stay?"
+
+CSV export of the drift/failed rows in both modes.

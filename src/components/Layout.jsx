@@ -44,6 +44,7 @@ const nav = [
   { to: '/woo-catalogue', label: 'Woo Catalogue', short: 'WooCat', Icon: ShoppingCart, module: 'woo' },
   { to: '/seo-state',  label: 'SEO State',      short: 'SEO',     Icon: Database, module: 'woo' },
   { to: '/seo-review', label: 'SEO Review',     short: 'Review',  Icon: ClipboardList, module: 'woo' },
+  { to: '/seo-reconcile', label: 'SEO Reconcile', short: 'Recon', Icon: Database, module: 'woo' },
   { to: '/woo-sync',   label: 'WooCommerce Sync', short: 'WooSync', Icon: ShoppingCart, module: 'woo' },
   { to: '/woo-stock',  label: 'Woo Stock Match', short: 'WooStock', Icon: ShoppingCart, module: 'woo' },
 
