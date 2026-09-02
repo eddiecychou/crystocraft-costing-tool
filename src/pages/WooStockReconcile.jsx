@@ -34,6 +34,7 @@ export default function WooStockReconcile() {
   const [error, setError] = useState('')
   const [linkFor, setLinkFor] = useState(null) // b2c item id whose picker is open
   const [showWooOnly, setShowWooOnly] = useState(false)
+  const [search, setSearch] = useState('')
 
   const loadWoo = useCallback(async () => {
     setLoadingWoo(true); setError(''); setProgress('Fetching page 1…')
@@ -155,6 +156,14 @@ export default function WooStockReconcile() {
     downloadCsv('woo-stock-reconciliation', cols, model.rows)
   }
 
+  const visibleRows = useMemo(() => {
+    if (!model) return []
+    const q = search.trim().toUpperCase()
+    if (!q) return model.rows
+    return model.rows.filter((r) =>
+      `${r.code} ${r.name} ${r.match?.sku || ''}`.toUpperCase().includes(q))
+  }, [model, search])
+
   const busy = loadingWoo || loadingB2c
 
   return (
@@ -182,6 +191,11 @@ export default function WooStockReconcile() {
         )}
         {progress && <span className="text-xs text-ink-60">{progress}</span>}
       </div>
+
+      {model && (
+        <input className="input text-sm w-full max-w-sm mb-4" placeholder="Search FG code, name or Woo SKU…"
+               value={search} onChange={(e) => setSearch(e.target.value)} />
+      )}
 
       {loadingWoo && <LoadingBar />}
       {error && (
@@ -230,7 +244,10 @@ export default function WooStockReconcile() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-warm-grey">
-                  {model.rows.map((r) => (
+                  {visibleRows.length === 0 && (
+                    <tr><td colSpan={8} className="px-3 py-4 text-center text-xs text-ink-60">No FG SKUs match “{search}”.</td></tr>
+                  )}
+                  {visibleRows.map((r) => (
                     <RowView key={r.id} r={r} woo={woo}
                              open={linkFor === r.id}
                              onToggle={() => setLinkFor(linkFor === r.id ? null : r.id)}
