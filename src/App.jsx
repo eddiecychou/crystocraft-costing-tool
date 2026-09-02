@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { useAuthState } from './hooks/useAuthState'
 import { useProfile, isAdmin, isStaffRole, isApproved, isPending } from './hooks/useProfile'
 import { AccessContext, useCan, resolveModules } from './access'
+import { UiLangContext, isUiLang } from './i18n'
 import Layout from './components/Layout'
 import LoadingBar from './components/LoadingBar'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -190,8 +191,11 @@ function DashboardRoute() {
 }
 
 function AdminApp({ user, profile, role }) {
+  const uiLang = isUiLang(profile?.ui_lang) ? profile.ui_lang : 'en'
+  if (typeof document !== 'undefined') document.documentElement.lang = uiLang === 'zh-Hans' ? 'zh-Hans' : 'en'
   return (
     <AccessContext.Provider value={{ role, modules: resolveModules(profile) }}>
+    <UiLangContext.Provider value={uiLang}>
     <Routes>
       {/* Print routes — no Layout wrapper */}
       <Route path="/packing/:plId/print" element={<Gate module="shipping"><PackingListPrint /></Gate>} />
@@ -309,6 +313,7 @@ function AdminApp({ user, profile, role }) {
             </Layout>
       } />
     </Routes>
+    </UiLangContext.Provider>
     </AccessContext.Provider>
   )
 }

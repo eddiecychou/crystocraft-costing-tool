@@ -5,6 +5,7 @@ import { useCrystals } from '../crystals'
 import { usePackaging } from '../packaging'
 import { useB2cStock } from '../b2cStock'
 import { Package, Puzzle, Factory, Boxes, AlertTriangle } from 'lucide-react'
+import { useT } from '../i18n'
 
 // Production-role landing page (V8.12 RBAC). The real Dashboard is built
 // entirely on customers/quotes/orders/enquiries — sales data a production
@@ -52,6 +53,7 @@ const LINKS = [
 ]
 
 export default function ProductionDashboard() {
+  const t = useT()
   const { components } = useComponents()
   const { items: crystals } = useCrystals()
   const { items: packaging } = usePackaging()
@@ -69,37 +71,37 @@ export default function ProductionDashboard() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
-      <h1 className="text-xl mb-1">Production</h1>
-      <p className="text-sm text-ink-60 mb-6">Supply-side overview. Catalogue, components, suppliers and stock.</p>
+      <h1 className="text-xl mb-1">{t('Production')}</h1>
+      <p className="text-sm text-ink-60 mb-6">{t('Supply-side overview. Catalogue, components, suppliers and stock.')}</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatCard Icon={Puzzle} label="Metal components" value={(components || []).length} />
-        <StatCard Icon={Boxes} label="Crystal SKUs" value={(crystals || []).length} />
-        <StatCard Icon={Boxes} label="Packaging SKUs" value={(packaging || []).length} />
-        <StatCard Icon={AlertTriangle} label="Low stock" value={low.length} tone={low.length ? 'warn' : 'ink'} />
+        <StatCard Icon={Puzzle} label={t('Metal components')} value={(components || []).length} />
+        <StatCard Icon={Boxes} label={t('Crystal SKUs')} value={(crystals || []).length} />
+        <StatCard Icon={Boxes} label={t('Packaging SKUs')} value={(packaging || []).length} />
+        <StatCard Icon={AlertTriangle} label={t('Low stock')} value={low.length} tone={low.length ? 'warn' : 'ink'} />
       </div>
 
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm text-ink-80">Reorder alerts</h2>
-          <Link to="/inventory" className="text-xs text-brand-600 hover:underline">Open Inventory →</Link>
+          <h2 className="text-sm text-ink-80">{t('Reorder alerts')}</h2>
+          <Link to="/inventory" className="text-xs text-brand-600 hover:underline">{t('Open Inventory →')}</Link>
         </div>
         {low.length === 0 ? (
-          <p className="text-sm text-ink-60">Nothing below its reorder point.</p>
+          <p className="text-sm text-ink-60">{t('Nothing below its reorder point.')}</p>
         ) : (
           <div className="divide-y divide-warm-grey">
             {low.slice(0, 12).map((r, i) => (
               <div key={`${r.cls}-${r.id || i}`} className="py-2 flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink-70 truncate">
-                  <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide mr-2">{r.cls}</span>
+                  <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide mr-2">{t(r.cls)}</span>
                   {r.code || r.name || r.id}
                 </span>
                 <span className={`shrink-0 ${r.available < 0 ? 'text-red-600' : 'text-amber-600'}`}>
-                  {r.available.toLocaleString()} avail
+                  {t('{n} avail', { n: r.available.toLocaleString() })}
                 </span>
               </div>
             ))}
-            {low.length > 12 && <p className="text-xs text-ink-60 pt-2">…and {low.length - 12} more.</p>}
+            {low.length > 12 && <p className="text-xs text-ink-60 pt-2">{t('…and {n} more.', { n: low.length - 12 })}</p>}
           </div>
         )}
       </div>
@@ -108,7 +110,7 @@ export default function ProductionDashboard() {
         {LINKS.map(({ to, label, Icon }) => (
           <Link key={to} to={to} className="card p-4 flex flex-col items-center gap-2 hover:border-brand-300 transition-colors text-center">
             <Icon size={22} strokeWidth={1.6} className="text-ink-60" />
-            <span className="text-sm text-ink-80">{label}</span>
+            <span className="text-sm text-ink-80">{t(label)}</span>
           </Link>
         ))}
       </div>

@@ -121,7 +121,7 @@ export default function AccountEdit() {
       // silently demoted to `pending`, TWICE) is exactly what this trail
       // exists to catch. Best-effort and non-blocking — a failed audit
       // write must never fail the account change itself.
-      const changed = ['role', 'status', 'account_type', 'modules'].filter(k => {
+      const changed = ['role', 'status', 'account_type', 'modules', 'ui_lang'].filter(k => {
         if (!(k in patch)) return false
         if (k === 'modules') return !sameSet(patch[k] || [], before?.modules || [])
         return patch[k] !== before?.[k]
@@ -586,6 +586,23 @@ export default function AccountEdit() {
                 <span className={`text-2xs ${sameSet(mods, u.modules || []) ? 'text-ink-60' : 'text-amber-600'}`}>
                   {sameSet(mods, u.modules || []) ? 'no unsaved changes' : 'unsaved'}
                 </span>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-warm-grey">
+                <p className="text-2xs uppercase tracking-wide text-ink-60 mb-1.5">Interface language</p>
+                <p className="text-2xs text-ink-60 mb-2">
+                  Simplified Chinese covers the supply &amp; inventory pages (Components, Suppliers,
+                  Purchase Orders, Inventory, Production dashboard). The rest of the app stays English.
+                </p>
+                <select
+                  className="input text-xs w-auto"
+                  value={u.ui_lang === 'zh-Hans' ? 'zh-Hans' : 'en'}
+                  onChange={(e) => apply({ ui_lang: e.target.value })}
+                  disabled={status === 'saving'}
+                >
+                  <option value="en">English</option>
+                  <option value="zh-Hans">简体中文 (Simplified Chinese)</option>
+                </select>
               </div>
             </div>
           )}

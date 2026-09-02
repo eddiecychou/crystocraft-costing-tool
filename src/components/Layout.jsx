@@ -6,6 +6,7 @@ import { auth, db } from '../firebase'
 import logo from '../assets/logo.png'
 import { APP_NAME, APP_VERSION, versionLabel } from '../appInfo'
 import { canAccess, useAccess } from '../access'
+import { useT } from '../i18n'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
   Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles, RotateCcw, ShoppingCart,
@@ -85,6 +86,7 @@ function useVisibleNav() {
 
 export default function Layout({ children, user }) {
   const { role, modules } = useAccess()
+  const t = useT()
   const visibleNav = useVisibleNav()
   const navItems = visibleNav.filter(n => n.to)
   const mainNav  = navItems.filter(n => n.primary)
@@ -167,7 +169,7 @@ export default function Layout({ children, user }) {
             item.group ? (
               <p key={`g-${item.group}`}
                  className={`px-3 text-2xs font-semibold uppercase tracking-[0.12em] text-ivory/25 ${i === 0 ? 'pb-1' : 'pt-4 pb-1'}`}>
-                {item.group}
+                {t(item.group)}
               </p>
             ) : (
               <NavLink
@@ -182,7 +184,7 @@ export default function Layout({ children, user }) {
                 }
               >
                 <item.Icon size={18} strokeWidth={1.75} className="shrink-0" />
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{t(item.label)}</span>
                 {badgeFor(item.to) > 0 && (
                   <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-2xs font-semibold flex items-center justify-center leading-none">
                     {badgeFor(item.to)}
@@ -196,7 +198,7 @@ export default function Layout({ children, user }) {
         <div className="px-4 py-4 border-t border-white/10">
           <p className="text-xs text-ivory/40 truncate mb-2">{user?.email}</p>
           <button onClick={handleSignOut} className="text-xs text-ivory/40 hover:text-red-400 transition-colors">
-            Sign out
+            {t('Sign out')}
           </button>
         </div>
       </aside>
@@ -213,7 +215,7 @@ export default function Layout({ children, user }) {
             </p>
           </div>
           <button onClick={handleSignOut} className="text-xs text-ivory/40 hover:text-red-400 transition-colors px-2 py-1">
-            Sign out
+            {t('Sign out')}
           </button>
         </header>
 
@@ -235,7 +237,7 @@ export default function Layout({ children, user }) {
               }
             >
               <Icon size={20} strokeWidth={1.75} />
-              <span className="text-2xs font-medium leading-none truncate max-w-full px-0.5">{short}</span>
+              <span className="text-2xs font-medium leading-none truncate max-w-full px-0.5">{t(short)}</span>
             </NavLink>
           ))}
 
@@ -248,7 +250,7 @@ export default function Layout({ children, user }) {
           >
             {seoPending > 0 && <span className="absolute top-1.5 right-1/2 translate-x-3 w-2 h-2 rounded-full bg-red-500" />}
             <MoreHorizontal size={20} strokeWidth={1.75} />
-            <span className="text-2xs font-medium leading-none">More</span>
+            <span className="text-2xs font-medium leading-none">{t('More')}</span>
           </button>
         </nav>
 
@@ -267,13 +269,13 @@ export default function Layout({ children, user }) {
                 onTouchEnd={onSheetTouchEnd}
               >
                 <span className="w-10 h-1.5 rounded-full bg-ivory-dark mb-2" />
-                <p className="text-xs font-medium text-ink-60 uppercase tracking-[0.12em] font-label">All sections</p>
+                <p className="text-xs font-medium text-ink-60 uppercase tracking-[0.12em] font-label">{t('All sections')}</p>
               </div>
               <div className="grid grid-cols-4 gap-1 p-3 pt-1 overflow-y-auto">
                 {visibleNav.map((item) => (
                   item.group ? (
                     <p key={`mg-${item.group}`} className="col-span-4 px-1 pt-3 pb-0.5 text-2xs font-semibold uppercase tracking-[0.12em] text-ink-40">
-                      {item.group}
+                      {t(item.group)}
                     </p>
                   ) : (
                     <NavLink
@@ -292,7 +294,7 @@ export default function Layout({ children, user }) {
                         </span>
                       )}
                       <item.Icon size={24} strokeWidth={1.6} className="shrink-0" />
-                      <span className="text-2xs font-medium leading-tight line-clamp-2">{item.short}</span>
+                      <span className="text-2xs font-medium leading-tight line-clamp-2">{t(item.short)}</span>
                     </NavLink>
                   )
                 ))}

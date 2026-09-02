@@ -7,6 +7,7 @@ import LoadingBar from '../components/LoadingBar'
 import { SUPPLIER_CATEGORIES, SUPPLIER_PROVINCES } from '../constants'
 import { MapPin, Phone, MessageCircle } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
+import { useT } from '../i18n'
 
 const VIEW_STATE_KEY = 'suppliers.viewState'
 const loadViewState = () => {
@@ -25,6 +26,7 @@ const CAT_STYLES = {
 }
 
 export default function Suppliers() {
+  const t = useT()
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading]     = useState(true)
   const initialView = loadViewState()
@@ -68,28 +70,28 @@ export default function Suppliers() {
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl text-ink">Suppliers</h1>
-          <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {suppliers.length} suppliers</p>
+          <h1 className="text-xl md:text-2xl text-ink">{t('Suppliers')}</h1>
+          <p className="text-sm text-ink-60 mt-0.5">{t('{a} of {b} suppliers', { a: filtered.length, b: suppliers.length })}</p>
         </div>
-        <Link to="/suppliers/new" className="btn-primary text-sm whitespace-nowrap">+ New Supplier</Link>
+        <Link to="/suppliers/new" className="btn-primary text-sm whitespace-nowrap">{t('+ New Supplier')}</Link>
       </div>
 
       {/* Search + province */}
       <div className="flex gap-2 mb-3">
         <input
           type="text"
-          placeholder="Search by name…"
+          placeholder={t('Search by name…')}
           className="input flex-1"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
         {(provinceOptions.length > 0 || someUnset) && (
           <select className="input w-48 shrink-0" value={provFilter} onChange={e => setProvFilter(e.target.value)}>
-            <option value="">All provinces</option>
+            <option value="">{t('All provinces')}</option>
             {provinceOptions.map(p => (
               <option key={p} value={p}>{p} ({suppliers.filter(s => s.province === p).length})</option>
             ))}
-            {someUnset && <option value="(none)">— no province set ({suppliers.filter(s => !s.province).length})</option>}
+            {someUnset && <option value="(none)">{t('— no province set')} ({suppliers.filter(s => !s.province).length})</option>}
           </select>
         )}
       </div>
@@ -97,7 +99,7 @@ export default function Suppliers() {
       {someUnset && (
         <button onClick={() => setShowBackfill(true)}
           className="text-xs text-brand-600 hover:text-brand-800 mb-3">
-          Backfill province from city for {suppliers.filter(s => !s.province).length} supplier{suppliers.filter(s => !s.province).length === 1 ? '' : 's'} →
+          {t('Backfill province from city for {n} suppliers →', { n: suppliers.filter(s => !s.province).length })}
         </button>
       )}
       {showBackfill && (
@@ -113,7 +115,7 @@ export default function Suppliers() {
           onClick={() => setCatFilter('')}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!catFilter ? 'bg-brand-600 text-white' : 'bg-ivory-dark text-ink-70 hover:bg-warm-grey'}`}
         >
-          All
+          {t('All')}
         </button>
         {SUPPLIER_CATEGORIES.map(c => {
           const count = suppliers.filter(s => s.category === c.value).length
@@ -124,7 +126,7 @@ export default function Suppliers() {
               onClick={() => setCatFilter(catFilter === c.value ? '' : c.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${catFilter === c.value ? 'bg-brand-600 text-white' : 'bg-ivory-dark text-ink-70 hover:bg-warm-grey'}`}
             >
-              <c.Icon size={13} className="inline align-[-2px] mr-1" />{c.value} <span className="opacity-60 ml-0.5">({count})</span>
+              <c.Icon size={13} className="inline align-[-2px] mr-1" />{t(c.value)} <span className="opacity-60 ml-0.5">({count})</span>
             </button>
           )
         })}
@@ -132,7 +134,7 @@ export default function Suppliers() {
 
       {filtered.length === 0 && !loading ? (
         <div className="text-center py-20 text-ink-60">
-          {suppliers.length === 0 ? 'No suppliers yet — add your first one.' : 'No suppliers match your search.'}
+          {suppliers.length === 0 ? t('No suppliers yet — add your first one.') : t('No suppliers match your search.')}
         </div>
       ) : (
         <div className="card divide-y divide-warm-grey">
@@ -150,7 +152,7 @@ export default function Suppliers() {
                     <p className="font-medium text-ink text-sm">{s.name}</p>
                     {cat && (
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${CAT_STYLES[s.category] || 'bg-ivory-dark text-ink-60'}`}>
-                        <cat.Icon size={12} className="inline align-[-2px] mr-1" />{s.category}
+                        <cat.Icon size={12} className="inline align-[-2px] mr-1" />{t(s.category)}
                       </span>
                     )}
                   </div>
@@ -182,6 +184,7 @@ export default function Suppliers() {
 // rows. Every row is an editable dropdown pre-set to the guess (or "— skip —");
 // nothing is written until "Apply".
 function BackfillProvincesModal({ suppliers, onClose }) {
+  const t = useT()
   const [rows, setRows] = useState(() =>
     suppliers.map(s => ({ id: s.id, name: s.name, city: s.city || '', country: s.country || '', choice: guessProvince(s) })))
   const [busy, setBusy] = useState(false)
@@ -212,30 +215,29 @@ function BackfillProvincesModal({ suppliers, onClose }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-2xl my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className=" text-ink">Backfill Province / Region</h2>
+          <h2 className=" text-ink">{t('Backfill Province / Region')}</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1 text-lg leading-none">×</button>
         </div>
         <div className="p-5">
           {done != null ? (
             <p className={`text-sm ${String(done).startsWith('Error') ? 'text-red-600' : 'text-green-700'}`}>
-              {String(done).startsWith('Error') ? done : `Set the province on ${done} supplier${done === 1 ? '' : 's'}.`}
+              {String(done).startsWith('Error') ? done : t('Set the province on {n} suppliers.', { n: done })}
             </p>
           ) : (
             <>
               <p className="text-xs text-ink-60 mb-3">
-                Guessed from each supplier's city / address. Adjust any row, set to <strong>— skip —</strong> to leave it
-                blank, then Apply. Nothing is written until you do.
+                {t("Guessed from each supplier's city / address. Adjust any row, set to “— skip —” to leave it blank, then Apply. Nothing is written until you do.")}
               </p>
               <div className="border border-warm-grey rounded-none max-h-[52vh] overflow-y-auto divide-y divide-warm-grey">
                 {rows.map(r => (
                   <div key={r.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-ink truncate">{r.name}</p>
-                      <p className="text-xs text-ink-60 truncate">{[r.city, r.country].filter(Boolean).join(' · ') || 'no city on file'}</p>
+                      <p className="text-xs text-ink-60 truncate">{[r.city, r.country].filter(Boolean).join(' · ') || t('no city on file')}</p>
                     </div>
                     <select className="input w-52 shrink-0 text-xs" value={r.choice}
                             onChange={e => setChoice(r.id, e.target.value)}>
-                      <option value="">— skip —</option>
+                      <option value="">{t('— skip —')}</option>
                       {/* a non-China guess (a country name) isn't in the list */}
                       {r.choice && !SUPPLIER_PROVINCES.includes(r.choice) && (
                         <option value={r.choice}>{r.choice}</option>
@@ -249,10 +251,10 @@ function BackfillProvincesModal({ suppliers, onClose }) {
           )}
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-warm-grey">
-          <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">{done != null ? 'Close' : 'Cancel'}</button>
+          <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">{done != null ? t('Close') : t('Cancel')}</button>
           {done == null && (
             <button onClick={apply} disabled={busy || toApply.length === 0} className="btn-primary text-sm">
-              {busy ? 'Applying…' : `Apply to ${toApply.length}`}
+              {busy ? t('Applying…') : t('Apply to {n}', { n: toApply.length })}
             </button>
           )}
         </div>
