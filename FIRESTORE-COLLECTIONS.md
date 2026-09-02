@@ -101,6 +101,8 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 
 - `uc_invoices/{id}` — UC# invoice registry mirroring app-generated invoices — the team's "PI"/"invoice"/JES-SO/SI distinctions from CLAUDE.md apply here. Auth: admin only.
 - `counters/{name}` — atomic per-year allocation counters: `uc_<yy>` (UC#, `uc.js`), `so_<yy>` (sales order, `soNumber.js`), `pu_<yy>` (purchase order, `puNumber.js`). Auth: admin, **except `pu_<yy>` which is also production-writable** (V8.12 — needed to number a new PO); the rule matches `name.matches('pu_[0-9]+')`.
+- `seo_state/{doc}` — SEO control plane Step 1 (`docs/skills/SEO-CONTROL-PLANE.md`). Chunked (`head` + `c0..cN`) cache of the live WordPress state for blog posts + pages (slug/status/Yoast meta/`_elementor_data` hash, per language). Mutable, admin r/w, written by `src/seoCache.js`. Products are the separate `woo_cache/catalogue_overview`.
+- `seo_state_history/{autoId}` — **append-only** timestamped snapshots of `seo_state` (`{rows, row_count, note, taken_at}`) — the rollback reference before a bulk WordPress change. Admin read + create; update/delete denied.
 - `woo_cache/{doc}` — **pure cache**, admin only. Docs: `orders`, `product_catalogue`, `customer_scan`, and `catalogue_overview` (+ `catalogue_overview_0`, `_1`, … chunk docs, since ~1k products exceed one Firestore doc; the head doc holds `chunks`). Each holds the last WooCommerce pull so `WooCommerceSync.jsx` / `WooStockReconcile.jsx` / `WooCatalogue.jsx` restore on open instead of re-hitting WooCommerce (the fetch/scan button refreshes). Written by `src/wooCache.js`, size-guarded at ~900 KB per doc. Nothing downstream reads it — safe to wipe.
 
 ---

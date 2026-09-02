@@ -42,6 +42,7 @@ const nav = [
 
   { group: 'Ecommerce' },
   { to: '/woo-catalogue', label: 'Woo Catalogue', short: 'WooCat', Icon: ShoppingCart, module: 'woo' },
+  { to: '/seo-state',  label: 'SEO State',      short: 'SEO',     Icon: Database, module: 'woo' },
   { to: '/woo-sync',   label: 'WooCommerce Sync', short: 'WooSync', Icon: ShoppingCart, module: 'woo' },
   { to: '/woo-stock',  label: 'Woo Stock Match', short: 'WooStock', Icon: ShoppingCart, module: 'woo' },
 

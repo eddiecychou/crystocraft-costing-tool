@@ -72,6 +72,7 @@ wins on *facts*; skill wins on *rules and lessons*.
 | **`UI-POLISH.md`** | The Crystocraft visual language (square/flat/hairline), storefront-vs-OpsCenter treatment, the measurable Second-Pass checklist, §7 Mobile | Any UI/layout/styling change — before "it looks fine" |
 | **`DESIGN-SYSTEM.md`** | The written spec of what's shipped (V2.5): token layer, component inventory + state matrix, WCAG contrast, the OpsCenter drift baseline, the V3 open-decision list | Changing tokens / component classes, or any V2.5→V3 work |
 | **`LESSONS-LEARNED.md`** | Every significant failure + permanent fix | "Fixing" anything familiar — and after any new incident |
+| **`SEO-CONTROL-PLANE.md`** | OC ⟷ DeepSeek Workbench contract: state store (`seo_state`/`seo_state_history`), the planned batch-review + `safeWrite` + reconciliation steps | Any work on the WordPress SEO / multilingual pipeline, or the `/seo-state` page |
 
 **Reference layer — repo root (authoritative on facts):**
 

@@ -316,6 +316,17 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // SEO control plane (Step 1). seo_state = the current "what's live now"
+    // snapshot (mutable cache). seo_state_history = APPEND-ONLY timestamped
+    // snapshots — the rollback reference; never edited or deleted. Admin only.
+    match /seo_state/{doc} {
+      allow read, write: if isAdmin();
+    }
+    match /seo_state_history/{doc} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
     match /customers/{customerId} {
       // Front office (admin + sales, V8.13). Sales owns the customer relationship
       // and all its correspondence/CRM below; the supply side stays walled off.

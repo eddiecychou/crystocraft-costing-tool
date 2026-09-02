@@ -68,6 +68,10 @@
   path = "/api/office-file/*"
 
 [[edge_functions]]
+  function = "seo-state"
+  path = "/api/seo-state"
+
+[[edge_functions]]
   function = "rewrite-section"
   path = "/api/rewrite-section"
 
