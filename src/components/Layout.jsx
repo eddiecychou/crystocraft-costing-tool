@@ -10,9 +10,11 @@ import {
   Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles, RotateCcw, ShoppingCart,
 } from 'lucide-react'
 
-// Grouped so the list stays readable as it grows — it reached 16 destinations
-// and the flat version was hard to scan. Order within each group follows the
-// real workflow rather than the alphabet: quote → order/produce → invoice.
+// Grouped so the list stays readable as it grows — the flat version was hard
+// to scan past ~16 destinations. Order within each group follows the real
+// workflow rather than the alphabet (e.g. Finance: invoice → credit → UC#).
+// Groups: Catalogue, Sales (quote/CRM/marketing), Finance, Ecommerce
+// (WooCommerce B2C), Supply, System.
 //
 // `module` tags each destination with an access.js capability key. The list
 // is filtered by the signed-in role (see useVisibleNav below) so a production
@@ -29,11 +31,18 @@ const nav = [
   { group: 'Sales' },
   { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true, module: 'quotes' },
   { to: '/shipping',   label: 'Production',    short: 'Prod',     Icon: Truck, module: 'shipping' },
-  { to: '/sales-invoices', label: 'Sales Invoices', short: 'Invoices', Icon: Receipt, module: 'invoices' },
-  { to: '/credit-notes', label: 'Credit Notes', short: 'Credits', Icon: RotateCcw, module: 'credit_notes' },
   { to: '/customers',  label: 'Customers',     short: 'Customers',Icon: Building2, module: 'customers' },
   { to: '/portal',     label: 'Portal',        short: 'Portal',   Icon: Users, module: 'portal' },
   { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone, module: 'marketing' },
+
+  { group: 'Finance' },
+  { to: '/sales-invoices', label: 'Sales Invoices', short: 'Invoices', Icon: Receipt, module: 'invoices' },
+  { to: '/credit-notes', label: 'Credit Notes', short: 'Credits', Icon: RotateCcw, module: 'credit_notes' },
+  { to: '/uc-registry',label: 'UC Registry',   short: 'UC#',      Icon: Hash, module: 'uc' },
+
+  { group: 'Ecommerce' },
+  { to: '/woo-sync',   label: 'WooCommerce Sync', short: 'WooSync', Icon: ShoppingCart, module: 'woo' },
+  { to: '/woo-stock',  label: 'Woo Stock Match', short: 'WooStock', Icon: ShoppingCart, module: 'woo' },
 
   { group: 'Supply' },
   { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle, module: 'components' },
@@ -43,9 +52,6 @@ const nav = [
 
   { group: 'System' },
   { to: '/erp-lookup', label: 'ERP Lookup',    short: 'ERP',      Icon: Database, module: 'erp' },
-  { to: '/uc-registry',label: 'UC Registry',   short: 'UC#',      Icon: Hash, module: 'uc' },
-  { to: '/woo-sync',   label: 'WooCommerce Sync', short: 'WooSync', Icon: ShoppingCart, module: 'woo' },
-  { to: '/woo-stock',  label: 'Woo Stock Match', short: 'WooStock', Icon: ShoppingCart, module: 'woo' },
   { to: '/settings',   label: 'Settings',      short: 'Settings', Icon: Settings, module: 'settings' },
 ]
 
