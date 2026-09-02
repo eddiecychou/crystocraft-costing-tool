@@ -8,6 +8,7 @@ import { useComponentCategories } from '../componentCategories'
 import LastActualPaid from '../components/LastActualPaid'
 import StockLedger from '../components/StockLedger'
 import { Star, FileText } from 'lucide-react'
+import { useT } from '../i18n'
 
 const blank = {
   code: '', name: '', category: '', plating_code: '', stock_qty: '', lead_time_weeks: '',
@@ -18,6 +19,7 @@ const blank = {
 const newId = () => 'rc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
 
 export default function RangeComponentForm() {
+  const t = useT()
   const { id: routeId } = useParams()
   const isNew = !routeId || routeId === 'new'
   const navigate = useNavigate()
@@ -70,7 +72,7 @@ export default function RangeComponentForm() {
         urls.push(await getDownloadURL(storageRef(storage, path)))
       }
       setForm(f => ({ ...f, images: [...f.images, ...urls] }))
-    } catch (err) { setError(err.message || 'Upload failed.') }
+    } catch (err) { setError(err.message || t('Upload failed.')) }
     finally { setUploading(false) }
   }
 
@@ -78,45 +80,45 @@ export default function RangeComponentForm() {
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!form.code.trim()) { setError('Item code is required.'); return }
+    if (!form.code.trim()) { setError(t('Item code is required.')); return }
     setSaving(true); setError('')
     try {
       const savedId = await saveComponent(isNew ? docId : routeId, form)
       navigate(isNew ? `/components/critical/${savedId}${backQ}` : (back || '/components'))
-    } catch (err) { setError(err.message || 'Save failed.'); setSaving(false) }
+    } catch (err) { setError(err.message || t('Save failed.')); setSaving(false) }
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Delete component ${form.code}? This cannot be undone.`)) return
+    if (!window.confirm(t('Delete component {code}? This cannot be undone.', { code: form.code }))) return
     setSaving(true)
     try { await deleteComponent(routeId); navigate(back || '/components') }
-    catch (err) { setError(err.message || 'Delete failed.'); setSaving(false) }
+    catch (err) { setError(err.message || t('Delete failed.')); setSaving(false) }
   }
 
-  if (loading) return <div className="p-6 text-sm text-ink-60">Loading…</div>
+  if (loading) return <div className="p-6 text-sm text-ink-60">{t('Loading…')}</div>
 
   return (
     <div className="max-w-2xl mx-auto p-4 sm:p-6">
       <Link to={back || '/components'} className="text-xs text-brand-600 hover:underline">
-        {back ? '← Back' : '← Components'}
+        {back ? t('← Back') : t('← Components')}
       </Link>
       <h1 className="text-xl mt-1 mb-4">
-        {isNew ? 'New Component' : form.code || 'Component'}
+        {isNew ? t('New Component') : form.code || t('Component')}
       </h1>
 
       <form onSubmit={handleSave} className="space-y-4">
         <div className="card p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Item code <span className="text-red-400">*</span> <span className="text-ink-60 font-normal">(ERP)</span></label>
+              <label className="label">{t('Item code')} <span className="text-red-400">*</span> <span className="text-ink-60 font-normal">(ERP)</span></label>
               <input className="input font-mono uppercase" value={form.code}
                      onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
                      placeholder="U0002-BODY" autoFocus={isNew} />
             </div>
             <div>
-              <label className="label">Category</label>
+              <label className="label">{t('Category')}</label>
               <select className="input" value={form.category} onChange={set('category')}>
-                <option value="">— none —</option>
+                <option value="">{t('— none —')}</option>
                 {/* Keep the saved value visible even if it was later renamed/removed. */}
                 {(form.category && !catOptions.includes(form.category) ? [form.category, ...catOptions] : catOptions)
                   .map(c => <option key={c} value={c}>{c}</option>)}
@@ -125,36 +127,36 @@ export default function RangeComponentForm() {
           </div>
 
           <div>
-            <label className="label">Name / description</label>
+            <label className="label">{t('Name / description')}</label>
             <input className="input" value={form.name} onChange={set('name')}
-                   placeholder="Owl body / 18-note music-box movement" />
+                   placeholder={t('Owl body / 18-note music-box movement')} />
           </div>
 
           <div>
-            <label className="label">Plating <span className="text-ink-60 font-normal">(Gold/Chrome parts have distinct codes; blank = shared across all platings)</span></label>
+            <label className="label">{t('Plating')} <span className="text-ink-60 font-normal">{t('(Gold/Chrome parts have distinct codes; blank = shared across all platings)')}</span></label>
             <select className="input" value={form.plating_code} onChange={set('plating_code')}>
-              <option value="">Shared — all platings</option>
+              <option value="">{t('Shared — all platings')}</option>
               {RANGE_PLATINGS.map(p => <option key={p.code} value={p.code}>{p.name} ({p.code})</option>)}
             </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Stock on hand <span className="text-ink-60 font-normal">(raw parts)</span></label>
+              <label className="label">{t('Stock on hand')} <span className="text-ink-60 font-normal">{t('(raw parts)')}</span></label>
               <div className="input bg-ivory/40 text-ink-70 tabular-nums flex items-center justify-between">
                 <span>{form.stock_qty === '' ? '0' : Number(form.stock_qty).toLocaleString()}</span>
-                <span className="text-2xs text-ink-60">{isNew ? 'set below after saving' : 'managed in ledger ↓'}</span>
+                <span className="text-2xs text-ink-60">{isNew ? t('set below after saving') : t('managed in ledger ↓')}</span>
               </div>
             </div>
             <div>
-              <label className="label">Lead time <span className="text-ink-60 font-normal">(weeks)</span></label>
+              <label className="label">{t('Lead time')} <span className="text-ink-60 font-normal">{t('(weeks)')}</span></label>
               <input className="input" inputMode="numeric" value={form.lead_time_weeks}
-                     onChange={setNum('lead_time_weeks')} placeholder="e.g. 8" />
+                     onChange={setNum('lead_time_weeks')} placeholder={t('e.g. 8')} />
             </div>
           </div>
 
           <div>
-            <label className="label">Notes <span className="text-ink-60 font-normal">(spec, dimensions, remarks)</span></label>
+            <label className="label">{t('Notes')} <span className="text-ink-60 font-normal">{t('(spec, dimensions, remarks)')}</span></label>
             <textarea className="input min-h-[80px]" value={form.notes} onChange={set('notes')} />
           </div>
         </div>
@@ -163,41 +165,41 @@ export default function RangeComponentForm() {
             preferred quote and feeds figurine costing. */}
         <div className="card p-5">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-base">Supplier quotes <span className="text-ink-60 font-normal text-sm">(drives figurine cost)</span></h2>
-            {!isNew && <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="btn-secondary text-sm">+ Add quote</Link>}
+            <h2 className="text-base">{t('Supplier quotes')} <span className="text-ink-60 font-normal text-sm">{t('(drives figurine cost)')}</span></h2>
+            {!isNew && <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="btn-secondary text-sm">{t('+ Add quote')}</Link>}
           </div>
-          <p className="text-xs text-ink-60 mb-3">Upload supplier screenshots / PDFs; AI extracts the price. Star one as preferred — its cost is used in costing.</p>
+          <p className="text-xs text-ink-60 mb-3">{t('Upload supplier screenshots / PDFs; AI extracts the price. Star one as preferred — its cost is used in costing.')}</p>
 
           {!isNew && <LastActualPaid componentId={routeId} />}
 
           {isNew ? (
-            <p className="text-sm text-ink-60">Save the component first, then add supplier quotes with images.</p>
+            <p className="text-sm text-ink-60">{t('Save the component first, then add supplier quotes with images.')}</p>
           ) : quotes.length === 0 ? (
-            <p className="text-sm text-ink-60">No quotes yet — <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="text-brand-600 hover:underline">add the first supplier quote</Link>.</p>
+            <p className="text-sm text-ink-60">{t('No quotes yet —')} <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="text-brand-600 hover:underline">{t('add the first supplier quote')}</Link>.</p>
           ) : (
             <div className="divide-y divide-ivory-dark">
               {quotes.map(q => (
                 <div key={q.id} className="py-2.5 flex items-center gap-3">
-                  <button type="button" onClick={() => preferQuote(q.id)} title={q.is_preferred ? 'Preferred' : 'Mark preferred'}
+                  <button type="button" onClick={() => preferQuote(q.id)} title={q.is_preferred ? t('Preferred') : t('Mark preferred')}
                           className={q.is_preferred ? 'text-amber-500' : 'text-ink-60 hover:text-amber-400'}>
                     <Star size={16} fill={q.is_preferred ? 'currentColor' : 'none'} />
                   </button>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-ink truncate">
-                      {q.supplier_name || 'Unnamed supplier'}
-                      {q.is_preferred && <span className="ml-2 text-2xs uppercase tracking-wide text-amber-600">preferred</span>}
+                      {q.supplier_name || t('Unnamed supplier')}
+                      {q.is_preferred && <span className="ml-2 text-2xs uppercase tracking-wide text-amber-600">{t('preferred')}</span>}
                     </p>
                     <p className="text-xs text-ink-60">
-                      {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : 'no price'}
+                      {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : t('no price')}
                       {q.moq ? ` · MOQ ${Number(q.moq).toLocaleString()}` : ''}
-                      {q.volume_tiers?.length ? ` · ${q.volume_tiers.length} tier${q.volume_tiers.length > 1 ? 's' : ''}` : ''}
-                      {q.attachments?.length ? ` · ${q.attachments.length} file${q.attachments.length > 1 ? 's' : ''}` : ''}
+                      {q.volume_tiers?.length ? ` · ${t('{n} tier(s)', { n: q.volume_tiers.length })}` : ''}
+                      {q.attachments?.length ? ` · ${t('{n} file(s)', { n: q.attachments.length })}` : ''}
                     </p>
                   </div>
                   {q.attachments?.length > 0 && (q.attachments[0].file_type === 'image'
                     ? <img src={q.attachments[0].file_url} alt="" className="w-9 h-9 object-cover rounded-none border border-ivory-dark shrink-0" />
                     : <FileText size={16} className="text-red-400 shrink-0" />)}
-                  <Link to={`/components/critical/${routeId}/quotes/${q.id}${backQ}`} className="text-xs text-brand-600 hover:underline shrink-0">Edit</Link>
+                  <Link to={`/components/critical/${routeId}/quotes/${q.id}${backQ}`} className="text-xs text-brand-600 hover:underline shrink-0">{t('Edit')}</Link>
                 </div>
               ))}
             </div>
@@ -206,21 +208,21 @@ export default function RangeComponentForm() {
 
         {/* Images */}
         <div className="card p-5">
-          <h2 className="text-base mb-3">Images</h2>
-          <p className="text-xs text-ink-60 mb-3">Click a tile to upload. Hover an image and tap × to remove.</p>
+          <h2 className="text-base mb-3">{t('Images')}</h2>
+          <p className="text-xs text-ink-60 mb-3">{t('Click a tile to upload. Hover an image and tap × to remove.')}</p>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {form.images.map(url => (
               <div key={url} className="relative aspect-square bg-white border border-ivory-dark overflow-hidden rounded-none">
                 <img src={url} alt="" className="w-full h-full object-contain p-1" />
                 <button type="button" onClick={() => removeImage(url)}
                         className="absolute -top-1.5 -right-1.5 bg-white border border-ivory-dark text-red-600 rounded-full w-5 h-5 text-xs leading-none shadow-sm hover:bg-red-50"
-                        title="Remove image">×</button>
+                        title={t('Remove image')}>×</button>
               </div>
             ))}
             <label className="aspect-square border border-dashed border-ivory-dark rounded-none flex flex-col items-center justify-center cursor-pointer text-ink-60 hover:border-brand-400 hover:text-brand-600 transition-colors"
-                   title="Click to upload images">
+                   title={t('Click to upload images')}>
               <span className="text-2xl leading-none">＋</span>
-              <span className="text-2xs mt-0.5">{uploading ? 'Uploading…' : 'Upload'}</span>
+              <span className="text-2xs mt-0.5">{uploading ? t('Uploading…') : t('Upload')}</span>
               <input type="file" accept="image/*" multiple className="hidden"
                      onChange={e => handleUpload(e.target.files)} />
             </label>
@@ -231,12 +233,12 @@ export default function RangeComponentForm() {
 
         <div className="flex items-center gap-3">
           <button type="submit" disabled={saving || uploading} className="btn-primary">
-            {saving ? 'Saving…' : 'Save Component'}
+            {saving ? t('Saving…') : t('Save Component')}
           </button>
-          <Link to={back || '/components'} className="btn-secondary">Cancel</Link>
+          <Link to={back || '/components'} className="btn-secondary">{t('Cancel')}</Link>
           {!isNew && (
             <button type="button" onClick={handleDelete} disabled={saving}
-                    className="ml-auto text-sm text-red-500 hover:text-red-700">Delete</button>
+                    className="ml-auto text-sm text-red-500 hover:text-red-700">{t('Delete')}</button>
           )}
         </div>
       </form>

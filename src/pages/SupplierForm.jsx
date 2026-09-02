@@ -6,6 +6,7 @@ import { SUPPLIER_CATEGORIES, SUPPLIER_PROVINCES, isChinaCountry, CURRENCIES, PO
 import {
   supplierContactsOf, cleanSupplierContacts, flatFieldsFromContacts, genContactId,
 } from '../domain/supplierContacts'
+import { useT } from '../i18n'
 
 // Supplier Workstation Phase 1 — sourcing/quick-access links. Field names
 // use a leading word (shop_1688_url, not 1688_shop_url) because a JS/
@@ -31,6 +32,7 @@ const genLinkId = () => `lk_${Date.now().toString(36)}${Math.random().toString(3
 // Google Drive of catalogues, etc. Stored as supplier.extra_links[] =
 // [{ id, label, url }]; rendered as extra chips on the detail page.
 function ExtraLinkRows({ links, onChange, errors }) {
+  const t = useT()
   const set = (i, field, val) => onChange(links.map((l, j) => (j === i ? { ...l, [field]: val } : l)))
   const add = () => onChange([...links, { id: genLinkId(), label: '', url: '' }])
   const remove = i => onChange(links.filter((_, j) => j !== i))
@@ -40,7 +42,7 @@ function ExtraLinkRows({ links, onChange, errors }) {
         <div key={l.id || i}>
           <div className="flex gap-2">
             <input className="input w-40 shrink-0" value={l.label} onChange={e => set(i, 'label', e.target.value)}
-                   placeholder="Label e.g. 1688 store 2" />
+                   placeholder={t('Label e.g. 1688 store 2')} />
             <input className="input flex-1" type="url" value={l.url} onChange={e => set(i, 'url', e.target.value)}
                    placeholder="https://…" />
             <button type="button" onClick={() => remove(i)}
@@ -49,7 +51,7 @@ function ExtraLinkRows({ links, onChange, errors }) {
           {errors?.[l.id] && <p className="text-xs text-red-600 mt-1">{errors[l.id]}</p>}
         </div>
       ))}
-      <button type="button" onClick={add} className="text-xs text-brand-600 hover:text-brand-800">+ Add link</button>
+      <button type="button" onClick={add} className="text-xs text-brand-600 hover:text-brand-800">{t('+ Add link')}</button>
     </div>
   )
 }
@@ -62,6 +64,7 @@ function toArray(val) {
 }
 
 function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
+  const t = useT()
   function update(i, v) { onChange(values.map((x, j) => j === i ? v : x)) }
   function add() { onChange([...values, '']) }
   function remove(i) { onChange(values.filter((_, j) => j !== i)) }
@@ -84,7 +87,7 @@ function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
           </div>
         ))}
       </div>
-      <button type="button" onClick={add} className="mt-1.5 text-xs text-brand-600 hover:text-brand-800">+ Add another</button>
+      <button type="button" onClick={add} className="mt-1.5 text-xs text-brand-600 hover:text-brand-800">{t('+ Add another')}</button>
     </div>
   )
 }
@@ -94,6 +97,7 @@ function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
 // legacy flat fields on save), "active" un-checked greys out a departed rep
 // without losing history.
 function ContactRows({ contacts, onChange }) {
+  const t = useT()
   const set = (i, field, val) => onChange(contacts.map((c, j) => (j === i ? { ...c, [field]: val } : c)))
   const setPrimary = i => onChange(contacts.map((c, j) => ({ ...c, is_primary: j === i })))
   const addRow = () => onChange([
@@ -106,43 +110,44 @@ function ContactRows({ contacts, onChange }) {
   return (
     <div className="space-y-3">
       {contacts.length === 0 && (
-        <p className="text-xs text-ink-60">No contacts yet — add the supplier's sales rep(s).</p>
+        <p className="text-xs text-ink-60">{t("No contacts yet — add the supplier's sales rep(s).")}</p>
       )}
       {contacts.map((c, i) => {
         const inactive = c.active === false
         return (
           <div key={c.id || i} className={`rounded-none border p-3 space-y-2 ${inactive ? 'border-warm-grey bg-ivory opacity-70' : 'border-warm-grey'}`}>
             <div className="grid grid-cols-2 gap-2">
-              <input className="input" value={c.name} onChange={e => set(i, 'name', e.target.value)} placeholder="Name e.g. 王小姐, David Lee" />
-              <input className="input" value={c.title} onChange={e => set(i, 'title', e.target.value)} placeholder="Title / role (optional)" />
-              <input className="input" value={c.phone} onChange={e => set(i, 'phone', e.target.value)} placeholder="Phone" />
-              <input className="input" value={c.wechat} onChange={e => set(i, 'wechat', e.target.value)} placeholder="WeChat ID" />
-              <input className="input" value={c.whatsapp} onChange={e => set(i, 'whatsapp', e.target.value)} placeholder="WhatsApp" />
-              <input className="input" type="email" value={c.email} onChange={e => set(i, 'email', e.target.value)} placeholder="Email" />
+              <input className="input" value={c.name} onChange={e => set(i, 'name', e.target.value)} placeholder={t('Name e.g. 王小姐, David Lee')} />
+              <input className="input" value={c.title} onChange={e => set(i, 'title', e.target.value)} placeholder={t('Title / role (optional)')} />
+              <input className="input" value={c.phone} onChange={e => set(i, 'phone', e.target.value)} placeholder={t('Phone')} />
+              <input className="input" value={c.wechat} onChange={e => set(i, 'wechat', e.target.value)} placeholder={t('WeChat ID')} />
+              <input className="input" value={c.whatsapp} onChange={e => set(i, 'whatsapp', e.target.value)} placeholder={t('WhatsApp')} />
+              <input className="input" type="email" value={c.email} onChange={e => set(i, 'email', e.target.value)} placeholder={t('Email')} />
             </div>
             <div className="flex items-center gap-4 text-xs">
               <label className={`inline-flex items-center gap-1.5 ${inactive ? 'text-ink-60' : 'text-ink-70'}`}>
                 <input type="radio" name="supplier-primary-contact" disabled={inactive}
                        checked={!!c.is_primary && !inactive} onChange={() => setPrimary(i)} />
-                Primary
+                {t('Primary')}
               </label>
               <label className="inline-flex items-center gap-1.5 text-ink-70">
                 <input type="checkbox" checked={!inactive}
                        onChange={e => set(i, 'active', e.target.checked)} />
-                Active (still at this supplier)
+                {t('Active (still at this supplier)')}
               </label>
               <button type="button" onClick={() => removeRow(i)}
-                      className="ml-auto text-ink-60 hover:text-red-500">Remove</button>
+                      className="ml-auto text-ink-60 hover:text-red-500">{t('Remove')}</button>
             </div>
           </div>
         )
       })}
-      <button type="button" onClick={addRow} className="text-xs text-brand-600 hover:text-brand-800">+ Add contact</button>
+      <button type="button" onClick={addRow} className="text-xs text-brand-600 hover:text-brand-800">{t('+ Add contact')}</button>
     </div>
   )
 }
 
 export default function SupplierForm() {
+  const t = useT()
   const { id } = useParams()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
@@ -238,34 +243,34 @@ export default function SupplierForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">{t('Loading…')}</div>
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
-        <Link to="/suppliers" className="text-sm text-brand-600 hover:underline">← Suppliers</Link>
-        <h1 className="text-2xl text-ink mt-1">{isEdit ? 'Edit Supplier' : 'New Supplier'}</h1>
+        <Link to="/suppliers" className="text-sm text-brand-600 hover:underline">← {t('Suppliers')}</Link>
+        <h1 className="text-2xl text-ink mt-1">{isEdit ? t('Edit Supplier') : t('New Supplier')}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label">Supplier Name (English) *</label>
+            <label className="label">{t('Supplier Name (English) *')}</label>
             <input className="input" value={form.name} onChange={set('name')} required placeholder="e.g. Fei Hong" />
           </div>
           <div>
-            <label className="label">Supplier Name (Chinese)</label>
+            <label className="label">{t('Supplier Name (Chinese)')}</label>
             <input className="input" value={form.name_cn} onChange={set('name_cn')} placeholder="e.g. 浦江晶鸿水晶" />
           </div>
         </div>
 
         <div>
-          <label className="label">ERP Code <span className="text-ink-60 font-normal">(optional)</span></label>
+          <label className="label">{t('ERP Code')} <span className="text-ink-60 font-normal">{t('(optional)')}</span></label>
           <input className="input max-w-xs" value={form.erp_code} onChange={set('erp_code')} placeholder="e.g. S-00456" />
         </div>
 
         <div>
-          <label className="label">Category</label>
+          <label className="label">{t('Category')}</label>
           <div className="flex flex-wrap gap-2 mt-1">
             {SUPPLIER_CATEGORIES.map(c => (
               <button
@@ -278,7 +283,7 @@ export default function SupplierForm() {
                     : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'
                 }`}
               >
-                <c.Icon size={13} className="inline align-[-2px] mr-1" />{c.value}
+                <c.Icon size={13} className="inline align-[-2px] mr-1" />{t(c.value)}
               </button>
             ))}
           </div>
@@ -286,11 +291,11 @@ export default function SupplierForm() {
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="label">Country</label>
+            <label className="label">{t('Country')}</label>
             <input className="input" value={form.country} onChange={set('country')} placeholder="China" />
           </div>
           <div>
-            <label className="label">Province / Region</label>
+            <label className="label">{t('Province / Region')}</label>
             {isChinaCountry(form.country) ? (
               <select className="input" value={form.province} onChange={set('province')}>
                 <option value="">—</option>
@@ -302,28 +307,28 @@ export default function SupplierForm() {
             )}
           </div>
           <div>
-            <label className="label">City</label>
+            <label className="label">{t('City')}</label>
             <input className="input" value={form.city} onChange={set('city')} placeholder="e.g. 深圳, Guangzhou" />
           </div>
         </div>
 
         <div>
-          <label className="label">Address</label>
-          <textarea className="input" rows={2} value={form.address} onChange={set('address')} placeholder="Full address…" />
+          <label className="label">{t('Address')}</label>
+          <textarea className="input" rows={2} value={form.address} onChange={set('address')} placeholder={t('Full address…')} />
         </div>
 
         <div className="border-t border-warm-grey pt-4">
-          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">People</p>
-          <p className="text-xs text-ink-60 mb-3">One row per sales rep / contact. Mark who's <strong>Primary</strong> (used on purchase orders); un-tick <strong>Active</strong> when someone leaves — the row is kept greyed for history.</p>
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">{t('People')}</p>
+          <p className="text-xs text-ink-60 mb-3">{t("One row per sales rep / contact. Mark who's Primary (used on purchase orders); un-tick Active when someone leaves — the row is kept greyed for history.")}</p>
           <ContactRows contacts={contacts} onChange={setContacts} />
         </div>
 
         <div className="border-t border-warm-grey pt-4">
-          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Office lines</p>
-          <p className="text-xs text-ink-60 mb-3">General supplier phone / email — reception or shared inbox, not tied to one person.</p>
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">{t('Office lines')}</p>
+          <p className="text-xs text-ink-60 mb-3">{t('General supplier phone / email — reception or shared inbox, not tied to one person.')}</p>
           <div className="grid grid-cols-2 gap-4">
-            <MultiInput label="Phone" values={phones} onChange={setPhones} placeholder="+86 xxx xxxx xxxx" />
-            <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="supplier@example.com" />
+            <MultiInput label={t('Phone')} values={phones} onChange={setPhones} placeholder="+86 xxx xxxx xxxx" />
+            <MultiInput label={t('Email')} values={emails} onChange={setEmails} type="email" placeholder="supplier@example.com" />
           </div>
         </div>
 
@@ -332,52 +337,52 @@ export default function SupplierForm() {
             admin-gated in firestore.rules; nothing here is ever surfaced to
             the Customer Portal). */}
         <div className="border-t border-warm-grey pt-4">
-          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Sourcing Links</p>
-          <p className="text-xs text-ink-60 mb-3">Internal only — quick-access buttons on the supplier page. Leave blank if unknown.</p>
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">{t('Sourcing Links')}</p>
+          <p className="text-xs text-ink-60 mb-3">{t('Internal only — quick-access buttons on the supplier page. Leave blank if unknown.')}</p>
           <div className="grid grid-cols-2 gap-4">
             {LINK_FIELDS.map(({ key, label }) => (
               <div key={key}>
-                <label className="label">{label}</label>
+                <label className="label">{t(label)}</label>
                 <input className="input" type="url" value={form[key]} onChange={set(key)} placeholder="https://…" />
                 {linkErrors[key] && <p className="text-xs text-red-600 mt-1">{linkErrors[key]}</p>}
               </div>
             ))}
           </div>
-          <p className="text-xs text-ink-60 mt-4 mb-1">More links — extra 1688 / Taobao pages, a catalogue folder, a WeChat shop, anything else. One chip each on the supplier page.</p>
+          <p className="text-xs text-ink-60 mt-4 mb-1">{t('More links — extra 1688 / Taobao pages, a catalogue folder, a WeChat shop, anything else. One chip each on the supplier page.')}</p>
           <ExtraLinkRows links={extraLinks} onChange={setExtraLinks} errors={linkErrors} />
         </div>
 
         <div className="border-t border-warm-grey pt-4">
-          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Purchasing Defaults</p>
-          <p className="text-xs text-ink-60 mb-3">Pre-fill new purchase orders for this supplier. Both are overridable per PO.</p>
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">{t('Purchasing Defaults')}</p>
+          <p className="text-xs text-ink-60 mb-3">{t('Pre-fill new purchase orders for this supplier. Both are overridable per PO.')}</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Default Currency</label>
+              <label className="label">{t('Default Currency')}</label>
               <select className="input" value={form.default_currency} onChange={set('default_currency')}>
-                <option value="">— none —</option>
+                <option value="">{t('— none —')}</option>
                 {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Default Payment Terms</label>
+              <label className="label">{t('Default Payment Terms')}</label>
               <select className="input" value={form.default_payment_terms} onChange={set('default_payment_terms')}>
-                <option value="">— none —</option>
-                {PO_PAYMENT_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                <option value="">{t('— none —')}</option>
+                {PO_PAYMENT_TERMS.map(term => <option key={term.value} value={term.value}>{term.label}</option>)}
               </select>
             </div>
           </div>
         </div>
 
         <div>
-          <label className="label">Notes</label>
-          <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder="Specialties, payment terms, reliability notes…" />
+          <label className="label">{t('Notes')}</label>
+          <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder={t('Specialties, payment terms, reliability notes…')} />
         </div>
 
         <div className="flex gap-3 pt-2">
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Supplier'}
+            {loading ? t('Saving…') : isEdit ? t('Save Changes') : t('Add Supplier')}
           </button>
-          <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
+          <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>{t('Cancel')}</button>
         </div>
       </form>
     </div>
