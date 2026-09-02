@@ -241,31 +241,37 @@ export default function Layout({ children, user }) {
         {moreOpen && (
           <>
             <div className="md:hidden fixed inset-0 z-30 bg-black/30" onClick={() => setMoreOpen(false)} />
-            <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-2xl rounded-t-xl overflow-hidden">
-              <div className="flex flex-col items-center pt-2 pb-1">
+            <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-2xl rounded-t-xl overflow-hidden flex flex-col max-h-[72vh]">
+              <div className="flex flex-col items-center pt-2 pb-1 shrink-0">
                 <span className="w-9 h-1 rounded-full bg-ivory-dark mb-2" />
                 <p className="text-xs font-medium text-ink-60 uppercase tracking-[0.12em] font-label">All sections</p>
               </div>
-              <div className="grid grid-cols-4 gap-1 p-3 pt-2">
-                {navItems.map(({ to, short, Icon }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    onClick={() => setMoreOpen(false)}
-                    className={({ isActive }) =>
-                      `relative flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-none text-center transition-colors ${
-                        isActive ? 'bg-brand-50 text-brand-600' : 'text-ink-70 hover:bg-ivory active:bg-ivory'
-                      }`
-                    }
-                  >
-                    {badgeFor(to) > 0 && (
-                      <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-2xs font-semibold flex items-center justify-center leading-none">
-                        {badgeFor(to)}
-                      </span>
-                    )}
-                    <Icon size={24} strokeWidth={1.6} className="shrink-0" />
-                    <span className="text-2xs font-medium leading-tight line-clamp-2">{short}</span>
-                  </NavLink>
+              <div className="grid grid-cols-4 gap-1 p-3 pt-1 overflow-y-auto">
+                {visibleNav.map((item) => (
+                  item.group ? (
+                    <p key={`mg-${item.group}`} className="col-span-4 px-1 pt-3 pb-0.5 text-2xs font-semibold uppercase tracking-[0.12em] text-ink-40">
+                      {item.group}
+                    </p>
+                  ) : (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMoreOpen(false)}
+                      className={({ isActive }) =>
+                        `relative flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-none text-center transition-colors ${
+                          isActive ? 'bg-brand-50 text-brand-600' : 'text-ink-70 hover:bg-ivory active:bg-ivory'
+                        }`
+                      }
+                    >
+                      {badgeFor(item.to) > 0 && (
+                        <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-2xs font-semibold flex items-center justify-center leading-none">
+                          {badgeFor(item.to)}
+                        </span>
+                      )}
+                      <item.Icon size={24} strokeWidth={1.6} className="shrink-0" />
+                      <span className="text-2xs font-medium leading-tight line-clamp-2">{item.short}</span>
+                    </NavLink>
+                  )
                 ))}
               </div>
             </div>
