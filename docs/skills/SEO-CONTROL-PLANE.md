@@ -20,7 +20,7 @@
 |---|---|---|---|
 | 1 | **State store + snapshot** — a structured "what's live now" for posts/pages, snapshottable for rollback | OC page `/seo-state`, edge fn `seo-state`, Firestore `seo_state` + `seo_state_history` | **BUILT 2026-09-02** |
 | 2 | **Batch / review contract** — DSH prepares a change batch, the human approves it per-item in the OC against a real diff | Firestore `seo_batches`, Node fn `seo-batch`, OC page `/seo-review` | **BUILT 2026-09-02** |
-| 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | DSH side; OC supplies the spec | planned |
+| 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | Reference impls in `seo-control-plane/` (OC-owned, DSH vendors) | **BUILT 2026-09-02** |
 | 4 | **Reconciliation** — live state vs last-approved batch; flags a reverted page, a broken trid, a reappeared EN link | OC page, same pattern as Woo Stock Match | planned |
 
 Products are already covered by `woo-sync.js` `catalogue_page` → the **Woo Catalogue** page (Yoast title/desc + WPML `translations` per product). This control plane adds **blog posts and pages**.
@@ -112,18 +112,32 @@ DSH prepares → `create` → human reviews at `/seo-review` → Send to DSH →
 DSH `poll` → executes each approved item through **`safeWrite`** (Step 3) →
 `result` back. Step 4 reconciliation then confirms live state matches.
 
-## Step 3 — `safeWrite` + `validate-payload` (planned, DSH side)
+## Step 3 — `safeWrite` + `validate-payload` (BUILT — `seo-control-plane/`)
 
-- **`validate-payload.mjs`** — every translation/generation payload passes this
-  before it can be written: length-anomaly audit vs source (B6), wrong-language
-  character scan (B33/B35 — CJK in fr/ja, simplified in zh-hant), placeholder /
-  "please provide" markers (B12), image + H2 count parity, JSON parses, widget
-  count unchanged, brand-term preservation, **structural diff vs EN source**
-  (B20 stale-copy). Fail → cannot reach the write step.
-- **`safeWrite(endpoint, payload, { expectedFields })`** — snapshot the entity,
-  write, re-read, **abort + alert on any drift outside `expectedFields`** (B52 —
-  a variable-product save silently regenerated 32 variations with no prices).
-  No script writes WordPress any other way.
+Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
+**vendors them verbatim**. See `seo-control-plane/README.md`.
+
+- **`validate-payload.mjs`** — `validatePayload({ kind, lang, endpoint,
+  payload, source })` → `{ passed, checks: [{ name, ok, detail }] }`. 15 checks,
+  each mapped to a Workbench LESSONS-LEARNED entry: `json_parses` (B32),
+  `widget_count` + `element_ids_preserved` (B20 stale-copy), `length_anomaly`
+  (B6), `wrong_language_chars` (B33/B35 CJK leak, B6 simplified-in-zh-hant),
+  `placeholder_markers` (B12), `brand_terms_preserved` (§3c), `sku_prefix_
+  preserved` (B12), image/heading count parity (§2), `no_new_scripts/tables`,
+  `seo_title_no_double_brand` (L-09), `seo_desc_length` (B47),
+  `translation_draft_only` (Rule 4). CJK scan runs on the **JSON-decoded**
+  `_elementor_data` (B35e). The Workbench attaches the result as each
+  `seo_batches` item's `validation` field. `node
+  seo-control-plane/validate-payload.test.mjs` = 11 incident cases.
+- **`safe-write.mjs`** — `safeWrite({ get, put, id, endpoint, payload,
+  expectedFields })`. Snapshots the entity → writes → re-reads → returns
+  `{ ok:false, drift:[…] }` if any watched field outside `expectedFields`
+  changed (plus a dedicated **variation id/price hash** guard for B52 — a
+  variable-product save regenerating all variations with no prices). `get`/`put`
+  are the Workbench's own `wp-api.mjs` helpers, injected. `*_elementor_data`
+  fields are compared by FNV-1a hash. Returns a `result` object shaped for the
+  `seo_batches` `result` op. **No Workbench script writes WordPress any other
+  way.**
 
 ## Step 4 — reconciliation (planned)
 
