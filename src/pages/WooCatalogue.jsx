@@ -5,11 +5,12 @@ import { downloadCsv } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
 import { RefreshCcw, Download, AlertTriangle, ShoppingCart, ExternalLink, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react'
 
-// WooCommerce catalogue overview + SEO heuristic checklist (Ecommerce, admin).
-// Read-only. Cached to woo_cache/catalogue_overview so it loads instantly and
-// the WordPress admin (slow) doesn't have to be browsed. Translation status
-// (WPML / Polylang) and real Yoast scores need a probe first — the Diagnostics
-// tab runs it; nothing here consumes that data yet.
+// WooCommerce catalogue overview + SEO checklist + WPML translation coverage
+// (Ecommerce, admin). Read-only. Cached (chunked) to woo_cache so it loads
+// without waiting on the slow WordPress admin. SEO tab shows the real Yoast
+// title / meta description (v28.4) alongside heuristics; Translations tab
+// shows which of the site's WPML languages each published product exists in.
+// Both confirmed available via the Diagnostics probe.
 
 const fmtWhen = (d) => {
   if (!d) return ''
@@ -36,7 +37,13 @@ function priceRange(p) {
   return lo === hi ? `${lo}` : `${lo}–${hi}`
 }
 
-// SEO heuristic — flags computed from what the WC REST product carries.
+// WPML language codes → short display labels. Order = display order.
+const LANG_LABEL = { en: 'EN', fr: 'FR', ja: 'JA', es: 'ES', 'zh-hans': '简', 'zh-hant': '繁', de: 'DE', it: 'IT' }
+const LANG_ORDER = ['en', 'zh-hans', 'zh-hant', 'fr', 'ja', 'es', 'de', 'it']
+const langLabel = (c) => LANG_LABEL[c] || c.toUpperCase()
+
+// SEO heuristic — flags computed from what the WC REST product carries,
+// including the real Yoast title / meta description (Yoast v28.4).
 function seoFlags(p) {
   const f = []
   if (p.image_count === 0) f.push('No image')
@@ -45,6 +52,14 @@ function seoFlags(p) {
   else if (p.description_words < 50) f.push(`Thin description (${p.description_words}w)`)
   if (p.short_description_words === 0) f.push('No short description')
   if (!p.categories?.length) f.push('No category')
+  // Yoast meta
+  if (!p.seo_desc_set) f.push('Meta description not written')
+  else {
+    const n = (p.seo_desc || '').length
+    if (n > 158) f.push(`Meta description ${n} chars`)
+    else if (n < 70) f.push(`Meta description short (${n})`)
+  }
+  { const n = (p.seo_title || '').length; if (n > 60) f.push(`SEO title ${n} chars`) }
   if (p.name_len > 60) f.push(`Name ${p.name_len} chars`)
   else if (p.name_len < 15) f.push('Name very short')
   if (!p.slug || /^product-?\d+$/i.test(p.slug) || /%|__/.test(p.slug)) f.push('Weak slug')
@@ -113,15 +128,26 @@ export default function WooCatalogue() {
   const model = useMemo(() => {
     if (!rows) return null
     const withSeo = rows.map(p => ({ ...p, _flags: seoFlags(p), _price: priceRange(p) }))
+    // Languages actually in use (union of every product's translations), in
+    // the preferred order, unknown codes appended.
+    const seen = new Set()
+    for (const p of rows) for (const c of (p.translations || [])) seen.add(c)
+    const langs = [...LANG_ORDER.filter(c => seen.has(c)), ...[...seen].filter(c => !LANG_ORDER.includes(c))]
+    const pub = rows.filter(p => p.status === 'publish')
+    const langCoverage = langs.map(c => ({
+      code: c,
+      translated: pub.filter(p => (p.translations || []).includes(c)).length,
+      total: pub.length,
+    }))
     const counts = {
       total: rows.length,
-      publish: rows.filter(p => p.status === 'publish').length,
+      publish: pub.length,
       draft: rows.filter(p => p.status === 'draft').length,
       other: rows.filter(p => !['publish', 'draft'].includes(p.status)).length,
       variations: rows.reduce((n, p) => n + (p.variations?.length || 0), 0),
       seoIssues: withSeo.filter(p => p.status === 'publish' && p._flags.length).length,
     }
-    return { withSeo, counts }
+    return { withSeo, counts, langs, langCoverage }
   }, [rows])
 
   const SORT_VAL = {
@@ -172,11 +198,37 @@ export default function WooCatalogue() {
       { label: 'Product', value: r => r.name },
       { label: 'SKU', value: r => r.sku, text: true },
       { label: 'Status', value: r => r.status },
+      { label: 'SEO title', value: r => r.seo_title },
+      { label: 'Meta description', value: r => r.seo_desc },
       { label: 'Issues', value: r => r._flags.length },
       { label: 'Detail', value: r => r._flags.join('; ') },
       { label: 'URL', value: r => r.permalink || '' },
     ]
     downloadCsv('woo-catalogue-seo', cols, seoRows)
+  }
+
+  const translationRows = useMemo(() => {
+    if (!model) return []
+    const q = search.trim().toUpperCase()
+    return model.withSeo
+      .filter(p => (statusFilter !== 'all' ? p.status === statusFilter : p.status === 'publish'))
+      .filter(p => (q ? `${p.name} ${p.sku}`.toUpperCase().includes(q) : true))
+      .map(p => ({ ...p, _missing: model.langs.filter(c => !(p.translations || []).includes(c)) }))
+      .filter(p => (issuesOnly ? p._missing.length > 0 : true))
+      .sort((a, b) => b._missing.length - a._missing.length)
+  }, [model, search, statusFilter, issuesOnly])
+
+  function exportTranslations() {
+    if (!model) return
+    const cols = [
+      { label: 'Product', value: r => r.name },
+      { label: 'SKU', value: r => r.sku, text: true },
+      { label: 'Status', value: r => r.status },
+      ...model.langs.map(c => ({ label: langLabel(c), value: r => ((r.translations || []).includes(c) ? 'yes' : '') })),
+      { label: 'Missing', value: r => r._missing.map(langLabel).join(' ') },
+      { label: 'URL', value: r => r.permalink || '' },
+    ]
+    downloadCsv('woo-catalogue-translations', cols, translationRows)
   }
 
   const Tab = ({ id, label }) => (
@@ -192,8 +244,8 @@ export default function WooCatalogue() {
         <ShoppingCart size={20} className="text-brand-500" /> WooCommerce Catalogue
       </h1>
       <p className="text-sm text-ink-60 mb-4">
-        Everything you're selling online — active, draft and private — with an SEO heuristic checklist.
-        Read-only, cached so it loads without waiting on WordPress admin.
+        Everything you're selling online — active, draft and private — with a Yoast SEO checklist and
+        WPML translation coverage. Read-only, cached so it loads without waiting on WordPress admin.
       </p>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -232,6 +284,7 @@ export default function WooCatalogue() {
           <div className="flex items-center gap-1 border-b border-warm-grey mb-3">
             <Tab id="catalogue" label="Catalogue" />
             <Tab id="seo" label={`SEO checklist${model.counts.seoIssues ? ` (${model.counts.seoIssues})` : ''}`} />
+            <Tab id="translations" label="Translations" />
             <Tab id="diagnostics" label="Diagnostics" />
           </div>
 
@@ -246,14 +299,15 @@ export default function WooCatalogue() {
                 <option value="pending">Pending</option>
                 <option value="private">Private</option>
               </select>
-              {tab === 'seo' && (
+              {(tab === 'seo' || tab === 'translations') && (
                 <>
                   <label className="text-xs text-ink-60 inline-flex items-center gap-1.5 cursor-pointer">
                     <input type="checkbox" checked={issuesOnly} onChange={e => setIssuesOnly(e.target.checked)}
                       className="w-3.5 h-3.5 rounded-sm border-warm-grey text-brand-600" />
-                    Issues only
+                    {tab === 'seo' ? 'Issues only' : 'Missing only'}
                   </label>
-                  <button onClick={exportSeo} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
+                  <button onClick={tab === 'seo' ? exportSeo : exportTranslations}
+                    className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
                     <Download size={13} /> CSV
                   </button>
                 </>
@@ -291,7 +345,7 @@ export default function WooCatalogue() {
                                 <span className="truncate">{p.name}</span>
                               </button>
                               {p.permalink && (
-                                <a href={p.permalink} target="_blank" rel="noreferrer" className="shrink-0 text-ink-40 hover:text-brand-600">
+                                <a href={p.permalink} target="_blank" rel="noreferrer" className="shrink-0 text-ink-60 hover:text-brand-600">
                                   <ExternalLink size={11} />
                                 </a>
                               )}
@@ -301,7 +355,7 @@ export default function WooCatalogue() {
                           <td className="px-3 py-2">
                             <span className={`text-2xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE[p.status] || 'bg-ivory text-ink-70'}`}>{p.status}</span>
                             {p.catalog_visibility && p.catalog_visibility !== 'visible' && (
-                              <span className="text-2xs text-ink-40 ml-1">{p.catalog_visibility}</span>
+                              <span className="text-2xs text-ink-60 ml-1">{p.catalog_visibility}</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-xs text-ink-60 truncate max-w-[160px]">{p.categories?.join(', ') || <span className="text-amber-600">none</span>}</td>
@@ -340,7 +394,7 @@ export default function WooCatalogue() {
                   <thead>
                     <tr className="text-2xs uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
                       <th className="px-3 py-2 text-left">Product</th>
-                      <th className="px-3 py-2 text-left">Status</th>
+                      <th className="px-3 py-2 text-left">Yoast title / meta description</th>
                       <th className="px-3 py-2 text-right">Issues</th>
                       <th className="px-3 py-2 text-left">What to fix</th>
                     </tr>
@@ -348,16 +402,22 @@ export default function WooCatalogue() {
                   <tbody className="divide-y divide-warm-grey">
                     {seoRows.map(p => (
                       <tr key={p.product_id} className={p._flags.length >= 3 ? 'bg-amber-50/40' : 'hover:bg-ivory/40'}>
-                        <td className="px-3 py-2 max-w-[240px]">
+                        <td className="px-3 py-2 max-w-[220px]">
                           <span className="text-ink truncate inline-block max-w-full align-middle">{p.name}</span>
                           {p.permalink && (
-                            <a href={p.permalink} target="_blank" rel="noreferrer" className="ml-1 text-ink-40 hover:text-brand-600 inline-block align-middle">
+                            <a href={p.permalink} target="_blank" rel="noreferrer" className="ml-1 text-ink-60 hover:text-brand-600 inline-block align-middle">
                               <ExternalLink size={11} />
                             </a>
                           )}
+                          <span className={`ml-1 text-2xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE[p.status] || 'bg-ivory text-ink-70'}`}>{p.status}</span>
                         </td>
-                        <td className="px-3 py-2">
-                          <span className={`text-2xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE[p.status] || 'bg-ivory text-ink-70'}`}>{p.status}</span>
+                        <td className="px-3 py-2 max-w-[360px]">
+                          <p className="text-xs text-ink-70 truncate">{p.seo_title || <span className="text-ink-60">— no title —</span>} <span className="text-ink-60">{p.seo_title ? `(${p.seo_title.length})` : ''}</span></p>
+                          <p className="text-2xs text-ink-60 truncate">
+                            {p.seo_desc_set
+                              ? <>{p.seo_desc} <span className="text-ink-60">({(p.seo_desc || '').length})</span></>
+                              : <span className="text-amber-600">meta description not written{p.seo_desc ? ' (Yoast auto)' : ''}</span>}
+                          </p>
                         </td>
                         <td className="px-3 py-2 text-right font-mono tabular-nums font-semibold text-amber-700">{p._flags.length || '—'}</td>
                         <td className="px-3 py-2">
@@ -377,6 +437,68 @@ export default function WooCatalogue() {
                 </table>
               </div>
             </div>
+          )}
+
+          {tab === 'translations' && (
+            <>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {model.langCoverage.map(l => (
+                  <div key={l.code} className="card px-3 py-2">
+                    <div className="text-sm font-semibold tabular-nums">
+                      {l.translated}<span className="text-ink-60 font-normal">/{l.total}</span>
+                    </div>
+                    <div className="text-2xs uppercase tracking-wide text-ink-60">{langLabel(l.code)} translated</div>
+                  </div>
+                ))}
+              </div>
+              <div className="card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-2xs uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
+                        <th className="px-3 py-2 text-left">Product</th>
+                        <th className="px-3 py-2 text-left">Status</th>
+                        {model.langs.map(c => <th key={c} className="px-2 py-2 text-center">{langLabel(c)}</th>)}
+                        <th className="px-3 py-2 text-right">Missing</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-warm-grey">
+                      {translationRows.map(p => (
+                        <tr key={p.product_id} className={p._missing.length >= 3 ? 'bg-amber-50/40' : 'hover:bg-ivory/40'}>
+                          <td className="px-3 py-2 max-w-[280px]">
+                            <span className="text-ink truncate inline-block max-w-full align-middle">{p.name}</span>
+                            {p.permalink && (
+                              <a href={p.permalink} target="_blank" rel="noreferrer" className="ml-1 text-ink-60 hover:text-brand-600 inline-block align-middle">
+                                <ExternalLink size={11} />
+                              </a>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`text-2xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE[p.status] || 'bg-ivory text-ink-70'}`}>{p.status}</span>
+                          </td>
+                          {model.langs.map(c => {
+                            const has = (p.translations || []).includes(c)
+                            return (
+                              <td key={c} className="px-2 py-2 text-center">
+                                <span className={has ? 'text-green-600' : 'text-platinum'}>{has ? '✓' : '·'}</span>
+                              </td>
+                            )
+                          })}
+                          <td className="px-3 py-2 text-right text-xs">
+                            {p._missing.length
+                              ? <span className="text-amber-700">{p._missing.map(langLabel).join(' ')}</span>
+                              : <span className="text-green-700">complete</span>}
+                          </td>
+                        </tr>
+                      ))}
+                      {translationRows.length === 0 && (
+                        <tr><td colSpan={model.langs.length + 3} className="px-3 py-4 text-center text-xs text-ink-60">Nothing missing.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
 
           {tab === 'diagnostics' && (

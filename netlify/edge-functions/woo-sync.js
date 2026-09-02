@@ -462,6 +462,7 @@ export default async function handler(req) {
       return text ? text.split(/\s+/).length : 0
     }
     const attrPairs = (list) => (list || []).map(a => ({ name: a.name, option: a.option ?? a.options?.join(', ') ?? '' }))
+    const metaVal = (list, key) => { const m = (list || []).find(x => x.key === key); return m && m.value != null ? String(m.value) : '' }
 
     // Variations for variable products, in parallel batches of 6.
     const variableProducts = products.filter(p => p.type === 'variable')
@@ -509,6 +510,21 @@ export default async function handler(req) {
         images_missing_alt: images.filter(im => !String(im.alt || '').trim()).length,
         description_words: wordCount(p.description),
         short_description_words: wordCount(p.short_description),
+        // Yoast (v28.4, confirmed via probe_i18n_seo). yoast_head_json.title/
+        // description = what actually renders; the _set flags say whether it
+        // was hand-written vs Yoast auto-generating it from a template/content.
+        seo_title: p.yoast_head_json?.title || '',
+        seo_desc: p.yoast_head_json?.description || '',
+        seo_title_set: !!metaVal(p.meta_data, '_yoast_wpseo_title'),
+        seo_desc_set: !!metaVal(p.meta_data, '_yoast_wpseo_metadesc'),
+        seo_focus_kw: metaVal(p.meta_data, '_yoast_wpseo_focuskw'),
+        // WPML (confirmed via probe). `lang` = this product's own language;
+        // `translations` = { langCode: postId } for every language it exists
+        // in — flattened to the list of codes, self included.
+        lang: p.lang || '',
+        translations: (p.translations && typeof p.translations === 'object')
+          ? [...new Set([p.lang, ...Object.keys(p.translations)].filter(Boolean))]
+          : (p.lang ? [p.lang] : []),
         variations: vars.map(v => ({
           variation_id: v.id, sku: v.sku || '',
           attributes: attrPairs(v.attributes),
