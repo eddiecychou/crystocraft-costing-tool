@@ -438,10 +438,14 @@ export default async function handler(req) {
   // coverage) so the cached payload stays small. Client-paginated, same
   // reasoning as products_page.
   if (body.op === 'catalogue_page') {
+   try {
     const page = Math.max(1, parseInt(body.page, 10) || 1)
     const r = await wc('products', { per_page: 100, page, status: 'any', orderby: 'id', order: 'asc' })
     if (!r.ok) return json({ error: 'WooCommerce product fetch failed', detail: (await r.text()).slice(0, 300) }, 502)
     const products = await r.json()
+    if (!Array.isArray(products)) {
+      return json({ error: 'WooCommerce returned an unexpected products payload', detail: JSON.stringify(products).slice(0, 300) }, 502)
+    }
 
     const wordCount = (html) => {
       const text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').trim()
@@ -459,6 +463,7 @@ export default async function handler(req) {
           const vr = await wc(`products/${p.id}/variations`, { per_page: 100, page: vp })
           if (!vr.ok) break
           const rows = await vr.json()
+          if (!Array.isArray(rows)) break
           acc.push(...rows)
           if (rows.length < 100) break
         }
@@ -505,6 +510,9 @@ export default async function handler(req) {
     })
 
     return json({ rows, has_more: products.length === 100, products_on_page: products.length })
+   } catch (e) {
+    return json({ error: 'catalogue_page failed', detail: String(e?.stack || e?.message || e).slice(0, 500) }, 502)
+   }
   }
 
   // ── diagnostic: does this WordPress expose translation status (WPML /
