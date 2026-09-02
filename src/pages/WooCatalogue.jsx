@@ -8,17 +8,19 @@ import { downloadCsv } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
 import { RefreshCcw, Download, AlertTriangle, ShoppingCart, ExternalLink, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react'
 
-// A product code's join stems. "U0265-001" → ["U0265"]. A 2-letter prefix
-// like "UA062-224" (body letter + brand letter) yields ["UA062","U062","A062"]
-// because the internal catalogue's design_code often carries only ONE of them.
-// Suffix (format / colour / running-no) is always dropped — per owner it isn't
-// load-bearing for "is this in our catalogue".
+// A product code's join stems. Woo SKUs carry a 1–2 letter prefix
+// ("U0265-001", "UA062-224") but the internal catalogue often stores only the
+// bare design number ("0265", "0088") or one of the two letters. So we emit
+// the letters+digits form, each single-letter form, AND the bare digits — a
+// match on any counts. Suffix (format / colour / running-no) is always
+// dropped; per owner the prefix isn't load-bearing for "is this in our
+// catalogue".
 function stems(code) {
   const m = String(code || '').toUpperCase().match(/^([A-Z]{0,3})(\d{2,6})/)
   if (!m) return []
   const [, letters, digits] = m
-  const out = [letters + digits]
-  if (letters.length >= 2) { out.push(letters[0] + digits, letters[letters.length - 1] + digits) }
+  const out = [letters + digits, digits]
+  if (letters.length >= 2) out.push(letters[0] + digits, letters[letters.length - 1] + digits)
   return [...new Set(out.filter(Boolean))]
 }
 
@@ -139,7 +141,7 @@ export default function WooCatalogue() {
         return m
       }
       setInternal({
-        figurine: idx(rangeSnap.docs.map(d => d.data()), x => [x.design_code, x.sku], x => x.design_name || x.description),
+        figurine: idx(rangeSnap.docs.map(d => d.data()), x => [x.design_code, x.design_no, x.sku], x => x.design_name || x.description),
         corp: idx(corpSnap.docs.map(d => d.data()), x => [x.product_code, x.sku, x.code], x => x.name),
         b2c: idx(b2c || [], x => x.code, x => x.name),
       })
