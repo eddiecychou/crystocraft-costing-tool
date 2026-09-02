@@ -76,6 +76,7 @@ const SalesInvoicePrint = lazy(() => import('./pages/SalesInvoicePrint'))
 const SalesInvoices = lazy(() => import('./pages/SalesInvoices'))
 const WooCommerceSync = lazy(() => import('./pages/WooCommerceSync'))
 const WooStockReconcile = lazy(() => import('./pages/WooStockReconcile'))
+const WooCatalogue = lazy(() => import('./pages/WooCatalogue'))
 const ProductionDashboard = lazy(() => import('./pages/ProductionDashboard'))
 
 export default function App() {
@@ -265,6 +266,7 @@ function AdminApp({ user, role }) {
                 <Route path="/credit-notes" element={<Gate module="credit_notes"><CreditNotes /></Gate>} />
                 <Route path="/woo-sync" element={<Gate module="woo"><WooCommerceSync /></Gate>} />
                 <Route path="/woo-stock" element={<Gate module="woo"><WooStockReconcile /></Gate>} />
+                <Route path="/woo-catalogue" element={<Gate module="woo"><WooCatalogue /></Gate>} />
                 <Route path="/credit-notes/new" element={<Gate module="credit_notes"><CreditNoteForm /></Gate>} />
                 <Route path="/credit-notes/:id" element={<Gate module="credit_notes"><CreditNoteForm /></Gate>} />
                 {/* Legacy redirect — Phase B's Sales Return register was folded

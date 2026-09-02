@@ -42,6 +42,11 @@ export const loadWooCatalogueCache = () => load('product_catalogue')
 export const saveWooCatalogueCache = (rows) =>
   save('product_catalogue', { rows, row_count: rows.length })
 
+// ── catalogue overview: product-shaped rows + SEO fields (WooCatalogue) ─────
+export const loadWooCatalogueOverviewCache = () => load('catalogue_overview')
+export const saveWooCatalogueOverviewCache = (rows) =>
+  save('catalogue_overview', { rows, row_count: rows.length })
+
 // ── order sync result, keyed by the date range it was fetched for ──────────
 export const loadWooOrdersCache = () => load('orders')
 export const saveWooOrdersCache = (from, to, result) =>

@@ -72,7 +72,7 @@ customer, narrower than admin). *public* = no session check.
 
 ## Integrations
 
-- `woo-sync.js` (`/api/woo-sync`) — Read-only WooCommerce B2C sync. `list_orders`/`search_orders`/`orders_page`/`order_refunds`/`order_meta`/`probe_payout` (Phase 1): paid orders + refunds for review. `products_page` (Phase 6, added 2026-09-02): one client-paginated page of the product catalogue with per-variation stock (variable products fetched via `/products/<id>/variations` in parallel batches), for `WooStockReconcile.jsx`. Writes nothing to Woo. Auth: admin. Called from `src/wooSyncApi.js`.
+- `woo-sync.js` (`/api/woo-sync`) — Read-only WooCommerce B2C sync. `list_orders`/`search_orders`/`orders_page`/`order_refunds`/`order_meta`/`probe_payout` (Phase 1): paid orders + refunds for review. `products_page` (Phase 6): one client-paginated page of the product catalogue with per-variation stock (variable products fetched via `/products/<id>/variations` in parallel batches), for `WooStockReconcile.jsx`. `catalogue_page` (2026-09-02): the same catalogue as product-shaped rows + SEO-heuristic fields (word counts, image-alt coverage), for `WooCatalogue.jsx`. `probe_i18n_seo`: diagnostic — reports whether the WP site exposes WPML/Polylang + Yoast over REST. Writes nothing to Woo. Auth: admin. Called from `src/wooSyncApi.js`.
 - `resend-webhook.js` (`/api/resend-webhook`) — Receives Resend's delivery webhook (delivered/opened/clicked/bounced/complained), records status on the matching `outreach_drafts` doc. Auth: public — invoked by Resend's servers, not the app. No frontend caller.
 
 ---

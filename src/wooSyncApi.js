@@ -47,6 +47,16 @@ export const wooOrderRefunds = (orderId) => wooSync('order_refunds', { order_id:
 // no safe server-side loop bound). Returns { rows, has_more, ... }.
 export const wooProductsPage = (page) => wooSync('products_page', { page })
 
+// One page of the catalogue as PRODUCT-shaped rows (variations nested) plus
+// the fields an SEO heuristic needs — for the catalogue overview
+// (WooCatalogue.jsx). Client-paginated. Returns { rows, has_more, ... }.
+export const wooCataloguePage = (page) => wooSync('catalogue_page', { page })
+
+// Diagnostic: whether the WordPress site exposes translation status
+// (WPML / Polylang) and SEO meta (Yoast / RankMath) over REST. Returns
+// { results: [{ label, status, ok, sample }] }.
+export const wooProbeI18nSeo = () => wooSync('probe_i18n_seo', {}).then(d => d.results || [])
+
 // Diagnostic: full meta_data for one order — used to check for a gateway fee
 // hiding in private post meta once fee_lines comes back empty. See spec §12 Q4.
 export const wooOrderMeta = (orderId) => wooSync('order_meta', { order_id: orderId })

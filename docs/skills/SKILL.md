@@ -223,7 +223,7 @@ the fast path from a request to the exact code.
 - Mirror: `erp-sync/` — Supabase, all columns `text`, views in `api_views.sql` (every view must cast). SQL Server LAN-only (`192.168.10.251`). Prefer ledgers over balance tables; column names lie.
 
 ### WooCommerce B2C sync → see `ARCHITECTURE-RULES.md` §Woo-to-invoice
-- Pages: `WooCommerceSync.jsx`, `WooStockReconcile.jsx` · Logic: `src/wooSyncApi.js`, `src/wooImport.js`, `src/wooRefundImport.js`, `src/wooCustomerSync.js`, `src/wooCache.js` · Edge fns: `woo-sync` (read-only: orders/refunds Phase 1, `products_page` Phase 6)
+- Pages: `WooCommerceSync.jsx`, `WooStockReconcile.jsx`, `WooCatalogue.jsx` (`/woo-catalogue` — catalogue overview + SEO-heuristic checklist + WPML/Polylang/Yoast probe) · Logic: `src/wooSyncApi.js`, `src/wooImport.js`, `src/wooRefundImport.js`, `src/wooCustomerSync.js`, `src/wooCache.js` · Edge fns: `woo-sync` (read-only: orders/refunds Phase 1, `products_page` Phase 6, `catalogue_page` + `probe_i18n_seo` 2026-09-02)
 - Spec: `WooCommerce_B2C_Sync_Spec.md`. Pointer: `customers.woo_customer_id`. Shared shop customer: `online-crystocraft-o07`.
 - **`woo_cache/{doc}`** (admin-only, pure cache): `orders`, `product_catalogue`, `customer_scan` each hold the last pull so the pages restore on open instead of re-hitting WooCommerce; the fetch/scan button refreshes. Size-guarded at ~900 KB. Nothing downstream reads it — safe to wipe.
 

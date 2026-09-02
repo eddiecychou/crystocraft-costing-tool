@@ -20,6 +20,8 @@
 //           POST { op: 'search_orders', customer_id }  -- exact WC customer ID
 //           POST { op: 'orders_page', page }        -- lightweight, client-paginated, all-time
 //           POST { op: 'products_page', page }       -- catalogue + per-variation stock, client-paginated
+//           POST { op: 'catalogue_page', page }       -- product-shaped rows + SEO fields, client-paginated
+//           POST { op: 'probe_i18n_seo' }             -- diagnostic: WPML/Polylang + Yoast over REST?
 //           POST { op: 'order_refunds', order_id }
 //           POST { op: 'order_meta', order_id }
 //           POST { op: 'probe_payout', order_id? }   -- diagnostic, see below
@@ -425,6 +427,109 @@ export default async function handler(req) {
       products_on_page: products.length,
       variable_count: variableProducts.length,
     })
+  }
+
+  // ── one page of the catalogue as PRODUCT-shaped rows for the overview +
+  // SEO checklist (WooCatalogue.jsx) ───────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Distinct from products_page (which flattens to one row per variation for
+  // stock matching). Here each row IS a product, variations nested, plus the
+  // fields an SEO heuristic needs — trimmed server-side (word counts, alt
+  // coverage) so the cached payload stays small. Client-paginated, same
+  // reasoning as products_page.
+  if (body.op === 'catalogue_page') {
+    const page = Math.max(1, parseInt(body.page, 10) || 1)
+    const r = await wc('products', { per_page: 100, page, status: 'any', orderby: 'id', order: 'asc' })
+    if (!r.ok) return json({ error: 'WooCommerce product fetch failed', detail: (await r.text()).slice(0, 300) }, 502)
+    const products = await r.json()
+
+    const wordCount = (html) => {
+      const text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').trim()
+      return text ? text.split(/\s+/).length : 0
+    }
+    const attrPairs = (list) => (list || []).map(a => ({ name: a.name, option: a.option ?? a.options?.join(', ') ?? '' }))
+
+    // Variations for variable products, in parallel batches of 6.
+    const variableProducts = products.filter(p => p.type === 'variable')
+    const varsByProduct = new Map()
+    for (let i = 0; i < variableProducts.length; i += 6) {
+      await Promise.all(variableProducts.slice(i, i + 6).map(async (p) => {
+        const acc = []
+        for (let vp = 1; vp <= 10; vp++) {
+          const vr = await wc(`products/${p.id}/variations`, { per_page: 100, page: vp })
+          if (!vr.ok) break
+          const rows = await vr.json()
+          acc.push(...rows)
+          if (rows.length < 100) break
+        }
+        varsByProduct.set(p.id, acc)
+      }))
+    }
+
+    const rows = products.map(p => {
+      const images = p.images || []
+      const vars = varsByProduct.get(p.id) || []
+      return {
+        product_id: p.id,
+        type: p.type,
+        status: p.status,                         // publish | draft | pending | private
+        catalog_visibility: p.catalog_visibility, // visible | catalog | search | hidden
+        name: p.name,
+        name_len: (p.name || '').length,
+        slug: p.slug || '',
+        permalink: p.permalink || null,
+        sku: p.sku || '',
+        categories: (p.categories || []).map(c => c.name),
+        tag_count: (p.tags || []).length,
+        price: p.price || null,
+        regular_price: p.regular_price || null,
+        sale_price: p.sale_price || null,
+        on_sale: !!p.on_sale,
+        stock_status: p.stock_status || null,
+        stock_quantity: Number.isFinite(p.stock_quantity) ? p.stock_quantity : null,
+        total_sales: Number.isFinite(p.total_sales) ? p.total_sales : 0,
+        date_created: p.date_created || null,
+        date_modified: p.date_modified || null,
+        image_count: images.length,
+        images_missing_alt: images.filter(im => !String(im.alt || '').trim()).length,
+        description_words: wordCount(p.description),
+        short_description_words: wordCount(p.short_description),
+        variations: vars.map(v => ({
+          variation_id: v.id, sku: v.sku || '',
+          attributes: attrPairs(v.attributes),
+          price: v.price || null,
+          stock_status: v.stock_status || null,
+          stock_quantity: Number.isFinite(v.stock_quantity) ? v.stock_quantity : null,
+        })),
+      }
+    })
+
+    return json({ rows, has_more: products.length === 100, products_on_page: products.length })
+  }
+
+  // ── diagnostic: does this WordPress expose translation status (WPML /
+  // Polylang) and SEO meta (Yoast / RankMath) over REST? ────────────────────
+  // Purely reports what each candidate endpoint returns — nothing here is
+  // wired into the catalogue yet. Same shape as probe_payout.
+  if (body.op === 'probe_i18n_seo') {
+    const results = []
+    const tryJson = async (label, promise) => {
+      try {
+        const r = await promise
+        const text = await r.text()
+        let parsed = null
+        try { parsed = JSON.parse(text) } catch { /* keep raw */ }
+        results.push({ label, status: r.status, ok: r.ok, sample: parsed ? JSON.stringify(parsed).slice(0, 1200) : text.slice(0, 800) })
+      } catch (e) {
+        results.push({ label, status: null, ok: false, sample: String(e?.message || e).slice(0, 300) })
+      }
+    }
+    await tryJson('wp-json root (namespaces)', wpJson(''))
+    await tryJson('wc/v3/products first row keys', wc('products', { per_page: 1 }))
+    await tryJson('wp/v2/types/product', wpJson('wp/v2/types/product'))
+    await tryJson('wp/v2/product first (lang/translations/yoast)', wpJson('wp/v2/product?per_page=1&_fields=id,slug,status,lang,translations,yoast_head_json'))
+    await tryJson('pll/v1 languages (Polylang)', wpJson('pll/v1/languages'))
+    return json({ results })
   }
 
   // ── refunds for one order, on demand ────────────────────────────────────────
