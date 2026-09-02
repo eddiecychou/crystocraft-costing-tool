@@ -1,12 +1,14 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { seoLanguages, seoContentPage } from '../seoStateApi'
+import { wooCataloguePage } from '../wooSyncApi'
 import { loadSeoState, saveSeoState, saveSeoSnapshot, listSeoSnapshots } from '../seoCache'
 import { downloadCsv } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
 import { RefreshCcw, Download, AlertTriangle, Database, ExternalLink, Camera, ArrowUp, ArrowDown } from 'lucide-react'
 
 // SEO control plane — Step 1: a structured, snapshottable "what's live now"
-// for WordPress blog posts + pages (products live on the Woo Catalogue page).
+// for WordPress blog posts, pages AND WooCommerce products (the SEO batches
+// write products too, so reconcile needs them in the same store).
 // Read-only against WordPress. The History panel is the rollback reference:
 // if a later change goes wrong, the last snapshot says what each post's
 // slug / status / SEO meta / layout hash used to be.
@@ -69,6 +71,34 @@ export default function SeoState() {
           }
         }
       }
+      // WooCommerce products too — the SEO batches also write `kind:'product'`
+      // (Yoast titles etc.), so reconcile needs them in the same store. Pulled
+      // via the woo-sync catalogue op (wc/v3, Yoast read from meta_data by key)
+      // and mapped to the seo_state row shape.
+      for (let page = 1; page <= 100; page++) {
+        const { rows: r, has_more } = await wooCataloguePage(page)
+        for (const p of (r || [])) {
+          acc.push({
+            id: p.product_id,
+            kind: 'product',
+            lang: p.lang || 'en',
+            slug: p.slug || '',
+            status: p.status || '',
+            link: p.permalink || '',
+            modified: p.date_modified || '',
+            title: p.name || '',
+            seo_title: p.seo_title || '',
+            seo_desc: p.seo_desc || '',
+            seo_title_set: !!p.seo_title_set,
+            seo_desc_set: !!p.seo_desc_set,
+            focus_kw: p.seo_focus_kw || '',
+            elementor_len: 0,
+            elementor_hash: null, // catalogue_page doesn't fetch _elementor_data for products
+          })
+        }
+        setProgress(`products · ${acc.length} rows…`)
+        if (!has_more) break
+      }
       setRows(acc); setFetchedAt(new Date()); setFromCache(false)
       const res = await saveSeoState(acc)
       if (res.skipped === 'too_large') setError(`${acc.length} rows — too large to cache, will re-read next visit`)
@@ -101,6 +131,7 @@ export default function SeoState() {
       code,
       posts: rows.filter(r => r.lang === code && r.kind === 'post').length,
       pages: rows.filter(r => r.lang === code && r.kind === 'page').length,
+      products: rows.filter(r => r.lang === code && r.kind === 'product').length,
     }))
     return {
       langs,
@@ -109,6 +140,7 @@ export default function SeoState() {
         total: rows.length,
         posts: rows.filter(r => r.kind === 'post').length,
         pages: rows.filter(r => r.kind === 'page').length,
+        products: rows.filter(r => r.kind === 'product').length,
         drafts: rows.filter(r => r.status !== 'publish').length,
         noSeoTitle: rows.filter(r => r.status === 'publish' && !r.seo_title_set).length,
         noSeoDesc: rows.filter(r => r.status === 'publish' && !r.seo_desc_set).length,
@@ -222,11 +254,11 @@ export default function SeoState() {
 
       {model && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 mb-4">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
             <Stat label="Content" value={model.counts.total} />
             <Stat label="Posts" value={model.counts.posts} />
             <Stat label="Pages" value={model.counts.pages} />
-            <Stat label="Not published" value={model.counts.drafts} />
+            <Stat label="Products" value={model.counts.products} />
             <Stat label="No SEO title" value={model.counts.noSeoTitle} tone={model.counts.noSeoTitle ? 'amber' : undefined} />
             <Stat label="No meta desc" value={model.counts.noSeoDesc} tone={model.counts.noSeoDesc ? 'amber' : undefined} />
           </div>
@@ -234,8 +266,8 @@ export default function SeoState() {
           <div className="flex flex-wrap gap-2 mb-4">
             {model.byLang.map(l => (
               <div key={l.code} className="card px-3 py-2">
-                <div className="text-sm font-semibold tabular-nums">{l.posts + l.pages}</div>
-                <div className="text-2xs uppercase tracking-wide text-ink-60">{l.code} · {l.posts}p / {l.pages}pg</div>
+                <div className="text-sm font-semibold tabular-nums">{l.posts + l.pages + l.products}</div>
+                <div className="text-2xs uppercase tracking-wide text-ink-60">{l.code} · {l.posts}p / {l.pages}pg / {l.products}pr</div>
               </div>
             ))}
           </div>
@@ -259,7 +291,7 @@ export default function SeoState() {
             <input className="input text-sm w-full max-w-xs" placeholder="Search title, slug or id…"
               value={search} onChange={e => setSearch(e.target.value)} />
             <select className="input text-sm w-auto" value={kindFilter} onChange={e => setKindFilter(e.target.value)}>
-              <option value="all">All kinds</option><option value="post">Posts</option><option value="page">Pages</option>
+              <option value="all">All kinds</option><option value="post">Posts</option><option value="page">Pages</option><option value="product">Products</option>
             </select>
             <select className="input text-sm w-auto" value={langFilter} onChange={e => setLangFilter(e.target.value)}>
               <option value="all">All languages</option>

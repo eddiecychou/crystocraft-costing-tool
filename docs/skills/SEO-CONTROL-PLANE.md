@@ -32,6 +32,10 @@ Reads via the **WP Application Password** (`WP_USER` / `WP_PASS` — `wp/v2/*` d
 not accept the WooCommerce Consumer Key). Ops:
 
 - `{ op: 'languages' }` → `wpml/v1/languages`, falls back to `en / es / zh-hant / ja / fr`.
+- **Products** are also pulled into `seo_state` (`kind: 'product'`, via the
+  `woo-sync` `catalogue_page` op — `wc/v3`, Yoast read from `meta_data` by key,
+  no `_elementor_data`) so reconcile resolves product batch items. Keyed
+  `product:<id>`, matching a batch item's `{ kind:'product', id }`.
 - `{ op: 'content_page', kind, lang, page }` — one page (100) of `wp/v2/posts` or
   `wp/v2/pages` in one language, `context=edit`. Each row:
   `{ id, kind, lang, slug, status, link, modified, title, seo_title, seo_desc,

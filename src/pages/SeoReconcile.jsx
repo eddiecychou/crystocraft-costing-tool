@@ -83,11 +83,17 @@ export default function SeoReconcile() {
       else {
         if (after.slug != null && c.slug !== after.slug) notes.push({ field: 'slug', from: after.slug, to: c.slug, detail: 'changed since execution' })
         if (after.status != null && c.status !== after.status) notes.push({ field: 'status', from: after.status, to: c.status, detail: 'changed since execution' })
+        // Only compare the layout hash when the current state actually has one
+        // (products in the state cache don't carry _elementor_data).
         const afterEd = after['meta._elementor_data']
-        if (afterEd != null && c.elementor_hash !== afterEd) notes.push({ field: 'layout', from: afterEd, to: c.elementor_hash, detail: '_elementor_data changed since execution' })
+        if (afterEd != null && c.elementor_hash != null && c.elementor_hash !== afterEd) {
+          notes.push({ field: 'layout', from: afterEd, to: c.elementor_hash, detail: '_elementor_data changed since execution' })
+        }
+        // Yoast intent — support both meta.<key> (posts/pages) and meta_data[] (products).
         const p = it.payload || {}
-        if (p.meta?._yoast_wpseo_title && !c.seo_title_set) notes.push({ field: 'seo_title', detail: 'we wrote a Yoast title — it is no longer set' })
-        if (p.meta?._yoast_wpseo_metadesc && !c.seo_desc_set) notes.push({ field: 'seo_desc', detail: 'we wrote a meta description — it is no longer set' })
+        const wrote = (k) => !!p.meta?.[k] || (Array.isArray(p.meta_data) && p.meta_data.some(m => m.key === k && m.value))
+        if (wrote('_yoast_wpseo_title') && !c.seo_title_set) notes.push({ field: 'seo_title', detail: 'we wrote a Yoast title — it is no longer set' })
+        if (wrote('_yoast_wpseo_metadesc') && !c.seo_desc_set) notes.push({ field: 'seo_desc', detail: 'we wrote a meta description — it is no longer set' })
       }
       return { it, c, state: notes.length ? (it.result && !it.result.ok ? 'failed' : 'drifted') : 'held', notes }
     })
