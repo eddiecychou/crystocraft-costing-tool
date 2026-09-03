@@ -13,6 +13,7 @@ import { fmtMoney } from '../currency'
 import { poTotals } from '../purchaseOrders'
 import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen, MessageCircle, Check, Sparkles, X } from 'lucide-react'
 import { previewSupplierMerge, mergeSuppliers } from '../domain/supplierMerge'
+import { useT } from '../i18n'
 
 // Supplier Workstation Phase 1 — quick-access sourcing links. Order matters:
 // website first, then each marketplace's shop before its product/catalogue
@@ -99,6 +100,7 @@ const MERGE_FIELD_LABELS = {
 // its POs, BOM supplier-quotes and component pointers have moved. See
 // domain/supplierMerge.js for the full repoint checklist.
 function MergeSupplierModal({ supplier, onClose, onMerged }) {
+  const t = useT()
   const [suppliers, setSuppliers] = useState([])
   const [search, setSearch] = useState('')
   const [survivorId, setSurvivorId] = useState('')
@@ -119,7 +121,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
     setError(''); setPreviewing(true)
     previewSupplierMerge(supplier.id, survivorId)
       .then(p => { if (alive) setPreview(p) })
-      .catch(e => { if (alive) { setPreview(null); setError(e.message || 'Could not load a preview.') } })
+      .catch(e => { if (alive) { setPreview(null); setError(e.message || t('Could not load a preview.')) } })
       .finally(() => { if (alive) setPreviewing(false) })
     return () => { alive = false }
   }, [survivorId, supplier.id])
@@ -134,7 +136,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
       await mergeSuppliers(supplier.id, survivorId)
       onMerged(survivorId)
     } catch (e) {
-      setError(e.message || 'Merge failed.'); setBusy(false)
+      setError(e.message || t('Merge failed.')); setBusy(false)
     }
   }
 
@@ -142,7 +144,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className=" text-ink">Merge “{supplier.name}” into…</h2>
+          <h2 className=" text-ink">{t('Merge “{name}” into…', { name: supplier.name })}</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3">
@@ -152,14 +154,14 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
             </div>
           )}
           <label className="block">
-            <span className="text-xs text-ink-60">The surviving supplier — search by name</span>
-            <input className="input w-full mt-0.5" placeholder="Search suppliers…" value={search}
+            <span className="text-xs text-ink-60">{t('The surviving supplier — search by name')}</span>
+            <input className="input w-full mt-0.5" placeholder={t('Search suppliers…')} value={search}
               onChange={e => { setSearch(e.target.value); setSurvivorId('') }} autoFocus />
           </label>
           {search && !survivorId && (
             <div className="border border-warm-grey rounded-none max-h-48 overflow-y-auto">
               {results.length === 0 ? (
-                <p className="text-xs text-ink-60 px-3 py-2">No match.</p>
+                <p className="text-xs text-ink-60 px-3 py-2">{t('No match.')}</p>
               ) : results.map(s => (
                 <button key={s.id} type="button"
                   onClick={() => { setSurvivorId(s.id); setSearch(s.name) }}
@@ -174,7 +176,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
             </div>
           )}
 
-          {previewing && <p className="text-xs text-ink-60">Checking what would move…</p>}
+          {previewing && <p className="text-xs text-ink-60">{t('Checking what would move…')}</p>}
 
           {preview && (
             <div className="rounded-none border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
@@ -199,15 +201,15 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
                   : <>No fields to fill in — the surviving supplier already has everything this one does.</>}
               </p>
               <p className="text-xs text-amber-700 font-medium">
-                “{supplier.name}” will be deleted once merged. This cannot be undone.
+                {t('“{name}” will be deleted once merged. This cannot be undone.', { name: supplier.name })}
               </p>
             </div>
           )}
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-warm-grey">
-          <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">Cancel</button>
+          <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">{t('Cancel')}</button>
           <button onClick={confirm} disabled={busy || !preview || !!error} className="btn-danger text-sm">
-            {busy ? 'Merging…' : 'Merge & Delete'}
+            {busy ? t('Merging…') : t('Merge & Delete')}
           </button>
         </div>
       </div>
@@ -216,6 +218,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
 }
 
 export default function SupplierDetail() {
+  const t = useT()
   const { id } = useParams()
   const navigate = useNavigate()
   const [supplier, setSupplier]         = useState(null)
@@ -400,15 +403,15 @@ export default function SupplierDetail() {
             const cat = SUPPLIER_CATEGORIES.find(c => c.value === supplier.category)
             return cat ? (
               <span className="inline-block mt-1.5 text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 font-medium">
-                <cat.Icon size={12} className="inline align-[-2px] mr-1" />{supplier.category}
+                <cat.Icon size={12} className="inline align-[-2px] mr-1" />{t(supplier.category)}
               </span>
             ) : null
           })()}
         </div>
         <div className="flex gap-2">
-          <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary">Edit</Link>
-          <button className="btn-secondary" onClick={() => setShowMerge(true)}>Merge</button>
-          <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
+          <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary">{t('Edit')}</Link>
+          <button className="btn-secondary" onClick={() => setShowMerge(true)}>{t('Merge')}</button>
+          <button className="btn-danger" onClick={() => setConfirmDelete(true)}>{t('Delete')}</button>
         </div>
       </div>
 
@@ -452,7 +455,7 @@ export default function SupplierDetail() {
         const wechatId = (supplier.wechat_id || primaryC?.wechat || '').trim()
         return (
           <div className="card p-4 mb-6">
-            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-2.5">Quick Access</p>
+            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-2.5">{t('Quick Access')}</p>
             <div className="flex flex-wrap items-center gap-2">
               {links.map(l => (
                 <a key={l.key} href={supplier[l.key]} target="_blank" rel="noreferrer"
@@ -471,7 +474,7 @@ export default function SupplierDetail() {
                    title={`Copy WeChat ID "${wechatId}"`}
                    className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-warm-grey text-ink-80 hover:border-brand-400 hover:text-brand-700 transition-colors">
                   {copied === 'qa-wechat' ? <Check size={12} /> : <MessageCircle size={12} />}
-                  {copied === 'qa-wechat' ? 'Copied' : 'Copy WeChat ID'}
+                  {copied === 'qa-wechat' ? t('Copied') : t('Copy WeChat ID')}
                 </button>
               )}
               {wechatPhone && (
@@ -479,12 +482,12 @@ export default function SupplierDetail() {
                    title={`Copy phone "${wechatPhone}" — paste into WeChat → Add Contacts`}
                    className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-warm-grey text-ink-80 hover:border-brand-400 hover:text-brand-700 transition-colors">
                   {copied === 'qa-phone' ? <Check size={12} /> : <MessageCircle size={12} />}
-                  {copied === 'qa-phone' ? 'Copied' : 'Copy phone for WeChat'}
+                  {copied === 'qa-phone' ? t('Copied') : t('Copy phone for WeChat')}
                 </button>
               )}
               <a href="#catalogues"
                  className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-warm-grey text-ink-80 hover:border-brand-400 hover:text-brand-700 transition-colors">
-                <FolderOpen size={12} />Catalogues &amp; Files
+                <FolderOpen size={12} />{t('Catalogues & Files')}
               </a>
             </div>
           </div>
@@ -503,8 +506,8 @@ export default function SupplierDetail() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium text-ink">{c.name || '—'}</span>
               {c.title && <span className="text-xs text-ink-60">{c.title}</span>}
-              {c.is_primary && !dim && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 uppercase tracking-wide">Primary</span>}
-              {dim && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60 uppercase tracking-wide">Left</span>}
+              {c.is_primary && !dim && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 uppercase tracking-wide">{t('Primary')}</span>}
+              {dim && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60 uppercase tracking-wide">{t('Left')}</span>}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-70">
               {c.phone && <a href={`tel:${c.phone}`} className="text-brand-600 hover:underline">{c.phone}</a>}
@@ -516,11 +519,11 @@ export default function SupplierDetail() {
         )
         return (
           <div className="card p-5 mb-6">
-            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Contacts</p>
+            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">{t('Contacts')}</p>
             {active.map(c => Card(c, false))}
             {gone.length > 0 && (
               <details className="mt-2">
-                <summary className="text-xs text-ink-60 cursor-pointer">Former contacts ({gone.length})</summary>
+                <summary className="text-xs text-ink-60 cursor-pointer">{t('Former contacts')} ({gone.length})</summary>
                 {gone.map(c => Card(c, true))}
               </details>
             )}
@@ -529,19 +532,19 @@ export default function SupplierDetail() {
       })()}
 
       <div className="card p-5 space-y-0">
-        <InfoRow label="Country" value={supplier.country} />
-        <InfoRow label="Province / Region" value={supplier.province} />
-        <InfoRow label="City" value={supplier.city} />
-        <InfoRow label="Address" value={supplier.address} />
-        <MultiRow label="Office phone" values={supplier.phones ?? supplier.phone}
+        <InfoRow label={t('Country')} value={supplier.country} />
+        <InfoRow label={t('Province / Region')} value={supplier.province} />
+        <InfoRow label={t('City')} value={supplier.city} />
+        <InfoRow label={t('Address')} value={supplier.address} />
+        <MultiRow label={t('Office phone')} values={supplier.phones ?? supplier.phone}
           render={v => <a href={`tel:${v}`} className="text-brand-600 hover:underline">{v}</a>} />
-        <MultiRow label="Office email" values={supplier.emails ?? supplier.email}
+        <MultiRow label={t('Office email')} values={supplier.emails ?? supplier.email}
           render={v => <a href={`mailto:${v}`} className="text-brand-600 hover:underline">{v}</a>} />
-        <InfoRow label="Default Currency" value={supplier.default_currency} />
-        <InfoRow label="Payment Terms" value={PO_PAYMENT_TERM_LABEL[supplier.default_payment_terms] || supplier.default_payment_terms} />
+        <InfoRow label={t('Default Currency')} value={supplier.default_currency} />
+        <InfoRow label={t('Payment Terms')} value={PO_PAYMENT_TERM_LABEL[supplier.default_payment_terms] || supplier.default_payment_terms} />
         {supplier.notes && (
           <div className="pt-3 mt-2 border-t border-warm-grey">
-            <p className="text-xs text-ink-60 mb-1">Notes</p>
+            <p className="text-xs text-ink-60 mb-1">{t('Notes')}</p>
             <p className="text-sm text-ink-80 whitespace-pre-wrap">{supplier.notes}</p>
           </div>
         )}
@@ -551,15 +554,15 @@ export default function SupplierDetail() {
       <div className="card mb-6">
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
           <h2 className="text-sm text-ink-80">
-            Purchase Orders {!posLoading && <span className="text-ink-60 font-normal">({pos.length})</span>}
+            {t('Purchase Orders')} {!posLoading && <span className="text-ink-60 font-normal">({pos.length})</span>}
           </h2>
-          <Link to={`/purchase-orders/new?supplier=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New PO</Link>
+          <Link to={`/purchase-orders/new?supplier=${id}`} className="btn-primary text-xs py-1.5 px-3">{t('+ New PO')}</Link>
         </div>
 
         {posLoading ? (
-          <p className="text-sm text-ink-60 text-center py-8">Loading purchase orders…</p>
+          <p className="text-sm text-ink-60 text-center py-8">{t('Loading purchase orders…')}</p>
         ) : pos.length === 0 ? (
-          <p className="text-sm text-ink-60 text-center py-8">No purchase orders for this supplier yet.</p>
+          <p className="text-sm text-ink-60 text-center py-8">{t('No purchase orders for this supplier yet.')}</p>
         ) : (
           <div className="divide-y divide-warm-grey">
             {pos.map(p => {
@@ -571,8 +574,8 @@ export default function SupplierDetail() {
                   <FileText size={16} className="text-platinum shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-sm font-medium text-ink">{p.pu_number || '(no PU no.)'}</span>
-                      <span className={`text-2xs px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
+                      <span className="font-mono text-sm font-medium text-ink">{p.pu_number || t('(no PU no.)')}</span>
+                      <span className={`text-2xs px-1.5 py-0.5 rounded-full ${meta.badge}`}>{t(meta.label)}</span>
                     </div>
                     {p.issued_date && <p className="text-xs text-ink-60 mt-0.5">{fmtDate(p.issued_date)}</p>}
                   </div>
@@ -588,38 +591,38 @@ export default function SupplierDetail() {
       <div className="card mb-6">
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
           <h2 className="text-sm text-ink-80">
-            Corp Gift Component Quotes {!quotesLoading && <span className="text-ink-60 font-normal">({quotes.length})</span>}
+            {t('Corp Gift Component Quotes')} {!quotesLoading && <span className="text-ink-60 font-normal">({quotes.length})</span>}
           </h2>
           <button onClick={() => setShowAddQuote(true)} className="btn-primary text-xs py-1.5 px-3">
-            + Add Quote
+            {t('+ Add Quote')}
           </button>
         </div>
 
         {indexError && (
           <div className="p-4 text-sm text-amber-700 bg-amber-50 border-b border-amber-100 flex items-start gap-2">
-            <AlertTriangle size={15} className="shrink-0 mt-0.5" />A Firestore index is needed for this query. Check the browser console for a link to create it — takes about 1 minute.
+            <AlertTriangle size={15} className="shrink-0 mt-0.5" />{t('A Firestore index is needed for this query. Check the browser console for a link to create it — takes about 1 minute.')}
           </div>
         )}
 
         {quotes.length > COLLAPSE_THRESHOLD && (
           <div className="px-5 py-2.5 border-b border-warm-grey">
-            <input type="text" placeholder="Search product or component…" className="input w-full text-sm"
+            <input type="text" placeholder={t('Search product or component…')} className="input w-full text-sm"
                    value={quoteSearch} onChange={e => { setQuoteSearch(e.target.value); setShowAllQuotes(false) }} />
           </div>
         )}
 
         {quotesLoading ? (
-          <p className="text-sm text-ink-60 text-center py-8">Loading quotes…</p>
+          <p className="text-sm text-ink-60 text-center py-8">{t('Loading quotes…')}</p>
         ) : quotes.length === 0 && !indexError ? (
-          <p className="text-sm text-ink-60 text-center py-8">No component quotes linked to this supplier yet.</p>
+          <p className="text-sm text-ink-60 text-center py-8">{t('No component quotes linked to this supplier yet.')}</p>
         ) : filteredQuotes.length === 0 ? (
-          <p className="text-sm text-ink-60 text-center py-8">No quotes match "{quoteSearch}".</p>
+          <p className="text-sm text-ink-60 text-center py-8">{t('No quotes match "{q}".', { q: quoteSearch })}</p>
         ) : (
           <>
             <div className="divide-y divide-warm-grey">
               {visibleQuotes.map(q => {
                 const isOrphaned = !q._productName || q._productName === q.productId
-                const productLabel = isOrphaned ? (q.supplier_name || 'Unknown Product') : q._productName
+                const productLabel = isOrphaned ? (q.supplier_name || t('Unknown Product')) : q._productName
                 const componentLabel = (!q._componentName || q._componentName === q.componentId) ? '—' : q._componentName
                 const rowClass = 'flex items-start justify-between px-5 py-3.5 gap-3 transition-colors'
                 const inner = (
@@ -628,13 +631,13 @@ export default function SupplierDetail() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium text-ink truncate">{productLabel}</p>
                         {q.is_preferred && (
-                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0"><Star size={11} className="fill-current" />Preferred</span>
+                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0"><Star size={11} className="fill-current" />{t('Preferred')}</span>
                         )}
                         {isOrphaned && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60 shrink-0">Product deleted</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60 shrink-0">{t('Product deleted')}</span>
                         )}
                       </div>
-                      <p className="text-xs text-ink-60 mt-0.5">Component: {componentLabel}</p>
+                      <p className="text-xs text-ink-60 mt-0.5">{t('Component:')} {componentLabel}</p>
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-ink-60">
                         {q.unit_cost != null && (
                           <span className="font-medium text-ink-80">{q.unit_cost} {q.unit_cost_currency}</span>
@@ -645,7 +648,7 @@ export default function SupplierDetail() {
                       </div>
                       {q.notes && <p className="text-xs text-ink-60 mt-0.5 italic truncate">{q.notes}</p>}
                     </div>
-                    {!isOrphaned && <span className="text-xs text-ink-60 shrink-0 mt-1">Edit →</span>}
+                    {!isOrphaned && <span className="text-xs text-ink-60 shrink-0 mt-1">{t('Edit →')}</span>}
                   </>
                 )
                 return isOrphaned
@@ -656,7 +659,7 @@ export default function SupplierDetail() {
             {!quoteSearch && filteredQuotes.length > COLLAPSE_THRESHOLD && (
               <div className="px-5 py-3 border-t border-warm-grey text-center">
                 <button onClick={() => setShowAllQuotes(s => !s)} className="text-xs text-brand-600 hover:underline">
-                  {showAllQuotes ? 'Show less' : `Show all ${filteredQuotes.length}`}
+                  {showAllQuotes ? t('Show less') : t('Show all {n}', { n: filteredQuotes.length })}
                 </button>
               </div>
             )}
@@ -669,19 +672,19 @@ export default function SupplierDetail() {
         <div className="card mb-6">
           <div className="px-5 py-4 border-b border-warm-grey">
             <h2 className="text-sm text-ink-80">
-              Figurine Range Component Quotes <span className="text-ink-60 font-normal">({rangeQuotes.length})</span>
+              {t('Figurine Range Component Quotes')} <span className="text-ink-60 font-normal">({rangeQuotes.length})</span>
             </h2>
           </div>
 
           {rangeQuotes.length > COLLAPSE_THRESHOLD && (
             <div className="px-5 py-2.5 border-b border-warm-grey">
-              <input type="text" placeholder="Search component…" className="input w-full text-sm"
+              <input type="text" placeholder={t('Search component…')} className="input w-full text-sm"
                      value={rangeSearch} onChange={e => { setRangeSearch(e.target.value); setShowAllRangeQuotes(false) }} />
             </div>
           )}
 
           {filteredRangeQuotes.length === 0 ? (
-            <p className="text-sm text-ink-60 text-center py-8">No quotes match "{rangeSearch}".</p>
+            <p className="text-sm text-ink-60 text-center py-8">{t('No quotes match "{q}".', { q: rangeSearch })}</p>
           ) : (
             <>
               <div className="divide-y divide-warm-grey">
@@ -693,26 +696,26 @@ export default function SupplierDetail() {
                         <p className="text-sm font-medium text-ink truncate">{q._componentName}</p>
                         {q.is_preferred && (
                           <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">
-                            <Star size={11} className="fill-current" />Preferred
+                            <Star size={11} className="fill-current" />{t('Preferred')}
                           </span>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-ink-60">
                         {q.unit_cost != null && <span className="font-medium text-ink-80">{q.unit_cost} {q.unit_cost_currency}</span>}
                         {q.moq && <span>MOQ {Number(q.moq).toLocaleString()}</span>}
-                        {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
-                        {q.tooling_sample_cost != null && <span>Tooling {q.tooling_sample_cost} {q.tooling_sample_cost_currency}</span>}
+                        {q.production_lead_time_days && <span>{t('Prod')} {q.production_lead_time_days}d</span>}
+                        {q.tooling_sample_cost != null && <span>{t('Tooling')} {q.tooling_sample_cost} {q.tooling_sample_cost_currency}</span>}
                       </div>
                       {q.notes && <p className="text-xs text-ink-60 mt-0.5 italic truncate">{q.notes}</p>}
                     </div>
-                    <span className="text-xs text-ink-60 shrink-0 mt-1">Edit →</span>
+                    <span className="text-xs text-ink-60 shrink-0 mt-1">{t('Edit →')}</span>
                   </Link>
                 ))}
               </div>
               {!rangeSearch && filteredRangeQuotes.length > COLLAPSE_THRESHOLD && (
                 <div className="px-5 py-3 border-t border-warm-grey text-center">
                   <button onClick={() => setShowAllRangeQuotes(s => !s)} className="text-xs text-brand-600 hover:underline">
-                    {showAllRangeQuotes ? 'Show less' : `Show all ${filteredRangeQuotes.length}`}
+                    {showAllRangeQuotes ? t('Show less') : t('Show all {n}', { n: filteredRangeQuotes.length })}
                   </button>
                 </div>
               )}
@@ -723,10 +726,10 @@ export default function SupplierDetail() {
 
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xs text-ink-60 uppercase tracking-wide">Photos &amp; Videos</h2>
-          {photos.length > 0 && <span className="text-xs text-ink-60">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>}
+          <h2 className="text-xs text-ink-60 uppercase tracking-wide">{t('Photos & Videos')}</h2>
+          {photos.length > 0 && <span className="text-xs text-ink-60">{t('{n} photos', { n: photos.length })}</span>}
         </div>
-        <p className="text-xs text-ink-60 mb-3">Exhibition / booth shots and clips. Drag a whole batch onto the box below — images and videos are sorted automatically. Drag photos to reorder; caption each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.<br /><span className="text-amber-600">Videos: drag from <strong>Finder</strong>, not the Photos app — Photos hands the browser a still frame instead of the movie.</span></p>
+        <p className="text-xs text-ink-60 mb-3">{t('Exhibition / booth shots and clips. Drag a whole batch onto the box below — images and videos are sorted automatically. Drag photos to reorder; caption each; use “Clean background” on a photo the same way as product images.')}<br /><span className="text-amber-600">{t('Videos: drag from Finder, not the Photos app — Photos hands the browser a still frame instead of the movie.')}</span></p>
         <ImageGallery
           images={photos}
           firestorePath={`suppliers/${id}/images`}
@@ -746,7 +749,7 @@ export default function SupplierDetail() {
 
       {confirmDelete && (
         <ConfirmDialog
-          message={`Delete "${supplier.name}"? This will not affect existing quotes that reference this supplier.`}
+          message={t('Delete "{name}"? This will not affect existing quotes that reference this supplier.', { name: supplier.name })}
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)}
         />

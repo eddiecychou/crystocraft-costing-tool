@@ -4,6 +4,7 @@ import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject }
 import { db, storage } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
 import { FileText, Image as ImageIcon, File, FileSpreadsheet, Presentation, FileType, X } from 'lucide-react'
+import { useT } from '../i18n'
 
 const FILE_ICONS = {
   'application/pdf': FileText,
@@ -77,6 +78,7 @@ function formatBytes(bytes) {
 }
 
 export default function SupplierCatalogs({ supplierId }) {
+  const t = useT()
   const fileIdRef = useRef(0)
   const [catalogs, setCatalogs]   = useState([])
   const [uploads, setUploads]     = useState([])   // in-progress uploads
@@ -140,9 +142,9 @@ export default function SupplierCatalogs({ supplierId }) {
   return (
     <div className="card p-5 mt-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm text-ink-80">Supplier Catalogs</h2>
+        <h2 className="text-sm text-ink-80">{t('Supplier Catalogs')}</h2>
         <label className="btn-secondary text-xs py-1.5 px-3 cursor-pointer">
-          + Upload Files
+          {t('+ Upload Files')}
           <input
             type="file"
             accept=".pdf,image/*,.xlsx,.xls,.csv,.pptx,.ppt,.docx,.doc,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/csv"
@@ -153,7 +155,7 @@ export default function SupplierCatalogs({ supplierId }) {
         </label>
       </div>
 
-      <p className="text-xs text-ink-60 mb-4">Upload supplier product catalogs, lookbooks, or price lists — PDF, images, or Office files (Excel / PowerPoint / Word). PDFs and Office files under 10 MB preview in-app; larger files download.</p>
+      <p className="text-xs text-ink-60 mb-4">{t('Upload supplier product catalogs, lookbooks, or price lists — PDF, images, or Office files (Excel / PowerPoint / Word). PDFs and Office files under 10 MB preview in-app; larger files download.')}</p>
 
       {/* In-progress uploads */}
       {uploads.map(u => (
@@ -171,7 +173,7 @@ export default function SupplierCatalogs({ supplierId }) {
 
       {/* Catalog list */}
       {catalogs.length === 0 && uploads.length === 0 ? (
-        <p className="text-sm text-ink-60 text-center py-6">No catalogs yet — upload PDF, image, or Office files.</p>
+        <p className="text-sm text-ink-60 text-center py-6">{t('No catalogs yet — upload PDF, image, or Office files.')}</p>
       ) : (
         <div className="space-y-2">
           {catalogs.map(c => (
@@ -205,7 +207,7 @@ export default function SupplierCatalogs({ supplierId }) {
                     onClick={() => setViewer(c)}
                     className="text-xs text-brand-600 hover:text-brand-800 px-2 py-1 rounded-none hover:bg-brand-50"
                   >
-                    View
+                    {t('View')}
                   </button>
                 )}
                 <a
@@ -214,14 +216,14 @@ export default function SupplierCatalogs({ supplierId }) {
                   rel="noreferrer"
                   className="text-xs text-brand-600 hover:text-brand-800 px-2 py-1 rounded-none hover:bg-brand-50"
                 >
-                  Open
+                  {t('Open')}
                 </a>
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(c)}
                   className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-none hover:bg-red-50"
                 >
-                  Delete
+                  {t('Delete')}
                 </button>
               </div>
             </div>
@@ -235,7 +237,7 @@ export default function SupplierCatalogs({ supplierId }) {
           <div className="flex items-center justify-between px-4 py-2.5 bg-white shrink-0" onClick={e => e.stopPropagation()}>
             <p className="text-sm text-ink truncate font-medium">{viewer.file_name}</p>
             <div className="flex items-center gap-3 shrink-0">
-              <a href={viewer.file_url} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:text-brand-800">Open in new tab</a>
+              <a href={viewer.file_url} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:text-brand-800">{t('Open in new tab')}</a>
               <button onClick={() => setViewer(null)} className="text-ink-60 hover:text-ink-80"><X size={20} /></button>
             </div>
           </div>
@@ -258,7 +260,7 @@ export default function SupplierCatalogs({ supplierId }) {
 
       {confirmDelete && (
         <ConfirmDialog
-          message={`Delete "${confirmDelete.file_name}"? This cannot be undone.`}
+          message={t('Delete "{name}"? This cannot be undone.', { name: confirmDelete.file_name })}
           onConfirm={() => handleDelete(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
         />

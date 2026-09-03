@@ -4,6 +4,7 @@ import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject }
 import { db, storage } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
 import { Video as VideoIcon, X } from 'lucide-react'
+import { useT } from '../i18n'
 
 // Short clips filmed at a supplier's exhibition booth. Sits under the supplier
 // "Photos & Videos" card next to the ImageGallery. Raw upload — no transcode —
@@ -21,6 +22,7 @@ function fmtBytes(b) {
 // ImageGallery's, via its onExtraFiles hook) can hand video files straight to
 // this component's ingest().
 const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
+  const t = useT()
   const idRef = useRef(0)
   const [videos, setVideos] = useState([])
   const [uploads, setUploads] = useState([])
@@ -116,7 +118,7 @@ const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
               <div className="relative bg-black">
                 <video src={v.file_url} controls preload="metadata" className="w-full max-h-64 bg-black" />
                 <button type="button" onClick={() => setConfirmDelete(v)}
-                  title="Delete video"
+                  title={t('Delete video')}
                   className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-red-600">
                   <X size={12} />
                 </button>
@@ -124,7 +126,7 @@ const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
               <input
                 className="w-full text-xs px-2 py-1.5 border-t border-warm-grey focus:outline-none"
                 defaultValue={v.caption || ''}
-                placeholder="Caption — e.g. Canton Fair 2026 booth walk-through"
+                placeholder={t('Caption — e.g. Canton Fair 2026 booth walk-through')}
                 onBlur={e => saveCaption(v, e.target.value.trim())}
               />
             </div>
