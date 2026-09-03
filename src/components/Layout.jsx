@@ -161,27 +161,32 @@ export default function Layout({ children, user }) {
 
       {/* Sidebar — desktop only */}
       <aside className={`hidden md:flex bg-ink flex-col shrink-0 transition-[width] duration-200 ${navCollapsed ? 'w-16' : 'w-56'}`}>
-        <div className={`border-b border-white/10 ${navCollapsed ? 'px-2 py-4 flex justify-center' : 'px-5 py-5'}`}>
-          {navCollapsed ? (
-            <img src={logo} alt="Crystocraft" className="h-6 w-6 object-contain object-left brightness-0 invert" />
-          ) : (
-            <>
+        {navCollapsed ? (
+          <div className="border-b border-white/10 px-2 py-4 flex justify-center">
+            <button
+              onClick={() => setNavCollapsed(false)}
+              title="Expand sidebar"
+              className="text-ivory/45 hover:text-ivory hover:bg-white/8 rounded-sm p-1.5 transition-colors"
+            >
+              <PanelLeftOpen size={18} strokeWidth={1.75} />
+            </button>
+          </div>
+        ) : (
+          <div className="border-b border-white/10 px-5 py-5 flex items-start justify-between gap-2">
+            <div className="min-w-0">
               <img src={logo} alt="Crystocraft" className="h-7 w-auto brightness-0 invert" />
               <p className="text-xs font-medium text-ivory/50 mt-2 tracking-[0.14em] uppercase font-label">{APP_NAME}</p>
               <p className="text-2xs text-ivory/30 mt-1 font-label tracking-wide">{versionLabel()}</p>
-            </>
-          )}
-        </div>
-
-        <button
-          onClick={() => setNavCollapsed(v => !v)}
-          title={navCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={`flex items-center gap-2 text-ivory/40 hover:text-ivory hover:bg-white/8 transition-colors ${
-            navCollapsed ? 'justify-center py-2' : 'px-4 py-2 text-2xs uppercase tracking-[0.12em]'
-          }`}
-        >
-          {navCollapsed ? <PanelLeftOpen size={18} strokeWidth={1.75} /> : <><PanelLeftClose size={15} strokeWidth={1.75} /> Collapse</>}
-        </button>
+            </div>
+            <button
+              onClick={() => setNavCollapsed(true)}
+              title="Collapse sidebar"
+              className="shrink-0 -mr-2 -mt-1 text-ivory/40 hover:text-ivory hover:bg-white/8 rounded-sm p-1.5 transition-colors"
+            >
+              <PanelLeftClose size={16} strokeWidth={1.75} />
+            </button>
+          </div>
+        )}
 
         {/* min-h-0 + overflow-y-auto: without both, a flex child refuses to
             shrink below its content, so the tail of the list was clipped off
