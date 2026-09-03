@@ -121,6 +121,40 @@ emulator assertions, all pass — the two real migrated shapes, escalation
 blocks, storage path parity). Full spec: `docs/skills/ARCHITECTURE-RULES.md`
 §2; `RBAC-FLEX-PLAN.md`. Staff should log in and confirm access looks right.
 
+### Partial Simplified-Chinese UI — supply / inventory only
+
+For staff who only read 简体中文 and only use the supply side. **No i18n
+framework** — `src/i18n/` has a ~30-line `t('English source')` (the English
+string IS the key; anything unwrapped or missing from the catalogue renders in
+English) + `UiLangContext` fed from a new `users/{uid}.ui_lang` field an admin
+sets on the account page (EN / 简体中文 dropdown, audit-logged).
+
+Scope wrapped in `t()` (~479 keys): the sidebar nav (Supply + Dashboard
+groups), Production dashboard, Inventory Status, Suppliers list + form +
+detail, Components (all 8 tabs), the Purchase Order list / form / detail, the
+Range component + quote forms, and the shared supply components (ConfirmDialog,
+ExportFilterBar, StockEditor, StockLedger, PoReceiveStock, InventoryStockTab,
+ComponentLinkPicker, ErpDocModal, SupplierAddQuoteModal, LastActualPaid,
+SupplierCatalogs, SupplierVideos). Everything else stays English.
+
+`PurchaseOrderPrint` gets its own **per-print EN / 简体中文 toggle** (`PO_L`
+label set) independent of the user's UI language — defaults to it, overridable
+each print, since most POs go to China suppliers but some don't. Auto-print on
+open was removed so the language can be picked first.
+
+Translation: `scripts/i18n-translate.mjs` scans `src/` for `t()` keys and fills
+`src/i18n/zh-Hans.js` via the DeepSeek chat API (`DEEPSEEK_API_KEY` env, same
+key the outreach edge fns use) with a supply/procurement glossary; re-runs only
+add missing keys so hand-corrections in the file survive. Owner runs it and
+reviews the file.
+
+**Open / follow-up:** deeper corner strings still fall through to English (some
+merge-preview pluralisation in SupplierDetail, `ImageGallery`, a few AI-result
+composed messages); MOVEMENT_TYPES / PO_PAYMENT_TERMS / SUPPLIER_CATEGORIES
+config labels are translated at their display sites but a couple of `.map(t =>`
+shadowing spots were left English. `qa/eslint.no-undef.mjs` + `npm run build`
+green throughout.
+
 ### The SEO control plane — Steps 1–4, all built
 
 Full spec: **`docs/skills/SEO-CONTROL-PLANE.md`**; DSH handoff:
