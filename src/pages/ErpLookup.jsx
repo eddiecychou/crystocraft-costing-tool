@@ -130,6 +130,23 @@ const ENTITIES = {
       { key: 'status', label: 'Status', badge: true },
     ],
   },
+  item_history: {
+    label: 'Item price history', Icon: History,
+    crossLink: { key: 'invoice_no', of: 'sales_invoice' }, trailingLabel: 'Invoice',
+    cols: [
+      { key: 'date', label: 'Date', date: true },
+      { key: 'customer', label: 'Customer', grow: true },
+      { key: 'item_code', label: 'Item', mono: true },
+      { key: 'description', label: 'Description', grow: true },
+      { key: 'currency', label: 'Curr' },
+      { key: 'qty', label: 'Qty', num: true, qty: true },
+      { key: 'unit_price', label: 'List', num: true },
+      { key: 'markup', label: 'Mkup', num: true },
+      { key: 'net_price', label: 'Net / unit', num: true, strong: true },
+      { key: 'amount', label: 'Line total', num: true },
+      { key: 'invoice_no', label: 'Invoice #', mono: true },
+    ],
+  },
   stock: {
     // noTrailing: stock rows have no active/expired flag, so the generic
     // trailing Status column would label every row "Expired".
@@ -234,6 +251,95 @@ function cellValue(col, row) {
 
 const money = (v) => (v === null || v === undefined || v === '')
   ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+const price4 = (v) => (v === null || v === undefined || v === '')
+  ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+
+// Per-(item, customer, currency) price summary over the current result set —
+// the "what did we last charge, and is it trending up or down" answer that a
+// quote or a price-adjustment decision needs. Prices are per-unit net
+// (line amount ÷ qty) in each invoice's own currency; currencies are never
+// mixed within a row.
+function PriceSummary({ rows }) {
+  const groups = useMemo(() => {
+    const m = new Map()
+    for (const r of rows) {
+      if (r.net_price == null) continue
+      const key = `${r.item_code}||${r.customer || '—'}||${r.currency || '—'}`
+      if (!m.has(key)) m.set(key, { item_code: r.item_code, customer: r.customer || '—', currency: r.currency || '—', pts: [] })
+      m.get(key).pts.push({ date: r.date ? String(r.date).slice(0, 10) : '', net: Number(r.net_price), qty: Number(r.qty) || 0 })
+    }
+    const out = []
+    for (const g of m.values()) {
+      g.pts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+      const nets = g.pts.map(p => p.net)
+      const first = g.pts[0], last = g.pts[g.pts.length - 1]
+      out.push({
+        ...g, n: g.pts.length,
+        firstDate: first.date, lastDate: last.date,
+        firstNet: first.net, lastNet: last.net,
+        min: Math.min(...nets), max: Math.max(...nets),
+        delta: first.net ? (last.net - first.net) / first.net : null,
+      })
+    }
+    // Biggest recent business first (by last unit price × line count is noisy;
+    // sort by customer then item so a customer's rows sit together).
+    out.sort((a, b) => a.customer.localeCompare(b.customer) || a.item_code.localeCompare(b.item_code))
+    return out
+  }, [rows])
+
+  const multiItem = new Set(groups.map(g => g.item_code)).size > 1
+  if (!groups.length) return null
+
+  return (
+    <div className="bg-white border border-warm-grey rounded-none overflow-hidden mb-4">
+      <div className="px-3 py-2 border-b border-warm-grey bg-ivory text-xs text-ink-60 font-medium">
+        Price summary — {groups.length} customer{groups.length === 1 ? '' : 's'}
+        {multiItem ? ' · multiple items in view' : ''}. Net = line total ÷ qty, in each invoice's currency.
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-ink-60 border-b border-warm-grey">
+              {multiItem && <th className="px-3 py-2 font-medium whitespace-nowrap">Item</th>}
+              <th className="px-3 py-2 font-medium">Customer</th>
+              <th className="px-3 py-2 font-medium">Curr</th>
+              <th className="px-3 py-2 font-medium text-right">Invoices</th>
+              <th className="px-3 py-2 font-medium text-right">First</th>
+              <th className="px-3 py-2 font-medium text-right">Latest</th>
+              <th className="px-3 py-2 font-medium text-right">Change</th>
+              <th className="px-3 py-2 font-medium text-right">Min</th>
+              <th className="px-3 py-2 font-medium text-right">Max</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((g, i) => (
+              <tr key={i} className="border-b border-warm-grey last:border-0 hover:bg-ivory">
+                {multiItem && <td className="px-3 py-2 font-mono text-xs align-top">{g.item_code}</td>}
+                <td className="px-3 py-2 align-top">{g.customer}</td>
+                <td className="px-3 py-2 align-top">{g.currency}</td>
+                <td className="px-3 py-2 text-right tabular-nums align-top">{g.n}</td>
+                <td className="px-3 py-2 text-right tabular-nums align-top">
+                  {price4(g.firstNet)}<span className="block text-2xs text-ink-60">{g.firstDate}</span>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums align-top font-semibold text-ink">
+                  {price4(g.lastNet)}<span className="block text-2xs text-ink-60 font-normal">{g.lastDate}</span>
+                </td>
+                <td className={`px-3 py-2 text-right tabular-nums align-top ${
+                  g.delta == null ? 'text-platinum' : g.delta > 0.0001 ? 'text-green-700' : g.delta < -0.0001 ? 'text-red-600' : 'text-ink-60'
+                }`}>
+                  {g.delta == null ? '—' : `${g.delta > 0 ? '+' : ''}${(g.delta * 100).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums align-top text-ink-60">{price4(g.min)}</td>
+                <td className="px-3 py-2 text-right tabular-nums align-top text-ink-60">{price4(g.max)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
 // Full record for one customer / supplier. Reads the row already loaded by the
 // list query — no extra fetch.
@@ -959,6 +1065,8 @@ export default function ErpLookup() {
         </div>
       )}
 
+      {entity === 'item_history' && rows.length > 0 && <PriceSummary rows={rows} />}
+
       {/* Results */}
       <div className="bg-white border border-warm-grey rounded-none overflow-hidden">
         <div className="overflow-x-auto">
@@ -983,7 +1091,7 @@ export default function ErpLookup() {
                   <th key={c.key} className={`px-3 py-2 font-medium whitespace-nowrap ${c.num ? 'text-right' : ''}`}>{c.label}</th>
                 ))}
                 {!cfg.noTrailing && (
-                  <th className="px-3 py-2 font-medium">{cfg.linesOf ? 'Lines' : cfg.crossLink ? 'ERP' : 'Status'}</th>
+                  <th className="px-3 py-2 font-medium">{cfg.trailingLabel || (cfg.linesOf ? 'Lines' : cfg.crossLink ? 'ERP' : 'Status')}</th>
                 )}
                 {entity === 'item' && <th className="px-3 py-2 font-medium w-14"></th>}
               </tr>
@@ -992,7 +1100,7 @@ export default function ErpLookup() {
               {/* Stock rows have no `code` — the same item appears once per
                   warehouse, so those key on the warehouse/item pair. */}
               {rows.map((r, ri) => (
-                <tr key={r.code ?? r.uc_no ?? (r.item_code ? `${r.warehouse}/${r.item_code}` : ri)}
+                <tr key={r.invoice_no != null && r.seq != null ? `${r.invoice_no}/${r.seq}` : r.code ?? r.uc_no ?? (r.item_code ? `${r.warehouse}/${r.item_code}` : ri)}
                     className="border-b border-warm-grey last:border-0 hover:bg-ivory">
                   {entity === 'customer' && (
                     <td className="px-3 py-2">
@@ -1011,7 +1119,7 @@ export default function ErpLookup() {
                     </td>
                   )}
                   {cfg.cols.map((c) => (
-                    <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'} ${c.num ? 'text-right tabular-nums' : ''}`}>
+                    <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'} ${c.num ? 'text-right tabular-nums' : ''} ${c.strong ? 'font-semibold text-ink' : ''}`}>
                       {entity === 'item' && c.key === 'has_bom' && r.has_bom
                         ? <div className="flex items-center gap-2">
                             <button onClick={() => openBom(r.code)}
@@ -1051,7 +1159,7 @@ export default function ErpLookup() {
                         // (same need already covered on the app-side Sales
                         // Invoices / Shipping / Purchase Orders pages; JES
                         // Lookup itself was still missing it).
-                        : (entity === 'sales_invoice' || entity === 'sales_order') && c.key === 'customer' && r.customer_code
+                        : (entity === 'sales_invoice' || entity === 'sales_order' || entity === 'item_history') && c.key === 'customer' && r.customer_code
                         ? <span className="inline-flex items-center gap-1.5 flex-wrap">
                             {r.customer}
                             <span className="text-2xs text-ink-60 font-mono">{r.customer_code}</span>

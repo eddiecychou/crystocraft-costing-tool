@@ -59,6 +59,15 @@ const ENTITIES = {
     search: ['item_code', 'description'],
     filterCols: ['warehouse', 'item_type'], maxLimit: 500,
   },
+  // Every invoice line an item ever appeared on, with the parent invoice's
+  // date / customer / currency joined on — for price-history / quoting
+  // decisions. Search by item code, description, or customer name. Newest
+  // first. A popular item spans years, so the cap is high.
+  item_history: {
+    view: 'erp_item_sales_history', hasActive: false, orderBy: 'date.desc',
+    search: ['item_code', 'description', 'customer'],
+    maxLimit: 1000,
+  },
 }
 
 // Header → line-detail + surcharge views, fetched by exact header code (see the

@@ -315,6 +315,42 @@ create index if not exists ix_sos_sono on raw.salesordersurcharge (sssono);
 create index if not exists ix_sid_sino on raw.salesinvoicedetail (sdsino);
 create index if not exists ix_sod_sono on raw.salesorderdetail (sdsono);
 
+-- ── Item price history across invoices (Phase 7b) ────────────────────────────
+-- "What have we charged for this item, to whom, and when" — the input to a
+-- quote or a price-adjustment decision. One row per invoice LINE with the
+-- parent invoice's date / customer / currency joined on, so one query answers
+-- both "price trajectory for item X at customer Y" and "the spread across
+-- customers". Searchable by item_code, description, or customer.
+--
+-- `net_price` is the real transacted per-unit price: line amount ÷ qty (the
+-- amount already bakes in the per-line markup). `unit_price` is JES's
+-- reference/list price and is NOT what was charged whenever markup <> 1.
+-- Prices are in each invoice's own `currency` and are never converted — a JES
+-- FX rate is unusable (see CLAUDE.md).
+create index if not exists ix_sid_itemcode on raw.salesinvoicedetail (sditemcode);
+
+create or replace view public.erp_item_sales_history as
+select
+  d.sditemcode                        as item_code,
+  nullif(d.sddesc, '')                as description,
+  d.sdsino                            as invoice_no,
+  nullif(d.sdseq, '')::int            as seq,
+  nullif(h.sidate, '')::timestamp     as date,
+  nullif(h.sicustomer, '')            as customer_code,
+  nullif(h.sicustomername, '')        as customer,
+  nullif(h.sicurrency, '')            as currency,
+  nullif(h.sistatus, '')              as invoice_status,
+  nullif(d.sdqty, '')::numeric        as qty,
+  nullif(d.sdunitprice, '')::numeric  as unit_price,
+  nullif(d.sdmarkup, '')::numeric     as markup,
+  nullif(d.sdlineamount, '')::numeric as amount,
+  case
+    when coalesce(nullif(d.sdqty, '')::numeric, 0) = 0 then null
+    else round(nullif(d.sdlineamount, '')::numeric / nullif(d.sdqty, '')::numeric, 4)
+  end                                 as net_price
+from raw.salesinvoicedetail d
+left join raw.salesinvoice h on h.sino = d.sdsino;
+
 -- ── Purchase orders (Phase 5) ────────────────────────────────────────────────
 -- Same shape as sales but keyed to a supplier. Total = lines − discount +
 -- surcharges + tax (pugstamount).
@@ -456,12 +492,14 @@ revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
   public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
   public.erp_warehouse, public.erp_stock, public.erp_item_type,
+  public.erp_item_sales_history,
   public.erp_component_usage from anon, authenticated;
 grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
   public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
   public.erp_warehouse, public.erp_stock, public.erp_item_type,
+  public.erp_item_sales_history,
   public.erp_component_usage to service_role;
 revoke all on function public.explode_bom(text) from anon, authenticated;
 grant execute on function public.explode_bom(text) to service_role;

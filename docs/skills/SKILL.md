@@ -259,6 +259,7 @@ the fast path from a request to the exact code.
 ### ERP lookup (legacy JES, read-only)
 - Pages: `ErpLookup.jsx`, `SchemaAudit.jsx`, `ComponentCodeAudit.jsx`, `BankDetailsAudit.jsx` · Components: `ErpDocModal.jsx`, `ErpProductImport.jsx`
 - Logic: `src/erpApi.js`, `src/erpProductImport.js`, `src/erpSoImport.js`, `src/customerOrderHistoryApi.js` · Edge fns: `erp` (module `erp`, all-or-nothing since V8.14), `uc` (module `uc`), `bank` (module `invoices`; staff → read ops only)
+- **Item price history** tab (V8.14) — `erp` entity `item_history` / view `erp_item_sales_history` (join `salesinvoicedetail`→`salesinvoice`): every invoice line an item sold on, with date/customer/currency and a computed `net_price` (line total ÷ qty). `ErpLookup.jsx`'s `PriceSummary` groups the result by item+customer+currency → first/latest/min/max/Δ%, for quoting + price-adjustment calls. Prices never FX-converted.
 - Mirror: `erp-sync/` — Supabase, all columns `text`, views in `api_views.sql` (every view must cast). SQL Server LAN-only (`192.168.10.251`). Prefer ledgers over balance tables; column names lie.
 
 ### WooCommerce B2C sync → see `ARCHITECTURE-RULES.md` §Woo-to-invoice
