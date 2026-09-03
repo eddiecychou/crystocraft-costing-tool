@@ -10,6 +10,7 @@ import { useT } from '../i18n'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
   Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles, RotateCcw, ShoppingCart,
+  PanelLeftClose, PanelLeftOpen, LogOut,
 } from 'lucide-react'
 
 // Grouped so the list stays readable as it grows — the flat version was hard
@@ -94,6 +95,12 @@ export default function Layout({ children, user }) {
   const navigate  = useNavigate()
   const location  = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [navCollapsed, setNavCollapsed] = useState(() => {
+    try { return localStorage.getItem('oc_nav_collapsed') === '1' } catch { return false }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('oc_nav_collapsed', navCollapsed ? '1' : '0') } catch { /* private mode */ }
+  }, [navCollapsed])
 
   // Swipe-down-to-dismiss for the mobile "All sections" sheet. Handlers live
   // on the header only, so a swipe inside the scrollable grid still scrolls.
@@ -153,30 +160,53 @@ export default function Layout({ children, user }) {
     <div className="flex h-screen-dynamic bg-ivory">
 
       {/* Sidebar — desktop only */}
-      <aside className="hidden md:flex w-56 bg-ink flex-col shrink-0">
-        <div className="px-5 py-5 border-b border-white/10">
-          <img src={logo} alt="Crystocraft" className="h-7 w-auto brightness-0 invert" />
-          <p className="text-xs font-medium text-ivory/50 mt-2 tracking-[0.14em] uppercase font-label">{APP_NAME}</p>
-          <p className="text-2xs text-ivory/30 mt-1 font-label tracking-wide">{versionLabel()}</p>
+      <aside className={`hidden md:flex bg-ink flex-col shrink-0 transition-[width] duration-200 ${navCollapsed ? 'w-16' : 'w-56'}`}>
+        <div className={`border-b border-white/10 ${navCollapsed ? 'px-2 py-4 flex justify-center' : 'px-5 py-5'}`}>
+          {navCollapsed ? (
+            <img src={logo} alt="Crystocraft" className="h-6 w-6 object-contain object-left brightness-0 invert" />
+          ) : (
+            <>
+              <img src={logo} alt="Crystocraft" className="h-7 w-auto brightness-0 invert" />
+              <p className="text-xs font-medium text-ivory/50 mt-2 tracking-[0.14em] uppercase font-label">{APP_NAME}</p>
+              <p className="text-2xs text-ivory/30 mt-1 font-label tracking-wide">{versionLabel()}</p>
+            </>
+          )}
         </div>
+
+        <button
+          onClick={() => setNavCollapsed(v => !v)}
+          title={navCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={`flex items-center gap-2 text-ivory/40 hover:text-ivory hover:bg-white/8 transition-colors ${
+            navCollapsed ? 'justify-center py-2' : 'px-4 py-2 text-2xs uppercase tracking-[0.12em]'
+          }`}
+        >
+          {navCollapsed ? <PanelLeftOpen size={18} strokeWidth={1.75} /> : <><PanelLeftClose size={15} strokeWidth={1.75} /> Collapse</>}
+        </button>
 
         {/* min-h-0 + overflow-y-auto: without both, a flex child refuses to
             shrink below its content, so the tail of the list was clipped off
             the bottom of the viewport and simply unreachable — not scrollable,
             gone. */}
-        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-0.5">
+        <nav className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-3 space-y-0.5 ${navCollapsed ? 'px-2' : 'px-3'}`}>
           {visibleNav.map((item, i) => (
             item.group ? (
-              <p key={`g-${item.group}`}
-                 className={`px-3 text-2xs font-semibold uppercase tracking-[0.12em] text-ivory/25 ${i === 0 ? 'pb-1' : 'pt-4 pb-1'}`}>
-                {t(item.group)}
-              </p>
+              navCollapsed ? (
+                <div key={`g-${item.group}`} className={`mx-2 border-t border-white/10 ${i === 0 ? 'hidden' : 'mt-3 pt-3'}`} />
+              ) : (
+                <p key={`g-${item.group}`}
+                   className={`px-3 text-2xs font-semibold uppercase tracking-[0.12em] text-ivory/25 ${i === 0 ? 'pb-1' : 'pt-4 pb-1'}`}>
+                  {t(item.group)}
+                </p>
+              )
             ) : (
               <NavLink
                 key={item.to}
                 to={item.to}
+                title={navCollapsed ? t(item.label) : undefined}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium transition-colors ${
+                  `flex items-center gap-3 py-2 rounded-sm text-sm font-medium transition-colors relative ${
+                    navCollapsed ? 'justify-center px-0' : 'px-3'
+                  } ${
                     isActive
                       ? 'bg-brand-600 text-white'
                       : 'text-ivory/60 hover:bg-white/8 hover:text-ivory'
@@ -184,22 +214,35 @@ export default function Layout({ children, user }) {
                 }
               >
                 <item.Icon size={18} strokeWidth={1.75} className="shrink-0" />
-                <span className="truncate">{t(item.label)}</span>
+                {!navCollapsed && <span className="truncate">{t(item.label)}</span>}
                 {badgeFor(item.to) > 0 && (
-                  <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-2xs font-semibold flex items-center justify-center leading-none">
-                    {badgeFor(item.to)}
-                  </span>
+                  navCollapsed ? (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+                  ) : (
+                    <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-2xs font-semibold flex items-center justify-center leading-none">
+                      {badgeFor(item.to)}
+                    </span>
+                  )
                 )}
               </NavLink>
             )
           ))}
         </nav>
 
-        <div className="px-4 py-4 border-t border-white/10">
-          <p className="text-xs text-ivory/40 truncate mb-2">{user?.email}</p>
-          <button onClick={handleSignOut} className="text-xs text-ivory/40 hover:text-red-400 transition-colors">
-            {t('Sign out')}
-          </button>
+        <div className={`border-t border-white/10 ${navCollapsed ? 'px-2 py-3 flex justify-center' : 'px-4 py-4'}`}>
+          {navCollapsed ? (
+            <button onClick={handleSignOut} title={t('Sign out')}
+              className="text-ivory/40 hover:text-red-400 transition-colors p-1">
+              <LogOut size={18} strokeWidth={1.75} />
+            </button>
+          ) : (
+            <>
+              <p className="text-xs text-ivory/40 truncate mb-2">{user?.email}</p>
+              <button onClick={handleSignOut} className="text-xs text-ivory/40 hover:text-red-400 transition-colors">
+                {t('Sign out')}
+              </button>
+            </>
+          )}
         </div>
       </aside>
 

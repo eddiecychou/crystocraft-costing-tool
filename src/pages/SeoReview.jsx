@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, doc, onSnapshot, query, orderBy, limit, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { ClipboardCheck, Check, X, AlertTriangle, CircleSlash } from 'lucide-react'
+import { ClipboardCheck, Check, X, AlertTriangle, CircleSlash, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
 // SEO control plane — Step 2: the review queue. DSH posts a batch of intended
 // WordPress writes (via /api/seo-batch); the human approves/rejects per item
@@ -42,12 +42,13 @@ function cell(key, val) {
     const s = String(val)
     return <span className="font-mono text-2xs">len {s.length}</span>
   }
-  return <span className="text-xs break-words">{short(val)}</span>
+  return <span className="text-xs break-all whitespace-pre-wrap">{short(val)}</span>
 }
 
 export default function SeoReview() {
   const [batches, setBatches] = useState([])
   const [selId, setSelId] = useState(null)
+  const [listOpen, setListOpen] = useState(true)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -89,7 +90,7 @@ export default function SeoReview() {
   } : null
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6">
       <h1 className="text-xl mb-1 inline-flex items-center gap-2">
         <ClipboardCheck size={20} className="text-brand-500" /> SEO Review Queue
       </h1>
@@ -107,9 +108,13 @@ export default function SeoReview() {
       {batches.length === 0 ? (
         <div className="card p-6 text-sm text-ink-60">No batches yet. DSH posts them to <code className="font-mono text-xs">/api/seo-batch</code>.</div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4">
+        <div className={`grid grid-cols-1 gap-4 ${listOpen ? 'lg:grid-cols-[240px_1fr]' : 'lg:grid-cols-1'}`}>
           {/* batch list */}
-          <div className="space-y-1.5">
+          <div className={`space-y-1.5 ${listOpen ? '' : 'hidden'}`}>
+            <button onClick={() => setListOpen(false)}
+              className="w-full inline-flex items-center justify-center gap-1.5 text-2xs text-ink-60 hover:text-ink py-1">
+              <PanelLeftClose size={13} /> Hide list
+            </button>
             {batches.map(b => (
               <button key={b.id} onClick={() => setSelId(b.id)}
                 className={`w-full text-left card p-3 ${sel?.id === b.id ? 'border-brand-400' : 'hover:border-ink-60'} transition-colors`}>
@@ -124,7 +129,13 @@ export default function SeoReview() {
 
           {/* selected batch */}
           {sel && (
-            <div>
+            <div className="min-w-0">
+              {!listOpen && (
+                <button onClick={() => setListOpen(true)}
+                  className="mb-3 inline-flex items-center gap-1.5 text-xs text-ink-60 hover:text-ink border border-ivory-dark hover:border-ink-60 px-2 py-1 transition-colors">
+                  <PanelLeftOpen size={14} /> Show batches ({batches.length})
+                </button>
+              )}
               <div className="card p-3 mb-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div>
@@ -191,7 +202,12 @@ export default function SeoReview() {
 
                       {/* diff */}
                       <div className="mt-2 overflow-x-auto">
-                        <table className="w-full text-xs">
+                        <table className="w-full table-fixed text-xs">
+                          <colgroup>
+                            <col className="w-28 sm:w-40" />
+                            <col className="w-1/2" />
+                            <col className="w-1/2" />
+                          </colgroup>
                           <thead>
                             <tr className="text-2xs uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
                               <th className="py-1 pr-3 text-left">Field</th>
@@ -204,9 +220,9 @@ export default function SeoReview() {
                               const b = k.startsWith('meta.') ? (before.meta || {})[k.slice(5)] : before[k]
                               return (
                                 <tr key={k}>
-                                  <td className="py-1 pr-3 font-mono text-2xs text-ink-70 align-top whitespace-nowrap">{k}</td>
-                                  <td className="py-1 pr-3 align-top max-w-[320px]">{cell(k, b)}</td>
-                                  <td className="py-1 align-top max-w-[320px]">{cell(k, flat[k])}</td>
+                                  <td className="py-1 pr-3 font-mono text-2xs text-ink-70 align-top break-all">{k}</td>
+                                  <td className="py-1 pr-3 align-top break-all">{cell(k, b)}</td>
+                                  <td className="py-1 align-top break-all">{cell(k, flat[k])}</td>
                                 </tr>
                               )
                             })}
