@@ -110,6 +110,19 @@ purpose — the rules are the boundary, so a provider-less render degrades to st
 tooling rather than a white screen. **MUST NOT** rely on the UI gate for
 confidentiality.
 
+### 2b. `users/{uid}.ui_lang` — interface language (V8.14, partial i18n)
+
+A non-security field: `'en'` (default) | `'zh-Hans'`. Set by an admin on the
+account page ("Role & access" card → Interface language), audit-logged like
+role/modules. Read into `UiLangContext` in `App.jsx`'s `AdminApp`; `src/i18n/`'s
+`t('English source')` swaps in Simplified Chinese **only on the supply /
+inventory pages** (see SKILL.md §5 "i18n" — the list is fixed). Anything not
+wrapped, or missing from `src/i18n/zh-Hans.js`, renders in English — nothing
+breaks. The Firestore self-update rule doesn't freeze `ui_lang`, so a user
+*could* change their own; there is no UI for that today. Translate new strings
+by running `scripts/i18n-translate.mjs` (DeepSeek). Dates/numbers are not
+localised. `PurchaseOrderPrint` has its own per-print EN/中文 switch.
+
 ### 2·legacy — the `production` (V8.12) and `sales` (V8.13) roles
 
 Retired in V8.14. Both live accounts were migrated to `role:'staff'` on

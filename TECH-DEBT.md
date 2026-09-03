@@ -153,6 +153,22 @@ refresh summaries in bulk" feature. Collapse into one shared implementation
 if a third collection ever needs the same pattern — not worth the
 refactor for two.
 
+## i18n — dynamic keys, and untranslated leftovers
+
+The `t()` translator (V8.14, supply/inventory scope — see SKILL.md §5 "i18n")
+keys on the literal English string, so `scripts/i18n-translate.mjs`'s regex only
+sees `t('literal')`. Strings reached through a variable — `t(STATUS_META[x].label)`,
+`t(MOVEMENT_TYPES.find(...).note)`, `t(MERGE_FIELD_LABELS[f])`, `t(c.category)` —
+are listed by hand in `scripts/i18n-extra-keys.json`. **Add to that file** when
+wrapping another config-label lookup, or it silently stays English.
+
+Deliberate English leftovers in the in-scope pages: `'Error: '`-prefixed catch
+messages (kept English as `String(x).startsWith('Error')` sentinels), the
+`useErpPurchaseOrders` hook's "Could not reach the ERP archive." (no `t` in a
+bare hook), `PO_PAYMENT_TERMS` labels (already bilingual EN+繁中 in the literal),
+and all dates/numbers (scope decision). Not bugs — noted so they're not
+"discovered" later.
+
 ## Keeping this current
 
 Add an entry when you notice something like this in passing during

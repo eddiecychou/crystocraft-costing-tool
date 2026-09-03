@@ -23,7 +23,7 @@ the boundary. See `PROJECT-PLAN.md` V8.12 §2.
 
 ## Core auth & catalogue
 
-- `users/{uid}` — one Firestore mirror of a Firebase Auth account: `role`, `status`, `ws_discount_pct`, `pricing_group`, `customer_id`. Auth: admin full; self can create pending + limited self-update. Owned by `src/domain/customer.js` + portal-invite functions. → `customers` via `customer_id`.
+- `users/{uid}` — one Firestore mirror of a Firebase Auth account: `role` (`admin`|`staff`|`customer`, V8.14 flat), `modules[]` (staff capability keys), `status`, `ws_discount_pct`, `pricing_group`, `customer_id`, `ui_lang` (`'en'`|`'zh-Hans'`, V8.14 — drives the partial Simplified-Chinese supply UI). Auth: admin full; self can create pending + limited self-update (self-update freezes `role`/`status`/`modules` etc., **not** `ui_lang`). Owned by `src/domain/customer.js` + portal-invite functions. → `customers` via `customer_id`.
 - `products/{id}` — storefront catalogue item. Auth: portal read, **staff** write (V8.12). Owned by `src/domain/customer.js` + `Products.jsx`/`ProductForm.jsx`. → `range_products`, `orders`. Optional `product_code` (2026-09-02) — the corp-gift item code, used to match to the WooCommerce listing (Woo Catalogue "In catalogue" tab) and the ERP; historically absent, added to `ProductForm.jsx`.
   - `products/{id}/images/{imageId}` — photos, screened per-customer via `branded_for_customer_id` vs the viewer's `sensitive` flag; staff (admin + production) see all unscreened. → `customers`.
   - `products/{id}/pricing_tiers/{tierId}` — tier pricing. Auth: portal read, **admin** write (hard wall — production never sees pricing).

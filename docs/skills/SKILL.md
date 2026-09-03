@@ -209,9 +209,45 @@ the fast path from a request to the exact code.
 - Logic: `src/frontPageFeatured.js` (homepage Featured, `settings/front_page`), `src/newArrivals.js` (`isNew` — the one new-arrival flag), `src/customerProposal.js`, `src/customerAssets.js`, `src/sensitiveImages.js`.
 - **This is the premium/editorial surface** — full `UI-POLISH.md` treatment (generous rhythm, `.mosaic-grid`), unlike the dense Operation Center. `/shop/*` is customer-login-gated; preview headlessly via `qa/home-preview.jsx` / `qa/home-preview-seeded.mjs` (`UI-POLISH.md §4a`).
 
-### RBAC / access control → see `ARCHITECTURE-RULES.md` §RBAC
-- Files that MUST agree: `src/access.js` (`PRODUCTION_MODULES`), `firestore.rules`, `storage.rules`, `netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`), `src/pages/ErpLookup.jsx` (`PRODUCTION_ERP_ENTITIES`)
-- UI: `src/components/Layout.jsx`, `src/App.jsx` (`<Gate module>`), `src/pages/ProductionDashboard.jsx`. Test: `qa/rbac-rules.test.mjs`.
+### RBAC / access control → see `ARCHITECTURE-RULES.md` §2
+- **V8.14 flat model:** roles are `admin | staff | customer`. A `staff` account's
+  access is a per-user `users/{uid}.modules[]` list (17 keys), toggled by an admin
+  on the account page. The old fixed `production` / `sales` roles are gone (shim
+  removed 2026-09-02).
+- Files that MUST agree: `src/access.js` (`MODULE_GROUPS` / `resolveModules` /
+  `canAccess`), `firestore.rules` + `storage.rules` (`can(m)` / `moduleList()`),
+  `netlify/edge-functions/lib/auth.js` (`requireModule(req, key)`; `erp.js` checks
+  `erp` for the full surface, `bank.js` checks `invoices`).
+- UI: `src/components/Layout.jsx`, `src/App.jsx` (`<Gate module>`),
+  `src/pages/ProductionDashboard.jsx` (fallback dashboard), `src/pages/AccountEdit.jsx`
+  ("Role & access" card + the Interface-language dropdown). Test: `qa/rbac-rules.test.mjs`
+  (rewritten for the flat model, 62 emulator assertions; needs a scratch JRE).
+
+### i18n — partial Simplified-Chinese UI (supply / inventory only) → `PROJECT-PLAN.md` V8.14
+- **No framework.** `src/i18n/index.js` — `t('English source')` where the English
+  string IS the key; anything unwrapped or missing from the catalogue renders in
+  English. `UiLangContext` (provided in `App.jsx`'s `AdminApp`) is fed from
+  `users/{uid}.ui_lang` (`'en'` | `'zh-Hans'`), an admin-only dropdown in
+  `AccountEdit.jsx`. Catalogue: `src/i18n/zh-Hans.js` (~570 keys).
+- **Scope (deliberately narrow):** the sidebar Supply + Dashboard groups,
+  `ProductionDashboard`, `InventoryStatus`, `Suppliers`/`SupplierForm`/`SupplierDetail`,
+  `Components` (all tabs), `PurchaseOrders`/`PurchaseOrderForm`/`PurchaseOrderDetail`,
+  `RangeComponentForm`/`RangeQuoteForm`, and the shared supply components
+  (`ConfirmDialog`, `ExportFilterBar`, `StockEditor`, `StockLedger`, `PoReceiveStock`,
+  `InventoryStockTab`, `ComponentLinkPicker`, `ErpDocModal`, `SupplierAddQuoteModal`,
+  `LastActualPaid`, `SupplierCatalogs`, `SupplierVideos`, `ImageGallery`). Everything
+  else stays English. Dates/numbers are NOT localised.
+- **PO printout:** `PurchaseOrderPrint.jsx` has its own per-print EN / 简体中文 toggle
+  (`PO_L` label set), independent of the user's UI language; defaults to it. Auto-print
+  on page-open was removed so the language can be chosen first.
+- **Translation pipeline:** `scripts/i18n-translate.mjs` scans `src/` for `t('literal')`
+  keys (+ `scripts/i18n-extra-keys.json` for strings reached via a variable key —
+  status/category/movement-type/merge-field labels), then fills `zh-Hans.js` via the
+  DeepSeek chat API (`DEEPSEEK_API_KEY` env, same key the outreach edge fns use).
+  Re-runs only add missing keys, so hand-corrections survive. `--dry` / `--all`.
+- **MUST**, when wrapping a new string: use `t('the exact English text')` (not a
+  semantic key), never shadow `t` with a `.map(t =>` / `.reduce((t,` param in the same
+  scope, then run the pipeline to translate it.
 
 ### Customizer / Crystal Fabric Studio / swatches → see `MARKETING-WORKFLOW.md` §Artgen
 - Pages: `SwatchLibrary.jsx`, `FrontPageConfig.jsx`, `FrontPageProductPicker.jsx`
@@ -253,3 +289,4 @@ authoritative detail stays in the doc it points to. Update the Change Log below.
 |---|---|
 | 2026-08-31 | Skill system created and the root `INDEX.md` merged into it — SKILL.md absorbs the feature-area router + session start; cross-cutting/verify/deploy → `ARCHITECTURE-RULES.md`; mistakes → `LESSONS-LEARNED.md`. Grounded in codebase as of V8.12. |
 | 2026-09-02 | V8.14 — added §5 feature areas: **SEO control plane** (`/seo-state` · `/seo-review` · `/seo-reconcile`, `seo-state` edge fn, `seo-batch` Node fn, `seo_state`/`seo_state_history`/`seo_batches`, vendored `seo-control-plane/`) and extended **WooCommerce B2C** (Woo Catalogue + Yoast/WPML, `woo_cache` chunked). New docs `SEO-CONTROL-PLANE.md`, `MARKETING-WORKFLOW.md` §6.6. |
+| 2026-09-03 | V8.14 — **RBAC** entry rewritten for the flat `admin \| staff \| customer` + `modules[]` model (shim removed); new **i18n** entry (partial Simplified-Chinese supply/inventory UI: `src/i18n/`, `users/{uid}.ui_lang`, `scripts/i18n-translate.mjs`, per-print PO language toggle). See `PROJECT-PLAN.md` V8.14. |
