@@ -197,12 +197,12 @@ function CriticalComponents() {
   [components])
 
   const needsReorder = (available, rp) => { const p = Number(rp) || 0; return p > 0 ? available <= p : available < 0 }
-  const totals = useMemo(() => components.reduce((t, c) => {
+  const totals = useMemo(() => components.reduce((acc, c) => {
     const onHand = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
     const reserved = Number.isFinite(c.reserved_qty) ? c.reserved_qty : 0
-    t.onHand += onHand; t.reserved += reserved
-    if (needsReorder(onHand - reserved, c.reorder_point)) t.oversold += 1
-    return t
+    acc.onHand += onHand; acc.reserved += reserved
+    if (needsReorder(onHand - reserved, c.reorder_point)) acc.oversold += 1
+    return acc
   }, { onHand: 0, reserved: 0, oversold: 0 }), [components])
 
   return (

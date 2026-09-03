@@ -74,10 +74,10 @@ export default function InventoryStatus() {
     })
   }, [rows, search, cls, reorderOnly, sort])
 
-  const totals = useMemo(() => filtered.reduce((t, r) => {
-    t.onHand += r.onHand; t.reserved += r.reserved
-    if (needsReorder(r)) t.reorder += 1
-    return t
+  const totals = useMemo(() => filtered.reduce((acc, r) => {
+    acc.onHand += r.onHand; acc.reserved += r.reserved
+    if (needsReorder(r)) acc.reorder += 1
+    return acc
   }, { onHand: 0, reserved: 0, reorder: 0 }), [filtered])
 
   function exportCsv() {
