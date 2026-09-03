@@ -340,8 +340,10 @@ function StockListImportModal({ components, onClose }) {
     setBusy(true)
     try {
       const res = await importStockList(rows, rangeProducts || [])
-      setResult(`Done — ${res.created} new / ${res.updated} updated components; linked to ${res.productsMatched} products` +
-        (res.productsUnmatched ? `, ${res.productsUnmatched} product code(s) unmatched.` : '.'))
+      setResult(
+        t('Done — {a} new / {b} updated components; linked to {c} products', { a: res.created, b: res.updated, c: res.productsMatched })
+        + (res.productsUnmatched ? t(', {n} product code(s) unmatched.', { n: res.productsUnmatched }) : '.'),
+      )
       setUnmatched(res.unmatched || [])
     } catch (e) { setResult('Error: ' + e.message) }
     finally { setBusy(false) }
