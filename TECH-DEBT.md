@@ -53,9 +53,20 @@ quietly widened to `['admin','sales'].includes(role)`. **V8.14 (2026-09-02)**
 broadened each in place to `isFrontOffice(uid, token, PROJECT_ID, moduleKey)`
 — admin / `staff` holding `moduleKey`. Still 13 near-identical inline copies
 (uc.js is the 14th): converge them onto the shared `requireModule()` from
-`lib/auth.js` when next touched. The 10
-functions that already used the shared helper were retagged
-`requireFrontOffice` → `requireModule(req, key)` in the same commit.
+`lib/auth.js` when next touched. The 10 functions that already used the shared
+helper were retagged `requireFrontOffice` → `requireModule(req, key)`.
+
+**V8.14 code-review follow-up (2026-09-03):** the mechanical migration keyed
+several AI/OCR-assist fns to `'quotes'` (the ex-`sales` proxy) even though their
+only callers live in other modules — over-restriction, dead features for the
+staff meant to use them. Corrected: `process-quote` → `supply`, `extract-pi` →
+`shipping`, `compose-message` → `customers`, `generate-marketing-copy` /
+`rewrite-section` → `['products','figurine','marketing']` (called from product +
+figurine + blog pages), `scrape-images` → `figurine`. And three fns that were
+still `requireAdmin` despite a grantable module: `extract-po` → `supply`,
+`woo-sync` / `seo-state` → `woo`. `requireModule` now accepts a string OR an
+array of keys (any-match). **When retagging an edge fn, grep its `/api/<name>`
+callers and use the route `<Gate module>` they sit behind — not the old role.**
 
 V8.12 added a *third* shape: `erp.js` now has `getRole()` (returns the
 role string, not a bool) because it needs to distinguish `production` from

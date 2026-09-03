@@ -1,7 +1,7 @@
 import { requireModule } from './lib/auth.js'
 
 export default async (request) => {
-  const auth = await requireModule(request, 'quotes')
+  const auth = await requireModule(request, 'customers')
   if (!auth.ok) return auth.response
 
   const { customer, product, channel, context: ctx } = await request.json()

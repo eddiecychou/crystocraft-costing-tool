@@ -45,9 +45,8 @@ async function getUserRole(uid, idToken, projectId) {
 
 // Verifies the caller is a signed-in user whose role is in `allowedRoles`.
 // Returns { ok: true, uid, email, role } on success, or { ok: false, response }
-// — return `response` directly from the handler when ok is false. This is the
-// shared gate for both admin-only functions (requireAdmin) and the V8.13
-// front-office functions that also accept `sales` (requireFrontOffice).
+// — return `response` directly from the handler when ok is false. Today only
+// `requireAdmin` uses it; per-capability gating is `requireModule` (V8.14).
 export async function requireRole(req, allowedRoles) {
   const PROJECT_ID = Deno.env.get('VITE_FIREBASE_PROJECT_ID') || Deno.env.get('FIREBASE_PROJECT_ID')
   if (!PROJECT_ID) return { ok: false, response: json({ error: 'Server not configured' }, 500) }
@@ -78,9 +77,12 @@ export function requireAdmin(req) {
 }
 
 // V8.14 module gate — admin, OR a staff account whose users/{uid}.modules[]
-// contains `moduleKey` (legacy production/sales resolve via the shim above).
+// contains `moduleKey`. `moduleKey` may be a string or an array of keys
+// (any-match) for a function reachable from pages in more than one module
+// (e.g. product-copy AI is called from both the products and figurine pages).
 // Returns { ok: true, uid, email, role, modules } on success.
 export async function requireModule(req, moduleKey) {
+  const wanted = Array.isArray(moduleKey) ? moduleKey : [moduleKey]
   const PROJECT_ID = Deno.env.get('VITE_FIREBASE_PROJECT_ID') || Deno.env.get('FIREBASE_PROJECT_ID')
   if (!PROJECT_ID) return { ok: false, response: json({ error: 'Server not configured' }, 500) }
 
@@ -98,7 +100,7 @@ export async function requireModule(req, moduleKey) {
   }
 
   const { role, modules } = await getUserRoleAndModules(uid, token, PROJECT_ID)
-  if (role !== 'admin' && !modules.includes(moduleKey)) {
+  if (role !== 'admin' && !wanted.some((k) => modules.includes(k))) {
     return { ok: false, response: json({ error: 'Access denied' }, 403) }
   }
   return { ok: true, uid, email, role, modules }

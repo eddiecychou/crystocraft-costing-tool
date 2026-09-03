@@ -4,8 +4,9 @@
 // no invoice numbers or UC#s are burned here. That starts in a later phase,
 // once Cindy has reviewed what this actually returns.
 //
-// Same posture as erp.js/uc.js/credit-note.js: admin-gated via requireAdmin(),
-// external credentials stay server-side, the browser never sees them.
+// Gated to the `woo` module (admin, or a staff account holding `woo`) — the
+// same access that opens the Woo pages and the `woo_cache` collection. External
+// credentials stay server-side, the browser never sees them.
 //
 // Env (Netlify → Site config → Environment variables):
 //   WC_BASE_URL         e.g. https://crystocraft.com  (same site as WP_BASE_URL,
@@ -26,7 +27,7 @@
 //           POST { op: 'order_meta', order_id }
 //           POST { op: 'probe_payout', order_id? }   -- diagnostic, see below
 // Response: { rows: [...] }  (list_orders)  /  { rows: [...] }  (order_refunds)
-import { requireAdmin } from './lib/auth.js'
+import { requireModule } from './lib/auth.js'
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -180,7 +181,7 @@ export default async function handler(req) {
     return json({ error: 'WooCommerce credentials not configured (WC_BASE_URL / WC_CONSUMER_KEY / WC_CONSUMER_SECRET)' }, 500)
   }
 
-  const auth = await requireAdmin(req)
+  const auth = await requireModule(req, 'woo')
   if (!auth.ok) return auth.response
 
   let body

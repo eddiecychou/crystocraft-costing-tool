@@ -15,7 +15,7 @@
 //   { op: 'languages' }                       -> { langs: [{code,label}] }
 //   { op: 'content_page', kind, lang, page }  -> { rows, has_more }   kind: 'post'|'page'
 //   { op: 'wpml_status', type }               -> { rows }   best-effort; type: 'post'|'page'
-import { requireAdmin } from './lib/auth.js'
+import { requireModule } from './lib/auth.js'
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -54,7 +54,7 @@ export default async function handler(req) {
     return json({ error: 'Not configured (WP_BASE_URL / WP_USER / WP_PASS)' }, 500)
   }
 
-  const auth = await requireAdmin(req)
+  const auth = await requireModule(req, 'woo')
   if (!auth.ok) return auth.response
 
   let body

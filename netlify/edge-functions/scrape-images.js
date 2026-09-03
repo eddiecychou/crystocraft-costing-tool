@@ -43,7 +43,7 @@ import { requireModule } from './lib/auth.js'
 export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
-  const auth = await requireModule(req, 'marketing')
+  const auth = await requireModule(req, 'figurine')
   if (!auth.ok) return auth.response
 
   let body
