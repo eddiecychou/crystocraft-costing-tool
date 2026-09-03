@@ -906,9 +906,10 @@ export default function ErpLookup() {
         )}
       </div>
 
-      {/* Entity toggle — wraps rather than scrolling; there are enough tabs
-          now that a single row overflows the viewport on a laptop. */}
-      <div className="flex flex-wrap gap-1 rounded-none border border-warm-grey bg-white p-1 mb-4">
+      {/* Entity toggle — an even grid rather than one overflowing row: enough
+          tabs now that a single row runs off a laptop viewport, and a plain
+          wrap left one lonely tab on row 2. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 rounded-none border border-warm-grey bg-white p-1 mb-4">
         {entityKeys.map((key) => {
           const e = ENTITIES[key]
           const on = entity === key
@@ -916,11 +917,11 @@ export default function ErpLookup() {
             <button
               key={key}
               onClick={() => { setEntity(key); setRows([]); setSelectedCustomers(new Set()); setSelectedSuppliers(new Set()) }}
-              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm rounded-none transition ${
+              className={`flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm rounded-none transition ${
  on ? 'bg-teal-600 text-white' : 'text-ink-70 hover:bg-ivory'
               }`}
             >
-              <e.Icon size={15} /> {e.label}
+              <e.Icon size={15} className="shrink-0" /> {e.label}
             </button>
           )
         })}
