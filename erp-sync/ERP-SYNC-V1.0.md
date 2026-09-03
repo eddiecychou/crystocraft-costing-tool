@@ -161,7 +161,7 @@ drill-down in the registry UI. See PROJECT-PLAN.md (V7.14) for the full story.
 | `discover.py` | read-only schema catalog: tables + row counts + DB size |
 | `validate.sql` | post-sync spot-checks (counts, dupes, orphans, samples) |
 | `create_readonly_login.sql` | creates `erp_readonly` (git-ignored — has password) |
-| `api_views.sql` | curated read-layer for the app: `erp_customer`, `erp_supplier` (views) + `erp_item` (materialized view, latest revision per code). Re-runnable. |
+| `api_views.sql` | curated read-layer for the app: `erp_customer`, `erp_supplier` (views) + `erp_item` (materialized view, latest revision per code), the sales-invoice / sales-order / purchase header + line + surcharge views, `erp_stock`, and `erp_item_sales_history` (V8.14 — invoice lines × their header, with a computed `net_price` = line total ÷ qty, for the ERP Lookup "Item price history" tab). Every view must cast (raw is all `text`). Re-runnable. |
 | `refresh_views.sql` | refreshes the materialized views; `sync.py` runs it automatically on a clean sync |
 | `.env` | all credentials + connection strings (git-ignored) |
 | `.env.example` | template |

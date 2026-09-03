@@ -241,6 +241,54 @@ batch calls to its pipeline, paste the `§4c` block into its
   Sales); new **Ecommerce** group (Woo Catalogue, SEO State, SEO Review, SEO
   Reconcile, WooCommerce Sync, Woo Stock Match).
 
+### V8.14 follow-ups (2026-09-03)
+
+A second session on the same cycle — a pasted code review, a bug scan, and a
+run of small UI asks found through live use.
+
+- **RBAC code-review follow-up** (`f643c57`, docs `23f08d4`). The mechanical
+  `requireFrontOffice → requireModule` migration had keyed several AI/OCR-assist
+  edge fns to `quotes` (the ex-`sales` proxy) even though their only callers
+  live in other modules — over-restriction, dead features for the staff meant to
+  use them. Fixed by grepping each `/api/<name>` caller and using the route
+  `<Gate module>` it sits behind: `process-quote`/`extract-po` → `supply`,
+  `extract-pi` → `shipping`, `compose-message` → `customers`,
+  `generate-marketing-copy`/`rewrite-section` → `['products','figurine','marketing']`
+  (any-match), `scrape-images` → `figurine`, `woo-sync`/`seo-state` → `woo`.
+  `requireModule(req, key)` now takes a string **or an array**. `API-REFERENCE.md`
+  auth column, `ARCHITECTURE-RULES.md` §2 and `TECH-DEBT.md` updated to match.
+  Owner-decision items left as-is: `erp` stays all-or-nothing; the three
+  unauthenticated customizer/enhance-image fns stay open (both already in
+  `TECH-DEBT.md`).
+- **i18n bug scan** (`a634529`). No functional bugs. Three `reduce`/`map`
+  accumulators named `t` were shadowing the translator in the same scope —
+  renamed to `acc`/`term`/`tot`. The PO printout's auto-`window.print()` on page
+  open was removed on purpose so the EN/中文 toggle can be set first.
+- **UI, found through use** (`a69d60b`, `8f0208e`):
+  - *SEO Review* right panel overflowed — the `[240px_1fr]` grid's `1fr` track
+    won't shrink below content without `min-w-0`, so the wide before→after diff
+    pushed the page sideways. Added `min-w-0`, made the diff `table-fixed` +
+    `break-all`, and added a Hide-list / Show-batches toggle so the diff can use
+    the full width.
+  - *Operation Center sidebar* is now collapsible to a `w-16` icon rail
+    (`localStorage: oc_nav_collapsed`) — collapse arrow top-right on the logo
+    row; when collapsed the logo is dropped, just the expand arrow.
+- **ERP Lookup → Item price history** (`d9852ee`, layout `3d3c465`/`536acd2`).
+  New tab, sitting next to Invoices. Search an item code / description /
+  customer → every sales-invoice line it appeared on, with the parent invoice's
+  date / customer / currency joined on and a computed **net unit price**
+  (line total ÷ qty — the real transacted price after per-line markup; JES's
+  `unit_price` is only the list reference). A `PriceSummary` strip groups the
+  result by item + customer + currency → first / latest / min / max unit price
+  and the % change — the input to a quote or a price-adjustment call. Prices
+  stay in each invoice's own currency, never FX-converted.
+  - New curated view `erp_item_sales_history` (join `salesinvoicedetail` →
+    `salesinvoice`) + index on `salesinvoicedetail(sditemcode)` + grants, in
+    `erp-sync/api_views.sql`; applied to Supabase (130,510 rows). New
+    whitelisted `item_history` entity in `erp.js`. The entity tab bar was
+    reworked from a one-row scroll to an even 2/4-col grid (8 tabs overran a
+    laptop viewport).
+
 ## V8.12 — Role-Based Access Control (the `production` role) + PI print fix — UNDER REVIEW as of 2026-08-28
 
 Two unrelated threads in one session (2026-08-28):
