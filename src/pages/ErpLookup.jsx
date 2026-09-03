@@ -906,8 +906,9 @@ export default function ErpLookup() {
         )}
       </div>
 
-      {/* Entity toggle */}
-      <div className="flex md:inline-flex overflow-x-auto rounded-none border border-warm-grey bg-white p-1 mb-4 -mx-4 px-4 md:mx-0 md:px-1 scrollbar-none">
+      {/* Entity toggle — wraps rather than scrolling; there are enough tabs
+          now that a single row overflows the viewport on a laptop. */}
+      <div className="flex flex-wrap gap-1 rounded-none border border-warm-grey bg-white p-1 mb-4">
         {entityKeys.map((key) => {
           const e = ENTITIES[key]
           const on = entity === key
