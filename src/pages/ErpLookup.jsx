@@ -108,6 +108,23 @@ const ENTITIES = {
       { key: 'status', label: 'Status', badge: true },
     ],
   },
+  item_history: {
+    label: 'Item price history', Icon: History,
+    crossLink: { key: 'invoice_no', of: 'sales_invoice' }, trailingLabel: 'Invoice',
+    cols: [
+      { key: 'date', label: 'Date', date: true },
+      { key: 'customer', label: 'Customer', grow: true },
+      { key: 'item_code', label: 'Item', mono: true },
+      { key: 'description', label: 'Description', grow: true },
+      { key: 'currency', label: 'Curr' },
+      { key: 'qty', label: 'Qty', num: true, qty: true },
+      { key: 'unit_price', label: 'List', num: true },
+      { key: 'markup', label: 'Mkup', num: true },
+      { key: 'net_price', label: 'Net / unit', num: true, strong: true },
+      { key: 'amount', label: 'Line total', num: true },
+      { key: 'invoice_no', label: 'Invoice #', mono: true },
+    ],
+  },
   sales_order: {
     label: 'Sales Orders', Icon: ClipboardList, linesOf: 'sales_order',
     cols: [
@@ -128,23 +145,6 @@ const ENTITIES = {
       { key: 'currency', label: 'Curr' },
       { key: 'amount', label: 'Amount', num: true },
       { key: 'status', label: 'Status', badge: true },
-    ],
-  },
-  item_history: {
-    label: 'Item price history', Icon: History,
-    crossLink: { key: 'invoice_no', of: 'sales_invoice' }, trailingLabel: 'Invoice',
-    cols: [
-      { key: 'date', label: 'Date', date: true },
-      { key: 'customer', label: 'Customer', grow: true },
-      { key: 'item_code', label: 'Item', mono: true },
-      { key: 'description', label: 'Description', grow: true },
-      { key: 'currency', label: 'Curr' },
-      { key: 'qty', label: 'Qty', num: true, qty: true },
-      { key: 'unit_price', label: 'List', num: true },
-      { key: 'markup', label: 'Mkup', num: true },
-      { key: 'net_price', label: 'Net / unit', num: true, strong: true },
-      { key: 'amount', label: 'Line total', num: true },
-      { key: 'invoice_no', label: 'Invoice #', mono: true },
     ],
   },
   stock: {
