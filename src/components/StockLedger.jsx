@@ -72,15 +72,15 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
       {/* Add movement (manual on-hand ops; reserve/production-in come from orders) */}
       <form onSubmit={submit} className="rounded-none border border-ivory-dark p-3 mb-4 space-y-2">
         <div className="flex flex-wrap gap-1.5">
-          {MOVEMENT_TYPES.map(t => (
-            <button key={t.value} type="button" onClick={() => setType(t.value)}
+          {MOVEMENT_TYPES.map(mt => (
+            <button key={mt.value} type="button" onClick={() => setType(mt.value)}
               className={`px-2.5 py-1 rounded-full text-2xs font-medium border transition-colors ${
- type === t.value ? 'bg-brand-50 text-brand-700 border-brand-300' : 'bg-white text-ink-60 border-ivory-dark hover:border-warm-grey'}`}>
-              {t.label}
+ type === mt.value ? 'bg-brand-50 text-brand-700 border-brand-300' : 'bg-white text-ink-60 border-ivory-dark hover:border-warm-grey'}`}>
+              {t(mt.label)}
             </button>
           ))}
         </div>
-        <p className="text-2xs text-ink-60">{MOVEMENT_TYPES.find(t => t.value === type)?.note}</p>
+        <p className="text-2xs text-ink-60">{t(MOVEMENT_TYPES.find(mt => mt.value === type)?.note || '')}</p>
         <div className="flex flex-col sm:flex-row gap-2">
           <input className="input text-sm sm:w-28" inputMode="numeric" value={qty}
                  onChange={e => setQty(e.target.value.replace(isStocktake || type === 'adjustment' ? /[^\d.\-]/g : /[^\d.]/g, ''))}

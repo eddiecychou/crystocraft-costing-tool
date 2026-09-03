@@ -136,7 +136,7 @@ export default function RangeComponentForm() {
             <label className="label">{t('Plating')} <span className="text-ink-60 font-normal">{t('(Gold/Chrome parts have distinct codes; blank = shared across all platings)')}</span></label>
             <select className="input" value={form.plating_code} onChange={set('plating_code')}>
               <option value="">{t('Shared — all platings')}</option>
-              {RANGE_PLATINGS.map(p => <option key={p.code} value={p.code}>{p.name} ({p.code})</option>)}
+              {RANGE_PLATINGS.map(p => <option key={p.code} value={p.code}>{t(p.name)} ({p.code})</option>)}
             </select>
           </div>
 

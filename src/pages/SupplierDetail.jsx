@@ -181,24 +181,23 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
           {preview && (
             <div className="rounded-none border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
               <p>
-                <strong>{preview.poCount}</strong> purchase order{preview.poCount === 1 ? '' : 's'},{' '}
-                <strong>{preview.corpQuoteCount + preview.rangeQuoteCount}</strong> BOM supplier quote{preview.corpQuoteCount + preview.rangeQuoteCount === 1 ? '' : 's'}
-                {preview.componentPointerCount > 0 && <> and <strong>{preview.componentPointerCount}</strong> component link{preview.componentPointerCount === 1 ? '' : 's'}</>}
-                {' '}will move to <strong>{preview.survivor.name}</strong>.
+                {t('{a} purchase orders, {b} BOM supplier quotes', { a: preview.poCount, b: preview.corpQuoteCount + preview.rangeQuoteCount })}
+                {preview.componentPointerCount > 0 && ` ${t('and {n} component links', { n: preview.componentPointerCount })}`}
+                {' '}{t('will move to {name}.', { name: preview.survivor.name })}
               </p>
               {(preview.catalogsCount > 0 || preview.imagesCount > 0 || preview.videosCount > 0) && (
                 <p>
-                  {[
-                    preview.catalogsCount > 0 && `${preview.catalogsCount} catalogue file${preview.catalogsCount === 1 ? '' : 's'}`,
-                    preview.imagesCount > 0 && `${preview.imagesCount} photo${preview.imagesCount === 1 ? '' : 's'}`,
-                    preview.videosCount > 0 && `${preview.videosCount} video${preview.videosCount === 1 ? '' : 's'}`,
-                  ].filter(Boolean).join(', ')} will also move.
+                  {t('{list} will also move.', { list: [
+                    preview.catalogsCount > 0 && t('{n} catalogue files', { n: preview.catalogsCount }),
+                    preview.imagesCount > 0 && t('{n} photos', { n: preview.imagesCount }),
+                    preview.videosCount > 0 && t('{n} videos', { n: preview.videosCount }),
+                  ].filter(Boolean).join('、') })}
                 </p>
               )}
               <p className="text-xs text-amber-800">
                 {Object.keys(preview.fieldsToFill).length > 0
-                  ? <>{preview.survivor.name} will gain: {Object.keys(preview.fieldsToFill).map(f => MERGE_FIELD_LABELS[f] || f).join(', ')} — nothing it already has is overwritten.</>
-                  : <>No fields to fill in — the surviving supplier already has everything this one does.</>}
+                  ? t('{name} will gain: {fields} — nothing it already has is overwritten.', { name: preview.survivor.name, fields: Object.keys(preview.fieldsToFill).map(f => t(MERGE_FIELD_LABELS[f] || f)).join('、') })
+                  : t('No fields to fill in — the surviving supplier already has everything this one does.')}
               </p>
               <p className="text-xs text-amber-700 font-medium">
                 {t('“{name}” will be deleted once merged. This cannot be undone.', { name: supplier.name })}

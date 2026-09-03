@@ -35,8 +35,15 @@ for (const f of walk(SRC)) {
   const src = readFileSync(f, 'utf8')
   for (const m of src.matchAll(CALL)) keys.add(m[2].replace(/\\(['"])/g, '$1'))
 }
+// Strings reached through a variable key — config labels (statuses, categories,
+// movement types, merge fields) wrapped as t(SOME_MAP[x]). The regex can't see
+// those, so list the literal English values here.
+const EXTRA = join(ROOT, 'scripts', 'i18n-extra-keys.json')
+try {
+  for (const k of JSON.parse(readFileSync(EXTRA, 'utf8'))) keys.add(k)
+} catch { /* optional */ }
 const allKeys = [...keys].sort((a, b) => a.localeCompare(b))
-console.log(`Found ${allKeys.length} t() keys across src/`)
+console.log(`Found ${allKeys.length} keys (t() calls + extra list)`)
 
 // ── 2. load existing catalogue ──────────────────────────────────────────────
 let existing = {}
