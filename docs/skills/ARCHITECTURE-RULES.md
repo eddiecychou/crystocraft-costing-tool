@@ -84,8 +84,20 @@ Fulfilment & finance — `shipping`, `invoices†`, `credit_notes†`, `uc†`;
 Supply — `supply` (one key = Components + Suppliers + POs + Inventory);
 Ecommerce — `woo`; System — `dashboard`, `erp†`, `settings†`.
 `erp` is all-or-nothing (a staff account with `erp` gets the FULL ERP surface —
-no per-entity split; the old `PRODUCTION_ENTITIES` / `SALES_ENTITIES` tiers only
-still apply to legacy production/sales via the shim).
+no per-entity split; the V8.12/13 `PRODUCTION_ENTITIES` / `SALES_ENTITIES` tiers
+in `erp.js` were **deleted** with the role shim on 2026-09-02). `bank.js` checks
+`invoices` (staff holder → `list`/`audit` only; admin → all ops).
+
+**Edge-fn module keys (V8.14 code-review follow-up, 2026-09-03).** The mechanical
+`requireFrontOffice → requireModule` migration mis-keyed several AI/OCR-assist
+functions to `quotes` (the ex-`sales` proxy). Corrected so each fn's key matches
+the route `<Gate module>` its callers sit behind: `process-quote`/`extract-po` →
+`supply`, `extract-pi` → `shipping`, `compose-message` → `customers`,
+`generate-marketing-copy`/`rewrite-section` → `['products','figurine','marketing']`
+(any-match), `scrape-images` → `figurine`, `woo-sync`/`seo-state` → `woo`.
+`requireModule(req, key)` now takes a string **or an array** (any-match). **When
+retagging an edge fn: grep `/api/<name>`, use the caller's Gate module — never
+the old role.** Full per-fn table in `../../API-REFERENCE.md`.
 
 **MUST — the multi-place sync.** No single source; these MUST agree or a menu
 opens onto a permission-denied page, or data is granted with no way to reach it:
@@ -136,7 +148,14 @@ Retired in V8.14. Both live accounts were migrated to `role:'staff'` on
   credit_notes, supply` (ex-sales + full catalogue + supply; no `uc`, `woo`,
   `erp`, `settings`).
 
-### 2a. The `sales` role — BUILT (V8.13)
+### 2a. The `sales` role — BUILT (V8.13), then RETIRED (V8.14)
+
+> **Superseded.** `sales` (and `production`) collapsed into `staff` + `modules[]`
+> on 2026-09-02 — see §2 and §2·legacy. `isSales()`/`isFrontOffice()` rule
+> helpers, `SALES_MODULES`/`SALES_ENTITIES`, and `requireFrontOffice` are all
+> gone. The section is kept for **the pricing/costing boundary** (still a live
+> architectural coupling — `pricing` is `sensitive` for the same reason) and as
+> the record of what the front-office scope was.
 
 The customer-facing front office, the mirror of `production`. Built 2026-08-31
 (owner selected the full scope: catalogue+pricing edit, catalogues, portal,

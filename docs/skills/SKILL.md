@@ -216,8 +216,10 @@ the fast path from a request to the exact code.
   removed 2026-09-02).
 - Files that MUST agree: `src/access.js` (`MODULE_GROUPS` / `resolveModules` /
   `canAccess`), `firestore.rules` + `storage.rules` (`can(m)` / `moduleList()`),
-  `netlify/edge-functions/lib/auth.js` (`requireModule(req, key)`; `erp.js` checks
-  `erp` for the full surface, `bank.js` checks `invoices`).
+  `netlify/edge-functions/lib/auth.js` (`requireModule(req, key)` — `key` may be a
+  string or array/any-match; `erp.js` checks `erp` for the full surface, `bank.js`
+  checks `invoices`). Per-fn key table in `../../API-REFERENCE.md`; when retagging
+  a fn, match the caller's route `<Gate module>`, not the old role.
 - UI: `src/components/Layout.jsx`, `src/App.jsx` (`<Gate module>`),
   `src/pages/ProductionDashboard.jsx` (fallback dashboard), `src/pages/AccountEdit.jsx`
   ("Role & access" card + the Interface-language dropdown). Test: `qa/rbac-rules.test.mjs`
@@ -256,7 +258,7 @@ the fast path from a request to the exact code.
 
 ### ERP lookup (legacy JES, read-only)
 - Pages: `ErpLookup.jsx`, `SchemaAudit.jsx`, `ComponentCodeAudit.jsx`, `BankDetailsAudit.jsx` · Components: `ErpDocModal.jsx`, `ErpProductImport.jsx`
-- Logic: `src/erpApi.js`, `src/erpProductImport.js`, `src/erpSoImport.js`, `src/customerOrderHistoryApi.js` · Edge fns: `erp` (`getRole()` gates per-entity), `uc`, `bank`
+- Logic: `src/erpApi.js`, `src/erpProductImport.js`, `src/erpSoImport.js`, `src/customerOrderHistoryApi.js` · Edge fns: `erp` (module `erp`, all-or-nothing since V8.14), `uc` (module `uc`), `bank` (module `invoices`; staff → read ops only)
 - Mirror: `erp-sync/` — Supabase, all columns `text`, views in `api_views.sql` (every view must cast). SQL Server LAN-only (`192.168.10.251`). Prefer ledgers over balance tables; column names lie.
 
 ### WooCommerce B2C sync → see `ARCHITECTURE-RULES.md` §Woo-to-invoice
@@ -290,3 +292,4 @@ authoritative detail stays in the doc it points to. Update the Change Log below.
 | 2026-08-31 | Skill system created and the root `INDEX.md` merged into it — SKILL.md absorbs the feature-area router + session start; cross-cutting/verify/deploy → `ARCHITECTURE-RULES.md`; mistakes → `LESSONS-LEARNED.md`. Grounded in codebase as of V8.12. |
 | 2026-09-02 | V8.14 — added §5 feature areas: **SEO control plane** (`/seo-state` · `/seo-review` · `/seo-reconcile`, `seo-state` edge fn, `seo-batch` Node fn, `seo_state`/`seo_state_history`/`seo_batches`, vendored `seo-control-plane/`) and extended **WooCommerce B2C** (Woo Catalogue + Yoast/WPML, `woo_cache` chunked). New docs `SEO-CONTROL-PLANE.md`, `MARKETING-WORKFLOW.md` §6.6. |
 | 2026-09-03 | V8.14 — **RBAC** entry rewritten for the flat `admin \| staff \| customer` + `modules[]` model (shim removed); new **i18n** entry (partial Simplified-Chinese supply/inventory UI: `src/i18n/`, `users/{uid}.ui_lang`, `scripts/i18n-translate.mjs`, per-print PO language toggle). See `PROJECT-PLAN.md` V8.14. |
+| 2026-09-03 | V8.14 code-review follow-up — edge-fn module keys corrected (AI/OCR-assist fns were mis-keyed to `quotes`; `erp.js`/`bank.js` per-entity tiers removed); `requireModule` now string-or-array. `API-REFERENCE.md` auth column + `ARCHITECTURE-RULES.md` §2 / `TECH-DEBT.md` updated. |
