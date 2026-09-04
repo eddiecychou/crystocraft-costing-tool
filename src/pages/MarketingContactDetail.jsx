@@ -160,10 +160,10 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
         <ArrowLeft size={14} /> Back to Marketing Contacts
       </Link>
 
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <h1 className="text-xl md:text-2xl text-ink flex items-center gap-2">
-            <Users size={22} className="text-brand-600" /> {contactName(contact)}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl text-ink flex items-center gap-2 break-words">
+            <Users size={22} className="text-brand-600 shrink-0" /> {contactName(contact)}
           </h1>
           <p className="text-sm text-ink-60 mt-0.5">Marketing Contact</p>
         </div>
@@ -180,16 +180,16 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
       )}
 
       <div className="card p-5 space-y-3">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {field('First name', 'first_name')}
           {field('Last name', 'last_name')}
         </div>
         {field('Email', 'email', 'email')}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {field('Company', 'company')}
           {field('Country', 'country')}
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {field('Phone', 'phone')}
           {field('WhatsApp', 'whatsapp')}
           {field('WeChat', 'wechat')}
