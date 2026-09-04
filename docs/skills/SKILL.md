@@ -178,8 +178,8 @@ the fast path from a request to the exact code.
 - Collections: `credit_notes/{id}` (working doc, **admin-only**). Accounting is **not in JES** — books in PBIS on Cindy's machine; never take an FX rate from JES.
 
 ### CRM — Customers → see `ARCHITECTURE-RULES.md` §Data-lifecycles
-- Pages: `Customers.jsx`, `CustomerDetail.jsx`, `CustomerForm.jsx`, `CustomerAccounts.jsx`, `AccountEdit.jsx`, `Enquiries.jsx`, `EnquiryForm.jsx`
-- Components: `CustomerBrandGallery.jsx`, `ProposalEditor.jsx`, `BrandProposalPDF.jsx`, `ContactPicker.jsx`
+- Pages: `Customers.jsx`, `CustomerDetail.jsx`, `CustomerBrand.jsx` (V8.14 — the `/customers/:id/brand` page; Brand Gallery + Proposal editors moved off Customer Detail, which now shows the `BrandProposalCard` summary), `CustomerForm.jsx`, `CustomerAccounts.jsx`, `AccountEdit.jsx`, `Enquiries.jsx`, `EnquiryForm.jsx`
+- Components: `CustomerBrandGallery.jsx`, `ProposalEditor.jsx` (both rendered by `CustomerBrand.jsx`), `BrandProposalPDF.jsx`, `ContactPicker.jsx`
 - Logic: `src/domain/customer.js` (biggest module), `src/domain/interactionLog.js`, `src/customerAssets.js`, `src/customerProposal.js`, `src/sensitiveImages.js`
 - Edge fns: `compose-message`, `refresh-email-summary`, `discuss-customer-email`, `route-email-question`, `compose-email-answer`, `customer-order-history`
 - Collections: `customers/{id}` (+ `enquiries`=Interaction Log, `email_threads`, `whatsapp_threads`, `alibaba_threads`, `assets`, `proposal/current`) — **admin-only**. Spec: `Customer_Brand_Gallery_Spec.md`.

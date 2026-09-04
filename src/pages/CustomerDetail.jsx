@@ -9,8 +9,8 @@ import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
-import CustomerBrandGallery from '../components/CustomerBrandGallery'
-import ProposalEditor from '../components/ProposalEditor'
+import { useCustomerAssets, cannotRenderAsImage } from '../customerAssets'
+import { loadProposal } from '../customerProposal'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, ChevronRight, Database, Mail, MessageCircle, MessageSquare, Loader2, RefreshCw, Smartphone, Mic, ShoppingCart } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
@@ -260,6 +260,72 @@ function Collapsible({ storageKey, title, right, defaultOpen = true, children, c
       </div>
       {!collapsed && <div className={bodyClassName}>{children}</div>}
     </div>
+  )
+}
+
+// Summary card for the Brand & Proposal page (split off from this page
+// 2026-09-04). Shows a thumbnail strip of the customer's own brand assets +
+// the proposal's status, and links to /customers/:id/brand.
+function BrandThumb({ asset }) {
+  if (cannotRenderAsImage(asset.filename)) {
+    return (
+      <span className="w-9 h-9 rounded-none border border-warm-grey bg-ivory-dark flex items-center justify-center shrink-0" title={asset.title || asset.filename}>
+        <FileText size={14} className="text-ink-60" />
+      </span>
+    )
+  }
+  return (
+    <img src={asset.file_url} alt={asset.title || asset.filename} loading="lazy"
+      className="w-9 h-9 rounded-none border border-warm-grey object-contain bg-white shrink-0"
+      title={asset.title || asset.filename} />
+  )
+}
+
+function BrandProposalCard({ customerId }) {
+  const { assets } = useCustomerAssets(customerId)
+  const [proposal, setProposal] = useState(undefined)   // undefined = loading, null = none
+
+  useEffect(() => {
+    let alive = true
+    loadProposal(customerId)
+      .then(p => { if (alive) setProposal(p) })
+      .catch(() => { if (alive) setProposal(null) })
+    return () => { alive = false }
+  }, [customerId])
+
+  const brand = assets.filter(a => a.category === 'brand_asset')
+  const thumbs = brand.slice(0, 5)
+
+  const proposalLine =
+    proposal === undefined ? 'loading proposal…'
+      : proposal === null ? 'no proposal yet'
+        : `proposal ${proposal.status}${proposal.updated_at ? ` · updated ${fmtDate(proposal.updated_at)}` : ''}`
+
+  return (
+    <Link to={`/customers/${customerId}/brand`}
+      className="card mb-4 block px-5 py-4 hover:border-brand-300 transition-colors">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm text-ink-80">Brand &amp; Proposal</h2>
+        <span className="text-xs text-brand-600 inline-flex items-center gap-0.5 shrink-0">
+          Open <ChevronRight size={13} />
+        </span>
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        {thumbs.length > 0 ? (
+          <div className="flex items-center gap-1.5">
+            {thumbs.map(a => <BrandThumb key={a.id} asset={a} />)}
+            {brand.length > thumbs.length && (
+              <span className="text-xs text-ink-60">+{brand.length - thumbs.length}</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-ink-60">No brand assets yet</span>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-ink-60">
+        {brand.length} brand asset{brand.length === 1 ? '' : 's'} · {proposalLine}
+      </p>
+    </Link>
   )
 }
 
@@ -1470,11 +1536,9 @@ export default function CustomerDetail() {
         )}
       </Collapsible>
 
-      {/* Brand Gallery — customer logos / brand assets (admin-curated) */}
-      <CustomerBrandGallery customerId={id} />
-
-      {/* Proposal — customer-facing hero/sections presentation (Sun-Life-Proposal-Build-Spec.md §6) */}
-      <ProposalEditor customerId={id} customerName={customer?.company_name} />
+      {/* Brand assets + customer proposal now live on their own page
+          (/customers/:id/brand) — this is the summary + entry point. */}
+      <BrandProposalCard customerId={id} />
 
       {/* Portal Enquiries (from the storefront) */}
       <Collapsible storageKey={`${id}:portal-enquiries`} title={`Portal Enquiries (${portalEnquiries.length})`} bodyClassName=""

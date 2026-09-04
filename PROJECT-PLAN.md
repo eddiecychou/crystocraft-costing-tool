@@ -288,6 +288,17 @@ run of small UI asks found through live use.
     whitelisted `item_history` entity in `erp.js`. The entity tab bar was
     reworked from a one-row scroll to an even 2/4-col grid (8 tabs overran a
     laptop viewport).
+- **Mobile responsive fixes** — `SupplierDetail` / `MarketingContactDetail`
+  headers stack on phones (the pinned action-button group was overflowing);
+  `EnquiryForm` (Log Interaction) Date+Channel and the MC field grids collapse
+  to one column below `sm`.
+- **Brand & Proposal split off Customer Detail** (`/customers/:id/brand`, new
+  `CustomerBrand.jsx`). `CustomerBrandGallery` + `ProposalEditor` (~1,200 lines
+  of curation UI) were rendered inline on the ~2,000-line `CustomerDetail`.
+  Customer Detail now shows a `BrandProposalCard` — a thumbnail strip of the
+  customer's own brand assets + the proposal status — that links to the new
+  page. Both child components already took only `customerId`; the move was
+  routing + the card.
 
 ## V8.12 — Role-Based Access Control (the `production` role) + PI print fix — UNDER REVIEW as of 2026-08-28
 
