@@ -389,10 +389,10 @@ export default function SupplierDetail() {
     <div className="p-4 md:p-6 max-w-2xl">
       <Link to="/suppliers" className="text-sm text-brand-600 hover:underline">← Suppliers</Link>
 
-      <div className="flex items-start justify-between mt-2 mb-6">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mt-2 mb-6">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl text-ink">{supplier.name}</h1>
+            <h1 className="text-2xl text-ink break-words">{supplier.name}</h1>
             {supplier.erp_code && (
               <span className="text-xs font-mono px-2 py-0.5 rounded-none bg-ivory-dark text-ink-60 border border-warm-grey">{supplier.erp_code}</span>
             )}
@@ -407,10 +407,10 @@ export default function SupplierDetail() {
             ) : null
           })()}
         </div>
-        <div className="flex gap-2">
-          <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary">{t('Edit')}</Link>
-          <button className="btn-secondary" onClick={() => setShowMerge(true)}>{t('Merge')}</button>
-          <button className="btn-danger" onClick={() => setConfirmDelete(true)}>{t('Delete')}</button>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary text-sm">{t('Edit')}</Link>
+          <button className="btn-secondary text-sm" onClick={() => setShowMerge(true)}>{t('Merge')}</button>
+          <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>{t('Delete')}</button>
         </div>
       </div>
 
