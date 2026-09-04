@@ -158,6 +158,31 @@ sets `reframed: true` on the response when the output aspect ratio drifts >2%
 from the source; `ImageGallery.jsx` / `RangeForm.jsx` show an amber warning
 alongside the colour-loss one. Keep all three when editing prompts.
 
+**Provenance (2026-09-04, borrowed from the Artgen side's `art.meta.json`
+idea).** `enhance-image.js` returns `model` (whichever of the two actually
+served the request) and `promptVersion` (`PROMPT_VERSION` — **bump it whenever
+`PROMPTS`/`FRAMING`/`EXCLUDE`/`COLOR_RULES` text changes**) alongside the
+image. On Keep / Save-as-new, `ImageGallery.jsx` writes both plus
+`reframed`/`color_warning`/a timestamp into an `ai_enhance` map on the image
+record; `RangeForm.jsx` does the same on the plain gallery-array item (using
+`new Date()`, not `serverTimestamp()` — that sentinel isn't allowed inside a
+Firestore array). Not as complete as `art.meta.json` (no stored prompt text,
+no "review void if regenerated after" check) — just enough to answer "which
+prompt/model produced this file" if a later prompt change is ever suspected of
+having changed past output.
+
+**Two prompt-writing rules, commented at the top of `enhance-image.js`'s
+`PROMPTS` block — apply them to any new AI-image prompt in this repo, not only
+this one:**
+- *Don't name example objects in style text* unless the object is already
+  part of the product (`COLOR_RULES` naming "red areas", "blue crystal" is
+  fine — it's describing the product's own colour classes). Naming something
+  NOT already in the shot, just to illustrate a rule, tends to make the model
+  add that thing.
+- *Don't let a prompt invite text* — a mentioned sign, label, or price tag
+  pulls invented numerals/words into the image, on top of what `EXCLUDE`
+  already forbids outright.
+
 ## 5. Sending discipline (Resend)
 
 - **MUST** normalize every Resend **tag name and value** through

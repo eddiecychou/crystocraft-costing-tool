@@ -19,6 +19,18 @@
 // this is the "flash image" family's shared interface, not model-specific.
 const IMAGE_MODELS = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image']
 
+// Bump whenever PROMPTS / FRAMING / EXCLUDE / COLOR_RULES text changes below.
+// Returned alongside the edited image so the caller can save it onto the
+// image record — the DeepSeek Artgen engine keeps the same idea in
+// art.meta.json (STYLE_VERSION + exact prompt), which is what lets it tell a
+// stale review apart from a current one. This retoucher had no equivalent:
+// nothing recorded which prompt/model produced a given edit, so there was no
+// way to tell later whether an approved "Keep" still matches what these
+// prompts do today. Not a provenance system as complete as art.meta.json —
+// just enough to answer "was this edited before or after the last prompt
+// change" if that question ever matters.
+const PROMPT_VERSION = 'v1-2026-09-04'
+
 function bytesToBase64(bytes) {
   let binary = ''
   const CHUNK = 0x8000
@@ -98,6 +110,17 @@ const COLOR_RULES =
   `If any area of the product is the same colour as white, leave it white — but do NOT whiten areas that are coloured in the original. ` +
   `When the product contains transparent or translucent areas, preserve those as transparent/translucent — do not fill them white.`
 
+// Two rules to keep in mind when editing any prompt below (learned the hard
+// way on a sibling image pipeline — MARKETING-WORKFLOW.md §4a/§6.1a):
+// - Don't name example objects in style text. Naming a concrete example
+//   ("a red body", "a blue crystal detail") to illustrate a RULE is fine —
+//   COLOR_RULES does this on purpose, listing actual product colour classes.
+//   The failure mode is naming something NOT already part of the product
+//   (an unrelated prop, a background object) just to illustrate a point —
+//   an image model tends to take that literally and add the thing.
+// - Don't let a prompt invite text. EXCLUDE already forbids text/watermarks/
+//   logos outright; keep it that way rather than describing a scene element
+//   (a sign, a label, a price tag) that would pull invented text into shot.
 const PROMPTS = {
   clean:
     `Edit this product photo of a Crystocraft crystal giftware / corporate gift item. ` +
@@ -216,7 +239,10 @@ export default async function handler(req) {
       reframed = Math.abs(arSrc - arOut) / arSrc > 0.02
       if (reframed) console.warn(`enhance-image: model reframed ${srcSize.w}x${srcSize.h} -> ${outSize.w}x${outSize.h} (mode ${mode})`)
     }
-    return json({ image: inline.data, mimeType: inline.mime_type || inline.mimeType || 'image/png', reframed })
+    return json({
+      image: inline.data, mimeType: inline.mime_type || inline.mimeType || 'image/png',
+      reframed, model, promptVersion: PROMPT_VERSION,
+    })
   }
 
   // Unreachable (the loop always returns), but keeps this defensive.

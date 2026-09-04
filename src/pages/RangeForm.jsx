@@ -877,7 +877,7 @@ export default function RangeForm() {
       const data = await enhanceProductImage(g.url, { mode, colorHint, recolorInstructions })
       const afterUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`
       const colorWarning = await detectColorLoss(g.url, afterUrl)
-      setEnh(e => (e && e.i === i ? { ...e, after: afterUrl, busy: false, colorWarning, reframed: !!data.reframed } : e))
+      setEnh(e => (e && e.i === i ? { ...e, after: afterUrl, busy: false, colorWarning, reframed: !!data.reframed, model: data.model, promptVersion: data.promptVersion } : e))
     } catch (err) {
       setEnh(e => (e && e.i === i ? { ...e, busy: false, error: err.message } : e))
     }
@@ -889,7 +889,14 @@ export default function RangeForm() {
       const blob = await (await fetch(enh.after)).blob()
       const file = new File([blob], `enhanced-${Date.now()}.png`, { type: blob.type || 'image/png' })
       const url = await uploadFile(file)
-      setForm(f => ({ ...f, gallery: f.gallery.map((g, j) => (j === enh.i ? { ...g, url } : g)) }))
+      // Provenance for the AI edit — which prompt version/model produced this
+      // file, gallery items are array elements so no serverTimestamp() here
+      // (Firestore doesn't allow that sentinel inside an array).
+      const ai_enhance = {
+        mode: enh.mode, model: enh.model || null, prompt_version: enh.promptVersion || null,
+        reframed: !!enh.reframed, color_warning: !!enh.colorWarning, enhanced_at: new Date(),
+      }
+      setForm(f => ({ ...f, gallery: f.gallery.map((g, j) => (j === enh.i ? { ...g, url, ai_enhance } : g)) }))
       setEnh(null)
     } catch (err) {
       setEnh(e => ({ ...e, busy: false, error: err.message }))
@@ -903,10 +910,14 @@ export default function RangeForm() {
       const blob = await (await fetch(enh.after)).blob()
       const file = new File([blob], `enhanced-${Date.now()}.png`, { type: blob.type || 'image/png' })
       const url = await uploadFile(file)
+      const ai_enhance = {
+        mode: enh.mode, model: enh.model || null, prompt_version: enh.promptVersion || null,
+        reframed: !!enh.reframed, color_warning: !!enh.colorWarning, enhanced_at: new Date(),
+      }
       // Append as a new gallery entry after the original
       setForm(f => {
         const next = [...f.gallery]
-        next.splice(enh.i + 1, 0, { url, caption: '' })
+        next.splice(enh.i + 1, 0, { url, caption: '', ai_enhance })
         return { ...f, gallery: next }
       })
       setEnh(null)

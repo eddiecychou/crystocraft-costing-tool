@@ -335,7 +335,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       const data = await enhanceProductImage(img.file_url, { mode, colorHint, recolorInstructions })
       const afterUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`
       const colorWarning = await detectColorLoss(img.file_url, afterUrl)
-      setEnh(e => (e && e.img.id === img.id ? { ...e, after: afterUrl, busy: false, colorWarning, reframed: !!data.reframed } : e))
+      setEnh(e => (e && e.img.id === img.id ? { ...e, after: afterUrl, busy: false, colorWarning, reframed: !!data.reframed, model: data.model, promptVersion: data.promptVersion } : e))
     } catch (err) {
       setEnh(e => (e && e.img.id === img.id ? { ...e, busy: false, error: err.message } : e))
     }
@@ -352,7 +352,16 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       await uploadBytes(sRef, outBlob, { contentType: 'image/jpeg' })
       const url = await getDownloadURL(sRef)
       const old = enh.img
-      await updateDoc(doc(db, ...firestorePath.split('/'), old.id), { file_url: url, storage_path: path, orientation })
+      await updateDoc(doc(db, ...firestorePath.split('/'), old.id), {
+        file_url: url, storage_path: path, orientation,
+        // Provenance for the AI edit that produced this file — which prompt
+        // version/model, and whether it warned of a reframe or colour loss.
+        // See enhance-image.js's PROMPT_VERSION comment for why this exists.
+        ai_enhance: {
+          mode: enh.mode, model: enh.model || null, prompt_version: enh.promptVersion || null,
+          reframed: !!enh.reframed, color_warning: !!enh.colorWarning, enhanced_at: serverTimestamp(),
+        },
+      })
       try { if (old.storage_path) await deleteObject(storageRef(storage, old.storage_path)) } catch {}
       if (onHeroChange && old.is_hero) onHeroChange(url)
       closeEditor()
@@ -383,6 +392,10 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         is_hero: false,
         sort_order: images.length,
         uploaded_at: serverTimestamp(),
+        ai_enhance: {
+          mode: enh.mode, model: enh.model || null, prompt_version: enh.promptVersion || null,
+          reframed: !!enh.reframed, color_warning: !!enh.colorWarning, enhanced_at: serverTimestamp(),
+        },
       })
       closeEditor()
     } catch (err) {
