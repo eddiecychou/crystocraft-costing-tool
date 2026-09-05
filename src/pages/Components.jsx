@@ -237,6 +237,9 @@ function CrystalErpPrice({ codes, cost, currency, onChangeCodes, onUsePrice }) {
       {hist.error && <p className="text-ink-60 mt-0.5 ml-4">{hist.error}</p>}
       {latest && (
         <div className={`mt-1 ml-4 px-2 py-1 border ${belowPaid ? 'border-amber-300 bg-amber-50/60' : 'border-warm-grey bg-ivory'}`}>
+          {latest.description && (
+            <span className="block text-ink-60 truncate" title={latest.description}>{latest.description}</span>
+          )}
           <span className="text-ink-70">
             {t('PU paid:')} <span className="font-semibold tabular-nums">{num4(latest.net_price)} {latest.currency}</span>
             {' · '}{String(latest.date || '').slice(0, 10)}

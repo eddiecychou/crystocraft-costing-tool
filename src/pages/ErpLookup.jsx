@@ -114,8 +114,9 @@ const ENTITIES = {
     cols: [
       { key: 'date', label: 'Date', date: true },
       { key: 'customer', label: 'Customer', grow: true },
-      { key: 'item_code', label: 'Item', mono: true },
-      { key: 'description', label: 'Description', grow: true },
+      // Description rides under the code in the same cell (withDesc) — a
+      // separate column made this 11-wide table overflow a laptop.
+      { key: 'item_code', label: 'Item', withDesc: true },
       { key: 'currency', label: 'Curr' },
       { key: 'qty', label: 'Qty', num: true, qty: true },
       { key: 'unit_price', label: 'List', num: true },
@@ -134,8 +135,7 @@ const ENTITIES = {
     cols: [
       { key: 'date', label: 'Date', date: true },
       { key: 'supplier', label: 'Supplier', grow: true },
-      { key: 'item_code', label: 'Item', mono: true },
-      { key: 'description', label: 'Description', grow: true },
+      { key: 'item_code', label: 'Item', withDesc: true },
       { key: 'currency', label: 'Curr' },
       { key: 'qty', label: 'Qty', num: true, qty: true },
       { key: 'unit_price', label: 'Unit', num: true },
@@ -287,7 +287,8 @@ function PriceSummary({ rows, groupField = 'customer', groupNoun = 'customer', c
       if (r.net_price == null) continue
       const party = r[groupField] || '—'
       const key = `${r.item_code}||${party}||${r.currency || '—'}`
-      if (!m.has(key)) m.set(key, { item_code: r.item_code, party, currency: r.currency || '—', pts: [] })
+      if (!m.has(key)) m.set(key, { item_code: r.item_code, description: r.description || '', party, currency: r.currency || '—', pts: [] })
+      if (!m.get(key).description && r.description) m.get(key).description = r.description
       m.get(key).pts.push({ date: r.date ? String(r.date).slice(0, 10) : '', net: Number(r.net_price), qty: Number(r.qty) || 0 })
     }
     const out = []
@@ -316,6 +317,12 @@ function PriceSummary({ rows, groupField = 'customer', groupNoun = 'customer', c
       <div className="px-3 py-2 border-b border-warm-grey bg-ivory text-xs text-ink-60 font-medium">
         Price summary — {groups.length} {groupNoun}{groups.length === 1 ? '' : 's'}
         {multiItem ? ' · multiple items in view' : ''}. Net = line total ÷ qty, in each document's currency.
+        {!multiItem && groups[0] && (
+          <span className="block font-normal text-ink-70 mt-0.5">
+            <span className="font-mono">{groups[0].item_code}</span>
+            {groups[0].description ? <span className="text-ink-60"> — {groups[0].description}</span> : null}
+          </span>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -335,7 +342,14 @@ function PriceSummary({ rows, groupField = 'customer', groupNoun = 'customer', c
           <tbody>
             {groups.map((g, i) => (
               <tr key={i} className="border-b border-warm-grey last:border-0 hover:bg-ivory">
-                {multiItem && <td className="px-3 py-2 font-mono text-xs align-top">{g.item_code}</td>}
+                {multiItem && (
+                  <td className="px-3 py-2 align-top">
+                    <span className="font-mono text-xs block">{g.item_code}</span>
+                    {g.description && (
+                      <span className="block text-2xs text-ink-60 truncate max-w-[320px]" title={g.description}>{g.description}</span>
+                    )}
+                  </td>
+                )}
                 <td className="px-3 py-2 align-top">{g.party}</td>
                 <td className="px-3 py-2 align-top">{g.currency}</td>
                 <td className="px-3 py-2 text-right tabular-nums align-top">{g.n}</td>
@@ -1145,7 +1159,14 @@ export default function ErpLookup() {
                   )}
                   {cfg.cols.map((c) => (
                     <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'} ${c.num ? 'text-right tabular-nums' : ''} ${c.strong ? 'font-semibold text-ink' : ''}`}>
-                      {entity === 'item' && c.key === 'has_bom' && r.has_bom
+                      {c.withDesc
+                        ? <div className="min-w-0 max-w-[440px]">
+                            <span className="font-mono text-xs block truncate" title={r[c.key]}>{r[c.key] || '—'}</span>
+                            {r.description && (
+                              <span className="block text-2xs text-ink-60 truncate" title={r.description}>{r.description}</span>
+                            )}
+                          </div>
+                        : entity === 'item' && c.key === 'has_bom' && r.has_bom
                         ? <div className="flex items-center gap-2">
                             <button onClick={() => openBom(r.code)}
                               className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
