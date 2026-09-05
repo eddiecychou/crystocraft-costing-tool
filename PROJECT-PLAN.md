@@ -299,6 +299,93 @@ run of small UI asks found through live use.
   customer's own brand assets + the proposal status — that links to the new
   page. Both child components already took only `customerId`; the move was
   routing + the card.
+- **`enhance-image` prompt provenance** (`baaa6ca`) — lifted from an external
+  image-generation skill the owner shared, cross-checked against what §6
+  already documents for the Artgen engine. `enhance-image.js` gained a
+  `PROMPT_VERSION` constant (bump on any `PROMPTS`/`FRAMING`/`EXCLUDE`/
+  `COLOR_RULES` edit) and returns it + `model` with the image; `ImageGallery`
+  / `RangeForm` write an `ai_enhance` record (mode / model / prompt_version /
+  reframed / color_warning / timestamp) on Keep. Plus two prompt-writing rules
+  commented into `enhance-image.js` and folded into `MARKETING-WORKFLOW.md`
+  §4a: don't name an example object in style text unless it's already part of
+  the product; don't let a prompt invite text.
+
+## Current Status — V8.14 CLOSED as of 2026-09-04
+
+**Shipped this cycle** (see the `## V8.14` section + `### V8.14 follow-ups`
+above for detail on each):
+- **SEO control plane** Steps 1–4 — the structured OC⟷DeepSeek-Workbench
+  contract (`/seo-state`, `/seo-review`, `/seo-reconcile`, `seo-state` edge fn,
+  `seo-batch` Node fn, `seo_state`/`seo_state_history`/`seo_batches`, vendored
+  `seo-control-plane/`). New docs `SEO-CONTROL-PLANE.md`, `MARKETING-WORKFLOW.md`
+  §6.6.
+- **RBAC flattened** — fixed `production`/`sales` roles retired; every internal
+  account is now `staff` + a per-user `users/{uid}.modules[]` list (17 keys).
+  Both live accounts migrated 2026-09-02, shim deleted. Code-review follow-up:
+  edge-fn module keys corrected (AI/OCR-assist fns had been mis-keyed to
+  `quotes`), `requireModule` takes a string or array, `erp.js`/`bank.js`
+  per-entity tiers removed.
+- **Partial Simplified-Chinese UI** — supply/inventory pages only. `src/i18n`
+  (`t('English')=key`), `users/{uid}.ui_lang` (admin-set), per-print PO EN/中文
+  toggle, `scripts/i18n-translate.mjs` (DeepSeek). Bug scan clean (three
+  `reduce`/`map` accumulators renamed off `t`).
+- **Ecommerce catalogue visibility** — Woo Catalogue + Yoast/WPML, `woo_cache`
+  chunked, per-language `catalogue_page`.
+- **ERP Lookup — Item price history** — new tab + `erp_item_sales_history`
+  view (invoice lines × their header, computed net unit price), `PriceSummary`
+  strip grouping by item + customer + currency. For quoting / price-adjustment
+  decisions.
+- **UI / mobile polish found through live use** — SEO Review overflow +
+  Hide-list toggle; collapsible Operation Center sidebar; ERP Lookup tab grid;
+  Supplier / Marketing-Contact detail headers + the Log Interaction form made
+  responsive; Marketing Contact detail split.
+- **Brand & Proposal moved to `/customers/:id/brand`** (`CustomerBrand.jsx`),
+  Customer Detail shows a summary card.
+- **`enhance-image` provenance** — `PROMPT_VERSION` + `ai_enhance` record +
+  two prompt-writing guardrails.
+
+**Honest gaps:**
+- **No automated tests added** beyond the rewritten `qa/rbac-rules.test.mjs`
+  (62 emulator assertions, flat model) — same standing gap as every prior
+  cycle.
+- **Nothing this cycle was click-tested in the running app.** `.env.local`'s
+  `QA_ADMIN_PASSWORD` is still the literal placeholder `whatever-you-set`, so
+  the QA-admin browser login does not work. Everything shipped is
+  esbuild-parsed + `vite build`-clean only; the RBAC rules are emulator-tested;
+  the ERP view was verified with a real Supabase query (130,510 rows). The
+  owner / staff verify the UI in production. **Set a real QA password to
+  restore Claude's self-verify path** (see the `qa-admin-login` memory).
+- **`firestore.rules` / `storage.rules` deploy separately** from Netlify and
+  must go first. The V8.14 flat-model rules were deployed during the cycle; if
+  V8.15 touches `access.js` module keys, re-deploy rules and re-run the
+  emulator test.
+
+## Where V8.15 starts
+
+- **Bump `APP_VERSION` to `V8.15`** in `src/appInfo.js` as the first commit
+  (cycle-start convention — never at close).
+- **Owner decisions still open from the V8.14 code review** (both already in
+  `TECH-DEBT.md`, neither is a bug):
+  - `erp` module is **all-or-nothing** — a `staff` account holding `erp` sees
+    the entire JES archive incl. costs/margins. Confirm that's intended or
+    split it back into entity tiers.
+  - `customizer-render.js` / `customizer-palette.js` / `enhance-image.js` still
+    have **no auth check** (quota/CPU abuse only — the secrets stay
+    server-side). Recorded, accepted since V8.13; revisit only if abuse shows.
+- **QA login** — set `QA_ADMIN_PASSWORD` so UI changes can be self-verified
+  again instead of shipped parse-only.
+- **Carried-forward, not started:**
+  - `portal-invite.js` still carries its own PEM-repair idiom instead of the
+    shared `netlify/functions/lib/firebaseAdmin.js` — migrate when next
+    touched (`TECH-DEBT.md`).
+  - 13 CRM/outreach edge fns still have an inline `isFrontOffice()` copy
+    instead of the shared `requireModule()` — converge when next touched.
+  - Physical Design Workbench (Crystal Fabric Studio) still paused mid-build —
+    workstreams 3/5 (mode-unification, photo-compositing) never started.
+- **i18n** — the zh-Hans catalogue is scoped to supply/inventory only. If the
+  owner wants it wider, `scripts/i18n-translate.mjs` + wrapping is the process;
+  add variable-key config labels to `scripts/i18n-extra-keys.json` or they stay
+  English.
 
 ## V8.12 — Role-Based Access Control (the `production` role) + PI print fix — UNDER REVIEW as of 2026-08-28
 

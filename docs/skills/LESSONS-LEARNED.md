@@ -231,6 +231,62 @@
   L-10); the harness now carries a premium-only section and a
   full-heading-plus-duo section as permanent regression cases.
 
+## L-15 · Mechanical auth migration mis-keyed edge functions
+
+- **Symptom.** After the V8.14 RBAC flatten, several AI/OCR-assist edge fns
+  (`process-quote`, `extract-pi`, `compose-message`, `generate-marketing-copy`,
+  `rewrite-section`, `scrape-images`) were gated on the `quotes` module even
+  though their only callers are supply / shipping / customers / product /
+  figurine pages — a `staff` account with the right module for the *page* would
+  still get **403** from the *helper* the page calls.
+- **Root cause.** The `requireFrontOffice → requireModule(req, key)` migration
+  picked `key` from the retired `sales` role's rough scope (a "front office"
+  proxy that happened to include quotes), not from **who actually calls the
+  endpoint**. Retagging by old-role assumption instead of by call graph.
+- **Permanent fix.** Keys corrected against the real callers; `requireModule`
+  now accepts a **string or an array** (any-match) for a fn reachable from
+  pages in more than one module (`generate-marketing-copy` →
+  `['products','figurine','marketing']`). **MUST**, when retagging an edge fn's
+  auth: `grep -rn "/api/<name>"` its callers, and use the module on the
+  route's `<Gate module>` in `src/App.jsx` — never the name of the old role.
+  Per-fn key table in `API-REFERENCE.md`; `ARCHITECTURE-RULES.md` §2;
+  `TECH-DEBT.md` "V8.14 code-review follow-up".
+
+## L-16 · A CSS grid/flex track won't shrink below its content — `min-w-0`
+
+- **Symptom.** The SEO Review page's right panel (a wide before→after diff
+  table) pushed the **whole page** into horizontal scroll on a laptop, instead
+  of scrolling inside its own `overflow-x-auto` container as intended.
+- **Root cause.** A grid/flex child's default `min-width` is `auto`, which
+  resolves to its **content** size. So the `1fr` track in
+  `grid-cols-[240px_1fr]` grew to the table's natural width, overflowing the
+  viewport, and the inner scroll container never engaged because its parent
+  had already stretched.
+- **Permanent fix.** `min-w-0` on the grid/flex child that holds the wide
+  content; for a wide table also `table-fixed` + `break-all`/`colgroup` so
+  cells wrap. **MUST** put `min-w-0` on any grid/flex column that contains a
+  horizontally-scrollable or otherwise-wide child, or the child's own
+  `overflow-x` is dead. Same class already load-bearing in `Layout.jsx`'s main
+  column and `CustomerDetail`'s header — recurring, not a one-off.
+  (`src/pages/SeoReview.jsx`, commit `a69d60b`.)
+
+## L-17 · `serverTimestamp()` throws inside a Firestore array
+
+- **Symptom.** Writing an `ai_enhance.enhanced_at` provenance field onto
+  `RangeForm.jsx`'s `gallery[]` items would have thrown
+  *"FieldValue.serverTimestamp() is not currently supported inside arrays"*.
+- **Root cause.** Firestore rejects the `serverTimestamp()` (and any
+  `FieldValue`) sentinel anywhere inside an **array** value — even nested in a
+  map that is itself an array element. `RangeForm`'s gallery is an array of
+  maps on the product doc; `ImageGallery.jsx`'s images are their own
+  subcollection docs, where the sentinel is fine.
+- **Permanent fix.** Per-item timestamps that live inside an array field use
+  `new Date()` (client time); `serverTimestamp()` only for top-level fields or
+  nested maps that are **not** under an array. **MUST** check whether the write
+  target is an array element before reaching for `serverTimestamp()`.
+  (`src/pages/RangeForm.jsx` vs `src/components/ImageGallery.jsx`, commit
+  `baaa6ca`.)
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
@@ -241,6 +297,11 @@
   (`LOCAL-TOOLS.md`; memory `local-tools-available`).
 - **A local `/api/* 404` is normal** — dev runs `netlify-cli dev --offline`
   (memory `edge-functions-local-dev`).
+- **The QA-admin browser login may be dead** — `.env.local`'s
+  `QA_ADMIN_PASSWORD` was the literal placeholder `whatever-you-set` for all of
+  V8.14, so nothing that cycle was click-tested. Check the value is real before
+  planning any browser verification; if it's the placeholder, say so and ask
+  the owner to set one (memory `qa-admin-login`).
 - **Don't revive `PRODUCT-VARIANTS-PLAN.md`** without reading its §4 audit — a
   typed per-variant price breaks the quote margin column and per-customer pricing
   (+5 landmines).
@@ -259,3 +320,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-08-31 | Created by merging root `INDEX.md` §5 (mistakes table) into full Symptom/Root-cause/Permanent-fix entries, and adding the incidents the mistakes table only referenced: Resend ASCII tag + reversibility (L-04), edge-fn auto-scan deploy outage (L-05), open relay (L-02), Daily-Drafts stale closure (L-07), SEO double-branding (L-09), GA4 blank-column (L-13). |
 | 2026-09-01 | Formalized the failure-driven template at the top (Symptom / Root cause / Permanent fix is now the required, explicit format — "changed X" alone is not a lesson), per the Magister failure-driven-changelog pattern. |
 | 2026-09-02 | Added L-14 — react-pdf `<Page>` pagination: a blank page from a premium-only section (`paginate([])` → `[[]]`) and a stranded heading from decoupling heading/content across sibling views; the fix is to bind heading+first-row in one `wrap={false}` block and render every tier through `qa/render-proposal.jsx` before shipping. |
+| 2026-09-04 | Added L-15 (mechanical `requireFrontOffice→requireModule` migration mis-keyed AI-assist edge fns to `quotes` — retag by call graph + route `<Gate module>`, not by old role; `requireModule` now string-or-array), L-16 (a grid/flex `1fr` track won't shrink below content → `min-w-0` on the child or its inner `overflow-x` is dead), L-17 (`serverTimestamp()` throws inside a Firestore array — use `new Date()` for per-item timestamps in array fields). Operational reminder: the QA-admin login was non-functional all of V8.14 (placeholder password). |
