@@ -125,6 +125,26 @@ const ENTITIES = {
       { key: 'invoice_no', label: 'Invoice #', mono: true },
     ],
   },
+  // Buy-side mirror of item_history — what we PAID for an item, by supplier.
+  // `net_price` = line total ÷ qty in each PU's own currency. Also readable by
+  // a staff account holding `pricing` / `supply` (see erp.js access gate).
+  item_purchase_history: {
+    label: 'Item purchase history', Icon: History,
+    crossLink: { key: 'po_no', of: 'purchase' }, trailingLabel: 'PU',
+    cols: [
+      { key: 'date', label: 'Date', date: true },
+      { key: 'supplier', label: 'Supplier', grow: true },
+      { key: 'item_code', label: 'Item', mono: true },
+      { key: 'description', label: 'Description', grow: true },
+      { key: 'currency', label: 'Curr' },
+      { key: 'qty', label: 'Qty', num: true, qty: true },
+      { key: 'unit_price', label: 'Unit', num: true },
+      { key: 'markup', label: 'Mkup', num: true },
+      { key: 'net_price', label: 'Net / unit', num: true, strong: true },
+      { key: 'amount', label: 'Line total', num: true },
+      { key: 'po_no', label: 'PU #', mono: true },
+    ],
+  },
   sales_order: {
     label: 'Sales Orders', Icon: ClipboardList, linesOf: 'sales_order',
     cols: [
@@ -255,18 +275,19 @@ const money = (v) => (v === null || v === undefined || v === '')
 const price4 = (v) => (v === null || v === undefined || v === '')
   ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
 
-// Per-(item, customer, currency) price summary over the current result set —
-// the "what did we last charge, and is it trending up or down" answer that a
-// quote or a price-adjustment decision needs. Prices are per-unit net
-// (line amount ÷ qty) in each invoice's own currency; currencies are never
-// mixed within a row.
-function PriceSummary({ rows }) {
+// Per-(item, party, currency) price summary over the current result set — the
+// "what did we last charge / pay, and is it trending up or down" answer that a
+// quote or a cost decision needs. Prices are per-unit net (line amount ÷ qty)
+// in each document's own currency; currencies are never mixed within a row.
+// `groupField` is 'customer' (sales history) or 'supplier' (purchase history).
+function PriceSummary({ rows, groupField = 'customer', groupNoun = 'customer', countNoun = 'Invoices' }) {
   const groups = useMemo(() => {
     const m = new Map()
     for (const r of rows) {
       if (r.net_price == null) continue
-      const key = `${r.item_code}||${r.customer || '—'}||${r.currency || '—'}`
-      if (!m.has(key)) m.set(key, { item_code: r.item_code, customer: r.customer || '—', currency: r.currency || '—', pts: [] })
+      const party = r[groupField] || '—'
+      const key = `${r.item_code}||${party}||${r.currency || '—'}`
+      if (!m.has(key)) m.set(key, { item_code: r.item_code, party, currency: r.currency || '—', pts: [] })
       m.get(key).pts.push({ date: r.date ? String(r.date).slice(0, 10) : '', net: Number(r.net_price), qty: Number(r.qty) || 0 })
     }
     const out = []
@@ -282,11 +303,10 @@ function PriceSummary({ rows }) {
         delta: first.net ? (last.net - first.net) / first.net : null,
       })
     }
-    // Biggest recent business first (by last unit price × line count is noisy;
-    // sort by customer then item so a customer's rows sit together).
-    out.sort((a, b) => a.customer.localeCompare(b.customer) || a.item_code.localeCompare(b.item_code))
+    // Sort by party then item so one party's rows sit together.
+    out.sort((a, b) => a.party.localeCompare(b.party) || a.item_code.localeCompare(b.item_code))
     return out
-  }, [rows])
+  }, [rows, groupField])
 
   const multiItem = new Set(groups.map(g => g.item_code)).size > 1
   if (!groups.length) return null
@@ -294,17 +314,17 @@ function PriceSummary({ rows }) {
   return (
     <div className="bg-white border border-warm-grey rounded-none overflow-hidden mb-4">
       <div className="px-3 py-2 border-b border-warm-grey bg-ivory text-xs text-ink-60 font-medium">
-        Price summary — {groups.length} customer{groups.length === 1 ? '' : 's'}
-        {multiItem ? ' · multiple items in view' : ''}. Net = line total ÷ qty, in each invoice's currency.
+        Price summary — {groups.length} {groupNoun}{groups.length === 1 ? '' : 's'}
+        {multiItem ? ' · multiple items in view' : ''}. Net = line total ÷ qty, in each document's currency.
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-ink-60 border-b border-warm-grey">
               {multiItem && <th className="px-3 py-2 font-medium whitespace-nowrap">Item</th>}
-              <th className="px-3 py-2 font-medium">Customer</th>
+              <th className="px-3 py-2 font-medium capitalize">{groupNoun}</th>
               <th className="px-3 py-2 font-medium">Curr</th>
-              <th className="px-3 py-2 font-medium text-right">Invoices</th>
+              <th className="px-3 py-2 font-medium text-right">{countNoun}</th>
               <th className="px-3 py-2 font-medium text-right">First</th>
               <th className="px-3 py-2 font-medium text-right">Latest</th>
               <th className="px-3 py-2 font-medium text-right">Change</th>
@@ -316,7 +336,7 @@ function PriceSummary({ rows }) {
             {groups.map((g, i) => (
               <tr key={i} className="border-b border-warm-grey last:border-0 hover:bg-ivory">
                 {multiItem && <td className="px-3 py-2 font-mono text-xs align-top">{g.item_code}</td>}
-                <td className="px-3 py-2 align-top">{g.customer}</td>
+                <td className="px-3 py-2 align-top">{g.party}</td>
                 <td className="px-3 py-2 align-top">{g.currency}</td>
                 <td className="px-3 py-2 text-right tabular-nums align-top">{g.n}</td>
                 <td className="px-3 py-2 text-right tabular-nums align-top">
@@ -1068,6 +1088,9 @@ export default function ErpLookup() {
       )}
 
       {entity === 'item_history' && rows.length > 0 && <PriceSummary rows={rows} />}
+      {entity === 'item_purchase_history' && rows.length > 0 && (
+        <PriceSummary rows={rows} groupField="supplier" groupNoun="supplier" countNoun="POs" />
+      )}
 
       {/* Results */}
       <div className="bg-white border border-warm-grey rounded-none overflow-hidden">
@@ -1166,7 +1189,7 @@ export default function ErpLookup() {
                             {r.customer}
                             <span className="text-2xs text-ink-60 font-mono">{r.customer_code}</span>
                           </span>
-                        : entity === 'purchase' && c.key === 'supplier' && r.supplier_code
+                        : (entity === 'purchase' || entity === 'item_purchase_history') && c.key === 'supplier' && r.supplier_code
                         ? <span className="inline-flex items-center gap-1.5 flex-wrap">
                             {r.supplier}
                             <span className="text-2xs text-ink-60 font-mono">{r.supplier_code}</span>

@@ -23,6 +23,13 @@ const norm = it => ({
   brand: (it.brand || '').trim(),
   cost: it.cost === '' || it.cost == null || !Number.isFinite(Number(it.cost)) ? null : Number(it.cost),
   currency: (it.currency || 'RMB').trim() || 'RMB',
+  // V8.15 — optional one-time link to the ERP item code(s) this priced row
+  // corresponds to, so the Crystal costs editor can show the actual price paid
+  // in JES (erp_item_purchase_history) next to the assumed cost. Purely a
+  // reference aid; never feeds the costing engine.
+  erp_codes: Array.isArray(it.erp_codes)
+    ? [...new Set(it.erp_codes.map(c => String(c || '').trim().toUpperCase()).filter(Boolean))]
+    : [],
 })
 
 // Starter rows so the list isn't empty on first use — costs start blank

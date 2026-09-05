@@ -401,6 +401,43 @@ from raw.purchasesurcharge;
 create index if not exists ix_pd_puno on raw.purchasedetail (pdpuno);
 create index if not exists ix_ps_puno on raw.purchasesurcharge (pspuno);
 
+-- ── Item purchase history across POs (V8.15) ─────────────────────────────────
+-- The buy-side mirror of erp_item_sales_history: "what have we PAID for this
+-- item, to which supplier, and when" — the input to a component / crystal cost
+-- decision (ERP Lookup "Item purchase history" tab, and the inline PU-price
+-- check on the Crystal costs list). One row per purchase LINE with the parent
+-- PU's date / supplier / currency joined on. Searchable by item_code,
+-- description, or supplier.
+--
+-- `net_price` is the real paid per-unit price: line amount ÷ qty. `unit_price`
+-- is JES's pdunitprice reference and can differ when a line markup <> 1.
+-- Prices are in each PU's own `currency` and are never converted (a JES FX
+-- rate is unusable — see CLAUDE.md).
+create index if not exists ix_pd_itemcode on raw.purchasedetail (pditemcode);
+
+create or replace view public.erp_item_purchase_history as
+select
+  d.pditemcode                        as item_code,
+  nullif(d.pddesc, '')                as description,
+  d.pdpuno                            as po_no,
+  nullif(d.pdseq, '')::int            as seq,
+  nullif(h.pudate, '')::timestamp     as date,
+  nullif(h.pusupplier, '')            as supplier_code,
+  nullif(h.pusuppliername, '')        as supplier,
+  nullif(h.pucurrency, '')            as currency,
+  nullif(h.pustatus, '')              as po_status,
+  nullif(d.pdqty, '')::numeric        as qty,
+  nullif(d.pdqtygrn, '')::numeric     as qty_received,
+  nullif(d.pdunitprice, '')::numeric  as unit_price,
+  nullif(d.pdmarkup, '')::numeric     as markup,
+  nullif(d.pdlineamount, '')::numeric as amount,
+  case
+    when coalesce(nullif(d.pdqty, '')::numeric, 0) = 0 then null
+    else round(nullif(d.pdlineamount, '')::numeric / nullif(d.pdqty, '')::numeric, 4)
+  end                                 as net_price
+from raw.purchasedetail d
+left join raw.purchase h on h.puno = d.pdpuno;
+
 -- ── Inventory / stock on hand (Phase 6) ──────────────────────────────────────
 -- Stock is computed from the MOVEMENT LEDGER (raw.itemtransaction), not from
 -- raw.itemwhbal. itemwhbal looks like the obvious source but is a stale
@@ -492,14 +529,14 @@ revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
   public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
   public.erp_warehouse, public.erp_stock, public.erp_item_type,
-  public.erp_item_sales_history,
+  public.erp_item_sales_history, public.erp_item_purchase_history,
   public.erp_component_usage from anon, authenticated;
 grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
   public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
   public.erp_warehouse, public.erp_stock, public.erp_item_type,
-  public.erp_item_sales_history,
+  public.erp_item_sales_history, public.erp_item_purchase_history,
   public.erp_component_usage to service_role;
 revoke all on function public.explode_bom(text) from anon, authenticated;
 grant execute on function public.explode_bom(text) to service_role;

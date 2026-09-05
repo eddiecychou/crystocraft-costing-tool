@@ -13,7 +13,8 @@ import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 import { CURRENCIES, RANGE_FORMAT_CODES } from '../constants'
 import { useComponentCategories, saveComponentCategories } from '../componentCategories'
 import { useCrystalUnitCosts, saveCrystalUnitCosts } from '../crystalCosting'
-import { Puzzle, ArrowUp, ArrowDown, X } from 'lucide-react'
+import { erpLookup } from '../erpApi'
+import { Puzzle, ArrowUp, ArrowDown, X, Receipt, Plus } from 'lucide-react'
 import { useT } from '../i18n'
 
 export default function Components() {
@@ -108,6 +109,159 @@ function ComponentCategories() {
 
 const newCcId = () => 'cc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
+const num4 = v => (v == null || v === '' || !Number.isFinite(Number(v)))
+  ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+
+// V8.15 — the actual price paid in JES for a priced crystal row, pulled from
+// erp_item_purchase_history via /api/erp. Reference only: it never writes the
+// costing engine — "Use" just fills the editable cost field, which the user
+// still tweaks (e.g. adding the Bohemia material cost) before saving. Rows with
+// no linked ERP code show a one-time "link" affordance instead.
+function CrystalErpPrice({ codes, cost, currency, onChangeCodes, onUsePrice }) {
+  const t = useT()
+  const [linking, setLinking] = useState(false)
+  const [q, setQ] = useState('')
+  const [results, setResults] = useState(null)   // null idle | [] none | [rows]
+  const [searching, setSearching] = useState(false)
+  const [hist, setHist] = useState({ loading: false, error: '', rows: [] })
+
+  const codeKey = (codes || []).join('|')
+
+  useEffect(() => {
+    const list = (codes || []).filter(Boolean)
+    if (!list.length) { setHist({ loading: false, error: '', rows: [] }); return }
+    let alive = true
+    setHist(h => ({ ...h, loading: true, error: '' }))
+    Promise.all(list.map(c => erpLookup('item_purchase_history', { q: c, limit: 25 }).catch(e => { throw e })))
+      .then(batches => {
+        if (!alive) return
+        const seen = new Set()
+        const merged = []
+        for (const b of batches) for (const row of b) {
+          // The search is a substring match — keep only exact item-code hits.
+          if (!list.includes(String(row.item_code || '').toUpperCase())) continue
+          const k = `${row.po_no}#${row.seq}`
+          if (seen.has(k)) continue
+          seen.add(k)
+          merged.push(row)
+        }
+        merged.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+        setHist({ loading: false, error: '', rows: merged })
+      })
+      .catch(e => {
+        if (!alive) return
+        const denied = /denied|403|sign in/i.test(e.message || '')
+        setHist({ loading: false, rows: [], error: denied
+          ? t('ERP price needs the erp, pricing or supply module.')
+          : (e.message || t('ERP lookup failed.')) })
+      })
+    return () => { alive = false }
+  }, [codeKey])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function runSearch(term) {
+    setQ(term)
+    if (term.trim().length < 2) { setResults(null); return }
+    setSearching(true)
+    try {
+      const rows = await erpLookup('item', { q: term.trim(), limit: 8 })
+      setResults(rows)
+    } catch { setResults([]) }
+    finally { setSearching(false) }
+  }
+  function addCode(c) {
+    const up = String(c || '').trim().toUpperCase()
+    if (!up) return
+    onChangeCodes([...new Set([...(codes || []), up])])
+    setLinking(false); setQ(''); setResults(null)
+  }
+
+  const latest = hist.rows[0] || null
+  const nets = hist.rows.map(r => Number(r.net_price)).filter(Number.isFinite)
+  const lo = nets.length ? Math.min(...nets) : null
+  const hi = nets.length ? Math.max(...nets) : null
+  const suppliers = new Set(hist.rows.map(r => r.supplier).filter(Boolean))
+  const sameCcy = latest && currency && String(latest.currency || '') === String(currency)
+  const belowPaid = sameCcy && cost != null && cost !== '' && Number(cost) < Number(latest.net_price)
+
+  return (
+    <div className="mt-1 pl-1 text-2xs">
+      {/* Linked codes */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Receipt size={12} className="text-ink-60 shrink-0" />
+        {(codes || []).length === 0 ? (
+          <button type="button" onClick={() => setLinking(v => !v)}
+            className="inline-flex items-center gap-0.5 text-brand-600 hover:underline">
+            <Plus size={11} /> {t('link ERP code')}
+          </button>
+        ) : (codes || []).map(c => (
+          <span key={c} className="inline-flex items-center gap-1 font-mono bg-ivory border border-warm-grey px-1 py-0.5">
+            {c}
+            <button type="button" onClick={() => onChangeCodes((codes || []).filter(x => x !== c))}
+              className="text-red-300 hover:text-red-500" title={t('Unlink')}><X size={10} /></button>
+          </span>
+        ))}
+        {(codes || []).length > 0 && (
+          <button type="button" onClick={() => setLinking(v => !v)}
+            className="inline-flex items-center gap-0.5 text-brand-600 hover:underline">
+            <Plus size={11} /> {t('add')}
+          </button>
+        )}
+      </div>
+
+      {/* One-time code search */}
+      {linking && (
+        <div className="mt-1 ml-4 max-w-sm">
+          <input autoFocus className="input text-2xs w-full" value={q}
+            onChange={e => runSearch(e.target.value)}
+            placeholder={t('Search ERP item code or description…')} />
+          {searching && <p className="text-ink-60 mt-0.5">{t('Searching…')}</p>}
+          {results && results.length === 0 && !searching && <p className="text-ink-60 mt-0.5">{t('No match.')}</p>}
+          {results && results.length > 0 && (
+            <ul className="mt-0.5 border border-warm-grey bg-white divide-y divide-warm-grey">
+              {results.map(r => (
+                <li key={r.code}>
+                  <button type="button" onClick={() => addCode(r.code)}
+                    className="w-full text-left px-1.5 py-1 hover:bg-ivory">
+                    <span className="font-mono">{r.code}</span>
+                    <span className="text-ink-60"> · {r.name || r.description || ''}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* PU price readout */}
+      {hist.loading && <p className="text-ink-60 mt-0.5 ml-4">{t('Loading PU price…')}</p>}
+      {hist.error && <p className="text-ink-60 mt-0.5 ml-4">{hist.error}</p>}
+      {latest && (
+        <div className={`mt-1 ml-4 px-2 py-1 border ${belowPaid ? 'border-amber-300 bg-amber-50/60' : 'border-warm-grey bg-ivory'}`}>
+          <span className="text-ink-70">
+            {t('PU paid:')} <span className="font-semibold tabular-nums">{num4(latest.net_price)} {latest.currency}</span>
+            {' · '}{String(latest.date || '').slice(0, 10)}
+            {latest.supplier ? ` · ${latest.supplier}` : ''}
+            {latest.po_no ? ` · ${latest.po_no}` : ''}
+          </span>
+          {hist.rows.length > 1 && lo !== hi && (
+            <span className="text-ink-60"> · {t('range')} {num4(lo)}–{num4(hi)} ({hist.rows.length} {t('POs')}{suppliers.size > 1 ? `, ${suppliers.size} ${t('suppliers')}` : ''})</span>
+          )}
+          <button type="button" onClick={() => onUsePrice(String(latest.net_price), latest.currency)}
+            className="ml-2 text-brand-600 hover:underline font-medium">{t('Use PU price')}</button>
+          {belowPaid && (
+            <span className="block text-amber-700 mt-0.5">
+              {t('Your cost {c} is below the last price paid ({p}).', { c: `${num4(cost)} ${currency}`, p: `${num4(latest.net_price)} ${latest.currency}` })}
+            </span>
+          )}
+          {latest && !sameCcy && cost != null && cost !== '' && (
+            <span className="block text-ink-60 mt-0.5">{t('PU is in {a}, your cost is in {b} — compare manually.', { a: latest.currency, b: currency })}</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CrystalCosts() {
   const t = useT()
   const { items, loading } = useCrystalUnitCosts()
@@ -146,17 +300,26 @@ function CrystalCosts() {
               {idxs.map(i => {
                 const r = list[i]
                 return (
-                  <div key={r.id} className="flex items-center gap-2 flex-wrap">
-                    <input className="input text-sm flex-1 min-w-[140px]" value={r.size}
-                           onChange={e => update(i, { size: e.target.value })} placeholder={t('Size, e.g. 14mm Octagon')} />
-                    <input className="input text-sm flex-1 min-w-[140px]" value={r.brand}
-                           onChange={e => update(i, { brand: e.target.value })} placeholder={t('Brand, e.g. Bohemia')} />
-                    <input className="input text-sm w-24" inputMode="decimal" value={r.cost ?? ''}
-                           onChange={e => update(i, { cost: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
-                    <select className="input text-sm w-20" value={r.currency} onChange={e => update(i, { currency: e.target.value })}>
-                      {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <button type="button" onClick={() => remove(i)} className="text-red-300 hover:text-red-500" title={t('Remove')}><X size={15} /></button>
+                  <div key={r.id} className="border-b border-warm-grey/60 last:border-0 pb-2 last:pb-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <input className="input text-sm flex-1 min-w-[140px]" value={r.size}
+                             onChange={e => update(i, { size: e.target.value })} placeholder={t('Size, e.g. 14mm Octagon')} />
+                      <input className="input text-sm flex-1 min-w-[140px]" value={r.brand}
+                             onChange={e => update(i, { brand: e.target.value })} placeholder={t('Brand, e.g. Bohemia')} />
+                      <input className="input text-sm w-24" inputMode="decimal" value={r.cost ?? ''}
+                             onChange={e => update(i, { cost: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
+                      <select className="input text-sm w-20" value={r.currency} onChange={e => update(i, { currency: e.target.value })}>
+                        {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <button type="button" onClick={() => remove(i)} className="text-red-300 hover:text-red-500" title={t('Remove')}><X size={15} /></button>
+                    </div>
+                    <CrystalErpPrice
+                      codes={r.erp_codes || []}
+                      cost={r.cost}
+                      currency={r.currency}
+                      onChangeCodes={codes => update(i, { erp_codes: codes })}
+                      onUsePrice={(cost, currency) => update(i, { cost, currency })}
+                    />
                   </div>
                 )
               })}

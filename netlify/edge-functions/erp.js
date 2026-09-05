@@ -68,6 +68,15 @@ const ENTITIES = {
     search: ['item_code', 'description', 'customer'],
     maxLimit: 1000,
   },
+  // Buy-side mirror of item_history: every purchase LINE an item appeared on,
+  // with the parent PU's date / supplier / currency joined on. `net_price` =
+  // line amount ÷ qty, in each PU's own currency. Also reachable by a `staff`
+  // account holding `pricing` / `supply` (see the access gate above).
+  item_purchase_history: {
+    view: 'erp_item_purchase_history', hasActive: false, orderBy: 'date.desc',
+    search: ['item_code', 'description', 'supplier'],
+    maxLimit: 1000,
+  },
 }
 
 // Header → line-detail + surcharge views, fetched by exact header code (see the
@@ -126,17 +135,28 @@ export default async function handler(req) {
     return json({ error: 'Invalid or expired session' }, 401)
   }
 
+  // 2) Parse the request (before the access gate — one narrow entity is open
+  //    to costing roles, so the gate needs to know which entity was asked for).
+  let payload
+  try { payload = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
+
   // 1b) V8.14 — one `erp` module = the FULL ERP surface. Admin, or a `staff`
   //     account holding `erp`. No per-entity split (the old production/sales
   //     entity tiers are gone with the flat-role migration).
+  //
+  //     V8.15 exception: `item_purchase_history` (the buy-side price lookup
+  //     used by the Crystal costs list + its ERP Lookup tab) is also open to a
+  //     `staff` account holding `pricing` or `supply` — it exposes only what
+  //     we PAID for one item code, not the customer / margin surface, so a
+  //     costing person shouldn't need the whole JES archive for it.
   const { role, modules } = await getRole(uid, token, PROJECT_ID)
-  if (role !== 'admin' && !(role === 'staff' && modules.includes('erp'))) {
+  const hasErp = role === 'admin' || (role === 'staff' && modules.includes('erp'))
+  const NARROW_ENTITIES = { item_purchase_history: ['pricing', 'supply'] }
+  const narrowOk = role === 'staff' &&
+    (NARROW_ENTITIES[payload?.entity] || []).some((m) => modules.includes(m))
+  if (!hasErp && !narrowOk) {
     return json({ error: 'Access denied' }, 403)
   }
-
-  // 2) Parse the request.
-  let payload
-  try { payload = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
 
   // 2a) BOM explosion: { entity: 'bom', code } → recursive explode_bom() RPC.
   if (payload?.entity === 'bom') {

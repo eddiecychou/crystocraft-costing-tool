@@ -178,6 +178,17 @@ identifiable in any admin user list. Use it via the Browser tool
 sign-in form and submit) to actually verify a change before reporting it
 done, not just esbuild-parse it.
 
+**Password set 2026-09-06, login verified working.** The Firebase console for
+this project only offers email "Reset password" and the `claude-qa@` mailbox
+doesn't exist, so it was set via the Admin SDK: a Firebase service-account key
+lives (gitignored, kept on purpose) in the repo root as
+`crystocraft-costing-firebase-adminsdk-*.json`, and a one-off `firebase-admin`
+script called `getAuth().updateUser('VnbkhRPUxnWStsrEVvGK5gHptrl2',
+{ password })`. Use the modular `firebase-admin/app` + `firebase-admin/auth`
+imports and run from the repo root. Same method to rotate the password, or for
+any other one-off admin action. The key file is on this Mac only — it is not
+git-synced to the other Mac (regenerate one there if ever needed).
+
 **This is a real admin login against the live Firebase project — there is no
 emulator, no fake data.** Use it for read-only verification: navigating,
 clicking, filtering, screenshotting, confirming something renders/saves

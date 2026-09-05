@@ -87,6 +87,54 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
+
+`APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending
+`LOCAL-TOOLS.md` note that the QA-admin password is now set (verified login).
+
+### Crystal costs ↔ JES purchase prices — the buy-side mirror of V8.14's Item price history
+
+The owner sets `settings/crystal_unit_costs` by hand. For big facet stones
+(octagons) he knows the number and adds a fixed material cost mentally — the PU
+in JES only carries his supplier's *processing fee*, not the stone — so that
+stays a manual assumption. The pain is the small Swarovski / Preciosa pavé
+(PP18/26/32): no price in his head, so every costing pass meant leaving the app
+to dig through PU lines in the ERP. This surfaces that number where the cost is
+set, without modelling anything.
+
+- **New view `erp_item_purchase_history`** (`erp-sync/api_views.sql`) — the exact
+  twin of `erp_item_sales_history`: `raw.purchasedetail ⋈ raw.purchase` on
+  `puno`, one row per PU line with the header's date / supplier / currency, a
+  computed `net_price` = line amount ÷ qty (buy-side markup is normally 1, but
+  `unit_price` + `markup` are exposed too). Index `ix_pd_itemcode`. Applied to
+  Supabase (37,538 lines, 5,018 distinct item codes; BDC crystal codes show
+  real RMB 0.75–0.90/stone). Prices never FX-converted (CLAUDE.md).
+- **New `/api/erp` entity `item_purchase_history`** (`netlify/edge-functions/erp.js`).
+  RBAC: the whole ERP surface is still all-or-nothing `erp`, but this one entity
+  is also reachable by a `staff` account holding `pricing` **or** `supply` — it
+  exposes only what we paid for one item code, not the customer / margin
+  surface. The role gate now parses the payload first so it can see the entity.
+- **ERP Lookup → "Item purchase history" tab** (`ErpLookup.jsx`), next to Item
+  price history. `PriceSummary` was parametrised (`groupField` customer|supplier,
+  labels) and reused verbatim — groups by item + supplier + currency →
+  first / latest / min / max / Δ%.
+- **Crystal costs tab — inline "PU paid" readout** (`Components.jsx`,
+  `CrystalErpPrice`). Each `crystal_unit_costs` row gains an optional
+  `erp_codes[]` (one-time link via an ERP item search; `norm()` in
+  `crystalCosting.js` normalises it). Once linked: latest paid price +
+  date + supplier + PU no., a range line when there's history, a **"Use PU
+  price"** button that fills the editable cost field, and an amber **"your cost
+  is below the last price paid"** flag (same-currency only; a note when
+  currencies differ). Reference only — it never writes the costing engine;
+  `rangeCosting.js` is untouched. No material/processing modelling, no auto-fill.
+
+**Verified:** `vite build` + `qa/eslint.no-undef.mjs` clean. Crystal Costs tab
+and the new ERP Lookup tab render and switch with no console error (QA-admin
+login, local dev). The view was checked with a real Supabase query. **Not**
+verified live: the actual PU-price fetch — local dev has no Supabase creds so
+`/api/erp` returns "Server not configured"; the end-to-end readout only works
+after deploy. Same standing gap as prior cycles: no new automated tests.
+
 ## V8.14 — Ecommerce catalogue visibility + the SEO control plane (2026-09-02)
 
 One long session, several threads. The headline is the **SEO control plane** —
