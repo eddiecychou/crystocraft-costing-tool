@@ -193,11 +193,16 @@ export default function SeoReview() {
                         )}
                       </div>
 
-                      {/* validation */}
+                      {/* validation — v is the OC's authoritative re-check (by:'oc') */}
                       <div className="mt-2">
-                        {v.passed === true && <p className="text-2xs text-green-700 inline-flex items-center gap-1"><Check size={11} /> validation passed{v.checks?.length ? ` (${v.checks.length} checks)` : ''}</p>}
-                        {v.passed === false && <p className="text-2xs text-red-600 inline-flex items-center gap-1"><AlertTriangle size={11} /> validation FAILED: {(v.checks || []).filter(c => c.ok === false).map(c => c.name || c).join(', ') || 'see batch'}</p>}
+                        {v.passed === true && <p className="text-2xs text-green-700 inline-flex items-center gap-1"><Check size={11} /> validation passed{v.checks?.length ? ` (${v.checks.length} checks${v.by === 'oc' ? ', OC-verified' : ''})` : ''}</p>}
+                        {v.passed === false && <p className="text-2xs text-red-600 inline-flex items-center gap-1"><AlertTriangle size={11} /> validation FAILED{v.by === 'oc' ? ' (OC)' : ''}: {(v.checks || []).filter(c => c.ok === false).map(c => c.name || c).join(', ') || 'see batch'}</p>}
                         {v.passed == null && <p className="text-2xs text-ink-60 inline-flex items-center gap-1"><CircleSlash size={11} /> not validated</p>}
+                        {it.validation_mismatch && (
+                          <p className="text-2xs text-amber-700 inline-flex items-center gap-1 mt-0.5">
+                            <AlertTriangle size={11} /> DSH self-reported {it.dsh_validation?.passed ? 'passed' : 'failed'} — disagrees with the OC re-check
+                          </p>
+                        )}
                       </div>
 
                       {/* diff */}

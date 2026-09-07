@@ -20,7 +20,7 @@
 |---|---|---|---|
 | 1 | **State store + snapshot** — a structured "what's live now" for posts/pages, snapshottable for rollback | OC page `/seo-state`, edge fn `seo-state`, Firestore `seo_state` + `seo_state_history` | **BUILT 2026-09-02** |
 | 2 | **Batch / review contract** — DSH prepares a change batch, the human approves it per-item in the OC against a real diff | Firestore `seo_batches`, Node fn `seo-batch`, OC page `/seo-review` | **BUILT 2026-09-02** |
-| 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | Reference impls in `seo-control-plane/` (OC-owned, DSH vendors) | **BUILT 2026-09-02** |
+| 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | Reference impls in `seo-control-plane/` (OC-owned, DSH vendors) | **BUILT 2026-09-02**; **V8.15:** the OC now re-runs `validate-payload.mjs` server-side in `seo-batch.js` `create` (stored `validation` = OC's, DSH's kept as `dsh_validation` + `validation_mismatch`), and `poll` blocks any approved-but-OC-failed item — the gate no longer relies on DSH's honesty |
 | 4 | **Reconciliation** — live state vs a history snapshot or an executed batch; flags a reverted page, a clobbered layout, a disappeared SEO field | OC page `/seo-reconcile` | **BUILT 2026-09-02** |
 
 Products are already covered by `woo-sync.js` `catalogue_page` → the **Woo Catalogue** page (Yoast title/desc + WPML `translations` per product). This control plane adds **blog posts and pages**.

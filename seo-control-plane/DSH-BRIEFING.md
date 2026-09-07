@@ -30,9 +30,13 @@ in prose handoffs — is retired.
                 (You don't call this; you ask the owner to, or confirm it's done.)
 
 2. PREPARE      For each intended write, build an item:
-                  { id, kind, lang, endpoint, summary, payload, before, validation }
+                  { id, kind, lang, endpoint, summary, payload, before, source, validation }
                 - payload  = the EXACT WP REST body you would have sent
                 - before   = a snapshot of the fields `payload` touches, read live NOW
+                - source   = the EN-original entity this was translated/derived from.
+                             SEND IT on every translation item — without it the OC's
+                             re-validation (below) can't run the structure / parity /
+                             brand-preservation checks.
                 - validation = validatePayload({ kind, lang, endpoint, payload, source })
 
 3. VALIDATE     If validation.passed === false → DO NOT include a live write for it.
@@ -41,7 +45,17 @@ in prose handoffs — is retired.
                 you must not execute it later even if "approved".
 
 4. SUBMIT       POST /api/seo-batch  { op: 'create', batch: { note, items } }
-                → { id }.  Status starts 'pending_review'.
+                → { id, failed_validation, mismatches: [itemIndex] }.
+                Status starts 'pending_review'.
+                THE OC RE-RUNS validatePayload SERVER-SIDE on every item. The
+                stored `validation` is the OC's result (this is what the owner
+                sees and what `poll` enforces); your self-report is kept as
+                `dsh_validation`, and `validation_mismatch:true` is flagged where
+                the two disagree. A non-zero `failed_validation` or `mismatches`
+                in the response means fix and resubmit — don't wait for review.
+                (The OC's copy of validate-payload.mjs is the SSOT — commit
+                0f88497. If yours has diverged, send the diff to fold into the
+                master, then re-vendor; don't expect the OC to pull your fork.)
 
 5. WAIT         The owner reviews at OC /seo-review — per-item Approve/Reject
                 against a before→after diff — then clicks "Send to DSH".
@@ -53,6 +67,10 @@ in prose handoffs — is retired.
                   r = await safeWrite({ get, put, id, endpoint, payload, expectedFields })
                   if (!r.ok) → STOP the whole batch, alert the owner. r.drift says what moved.
                 Collect { index, ...r.result } for every executed item.
+                NOTE: `poll` downgrades any approved item that failed the OC's
+                validation to decision:'blocked' (with block_reason) and reports
+                `blocked_count`. `decision === 'approve'` already skips those —
+                do not "recover" a blocked item.
 
 8. REPORT       POST /api/seo-batch { op: 'result', id, results }
                 → status becomes 'executed' (all approved OK) or 'partial'.
@@ -90,14 +108,22 @@ POST /api/seo-batch
         "summary": "FR translation of Aroma Diffuser name+desc+ED",
         "payload": { /* exact WP REST body */ },
         "before": { /* current live values of the fields payload touches */ },
+        "source": { /* the EN-original entity — send on every translation item */ },
         "validation": { "passed": true, "checks": [ { "name": "...", "ok": true } ] }
       }
       // ... up to 500 items
     ]
   }
 }
-→ { "ok": true, "id": "<batchId>" }
+→ { "ok": true, "id": "<batchId>", "failed_validation": 0, "mismatches": [] }
 ```
+
+**The OC re-runs `validatePayload` on every item.** The stored `validation` is
+the OC's own result; `dsh_validation` keeps the value you sent; `validation_mismatch`
+is `true` on any item where the two `passed` verdicts differ. `failed_validation`
+(count) and `mismatches` (item indexes) in the response are your signal to fix
+and resubmit before the owner even looks. `poll` will not release an
+OC-failed item even if it gets approved (returned as `decision:"blocked"`).
 
 Server stores each item with `index`, `decision: "pending"`, `result: null`,
 and the batch `status: "pending_review"`.

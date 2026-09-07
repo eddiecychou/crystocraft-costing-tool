@@ -135,6 +135,45 @@ verified live: the actual PU-price fetch — local dev has no Supabase creds so
 `/api/erp` returns "Server not configured"; the end-to-end readout only works
 after deploy. Same standing gap as prior cycles: no new automated tests.
 
+### SEO control plane — server-side re-validation (2026-09-06)
+
+Prompted by a DSH note ("if the OC re-validates server-side, sync your
+validate-payload.mjs copy — it changed 4× this session"). The OC did **not**
+re-validate: `seo-batch.js` `create` stored DSH's self-reported `validation`
+block on trust, so the "no payload reaches a write without passing the code
+gate" guarantee rested entirely on DSH's honesty.
+
+- `seo-batch.js` now imports the OC's own `seo-control-plane/validate-payload.mjs`
+  (the SSOT, unchanged since commit `0f88497`) and re-runs it on every item in
+  `create`. Stored `validation` = the OC's result (`by:'oc'`); DSH's is kept as
+  `dsh_validation`; `validation_mismatch:true` where the two `passed` verdicts
+  differ. `create` returns `failed_validation` (count) + `mismatches` (indexes).
+- `poll` hard-gates: an item approved in `/seo-review` but with
+  `validation.passed === false` is handed back as `decision:'blocked'`
+  (+`block_reason`, +`blocked_count`), which DSH's `decision === 'approve'`
+  filter already skips.
+- `SeoReview.jsx` surfaces the mismatch ("DSH self-reported passed — disagrees
+  with the OC re-check"); `bulk('approve', true)` now keys off the OC verdict.
+- `DSH-BRIEFING.md` §2–7 + the `create` contract updated: send `source` (the
+  EN original) on every translation item so the structure/parity/brand checks
+  can run server-side; the OC won't pull a diverged DSH fork — send a diff to
+  fold into the master, then re-vendor.
+
+**Verified:** `validate-payload.test.mjs` 11/11 green; the relative import
+resolves; a scratch harness exercised `revalidate()` + the poll gate against
+sample items (placeholder + publish-translation + broken-Elementor all caught,
+`validation_mismatch` set where DSH lied, `poll` downgraded the approved
+failures to `blocked`). Not run against live Firestore — `initAdminApp` needs
+the service-account env vars that aren't in local dev.
+
+### The DSH drift itself — NOT resolved
+
+DSH reports its vendored `validate-payload.mjs` changed 4× this session. The
+OC master is unchanged (`0f88497`). Per `seo-control-plane/README.md` the OC is
+SSOT and DSH re-vendors — so either those 4 changes come back as a diff to
+fold into the master, or DSH reverts. Waiting on the actual diff / DSH's
+current file; nothing to sync without it.
+
 ## V8.14 — Ecommerce catalogue visibility + the SEO control plane (2026-09-02)
 
 One long session, several threads. The headline is the **SEO control plane** —

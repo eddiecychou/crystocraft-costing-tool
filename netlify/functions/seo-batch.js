@@ -12,16 +12,31 @@
 //   Header: Authorization: Bearer <SEO_BATCH_SECRET>
 //   SEO_BATCH_SECRET must be set on Netlify AND in the Workbench .env.
 //
+// The OC re-runs the code gate on `create`: the stored `validation` is the
+// OC's own result, `dsh_validation` keeps DSH's self-report, and `poll` will
+// not release an approved item whose OC validation failed (decision downgraded
+// to 'blocked'). DSH should send `source` (the EN original) on translation
+// items so the structure/parity/brand checks can run.
+//
 // Ops (POST JSON):
 //   { op: 'create', batch: { note, items: [{ id, kind, lang, endpoint,
-//         summary, payload, before, validation }] } }  -> { id }
+//         summary, payload, before, source, validation }] } }
+//       -> { id, failed_validation, mismatches: [itemIndex] }
 //   { op: 'poll' }                 -> { batches: [...] }   status === 'approved'
+//                                    (items that failed OC validation come
+//                                     back as decision:'blocked')
 //   { op: 'get', id }              -> { batch }
 //   { op: 'result', id, results: [{ index, ok, after, verified, error }] }
 //                                  -> { status: 'executed' | 'partial' }
 import { initAdminApp } from './lib/firebaseAdmin.js'
 import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 import { timingSafeEqual } from 'node:crypto'
+// The OC re-runs the code gate server-side on every incoming batch — DSH's
+// self-reported `validation` is kept as `dsh_validation` for audit, but the
+// authoritative result the reviewer sees (and that `poll` enforces) is this
+// one. Same SSOT file DSH vendors verbatim; if it ever forks, the OC copy
+// wins and DSH must re-vendor (seo-control-plane/README.md).
+import { validatePayload } from '../../seo-control-plane/validate-payload.mjs'
 
 const json = (b, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } })
@@ -48,13 +63,33 @@ export default async function handler(req) {
     const items = Array.isArray(body.batch?.items) ? body.batch.items : null
     if (!items?.length) return json({ error: 'batch.items required' }, 400)
     if (items.length > 500) return json({ error: 'batch too large (max 500 items)' }, 400)
-    const doc = {
-      created_by: 'dsh',
-      created_at: Timestamp.now(),
-      note: String(body.batch.note || '').slice(0, 500),
-      status: 'pending_review',
-      item_count: items.length,
-      items: items.map((it, i) => ({
+
+    // Server-side re-validation. `source` (the EN original) makes the full
+    // check set run — structure/parity/brand checks are skipped without it —
+    // so DSH should include it on translation items; `before` is only a
+    // fallback. A validator throw becomes a failed check, never a 500.
+    const revalidate = (it) => {
+      try {
+        const src = it.source ?? it.original ?? it.before ?? null
+        const v = validatePayload({
+          kind: it.kind ?? undefined,
+          lang: it.lang ?? undefined,
+          endpoint: String(it.endpoint || ''),
+          payload: it.payload ?? {},
+          source: src && typeof src === 'object' && Object.keys(src).length ? src : null,
+        })
+        return { passed: v.passed === true, checks: v.checks || [], by: 'oc', at: Timestamp.now() }
+      } catch (e) {
+        return { passed: false, checks: [{ name: 'validator_error', ok: false, detail: String(e?.message || e) }], by: 'oc', at: Timestamp.now() }
+      }
+    }
+
+    let failed = 0
+    const outItems = items.map((it, i) => {
+      const validation = revalidate(it)
+      if (!validation.passed) failed++
+      const dsh = it.validation ?? { passed: null, checks: [] }
+      return {
         index: i,
         id: it.id ?? null,
         kind: it.kind ?? null,
@@ -63,18 +98,48 @@ export default async function handler(req) {
         summary: String(it.summary || '').slice(0, 200),
         payload: it.payload ?? {},
         before: it.before ?? {},
-        validation: it.validation ?? { passed: null, checks: [] },
+        source: it.source ?? it.original ?? null,
+        validation,                                   // OC's — authoritative
+        dsh_validation: dsh,                           // what DSH claimed
+        validation_mismatch: dsh.passed != null && dsh.passed !== validation.passed,
         decision: 'pending',
         result: null,
-      })),
+      }
+    })
+
+    const doc = {
+      created_by: 'dsh',
+      created_at: Timestamp.now(),
+      note: String(body.batch.note || '').slice(0, 500),
+      status: 'pending_review',
+      item_count: outItems.length,
+      oc_validated: true,
+      failed_validation: failed,
+      items: outItems,
     }
     const ref = await col.add(doc)
-    return json({ ok: true, id: ref.id })
+    return json({ ok: true, id: ref.id, failed_validation: failed, mismatches: outItems.filter(x => x.validation_mismatch).map(x => x.index) })
   }
 
   if (body.op === 'poll') {
     const snap = await col.where('status', '==', 'approved').limit(20).get()
-    return json({ batches: snap.docs.map(d => ({ id: d.id, ...d.data() })) })
+    // Hard gate: an item can be approved in the UI but still have failed the
+    // OC code gate — never release those for execution. Downgrade the
+    // decision to 'blocked' so DSH's `decision === 'approve'` filter skips it.
+    const batches = snap.docs.map((d) => {
+      const b = { id: d.id, ...d.data() }
+      let blocked = 0
+      b.items = (b.items || []).map((it) => {
+        if (it.decision === 'approve' && it.validation?.passed === false) {
+          blocked++
+          return { ...it, decision: 'blocked', block_reason: 'failed OC validation — not released' }
+        }
+        return it
+      })
+      if (blocked) b.blocked_count = blocked
+      return b
+    })
+    return json({ batches })
   }
 
   if (body.op === 'get') {
