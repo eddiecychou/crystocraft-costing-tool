@@ -166,13 +166,26 @@ sample items (placeholder + publish-translation + broken-Elementor all caught,
 failures to `blocked`). Not run against live Firestore — `initAdminApp` needs
 the service-account env vars that aren't in local dev.
 
-### The DSH drift itself — NOT resolved
+### The DSH drift — folded into the master (2026-09-06)
 
-DSH reports its vendored `validate-payload.mjs` changed 4× this session. The
-OC master is unchanged (`0f88497`). Per `seo-control-plane/README.md` the OC is
-SSOT and DSH re-vendors — so either those 4 changes come back as a diff to
-fold into the master, or DSH reverts. Waiting on the actual diff / DSH's
-current file; nothing to sync without it.
+DSH sent its 4 local fixes (all false-positive reductions). Applied to
+`seo-control-plane/validate-payload.mjs` verbatim in intent:
+
+1. `payloadText()` skips the `yoast_head` / `yoast_head_json` keys — Yoast's
+   generated head (og + JSON-LD, `"name":"Crystocraft"`) is read-only and was
+   tripping `brand_terms_preserved` on Woo products (B53).
+2. `brand_terms_preserved` now strips `<script>`/`<style>` bodies then tags on
+   both sides before the compare — inline JSON-LD embeds brand names (B53).
+3. zh-hant `SIMPLIFIED` set: removed `只 繁 慕 谷 回 台` — all valid Traditional
+   forms (舞台 / 回顧 / 繁體 / 山谷 / 羨慕), false positives (B51/B53).
+4. ja `wrong_language_chars` now uses a separate curated `SIMPLIFIED_JA`
+   (PRC-only) list — the zh-hant set is ~90% valid Japanese kanji so every ja
+   payload was flagged (B54).
+
+5 regression tests added (`validate-payload.test.mjs`, 16/16 green). The
+server-side re-validation in `seo-batch.js` picks these up automatically (same
+file). **DSH re-vendors from this commit and re-runs validation on the
+in-flight batches.**
 
 ## V8.14 — Ecommerce catalogue visibility + the SEO control plane (2026-09-02)
 

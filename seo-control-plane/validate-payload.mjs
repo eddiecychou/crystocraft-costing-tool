@@ -12,9 +12,12 @@
 //   widget_count ............. B20 (stale-copy), §6.5
 //   element_ids_preserved .... §3d, §6.5
 //   length_anomaly ........... B6, §8b.1
-//   wrong_language_chars ..... B33 / B35 (CJK leak), B6 (simplified in zh-hant)
+//   wrong_language_chars ..... B33 / B35 (CJK leak in es/fr), simplified-in-zh-hant
+//                              (B51/B53 trimmed 6 valid traditional forms),
+//                              simplified-in-ja (B54 — ja uses its own
+//                              Chinese-only list, not the zh-hant set)
 //   placeholder_markers ...... B12
-//   brand_terms_preserved .... §3c, §8b.5
+//   brand_terms_preserved .... §3c, §8b.5, B53 (ignore Yoast head + JSON-LD)
 //   sku_prefix_preserved ..... B12 (SKU-preserving name translation)
 //   image_count_parity ....... §2 payload validation
 //   heading_count_parity ..... §2
@@ -32,8 +35,17 @@
 export const BRAND_TERMS = ['Swarovski', 'Crystocraft', 'MagSafe', 'NFC', 'CrystoCoin', 'iPhone']
 
 // Simplified-Chinese-only forms that must never appear in a zh-hant payload.
-// Verbatim from the Workbench's translate-product.mjs SIMPLIFIED set.
-const SIMPLIFIED = '这钥转涡设语门观复个们么头车马鸟鱼龙龟无云电风东长儿见贝专业义书乐发台亚为兰兴农军华区单卖卫历压厂严县参变只叶号后页团园图回国处备声实宝写对寻导寿将尔尘层属岁岂帐币帮广庄应庙废库开张弹强归当录径彻征从态怀总战忆忧怜恶恼恋恒恳悬惯慕懒戏积种红级结纪约纽纯纸纹线练组细终经统继续编缘维网纵繁纠谷购贡贫穷货质费账贵贺贷贸宾赞页顿预频颇领顾显题颜风飞饱饭饮养骄验体选锦钟铁银针锋铸镜闲间闻阅队阳阶际陆陈随隐难虽页颜题顾风飞马验'
+// zh-hant guard: simplified forms that must never appear in a zh-hant payload.
+// From the Workbench's translate-product.mjs SIMPLIFIED set, minus six forms
+// that are ALSO standard Traditional Chinese and were false-positiving on
+// 舞台 / 回顧 / 平台 / 繁體 / 羨慕 / 山谷 (B51 / B53): 只 繁 慕 谷 回 台.
+const SIMPLIFIED = '这钥转涡设语门观复个们么头车马鸟鱼龙龟无云电风东长儿见贝专业义书乐发亚为兰兴农军华区单卖卫历压厂严县参变叶号后页团园图国处备声实宝写对寻导寿将尔尘层属岁岂帐币帮广庄应庙废库开张弹强归当录径彻征从态怀总战忆忧怜恶恼恋恒恳悬惯懒戏积种红级结纪约纽纯纸纹线练组细终经统继续编缘维网纵纠购贡贫穷货质费账贵贺贷贸宾赞页顿预频颇领顾显题颜风飞饱饭饮养骄验体选锦钟铁银针锋铸镜闲间闻阅队阳阶际陆陈随隐难虽页颜题顾风飞马验'
+
+// ja guard: a curated Chinese-ONLY list. The zh-hant SIMPLIFIED set above is
+// ~90% valid Japanese kanji (国 台 宝 当 属 回 号 寿 写 声 将 强 红 级 结 约 …),
+// so reusing it false-flagged every ja payload (B54). This list is the subset
+// that is genuinely PRC-simplified and not standard Japanese.
+const SIMPLIFIED_JA = '这们个为时说话马鸟鱼龙电东书农华单卖卫历压厂严县团园图处备实对寻导尔尘岁帐币帮广应庙库张弹归录彻从态怀忆忧怜恼恳悬惯懒戏积纽练组细网纵纠购贡穷货质费账贺贷贸宾赞页顿预频颇领顾显题颜飞饱饮养骄验选锦钟针锋铸闲阅陆陈隐难虽马验观复么头车'
 
 const PLACEHOLDER_RX = /\b(por favor|please provide|translate this|as an ai|i cannot|i['’]m sorry|lorem ipsum|todo:)\b|请提供|请输入|需要翻译|\[placeholder\]/i
 const CJK_RX = /[぀-ヿ㐀-鿿豈-﫿]/         // hiragana/katakana + CJK ideographs
@@ -80,7 +92,11 @@ function elementIds(tree) {
 function payloadText(payload) {
   const parts = []
   for (const [k, v] of Object.entries(payload || {})) {
-    if (k === 'meta') continue
+    // `meta` is walked selectively below. `yoast_head` / `yoast_head_json` are
+    // Yoast's GENERATED head (og tags + JSON-LD) that WooCommerce echoes back
+    // read-only — its `"name":"Crystocraft"` etc. was false-flagging
+    // brand_terms_preserved and leaking stray chars into the language scan (B53).
+    if (k === 'meta' || k === 'yoast_head' || k === 'yoast_head_json') continue
     if (typeof v === 'string') parts.push(v)
     else if (v && typeof v === 'object' && typeof v.rendered === 'string') parts.push(v.rendered)
   }
@@ -155,7 +171,7 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
       add('wrong_language_chars', bad.length === 0,
         bad.length ? `simplified-Chinese form(s) in a zh-hant payload: ${[...new Set(bad)].slice(0, 12).join('')}` : '')
     } else if (lang === 'ja') {
-      const simp = new Set(SIMPLIFIED)
+      const simp = new Set(SIMPLIFIED_JA)
       const bad = [...text].filter(ch => simp.has(ch) && !srcText.includes(ch))
       add('wrong_language_chars', bad.length === 0,
         bad.length ? `simplified-Chinese form(s) in a ja payload: ${[...new Set(bad)].slice(0, 12).join('')}` : '')
@@ -166,9 +182,14 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   const ph = text.match(PLACEHOLDER_RX)
   add('placeholder_markers', !ph, ph ? `contains "${ph[0]}"` : '')
 
-  // 7. brand terms preserved (only meaningful when we have the source)
+  // 7. brand terms preserved (only meaningful when we have the source).
+  //    Compare on markup-free text: <script>/<style> bodies (JSON-LD in
+  //    particular embeds "Crystocraft") and tags would otherwise make a brand
+  //    term look "present in source" that no human-visible copy dropped (B53).
   if (source) {
-    const dropped = BRAND_TERMS.filter(t => srcText.includes(t) && !text.includes(t))
+    const bare = (s) => stripTags(String(s).replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' '))
+    const srcBare = bare(srcText), payBare = bare(text)
+    const dropped = BRAND_TERMS.filter(t => srcBare.includes(t) && !payBare.includes(t))
     add('brand_terms_preserved', dropped.length === 0,
       dropped.length ? `brand term(s) translated away: ${dropped.join(', ')}` : '')
   }

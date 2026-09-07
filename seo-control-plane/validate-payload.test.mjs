@@ -85,5 +85,50 @@ function expect(name, cond, detail = '') {
   expect('B20 stale-layout caught', v.passed === false && chk(v).widget_count === false)
 }
 
+// ── B53: Yoast head / JSON-LD must not drive brand_terms_preserved ─────
+{
+  // Source carries Yoast's generated head with "Crystocraft" in JSON-LD +
+  // an inline JSON-LD <script> in the body; the ES payload legitimately
+  // keeps "Crystocraft" in visible copy but not in those machine blocks.
+  const source = {
+    name: 'D0268 Crystocraft Crystal Rose',
+    description: '<p>A Crystocraft gift.</p><script type="application/ld+json">{"@type":"Product","brand":"Crystocraft"}</script>',
+    yoast_head_json: { og_site_name: 'Crystocraft', schema: { '@graph': [{ name: 'Crystocraft' }] } },
+    yoast_head: '<meta property="og:site_name" content="Crystocraft"/>',
+  }
+  const payload = {
+    name: 'D0268 Rosa de Cristal Crystocraft',
+    description: '<p>Un regalo de Crystocraft.</p>',
+    status: 'draft',
+  }
+  const v = validatePayload({ kind: 'product', lang: 'es', endpoint: 'wc/v3/products?lang=es', payload, source })
+  expect('B53 Yoast/JSON-LD not counted for brand check', chk(v).brand_terms_preserved === true,
+    JSON.stringify(v.checks.filter(c => !c.ok)))
+}
+
+// ── B51/B53: valid Traditional forms no longer flagged in zh-hant ──────
+{
+  // 舞台 (stage), 回顧 (review), 繁體 (traditional), 山谷 (valley), 羨慕 (envy)
+  const v = validatePayload({ kind: 'page', lang: 'zh-hant', payload: { title: '舞台上的回顧：繁體字、山谷與羨慕' } })
+  expect('zh-hant allows 台回繁谷慕', chk(v).wrong_language_chars !== false,
+    JSON.stringify(v.checks.filter(c => !c.ok)))
+  // but a genuine simplified form still trips it (这 个 门 are all PRC-simplified)
+  const v2 = validatePayload({ kind: 'page', lang: 'zh-hant', payload: { title: '这个门' } })
+  expect('zh-hant still catches 这个门', v2.passed === false && chk(v2).wrong_language_chars === false)
+}
+
+// ── B54: ja payload of normal Japanese kanji must pass ────────────────
+{
+  // All standard Japanese: 国 台 宝 当 号 写 声 将 会 図 実 対
+  const v = validatePayload({ kind: 'post', lang: 'ja', endpoint: 'wp/v2/posts?lang=ja',
+    payload: { title: '国宝級の台座と号数', content: '<p>会場の図と実物に対する声</p>', status: 'draft' } })
+  expect('B54 normal ja kanji passes', chk(v).wrong_language_chars !== false,
+    JSON.stringify(v.checks.filter(c => !c.ok)))
+  // a PRC-only form still trips it
+  const v2 = validatePayload({ kind: 'post', lang: 'ja', endpoint: 'wp/v2/posts?lang=ja',
+    payload: { title: '这个说话', status: 'draft' } })
+  expect('B54 still catches 这个说 in ja', v2.passed === false && chk(v2).wrong_language_chars === false)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -53,9 +53,12 @@ in prose handoffs — is retired.
                 `dsh_validation`, and `validation_mismatch:true` is flagged where
                 the two disagree. A non-zero `failed_validation` or `mismatches`
                 in the response means fix and resubmit — don't wait for review.
-                (The OC's copy of validate-payload.mjs is the SSOT — commit
-                0f88497. If yours has diverged, send the diff to fold into the
-                master, then re-vendor; don't expect the OC to pull your fork.)
+                (The OC's copy of validate-payload.mjs is the SSOT. Your 4
+                session fixes — yoast_head skip, script/style strip before the
+                brand check, the 6 trad-form removals from the zh-hant set, and
+                the separate SIMPLIFIED_JA list — are folded into the master as
+                of the V8.15 "fold DSH's 4 validate-payload fixes" commit.
+                Re-vendor from that; don't keep a fork.)
 
 5. WAIT         The owner reviews at OC /seo-review — per-item Approve/Reject
                 against a before→after diff — then clicks "Send to DSH".
