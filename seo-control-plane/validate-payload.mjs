@@ -47,7 +47,13 @@ const SIMPLIFIED = '这钥转涡设语门观复个们么头车马鸟鱼龙龟无
 // that is genuinely PRC-simplified and not standard Japanese.
 const SIMPLIFIED_JA = '这们个为时说话马鸟鱼龙电东书农华单卖卫历压厂严县团园图处备实对寻导尔尘岁帐币帮广应庙库张弹归录彻从态怀忆忧怜恼恳悬惯懒戏积纽练组细网纵纠购贡穷货质费账贺贷贸宾赞页顿预频颇领顾显题颜飞饱饮养骄验选锦钟针锋铸闲阅陆陈隐难虽马验观复么头车'
 
-const PLACEHOLDER_RX = /\b(por favor|please provide|translate this|as an ai|i cannot|i['’]m sorry|lorem ipsum|todo:)\b|请提供|请输入|需要翻译|\[placeholder\]/i
+const PLACEHOLDER_RX = /\b(please provide|translate this|as an ai|i cannot|i['’]m sorry|lorem ipsum|todo:)\b|请提供|请输入|需要翻译|\[placeholder\]/i
+// "por favor" on its own is polite Spanish, NOT a marker — "por favor
+// contáctenos" / "por favor complete el formulario" are common in real es
+// copy (B51). Only flag it when it introduces a translator / AI instruction
+// that leaked into the output ("Por favor, proporcione la traducción…").
+// Optional punctuation is allowed between the two parts (comma fix).
+const SPANISH_INSTRUCTION_RX = /\bpor favor[\s,.;:¡!¿?—–-]*(traduc|traduzc|proporcion|complet|rellen|introduzc|escrib(?:a|e|an)\b|redact|revis|provee|añad|inserta|reempl)/i
 const CJK_RX = /[぀-ヿ㐀-鿿豈-﫿]/         // hiragana/katakana + CJK ideographs
 const SCRIPT_RX = /<script[\s>]/i
 const TABLE_RX = /<table[\s>]/i
@@ -178,8 +184,9 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
     }
   }
 
-  // 6. placeholder / apology / untranslated markers (B12)
-  const ph = text.match(PLACEHOLDER_RX)
+  // 6. placeholder / apology / untranslated markers (B12); "por favor" only
+  //    when it fronts a translator instruction (B51).
+  const ph = text.match(PLACEHOLDER_RX) || text.match(SPANISH_INSTRUCTION_RX)
   add('placeholder_markers', !ph, ph ? `contains "${ph[0]}"` : '')
 
   // 7. brand terms preserved (only meaningful when we have the source).

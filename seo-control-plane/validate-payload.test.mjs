@@ -62,6 +62,17 @@ function expect(name, cond, detail = '') {
   expect('B12 placeholder caught', v.passed === false && chk(v).placeholder_markers === false)
 }
 
+// ── B51: polite "por favor" in real es copy must NOT flag ─────────────
+{
+  const v = validatePayload({ kind: 'page', lang: 'es',
+    payload: { title: 'Contáctenos', content: '<p>Por favor, contáctenos para un presupuesto. Por favor visítenos en la feria.</p>', status: 'draft' } })
+  expect('B51 polite por-favor passes', chk(v).placeholder_markers !== false,
+    JSON.stringify(v.checks.filter(c => !c.ok)))
+  // but a leaked translator instruction still trips it
+  const v2 = validatePayload({ kind: 'page', lang: 'es', payload: { title: 'Por favor traduzca el siguiente texto' } })
+  expect('B51 still catches "por favor traduzca"', v2.passed === false && chk(v2).placeholder_markers === false)
+}
+
 // ── L-09: double-branded Yoast title ───────────────────────────────────
 {
   const v = validatePayload({ kind: 'post', lang: 'en', payload: { meta: { _yoast_wpseo_title: 'Best Corporate Gifts | Crystocraft' } } })
