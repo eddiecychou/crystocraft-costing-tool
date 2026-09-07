@@ -182,10 +182,16 @@ DSH sent its 4 local fixes (all false-positive reductions). Applied to
    (PRC-only) list — the zh-hant set is ~90% valid Japanese kanji so every ja
    payload was flagged (B54).
 
-5 regression tests added (`validate-payload.test.mjs`, 16/16 green). The
+A 5th fix followed (`fad3ddf`): the blanket `por favor` match in
+`PLACEHOLDER_RX` false-positived polite Spanish ("por favor contáctenos");
+`por favor` now only flags via `SPANISH_INSTRUCTION_RX` when it fronts a
+translator-instruction verb (B51).
+
+7 regression tests added (`validate-payload.test.mjs`, 18/18 green). The
 server-side re-validation in `seo-batch.js` picks these up automatically (same
-file). **DSH re-vendors from this commit and re-runs validation on the
-in-flight batches.**
+file). **DSH re-vendors from `fad3ddf` and re-runs validation on the in-flight
+batches** (diff `SPANISH_INSTRUCTION_RX` — our instruction-verb set may not
+match DSH's char-for-char).
 
 ## V8.14 — Ecommerce catalogue visibility + the SEO control plane (2026-09-02)
 
