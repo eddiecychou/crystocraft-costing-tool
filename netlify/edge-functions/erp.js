@@ -322,6 +322,12 @@ export default async function handler(req) {
   const q = String(payload.q ?? '').trim().slice(0, 80)
   const limit = Math.min(Math.max(parseInt(payload.limit, 10) || 25, 1), cfg.maxLimit || 500)
   const activeOnly = payload.activeOnly === true
+  // Optional paging cursor — added for the Finance app's one-time legacy
+  // history import (crystocraft-expenses), which needs every row of
+  // purchase/sales_invoice, not just the first `limit`-sized page. Existing
+  // callers that never pass `offset` are unaffected (defaults to 0, same
+  // as before this existed).
+  const offset = Math.max(parseInt(payload.offset, 10) || 0, 0)
 
   // 3) Build the PostgREST query. Double-quote ilike values so commas/parens in
   //    the search term can't break the or() filter.
@@ -329,6 +335,7 @@ export default async function handler(req) {
   params.set('select', '*')
   params.set('order', cfg.orderBy || 'code.asc')
   params.set('limit', String(limit))
+  if (offset) params.set('offset', String(offset))
   if (activeOnly && cfg.hasActive !== false) params.set('active', 'is.true')
   // Optional equality filters (stock → warehouse, item_type). The filterable
   // COLUMNS are fixed by the entity config and never chosen by the caller —
