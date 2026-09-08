@@ -34,7 +34,6 @@
 // ── config ────────────────────────────────────────────────────────────────
 export const BRAND_TERMS = ['Swarovski', 'Crystocraft', 'MagSafe', 'NFC', 'CrystoCoin', 'iPhone']
 
-// Simplified-Chinese-only forms that must never appear in a zh-hant payload.
 // zh-hant guard: simplified forms that must never appear in a zh-hant payload.
 // From the Workbench's translate-product.mjs SIMPLIFIED set, minus six forms
 // that are ALSO standard Traditional Chinese and were false-positiving on
