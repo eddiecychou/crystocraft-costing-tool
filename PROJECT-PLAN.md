@@ -193,6 +193,17 @@ file). **DSH re-vendors from `fad3ddf` and re-runs validation on the in-flight
 batches** (diff `SPANISH_INSTRUCTION_RX` — our instruction-verb set may not
 match DSH's char-for-char).
 
+### Customer contact — Alibaba ID field (2026-09-08)
+
+`customers.contacts[]` entries gain an optional `alibaba_id` (the person's
+Alibaba account handle, for matching an Alibaba Messages / RFQ contact back to
+a customer). Added to `normalizeContact` in `src/domain/customer.js` (the
+single read/write choke point — merge and the scalar-mirror path inherit it),
+the `ContactsEditor` in `CustomerForm.jsx` (full-width input under the
+WhatsApp/WeChat row; folded into the drop-blank-card filter), and the contact
+display on `CustomerDetail.jsx` ("Alibaba: …"). No new collection, no rules
+change, no top-level mirror.
+
 ## V8.14 — Ecommerce catalogue visibility + the SEO control plane (2026-09-02)
 
 One long session, several threads. The headline is the **SEO control plane** —

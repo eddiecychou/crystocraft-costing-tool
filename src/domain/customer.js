@@ -136,6 +136,10 @@ function normalizeContact(c) {
     whatsapp_personal: str(c?.whatsapp_personal),
     whatsapp_business: str(c?.whatsapp_business),
     wechat: str(c?.wechat),
+    // The person's Alibaba account handle / member id — how this contact
+    // shows up in Alibaba Messages / RFQs, for matching them back to a
+    // customer record (owner, 2026-09-08).
+    alibaba_id: str(c?.alibaba_id),
     address: str(c?.address),
     is_primary: !!c?.is_primary,
   }

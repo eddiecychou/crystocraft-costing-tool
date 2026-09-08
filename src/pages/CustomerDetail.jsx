@@ -1223,6 +1223,7 @@ export default function CustomerDetail() {
                   {c.whatsapp_business && <a href={`https://wa.me/${c.whatsapp_business.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">WA Business: {c.whatsapp_business}</a>}
                   {c.whatsapp && <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">WA: {c.whatsapp}</a>}
                   {c.wechat && <span className="text-ink-70">WeChat: {c.wechat}</span>}
+                  {c.alibaba_id && <span className="text-ink-70">Alibaba: {c.alibaba_id}</span>}
                 </div>
                 {c.address && <p className="mt-1 text-xs text-ink-60">{c.address}</p>}
                 {/* SU-07A — the natural moment to invite this specific

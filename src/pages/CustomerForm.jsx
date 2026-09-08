@@ -8,7 +8,7 @@ import { authedUser } from '../firebase'
 
 const blankContact = (isPrimary = false) => ({
   id: null, name: '', title: '', email: '', phone: '',
-  whatsapp: '', whatsapp_personal: '', whatsapp_business: '', wechat: '', address: '', is_primary: isPrimary,
+  whatsapp: '', whatsapp_personal: '', whatsapp_business: '', wechat: '', alibaba_id: '', address: '', is_primary: isPrimary,
 })
 
 // Several real, separate people within one company (owner, 2026-08-05) — not
@@ -79,6 +79,9 @@ function ContactsEditor({ contacts, onChange }) {
             <input className="input" value={c.whatsapp} onChange={e => update(i, 'whatsapp', e.target.value)} placeholder="WhatsApp — unclassified (optional)" />
             <input className="input" value={c.wechat} onChange={e => update(i, 'wechat', e.target.value)} placeholder="WeChat ID (optional)" />
           </div>
+          <input className="input" value={c.alibaba_id} onChange={e => update(i, 'alibaba_id', e.target.value)}
+                 placeholder="Alibaba ID / account (optional)" />
+
           {/* Only fill these in when Personal vs Business is actually known —
               Draft Daily shows a neutral "WhatsApp" action for the field
               above, and only shows labelled Personal/Business actions once
@@ -243,7 +246,7 @@ export default function CustomerForm() {
         sensitive: isSensitive,
         // Drop fully-blank cards (e.g. an unused "+ Add another contact" left
         // empty) — saveCustomer/toCustomerDoc re-normalizes whatever's left.
-        contacts: contacts.filter(c => c.name || c.email || c.phone || c.whatsapp || c.whatsapp_personal || c.whatsapp_business || c.wechat),
+        contacts: contacts.filter(c => c.name || c.email || c.phone || c.whatsapp || c.whatsapp_personal || c.whatsapp_business || c.wechat || c.alibaba_id),
       }
       const res = await saveCustomer(isEdit ? id : null, input)
       if (!res.ok) { setIssues(res.result); return }
