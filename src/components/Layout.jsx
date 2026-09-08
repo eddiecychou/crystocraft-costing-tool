@@ -140,9 +140,24 @@ export default function Layout({ children, user }) {
   // (falling back to innerHeight) is the actual current visible height and
   // doesn't have dvh's first-paint staleness issue, so it's a more
   // trustworthy source to drive the shell's height from.
+  //
+  // V8.15, reported live: `visualViewport` also shrinks when the on-screen
+  // KEYBOARD opens, and following it there collapses the whole app shell to
+  // the keyboard-open height — the `fixed bottom-0` mobile nav detaches from
+  // the shell and everything between them becomes a dead `bg-ivory` band
+  // (very visible while editing a form field on a phone). The keyboard is
+  // NOT an address-bar toggle: when it's up, `innerHeight` (the layout
+  // viewport, which the keyboard doesn't change) stays tall while
+  // `visualViewport.height` drops by the keyboard's height. So: only follow
+  // `visualViewport` for small deltas (address bar, ~60-110px); once the gap
+  // is clearly a keyboard, hold the shell at full `innerHeight` and let the
+  // browser scroll the focused field above the keyboard the normal way.
   useEffect(() => {
+    const KEYBOARD_MIN_GAP = 150 // px; address-bar deltas are well under this
     const setAppVh = () => {
-      const h = window.visualViewport?.height || window.innerHeight
+      const inner = window.innerHeight
+      const vv = window.visualViewport?.height || inner
+      const h = inner - vv > KEYBOARD_MIN_GAP ? inner : vv
       document.documentElement.style.setProperty('--app-vh', `${h * 0.01}px`)
     }
     setAppVh()
