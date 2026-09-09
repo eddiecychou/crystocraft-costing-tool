@@ -135,6 +135,21 @@ breaks. The Firestore self-update rule doesn't freeze `ui_lang`, so a user
 by running `scripts/i18n-translate.mjs` (DeepSeek). Dates/numbers are not
 localised. `PurchaseOrderPrint` has its own per-print EN/中文 switch.
 
+### 2c. `users/{uid}` self-write — two clauses
+
+The `allow update` on `users/{uid}` grants a signed-in user two things on their
+OWN doc (never role / status / modules / pricing — those stay admin-only):
+1. **Broad self-edit** — any change that leaves nine admin-mirrored fields
+   (`role`, `status`, `modules`, `ws_discount_pct`, `pricing_group`,
+   `corp_markup_override`, `sensitive`, `erp_code`, `erp_code_shared`)
+   byte-identical. Fragile: an absent/null value in one denies the write.
+2. **Stamp-only** (V8.15, L-18) — `diff(resource.data).affectedKeys()
+   .hasOnly(['last_login_at', 'login_count'])`. This is the path
+   `authActivity.js` `stampLogin()` uses (fired from `useAuthState`); it's
+   immune to whatever else the doc holds. **MUST** use the affectedKeys form
+   for any new narrow self-write — do not add fields to clause 1's equality
+   chain.
+
 ### 2·legacy — the `production` (V8.12) and `sales` (V8.13) roles
 
 Retired in V8.14. Both live accounts were migrated to `role:'staff'` on

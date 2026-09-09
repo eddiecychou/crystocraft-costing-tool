@@ -287,6 +287,43 @@
   (`src/pages/RangeForm.jsx` vs `src/components/ImageGallery.jsx`, commit
   `baaa6ca`.)
 
+## L-18 · Portal login stamps failed silently for most customers
+
+- **Symptom.** Portal → Login Activity "only logs me, never my customers"
+  (owner, 2026-09-10). Audit: **26 of 43 customers** had a real Firebase Auth
+  `lastSignInTime` with **no `last_login_at`** on their `users/{uid}` doc —
+  one as recent as the day before.
+- **Root cause.** Two, compounding, both hidden by `stampLogin`'s
+  `.catch(() => {})`:
+  1. **Token race** — `stampLogin` fires from `useAuthState`'s
+     `onAuthStateChanged` and its `updateDoc` could be issued before the
+     Firestore SDK had the ID token wired to its connection →
+     `permission-denied`. The owner reloads the app dozens of times a day so a
+     stamp eventually lands; a customer who signs in once gets one failed shot.
+  2. **Fragile rule** — the `users/{uid}` self-update path compared **nine**
+     fields for equality (`ws_discount_pct`, `corp_markup_override`,
+     `pricing_group`, …). Any doc with an odd/absent/null value in one denied
+     the whole write.
+- **Permanent fix.**
+  - `authActivity.js` `stampLogin` now `await`s `auth.currentUser.getIdToken()`
+    before the write and retries once after 1.5 s.
+  - `firestore.rules` gained a dedicated self-update clause:
+    `request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly(['last_login_at', 'login_count'])` — permits the stamp whatever
+    else the doc holds, still can't touch role/status/pricing. **Deployed
+    separately** (`firebase deploy --only firestore:rules`).
+  - 26 historical rows backfilled from Auth `lastSignInTime` (`login_count: 1`
+    floor, `last_login_backfilled: true`).
+  - Rules: **MUST NOT** gate a narrow self-write behind an N-field equality
+    chain — use `diff().affectedKeys().hasOnly([...])`. Client: **MUST NOT**
+    swallow a best-effort Firestore write's error without at least one
+    token-aware retry; and a write fired straight from `onAuthStateChanged`
+    **MUST** `await getIdToken()` first. Same family as L-13 — a
+    `.catch(() => {})` / `.catch(() => null)` on an integration write hides
+    exactly this. Verified end-to-end by minting a customer ID token and
+    PATCHing the two fields via the Firestore REST API → 200.
+  (`src/authActivity.js`, `firestore.rules`, commit `bf36e44`.)
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
@@ -321,3 +358,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-09-01 | Formalized the failure-driven template at the top (Symptom / Root cause / Permanent fix is now the required, explicit format — "changed X" alone is not a lesson), per the Magister failure-driven-changelog pattern. |
 | 2026-09-02 | Added L-14 — react-pdf `<Page>` pagination: a blank page from a premium-only section (`paginate([])` → `[[]]`) and a stranded heading from decoupling heading/content across sibling views; the fix is to bind heading+first-row in one `wrap={false}` block and render every tier through `qa/render-proposal.jsx` before shipping. |
 | 2026-09-04 | Added L-15 (mechanical `requireFrontOffice→requireModule` migration mis-keyed AI-assist edge fns to `quotes` — retag by call graph + route `<Gate module>`, not by old role; `requireModule` now string-or-array), L-16 (a grid/flex `1fr` track won't shrink below content → `min-w-0` on the child or its inner `overflow-x` is dead), L-17 (`serverTimestamp()` throws inside a Firestore array — use `new Date()` for per-item timestamps in array fields). Operational reminder: the QA-admin login was non-functional all of V8.14 (placeholder password). |
+| 2026-09-10 | Added L-18 — portal login stamps failed silently for 26/43 customers (token race + a 9-field-equality self-update rule, both hidden by `stampLogin`'s `.catch(()=>{})`). Fix: `await getIdToken()` + one retry, and a `diff().affectedKeys().hasOnly(['last_login_at','login_count'])` rule clause; 26 rows backfilled from Auth `lastSignInTime`. |

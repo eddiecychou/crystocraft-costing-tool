@@ -201,8 +201,10 @@ the fast path from a request to the exact code.
 ### Customer Portal, invitations, auth → see `ARCHITECTURE-RULES.md` §RBAC
 - Pages: `Portal.jsx`, `PortalInvitations.jsx`, `PortalLogins.jsx`, `InvitationClaim.jsx`, `Login.jsx`, `SetPassword.jsx`
 - Logic: `src/portalInviteApi.js`, `src/authActivity.js`, `src/gaPortalActivityApi.js`, `src/hooks/useAuthState.js`, `src/hooks/useProfile.js`
-- Edge/Node fns: `netlify/functions/portal-invite.js` (Node, Admin SDK, `jose` 5.9.6), `swatch-library`, `ga-portal-activity`
+- Edge/Node fns: `netlify/functions/portal-invite.js` (Node, Admin SDK, `jose` 5.9.6 — actions incl. public `request_password_reset`, `claim_invitation`), `swatch-library`, `ga-portal-activity`
 - Collections: `users/{uid}`, `portal_invitations/{id}` (browser read-only), `favourites/{uid}`. GA4 per-account traffic via `app_uid` (details in `MARKETING-WORKFLOW.md`/`LESSONS-LEARNED.md`).
+- **Login activity** (`PortalLogins.jsx`): `authActivity.js` `stampLogin()` writes `users/{uid}.last_login_at`/`login_count` from `useAuthState`'s `onAuthStateChanged`. V8.15 (L-18) — it now `await`s `getIdToken()` + retries once, and `firestore.rules` has a `affectedKeys().hasOnly([...])` self-update clause for it, after 26/43 customer stamps had been failing silently.
+- **Dead setup/reset link** (`SetPassword.jsx`): the "This link isn't available" screen carries an inline **"Send me a new link"** (fires `request_password_reset`) — Firebase caps these oobCodes at ~1h and admin `resend_invitation` is blocked once claimed, so a dead link must self-recover.
 
 ### Storefront / wholesale shop UI (`src/customer/*`) → see `UI-POLISH.md`
 - Shell: `Storefront.jsx` (routes), `CustomerLayout.jsx` (nav/footer), `store.jsx` (`CartProvider`/`FavouritesProvider` — enquiry cart in localStorage, favourites in `favourites/{uid}`).
