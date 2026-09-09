@@ -204,6 +204,42 @@ WhatsApp/WeChat row; folded into the drop-blank-card filter), and the contact
 display on `CustomerDetail.jsx` ("Alibaba: …"). No new collection, no rules
 change, no top-level mirror.
 
+### Figurine component prices — 昌乐/潇洒 quote import + Price List tab (2026-09-09)
+
+Production staff keep supplier processing quotes in an Excel (`昌乐,潇洒,加工报价.xlsx`,
+sheet `报价明细`, 226 rows). Two suppliers, told apart by the `生产需求` column:
+`生产…` → **Xin Chang Le Metals (信昌乐五金)** (`a2KeIFYp…`, C85), `锌合金…` →
+**Xiaosa Metals (潇洒五金)** (`FHCTZLFj…`, D15). Plating from the same column:
+`铬/电铬/镀铬` → C, `仿金/电仿金/仿金色/金` → G. Price = the all-in casting+plating
+cost.
+
+Imported via a one-off `firebase-admin` script (service-account key in the repo
+root, `.gitignore`d), matching each row to a `range_components` doc by code
+(exact → NFKC/full-width fix → `-1G`↔`-1(G)` plating-suffix norm → alnum stem),
+then writing one `supplier_quotes` subdoc per component with `is_preferred:true`
+and running the same denorm the UI's `saveComponentQuote` does (copies the
+quote's `unit_cost` onto the component). Owner-approved dry-run first.
+
+**Result (196 / 226 rows):** 160 quotes on existing components + 5 the matcher
+first missed + **31 new `range_components` created** (code + name from the
+sheet + plating + supplier + preferred quote; no BOM link yet, so they don't
+touch any product cost until attached). `range_components` 792 → 823. Two
+review CSVs were sent to the owner.
+
+**Not imported (30 rows), owner input needed:** 10 plating-only prices
+(`电铬`/`镀铬` alone — a re-plate cost, not the part cost); 4 non-`FM-` codes
+(`K-71`/`C-71` music-box bases); 1 zinc/nickel plating (`FM-081PT02`); 8
+name-in-code-cell / blank-code rows; 6 blank-price rows.
+
+**Price List tab** (`Components.jsx` → `ComponentPriceList`, commit `dc39ad6`):
+a dense sortable table of every `range_components` code's denormalised
+`unit_cost` + supplier — search (code/name/supplier/category), filters
+(plating, supplier, costed/missing-price), sort by any column, "Copy table" →
+TSV to clipboard. Code links to `/components/critical/:id`. Built because
+checking a part price otherwise meant opening each figurine's costing page.
+`normComponent` now surfaces `preferred_supplier_name` (read-only; the editor
+still doesn't write it).
+
 ## V8.14 — Ecommerce catalogue visibility + the SEO control plane (2026-09-02)
 
 One long session, several threads. The headline is the **SEO control plane** —
