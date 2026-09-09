@@ -69,6 +69,13 @@ service cloud.firestore {
       // customer must never set these on their own doc (they gate branded-photo
       // screening and the portal order-history data leak).
       allow update: if isAdmin()
+        // A user stamping ONLY their own last-seen roster fields (authActivity.js
+        // stampLogin, fired from useAuthState's onAuthStateChanged). Keyed on
+        // affectedKeys so it can't touch role/status/pricing, and can't be
+        // broken by an unrelated odd field like the broad clause below could.
+        || (request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['last_login_at', 'login_count']))
         || (request.auth.uid == uid
             && request.resource.data.role == resource.data.role
             && request.resource.data.status == resource.data.status

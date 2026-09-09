@@ -240,6 +240,31 @@ checking a part price otherwise meant opening each figurine's costing page.
 `normComponent` now surfaces `preferred_supplier_name` (read-only; the editor
 still doesn't write it).
 
+### Portal login activity — customer stamps were silently failing (2026-09-10)
+
+Owner: "login activity only logs me, never my customers." Audit (Firebase
+Auth `lastSignInTime` vs `users/{uid}.last_login_at`): **26 of 43 customers
+had a real sign-in with no doc stamp**, including one the day before. Two
+causes:
+- **Token race** — `stampLogin` fires from `useAuthState`'s
+  `onAuthStateChanged` and the `updateDoc` could go out before the Firestore
+  SDK had the ID token on its connection → `permission-denied`, swallowed by
+  the `.catch(() => {})`. The owner reloads all day so a stamp eventually
+  lands; a customer gets one shot.
+- **Fragile rule** — the `users/{uid}` self-update path compared 9 fields for
+  equality (`ws_discount_pct`, `corp_markup_override`, …); any doc with an
+  odd/absent/null value in one of them denied the whole stamp.
+
+Fixes: `authActivity.js` `stampLogin` now `await`s `getIdToken()` first and
+retries once after 1.5s. `firestore.rules` gains a dedicated self-update
+clause — `diff(resource.data).affectedKeys().hasOnly(['last_login_at',
+'login_count'])` — that permits the stamp regardless of the rest of the doc
+and can't touch role/status/pricing. **Rules deployed** (`firebase deploy
+--only firestore:rules`). Verified end-to-end: a real customer uid can now
+PATCH those two fields via the Firestore REST API → 200. Historical
+mismatches are not backfilled (open: could set `last_login_at` from Auth
+`lastSignInTime` for the 26 so the roster isn't misleading).
+
 ### Set-password page — self-serve "send me a new link" (2026-09-09)
 
 A customer's setup link had expired (Firebase hard-caps password-reset
