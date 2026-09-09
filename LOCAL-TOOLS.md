@@ -96,6 +96,38 @@ default per `.firebaserc`) and `crystocraft-expenses` (separate project, not
 otherwise referenced from this repo — don't assume it's related unless the
 user brings it up).
 
+## Google Merchant Center (Merchant API, read + write)
+
+Set up 2026-09-09 to diagnose/fix Merchant Center **account `121226469`**
+(the crystocraft.com Shopping feed) without clicking through its UI. **This
+app has no Merchant Center code** — the `gla_` products come from the Google
+for WooCommerce plugin on WordPress; MC work is pure API.
+
+- The Firebase service account (`firebase-service-account.json`,
+  `firebase-adminsdk-fbsvc@crystocraft-costing.iam.gserviceaccount.com`) is a
+  **user on MC account 121226469** and the GCP project `crystocraft-costing`
+  / `848724224539` is **registered** with that account (one-time bootstrap —
+  had to be done by a human Google login with the `content` scope added to
+  the OAuth consent screen; service accounts can't self-register).
+- Call the **v1** Merchant API (`v1beta` was retired 2026-02-28), scope
+  `https://www.googleapis.com/auth/content`, same `GoogleAuth` pattern as GA4
+  above. Endpoints: `datasources/v1/accounts/121226469/dataSources`,
+  `products/v1/accounts/121226469/products`,
+  `accounts/v1/accounts/121226469/autofeedSettings`.
+- **Reads work from a Bash script here; writes (PATCH/DELETE/registerGcp) are
+  blocked by the auto-mode classifier** — write a `.mjs` in the repo root and
+  have the owner run it (`--commit`-gated), then `rm` it.
+- Booleans that are `false` are **omitted** from API responses (proto3), and
+  MC is eventually-consistent — a read right after a write can show the old
+  value for a minute. Verify with a fresh read, not the write's echo.
+- **Autofeed gotcha (the 2026-09-09 incident):** the resurrecting numeric-ID
+  ghost offers were NOT a stale Shopify feed — they were Merchant Center's
+  **Autofeed** ("products from your website" crawl), data source
+  `10429850171` "crystocraft.com" `input:AUTOFEED`, `autofeedSettings.
+  enableProducts:true`. Deleting offers only helps until the next crawl. Fix
+  = `autofeedSettings.enableProducts → false` **then** delete the data source
+  (cascades its offers). See the `merchant-center-autofeed` memory.
+
 ## Fly.io CLI
 
 `flyctl` (also aliased `fly`) is a real installed binary at `~/.fly/bin/`, not

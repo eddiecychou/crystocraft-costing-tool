@@ -240,6 +240,23 @@ checking a part price otherwise meant opening each figurine's costing page.
 `normComponent` now surfaces `preferred_supplier_name` (read-only; the editor
 still doesn't write it).
 
+### Merchant Center — killed the autofeed that resurrected ghost offers (2026-09-09)
+
+Not a code change — an ops fix on Google Merchant Center account `121226469`
+(the crystocraft.com Shopping feed; **no MC code in this repo** — `gla_`
+products come from the Google for WooCommerce plugin). DSH reported ~1,500–1,700
+numeric-ID offers that kept returning after every manual deletion, assumed to
+be a retired Shopify feed.
+
+Diagnosed via the Merchant API (v1, `content` scope, the Firebase service
+account added as an MC user + the GCP project registered — see `LOCAL-TOOLS.md`):
+the offers were **Autofeed** — data source `10429850171` "crystocraft.com"
+`input:AUTOFEED`, `autofeedSettings.enableProducts:true`, 1,689 offers across
+15 locale combos. Fixed by `enableProducts → false` then deleting the data
+source (owner ran the `--commit` script; API writes are classifier-blocked
+from here). The `gla_` products (~1,180) were untouched. Full detail:
+`merchant-center-autofeed` memory + `LOCAL-TOOLS.md`.
+
 ## V8.14 — Ecommerce catalogue visibility + the SEO control plane (2026-09-02)
 
 One long session, several threads. The headline is the **SEO control plane** —
