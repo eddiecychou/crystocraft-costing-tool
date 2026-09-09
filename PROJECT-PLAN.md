@@ -261,9 +261,11 @@ clause — `diff(resource.data).affectedKeys().hasOnly(['last_login_at',
 'login_count'])` — that permits the stamp regardless of the rest of the doc
 and can't touch role/status/pricing. **Rules deployed** (`firebase deploy
 --only firestore:rules`). Verified end-to-end: a real customer uid can now
-PATCH those two fields via the Firestore REST API → 200. Historical
-mismatches are not backfilled (open: could set `last_login_at` from Auth
-`lastSignInTime` for the 26 so the roster isn't misleading).
+PATCH those two fields via the Firestore REST API → 200. The 26 historical
+mismatches were backfilled from Firebase Auth `lastSignInTime` (one-off
+script): `last_login_at` set to the Auth date, `login_count: 1` (floor),
+`last_login_backfilled: true` for provenance. Roster now shows 38/43
+customers with a last-seen date (5 genuinely never signed in).
 
 ### Set-password page — self-serve "send me a new link" (2026-09-09)
 
