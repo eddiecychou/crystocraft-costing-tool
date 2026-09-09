@@ -30,6 +30,55 @@ function Shell({ children }) {
   )
 }
 
+// Self-serve recovery when the setup/reset link is dead. Firebase hard-caps
+// these codes at ~1 hour and there's no admin "resend" once an invitation is
+// claimed, so a dead link must not be a dead end — this fires the same public
+// request_password_reset action as Login.jsx's "Forgot password?" (branded
+// mail via portal-invite.js, never reveals whether the address has an account).
+function ResendLink({ initialEmail = '' }) {
+  const [email, setEmail] = useState(initialEmail)
+  const [state, setState] = useState('idle') // idle | sending | sent | error
+
+  async function send(e) {
+    e.preventDefault()
+    if (!email) { setState('error'); return }
+    setState('sending')
+    try {
+      const res = await fetch('/api/portal-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'request_password_reset', email }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) throw new Error()
+      setState('sent')
+    } catch { setState('error') }
+  }
+
+  if (state === 'sent') {
+    return (
+      <p className="text-sm text-ink-70 mt-5">
+        If <strong>{email}</strong> has an account, a fresh link is on its way.
+        Check your inbox and spam folder — it's valid for about an hour.
+      </p>
+    )
+  }
+
+  return (
+    <form onSubmit={send} className="mt-5 space-y-3">
+      <div>
+        <label className="label">Your email address</label>
+        <input type="email" className="input" value={email} onChange={e => setEmail(e.target.value)}
+          placeholder="you@example.com" autoComplete="email" required />
+      </div>
+      <button type="submit" className="btn-primary w-full justify-center" disabled={state === 'sending'}>
+        {state === 'sending' ? 'Sending…' : 'Send me a new link'}
+      </button>
+      {state === 'error' && <p className="text-sm text-red-600">Couldn't send — check the address and try again.</p>}
+    </form>
+  )
+}
+
 export default function SetPassword() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -50,7 +99,7 @@ export default function SetPassword() {
     let cancelled = false
     verifyPasswordResetCode(auth, oobCode)
       .then(verifiedEmail => { if (!cancelled) setEmail(verifiedEmail) })
-      .catch(() => { if (!cancelled) setCheckError('This link has expired or has already been used. Please ask Crystocraft to resend it.') })
+      .catch(() => { if (!cancelled) setCheckError('This link has expired or has already been used.') })
       .finally(() => { if (!cancelled) setChecking(false) })
     return () => { cancelled = true }
   }, [oobCode])
@@ -73,9 +122,14 @@ export default function SetPassword() {
       setDone(true)
       setTimeout(() => navigate('/'), 1200)
     } catch (err) {
-      setSubmitError(err?.code === 'auth/expired-action-code' || err?.code === 'auth/invalid-action-code'
-        ? 'This link has expired or has already been used. Please ask Crystocraft to resend it.'
-        : 'Could not set your password — please try again.')
+      // A code that dies between page-load and submit lands in the same
+      // terminal state as one that was dead on arrival — flip to the
+      // "link isn't available" screen, which now carries the resend form.
+      if (err?.code === 'auth/expired-action-code' || err?.code === 'auth/invalid-action-code') {
+        setCheckError('This link has expired or has already been used.')
+      } else {
+        setSubmitError('Could not set your password — please try again.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -87,7 +141,8 @@ export default function SetPassword() {
     return (
       <Shell>
         <h2 className="text-lg text-ink mb-2">This link isn't available</h2>
-        <p className="text-sm text-ink-70">{checkError}</p>
+        <p className="text-sm text-ink-70">{checkError} Enter your email and we'll send a fresh one.</p>
+        <ResendLink initialEmail={email} />
       </Shell>
     )
   }

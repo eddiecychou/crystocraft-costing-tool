@@ -240,6 +240,17 @@ checking a part price otherwise meant opening each figurine's costing page.
 `normComponent` now surfaces `preferred_supplier_name` (read-only; the editor
 still doesn't write it).
 
+### Set-password page — self-serve "send me a new link" (2026-09-09)
+
+A customer's setup link had expired (Firebase hard-caps password-reset
+oobCodes at ~1h and there's no admin resend once an invitation is claimed),
+and `SetPassword.jsx`'s dead-link screen just said "ask Crystocraft to resend
+it" — a dead end for the owner too. It now shows an email field + **"Send me a
+new link"** that fires the same public `request_password_reset` action as
+Login's "Forgot password?" (branded mail via `portal-invite.js`, never leaks
+whether the address has an account). A code that dies between page-load and
+submit now flips to the same screen. No back-end change.
+
 ### Merchant Center — killed the autofeed that resurrected ghost offers (2026-09-09)
 
 Not a code change — an ops fix on Google Merchant Center account `121226469`
