@@ -64,6 +64,10 @@ export const normComponent = c => ({
   volume_tiers: normVolumeTiers(c.volume_tiers),
   tooling_sample_cost: numOrNull(c.tooling_sample_cost),
   tooling_sample_cost_currency: (c.tooling_sample_cost_currency || c.unit_cost_currency || 'RMB').trim() || 'RMB',
+  // Name of the supplier behind the denormalised cost (set from the preferred
+  // quote). Read-only here — shown by the Price List tab. Falls back to the
+  // editor's supplierName when no quote has been marked preferred.
+  preferred_supplier_name: (c.preferred_supplier_name || '').trim(),
 })
 
 const fromDoc = d => ({ id: d.id, ...normComponent(d.data()) })

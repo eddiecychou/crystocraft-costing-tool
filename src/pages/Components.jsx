@@ -28,7 +28,7 @@ export default function Components() {
       </p>
 
       <div className="flex gap-1 border-b border-ivory-dark mb-5 overflow-x-auto overflow-y-hidden whitespace-nowrap">
-        {[['critical', 'Critical Components'], ['crystalstock', 'Crystal Stock'], ['packagingstock', 'Packaging Stock'], ['b2cstock', 'Finished Goods'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
+        {[['critical', 'Critical Components'], ['pricelist', 'Price List'], ['crystalstock', 'Crystal Stock'], ['packagingstock', 'Packaging Stock'], ['b2cstock', 'Finished Goods'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${
  tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
@@ -38,6 +38,7 @@ export default function Components() {
       </div>
 
       {tab === 'critical' ? <CriticalComponents />
+        : tab === 'pricelist' ? <ComponentPriceList />
         : tab === 'crystalstock' ? <InventoryStockTab key="crystals" inv={crystalInventory} />
         : tab === 'packagingstock' ? <InventoryStockTab key="packaging" inv={packagingInventory} />
         : tab === 'b2cstock' ? <InventoryStockTab key="b2c" inv={b2cInventory} />
@@ -435,6 +436,165 @@ function CriticalComponents() {
       )}
 
       {stockImport && <StockListImportModal components={components} onClose={() => setStockImport(false)} />}
+    </div>
+  )
+}
+
+// ── Price List ──────────────────────────────────────────────────────────────
+// A dense, searchable/filterable table of every range component's costed price
+// — the "what does this part cost" lookup, without opening each figurine's
+// costing page or digging into a component's supplier-quote subcollection. Cost
+// shown is the component's denormalised unit_cost (from its preferred quote),
+// in the quote's own currency (not FX-converted — Range Costing does that).
+const money2 = (v, cur) => (v == null || v === '' || !Number.isFinite(Number(v)))
+  ? '' : `${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}${cur ? ' ' + cur : ''}`
+
+function ComponentPriceList() {
+  const t = useT()
+  const { components, loading } = useComponents()
+  const [search, setSearch] = useState('')
+  const [plating, setPlating] = useState('')      // '', C, G, R, A, M, __shared__
+  const [supplier, setSupplier] = useState('')
+  const [costed, setCosted] = useState('')        // '', yes, no
+  const [sort, setSort] = useState({ key: 'code', dir: 'asc' })
+  const [copied, setCopied] = useState(false)
+
+  const supplierOf = c => c.preferred_supplier_name || c.supplierName || ''
+
+  const suppliers = useMemo(() =>
+    [...new Set(components.map(supplierOf).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+  [components])
+
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    let list = components.filter(c => {
+      if (plating === '__shared__' ? c.plating_code : plating && c.plating_code !== plating) return false
+      if (supplier && supplierOf(c) !== supplier) return false
+      const has = c.unit_cost != null
+      if (costed === 'yes' && !has) return false
+      if (costed === 'no' && has) return false
+      if (!q) return true
+      return [c.code, c.name, supplierOf(c), c.category].some(v => (v || '').toLowerCase().includes(q))
+    })
+    const { key, dir } = sort
+    const s = dir === 'asc' ? 1 : -1
+    list = [...list].sort((a, b) => {
+      if (key === 'unit_cost') {
+        const av = a.unit_cost == null ? Infinity : a.unit_cost
+        const bv = b.unit_cost == null ? Infinity : b.unit_cost
+        return (av - bv) * s || a.code.localeCompare(b.code)
+      }
+      const av = (key === 'supplier' ? supplierOf(a) : a[key] || '').toString().toLowerCase()
+      const bv = (key === 'supplier' ? supplierOf(b) : b[key] || '').toString().toLowerCase()
+      return av.localeCompare(bv) * s || a.code.localeCompare(b.code)
+    })
+    return list
+  }, [components, search, plating, supplier, costed, sort])
+
+  const costedCount = useMemo(() => rows.filter(c => c.unit_cost != null).length, [rows])
+
+  const th = (key, label, extra = '') => (
+    <th className={`px-2.5 py-1.5 font-medium whitespace-nowrap cursor-pointer select-none hover:text-ink ${extra}`}
+        onClick={() => setSort(s => ({ key, dir: s.key === key && s.dir === 'asc' ? 'desc' : 'asc' }))}>
+      <span className="inline-flex items-center gap-1">{label}
+        {sort.key === key && (sort.dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
+      </span>
+    </th>
+  )
+
+  function copyTsv() {
+    const head = ['Code', 'Name', 'Plating', 'Supplier', 'Unit cost', 'Currency', 'Volume tiers', 'Tooling', 'Used by']
+    const body = rows.map(c => [
+      c.code, c.name || '', c.plating_code || '', supplierOf(c),
+      c.unit_cost ?? '', c.unit_cost_currency || '',
+      (c.volume_tiers || []).map(v => `${v.min_qty}:${v.unit_cost}`).join(' | '),
+      c.tooling_sample_cost ?? '',
+      (c.used_by || []).join(' '),
+    ])
+    const tsv = [head, ...body].map(r => r.join('\t')).join('\n')
+    navigator.clipboard?.writeText(tsv).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <input className="input text-sm flex-1 min-w-[180px]" placeholder={t('Search code, name, supplier…')}
+               value={search} onChange={e => setSearch(e.target.value)} />
+        <select className="input text-sm w-auto" value={plating} onChange={e => setPlating(e.target.value)}>
+          <option value="">{t('All plating')}</option>
+          <option value="C">C</option><option value="G">G</option>
+          <option value="R">R</option><option value="A">A</option><option value="M">M</option>
+          <option value="__shared__">{t('Shared (no plating)')}</option>
+        </select>
+        <select className="input text-sm w-auto max-w-[220px]" value={supplier} onChange={e => setSupplier(e.target.value)}>
+          <option value="">{t('All suppliers')}</option>
+          {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select className="input text-sm w-auto" value={costed} onChange={e => setCosted(e.target.value)}>
+          <option value="">{t('Costed + not')}</option>
+          <option value="yes">{t('Costed only')}</option>
+          <option value="no">{t('Missing price')}</option>
+        </select>
+        <button onClick={copyTsv} className="btn-secondary text-sm">{copied ? t('Copied ✓') : t('Copy table')}</button>
+      </div>
+
+      <p className="text-xs text-ink-60 mb-2">
+        {loading ? t('Loading…') : t('{a} of {b} components · {c} priced', { a: rows.length, b: components.length, c: costedCount })}
+      </p>
+
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-ink-60 border-b border-ivory-dark bg-ivory">
+                {th('code', t('Code'))}
+                {th('name', t('Name'))}
+                {th('plating_code', t('Plt'))}
+                {th('supplier', t('Supplier'))}
+                {th('unit_cost', t('Unit cost'), 'text-right')}
+                <th className="px-2.5 py-1.5 font-medium whitespace-nowrap">{t('Tiers')}</th>
+                <th className="px-2.5 py-1.5 font-medium whitespace-nowrap text-right">{t('Tooling')}</th>
+                <th className="px-2.5 py-1.5 font-medium whitespace-nowrap">{t('Used by')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(c => (
+                <tr key={c.id} className="border-b border-ivory-dark last:border-0 hover:bg-ivory/50">
+                  <td className="px-2.5 py-1.5 font-mono text-xs whitespace-nowrap">
+                    <Link to={`/components/critical/${c.id}`} className="text-brand-600 hover:underline">{c.code}</Link>
+                  </td>
+                  <td className="px-2.5 py-1.5 max-w-[280px] truncate" title={c.name}>{c.name || '—'}</td>
+                  <td className="px-2.5 py-1.5">
+                    {c.plating_code
+                      ? <span className="text-2xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">{c.plating_code}</span>
+                      : <span className="text-platinum text-xs">—</span>}
+                  </td>
+                  <td className="px-2.5 py-1.5 max-w-[200px] truncate" title={supplierOf(c)}>{supplierOf(c) || '—'}</td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
+                    {c.unit_cost != null
+                      ? money2(c.unit_cost, c.unit_cost_currency)
+                      : <span className="text-red-500">{t('no price')}</span>}
+                  </td>
+                  <td className="px-2.5 py-1.5">
+                    {c.volume_tiers?.length
+                      ? <span className="text-2xs text-ink-60" title={c.volume_tiers.map(v => `≥${v.min_qty}: ${money2(v.unit_cost, c.unit_cost_currency)}`).join('\n')}>{c.volume_tiers.length} ×</span>
+                      : ''}
+                  </td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-ink-60">
+                    {c.tooling_sample_cost != null ? money2(c.tooling_sample_cost, c.tooling_sample_cost_currency) : ''}
+                  </td>
+                  <td className="px-2.5 py-1.5 text-2xs text-ink-60 max-w-[160px] truncate" title={(c.used_by || []).join(', ')}>
+                    {c.used_by?.length ? `${c.used_by.slice(0, 2).join(', ')}${c.used_by.length > 2 ? ` +${c.used_by.length - 2}` : ''}` : ''}
+                  </td>
+                </tr>
+              ))}
+              {!loading && rows.length === 0 && (
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-ink-60">{t('No components match.')}</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

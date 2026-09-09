@@ -140,6 +140,7 @@ the fast path from a request to the exact code.
 
 ### Components & BOM costing
 - Pages: `Components.jsx`, `ComponentDetail.jsx`, `ComponentForm.jsx`, `ComponentRequirements.jsx`, `ComponentCodeAudit.jsx`
+  - `Components.jsx` tabs: Critical Components (card list + stock), **Price List** (V8.15 — dense sortable table of every `range_components` code's denormalised `unit_cost`/supplier, search + plating/supplier/costed filters + "Copy table" TSV; code → `/components/critical/:id`), Crystal Stock / Packaging Stock / Finished Goods, Crystal Colours, Crystal Costs, Format MOQs, Categories
 - Components: `CrystalBomEditor.jsx`, `ComponentLinkPicker.jsx`, `LastActualPaid.jsx`
 - Logic: `src/crystalBom.js`, `src/crystalCosting.js`, `src/crystals.js`, `src/crystalColors.js`, `src/componentCategories.js`, `src/criticalComponents.js`, `src/mrp.js`, `src/erpBomCoverage.js`
 - Collections: `products/{id}/components/{id}`, `range_components/{id}`, `crystals/{id}`, `packaging/{id}`, `settings` (`crystal_unit_costs`, `component_categories`, `crystal_colors`)
