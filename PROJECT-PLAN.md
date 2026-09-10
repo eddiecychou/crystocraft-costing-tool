@@ -259,9 +259,23 @@ Two items from a screenshot report by the production colleague (`~/Desktop/app�
   the figurine/skip split. See **L-19**. Shared with the MRP Requirements report
   (verified it still computes clean — 8 PIs, no errors).
 
+**Editable reserved quantity (2026-09-10)** — "可以修改数量吗". A reserved
+line's qty is now editable inline on all three order-stock panels (Component,
+Crystal, Packaging) up until Production-In. `adjustReservedLine(cfg, orderId,
+label, lineId, newQty)` in `orderStock.js` posts the difference as a `reserve`
+(increase) or `release` (decrease) movement on that item's ledger and rewrites
+the stored `*_lines[i].qty` — the number `produceForOrder`/`releaseForOrder`
+already trust. Retry-safe via a per-line `adj_seq` in the movement key (an
+earlier value re-entered can't collide with its earlier movement and get
+deduped). Shared cell component `EditableQty.jsx`. No `firestore.rules` or
+schema change. Full design + landmines in `RESERVE-QTY-EDIT-AUDIT.md`; verified
+end-to-end on a live order (reserve → 1→5→3→5→3 → release; ledger
+`reserved_after` tracked every step, on-hand untouched, four distinct movements
+for the repeat-value cycle, stored qty == component `reserved_qty` throughout).
+
 Still open from her report (not yet built): per-run BOM override for
-non-standard products, editable reserved quantity (components + crystal) before
-Production-In, PO-list dedupe check against JES, PO-list sort by PU number.
+non-standard products, PO-list dedupe check against JES, PO-list sort by PU
+number.
 
 ### Portal login activity — customer stamps were silently failing (2026-09-10)
 

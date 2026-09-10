@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import { computeOrderIssue, reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder, metalOrderConfig } from '../orderStock'
+import { computeOrderIssue, reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder, adjustReservedLine, metalOrderConfig } from '../orderStock'
 import { gapsOf } from '../orderStockStatus'
 import { loadComponents } from '../criticalComponents'
 import { downloadCsv } from '../exportCsv'
+import EditableQty from './EditableQty'
 import { Lock, Factory, RotateCcw, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download } from 'lucide-react'
 
 // Order → component stock card (V7.13a R1). Two-stage, matching the ERP:
@@ -68,6 +69,9 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
     `Release the reservation for order ${orderLabel}? Components return to free stock.`)
   const doReverse = () => run(() => reverseProduceForOrder(cfg, orderId, orderLabel),
     `Reverse production-in for order ${orderLabel}? Consumed components return to stock.`)
+  const doAdjust = (lineId, code, newQty) => run(
+    () => adjustReservedLine(cfg, orderId, orderLabel, lineId, newQty),
+    `Change the reserved quantity for ${code} to ${fmt(newQty)}? The difference is reserved or released on the component ledger.`)
 
   const dateStr = state.at?.toDate ? state.at.toDate().toLocaleDateString() : null
 
@@ -145,8 +149,8 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
             </>
           ) : state.stage === 'reserved' ? (
             <>
-              <p className="text-xs text-ink-60 mb-2">{state.lines.length} component(s) reserved — on the line, not yet consumed.</p>
-              <LinesTable lines={state.lines} />
+              <p className="text-xs text-ink-60 mb-2">{state.lines.length} component(s) reserved — on the line, not yet consumed. Edit a quantity if this run isn’t standard.</p>
+              <LinesTable lines={state.lines} onAdjust={doAdjust} busy={busy} />
               <div className="mt-3 flex items-center gap-3 flex-wrap">
                 <button type="button" onClick={doProduce} disabled={busy} className="inline-flex items-center gap-1.5 btn-primary text-sm">
                   <Factory size={14} /> {busy ? 'Working…' : 'Production-in (consume)'}
@@ -246,7 +250,7 @@ function PreviewTable({ items }) {
   )
 }
 
-function LinesTable({ lines }) {
+function LinesTable({ lines, onAdjust, busy }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -254,7 +258,11 @@ function LinesTable({ lines }) {
           {lines.map((l, i) => (
             <tr key={l.component_id || i}>
               <td className="py-1.5 pr-2"><span className="font-mono text-xs">{l.code}</span></td>
-              <td className="py-1.5 text-right font-mono tabular-nums text-ink-70">{fmt(l.qty)}</td>
+              <td className="py-1.5 text-right">
+                {onAdjust
+                  ? <EditableQty value={l.qty} busy={busy} onSave={n => onAdjust(l.component_id, l.code, n)} />
+                  : <span className="font-mono tabular-nums text-ink-70">{fmt(l.qty)}</span>}
+              </td>
             </tr>
           ))}
         </tbody>

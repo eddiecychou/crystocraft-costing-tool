@@ -173,6 +173,7 @@ the fast path from a request to the exact code.
 - Pages: `ShipmentForm.jsx`, `Shipments.jsx`, `Shipping.jsx`, `ProformaInvoicePrint.jsx`, `PackingListEditor.jsx`, `PackingListPrint.jsx`, `UcRegistry.jsx`
 - Logic: `src/shipping.js` (`normLine` — **strict whitelist**), `src/packing.js`, `src/mrp.js`, `src/ucRegistry.js`, `src/soNumber.js`, `src/pdfFilename.js` · Edge fns: `extract-pi`, `uc`
 - Component reserve panel (`OrderStockIssue.jsx` → `orderStock.js` → `mrp.computeRequirements`): a figurine line explodes via its Range BOM; a line whose `item_code` is itself a `range_components` code reserves that component 1:1 × qty (V8.15, **L-19**). A figurine line with no Range match / no BOM is a visible gap, never a silent drop.
+- A reserved (pre-production-in) line's qty is editable inline on all three panels (Component / Crystal / Packaging) — `adjustReservedLine` (`orderStock.js`) posts the reserve/release delta and rewrites the stored line; `EditableQty.jsx` is the cell (V8.15, `RESERVE-QTY-EDIT-AUDIT.md`).
 - Collections: `orders/{id}`, `packing_lists/{id}`, `uc_invoices/{id}`, `counters/uc_<yy>`+`so_<yy>`. An invoice needs a **UC number, not an SO**; "PI"=JES **SO**, "invoice"=**SI** (`CLAUDE.md`). Known bug: corp-gift lines tagged `range_products` on Convert-to-PI (`TECH-DEBT.md`).
 
 ### Sales invoices & credit notes

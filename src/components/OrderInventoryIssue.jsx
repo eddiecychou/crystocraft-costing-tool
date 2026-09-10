@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import { reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder } from '../orderStock'
+import { reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder, adjustReservedLine } from '../orderStock'
+import EditableQty from './EditableQty'
 import { Gem, Box, Lock, Factory, Plus, Trash2, RotateCcw, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
 
 // Generic order → inventory card (crystals, packaging) — V7.13a R1. Two-stage,
@@ -63,6 +64,9 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
     `Release the reservation for order ${orderLabel}? Items return to free stock.`)
   const doReverse = () => run(() => reverseProduceForOrder(inv, orderId, orderLabel),
     `Reverse production-in for order ${orderLabel}? Consumed items return to stock.`)
+  const doAdjust = (lineId, code, newQty) => run(
+    () => adjustReservedLine(inv, orderId, orderLabel, lineId, newQty),
+    `Change the reserved quantity for ${code} to ${fmt(newQty)}? The difference is reserved or released on the ${inv.noun} ledger.`)
 
   const dateStr = state.at?.toDate ? state.at.toDate().toLocaleDateString() : null
 
@@ -92,7 +96,12 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
                   {state.lines.map((l, i) => (
                     <tr key={l[idField] || i}>
                       <td className="py-1.5 pr-2"><span className="font-mono text-xs">{l.code || byId[l[idField]]?.code || l[idField]}</span>{byId[l[idField]]?.[inv.attrField] ? <span className="text-ink-60"> · {byId[l[idField]][inv.attrField]}</span> : ''}</td>
-                      <td className="py-1.5 text-right font-mono tabular-nums text-ink-70">{fmt(l.qty)}</td>
+                      <td className="py-1.5 text-right">
+                        {state.stage === 'reserved'
+                          ? <EditableQty value={l.qty} busy={busy}
+                                         onSave={n => doAdjust(l[idField], l.code || byId[l[idField]]?.code || l[idField], n)} />
+                          : <span className="font-mono tabular-nums text-ink-70">{fmt(l.qty)}</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

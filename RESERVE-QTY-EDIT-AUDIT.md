@@ -1,5 +1,13 @@
 # Editable reserved quantity — feasibility audit
 
+> **BUILT — V8.15, 2026-09-10.** `adjustReservedLine` in `src/orderStock.js`;
+> inline `EditableQty` cell in both the Component and Crystal/Packaging cards.
+> Verified end-to-end against a live order (woo-65496): reserve → 1→5→3→5→3 →
+> release, ledger `reserved_after` tracked every step (1,5,3,5,3,0), on-hand
+> untouched, the 5→3→5→3 cycle posted four distinct movements (no idempotency
+> dedupe — landmine L-A held), stored line qty == component `reserved_qty` at
+> every point. The audit below is kept as the design record.
+
 **Ask (XiangXia, 2026-09-10, `~/Desktop/app问题.xlsx`):** on a shipment's
 **Crystal stock** panel, next to a line "Reserved · 2026/8/13 · BDC-8232-0014-002
 · C1 · 300", she wrote **"可以修改数量吗"** — *can I edit the quantity?* Same wish

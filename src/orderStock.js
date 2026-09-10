@@ -139,6 +139,51 @@ function summariseGaps(gaps) {
   return { missing, unmatched, at: new Date().toISOString() }
 }
 
+// Adjust ONE already-reserved line to a new absolute qty, before production-in
+// (XiangXia ask #2 — see RESERVE-QTY-EDIT-AUDIT.md). Posts the delta as a
+// `reserve` (increase) or `release` (decrease) movement on that item's ledger,
+// then rewrites the stored line's qty — the number produceForOrder /
+// releaseForOrder already trust. Class-agnostic: works for metal, crystals and
+// packaging through the same `cfg`.
+//
+// Retry-safe: the movement key carries a per-line `adj_seq` (stored on the line
+// and bumped every edit), so re-hitting an earlier value can never collide with
+// that earlier movement's key and get silently deduped by postMovement.
+export async function adjustReservedLine(cfg, orderId, orderLabel, lineId, newQty) {
+  const { collectionPath, order } = cfg
+  const idField = order.lineIdField
+  const target = Math.round(Number(newQty))
+  if (!lineId) throw new Error('No line to adjust.')
+  if (!Number.isFinite(target) || target <= 0) throw new Error('Enter a quantity greater than zero.')
+
+  const orderRef = doc(db, 'orders', orderId)
+  const d = (await getDoc(orderRef)).data() || {}
+  if (!d[order.reserved]) throw new Error('Nothing is reserved for this order.')
+  if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
+
+  const lines = Array.isArray(d[order.lines]) ? d[order.lines] : []
+  const idx = lines.findIndex(l => l[idField] === lineId)
+  if (idx < 0) throw new Error('That line is not part of the reservation.')
+
+  const oldQty = Math.abs(Number(lines[idx].qty) || 0)
+  const delta = target - oldQty
+  if (delta === 0) return { oldQty, newQty: target, delta: 0 }
+
+  const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
+  const adjSeq = (Number.isFinite(lines[idx].adj_seq) ? lines[idx].adj_seq : 0) + 1
+
+  await postMovement(collectionPath, lineId, {
+    type: delta > 0 ? 'reserve' : 'release',
+    qty: Math.abs(delta), order_id: orderId,
+    note: `Adjusted reservation ${oldQty} → ${target} — order ${orderLabel || orderId}`,
+    idempotencyKey: `adjust_${orderId}_g${generation}_${lineId}_a${adjSeq}`,
+  })
+
+  const nextLines = lines.map((l, i) => (i === idx ? { ...l, qty: target, adj_seq: adjSeq } : l))
+  await updateDoc(orderRef, { [order.lines]: nextLines })
+  return { oldQty, newQty: target, delta }
+}
+
 // Production-in: consume the reservation into finished goods (on-hand ↓, reserved ↓).
 export async function produceForOrder(cfg, orderId, orderLabel) {
   const { collectionPath, order } = cfg

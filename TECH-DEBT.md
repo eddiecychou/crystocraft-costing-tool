@@ -192,13 +192,9 @@ the reserve/consume flow, not a quick fix:
    purely from `range_products.critical_components` via `mrp.computeRequirements`;
    there is no per-order add/remove/adjust. Needs a stored override on the order
    doc that `computeOrderIssue` layers on top of the explosion.
-2. **Editable reserved quantity.** "可以修改数量吗" — once reserved, the
-   component and crystal quantities are fixed at what the explosion computed;
-   the operator can only Release and start over. Wants an inline qty edit on
-   the reserved panel before Production-In. **Feasibility audit done:**
-   `RESERVE-QTY-EDIT-AUDIT.md` — one `adjustReservedLine` primitive in
-   `orderStock.js` serves all three stock classes, no rules/schema change; main
-   landmine is the idempotency-key scheme (needs a per-line `adj_seq`).
+2. ~~**Editable reserved quantity.**~~ **DONE — V8.15.** Inline qty edit on the
+   reserved Component / Crystal / Packaging panels via `adjustReservedLine`
+   (`orderStock.js`) + `EditableQty.jsx`. See `RESERVE-QTY-EDIT-AUDIT.md`.
 3. **PO list — JES-duplicate check.** Flag app POs whose PU/supplier/items
    already exist in JES (`PurchaseOrders.jsx`). A "Check app POs for JES
    duplicates" link already exists — she wants it to actually surface the
