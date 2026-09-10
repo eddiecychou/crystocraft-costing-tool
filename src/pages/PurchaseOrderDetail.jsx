@@ -143,7 +143,7 @@ export default function PurchaseOrderDetail() {
             {(po.lines || []).map((ln, i) => (
               <tr key={i}>
                 <td className="px-4 py-2 font-mono text-xs text-ink-80 align-top">{ln.code || '—'}</td>
-                <td className="px-2 py-2 text-ink-80 align-top">{ln.description || '—'}</td>
+                <td className="px-2 py-2 text-ink-80 align-top whitespace-pre-line">{ln.description || '—'}</td>
                 <td className="px-2 py-2 text-right tabular-nums align-top">{Number(ln.qty).toLocaleString()} {ln.unit || t('pcs')}</td>
                 <td className="px-2 py-2 text-right tabular-nums align-top">{Number(ln.unit_price).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                 <td className="px-4 py-2 text-right tabular-nums align-top font-medium">{lineAmount(ln).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>

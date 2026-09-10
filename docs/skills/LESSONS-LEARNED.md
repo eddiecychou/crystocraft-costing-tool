@@ -324,6 +324,27 @@
     PATCHing the two fields via the Firestore REST API → 200.
   (`src/authActivity.js`, `firestore.rules`, commit `bf36e44`.)
 
+## L-19 · Loose component lines on an order reserved no stock
+
+- **Symptom.** Production colleague (XiangXia, 2026-09-10): "缺少部份 bom" —
+  on a shipment's Component-stock reserve panel, parts she could see on the
+  order (music-box assemblies: `P-WB051000002-WD`, `P-MMKEY-15A`, `P-MM173-02`,
+  …) contributed **nothing** to the reserve. Also "1 figurine line(s) not
+  matched to the Range".
+- **Root cause.** `computeRequirements` (`src/mrp.js`) only ever explodes a
+  line **through a matched `range_products` BOM**. A line whose own `item_code`
+  *is* a stocked `range_components` code — a loose part added straight onto the
+  order rather than a figurine SKU — matched no product, failed
+  `looksLikeFigurineCode`, and fell into `skipped` (fully silent) or
+  `unmatched` (one terse amber line). Its stock was never reserved.
+- **Permanent fix.** `computeRequirements` builds `libByCode` and, in the
+  `if (!product)` branch, treats a direct component-code match as a 1:1
+  requirement (`bump(direct, qty * perUnit(l), code)`) before the
+  figurine/skip classification. Shared with the MRP Requirements report, where
+  it is likewise correct. **MUST:** an order line that names a component
+  directly is a real requirement — never silently drop it because it isn't a
+  figurine SKU. (`src/mrp.js`.)
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
@@ -359,3 +380,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-09-02 | Added L-14 — react-pdf `<Page>` pagination: a blank page from a premium-only section (`paginate([])` → `[[]]`) and a stranded heading from decoupling heading/content across sibling views; the fix is to bind heading+first-row in one `wrap={false}` block and render every tier through `qa/render-proposal.jsx` before shipping. |
 | 2026-09-04 | Added L-15 (mechanical `requireFrontOffice→requireModule` migration mis-keyed AI-assist edge fns to `quotes` — retag by call graph + route `<Gate module>`, not by old role; `requireModule` now string-or-array), L-16 (a grid/flex `1fr` track won't shrink below content → `min-w-0` on the child or its inner `overflow-x` is dead), L-17 (`serverTimestamp()` throws inside a Firestore array — use `new Date()` for per-item timestamps in array fields). Operational reminder: the QA-admin login was non-functional all of V8.14 (placeholder password). |
 | 2026-09-10 | Added L-18 — portal login stamps failed silently for 26/43 customers (token race + a 9-field-equality self-update rule, both hidden by `stampLogin`'s `.catch(()=>{})`). Fix: `await getIdToken()` + one retry, and a `diff().affectedKeys().hasOnly(['last_login_at','login_count'])` rule clause; 26 rows backfilled from Auth `lastSignInTime`. |
+| 2026-09-10 | Added L-19 — loose component lines on an order (item code = a `range_components` code, not a figurine SKU) reserved no stock; `computeRequirements` only exploded through a matched Range BOM. Fix: direct component-code match → 1:1 requirement in `src/mrp.js`. Also: PU line `description` is now a growing `<textarea>` and prints with `white-space:pre-line` (line breaks preserved — reported by XiangXia). |

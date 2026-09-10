@@ -240,6 +240,29 @@ checking a part price otherwise meant opening each figurine's costing page.
 `normComponent` now surfaces `preferred_supplier_name` (read-only; the editor
 still doesn't write it).
 
+### Production feedback from XiangXia — PU description line breaks + loose-part reserve (2026-09-10)
+
+Two items from a screenshot report by the production colleague (`~/Desktop/app问题.xlsx`):
+
+- **PU line description ate line breaks** ("文字内容不能分行"). The description
+  cell in `PurchaseOrderForm.jsx` was a single-line `<input>` — you couldn't
+  even type a newline. Now a growing `<textarea>` (auto-height on input,
+  `rows=1` min). `\n` survives save (`cleanLines` only trims the ends).
+  `PurchaseOrderPrint.jsx` line cell and `PurchaseOrderDetail.jsx` line cell
+  now render with `white-space: pre-line` / `whitespace-pre-line`.
+- **Loose component lines on an order reserved nothing** ("缺少部份 bom").
+  `computeRequirements` (`src/mrp.js`) only exploded a line through a matched
+  Range BOM; a line whose `item_code` is itself a `range_components` code (loose
+  music-box parts, etc.) matched no product and fell into `skipped`/`unmatched`,
+  so its stock was never reserved on the shipment's Component-stock panel. Now a
+  direct component-code match becomes a 1:1 requirement (`qty × perUnit`) before
+  the figurine/skip split. See **L-19**. Shared with the MRP Requirements report
+  (verified it still computes clean — 8 PIs, no errors).
+
+Still open from her report (not yet built): per-run BOM override for
+non-standard products, editable reserved quantity (components + crystal) before
+Production-In, PO-list dedupe check against JES, PO-list sort by PU number.
+
 ### Portal login activity — customer stamps were silently failing (2026-09-10)
 
 Owner: "login activity only logs me, never my customers." Audit (Firebase

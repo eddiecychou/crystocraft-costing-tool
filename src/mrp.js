@@ -72,6 +72,14 @@ export function computeRequirements({ lines = [], products = [], lib = [], cryst
   for (const p of products) if (p?.id) productsById[p.id] = p
   const index = buildProductIndex(products)
 
+  // Direct lookup for order lines that ARE a component code themselves (loose
+  // parts added straight onto an order — e.g. music-box assemblies — rather than
+  // a figurine SKU that explodes into a BOM). Without this they matched no Range
+  // product and vanished into `skipped`/`unmatched`, so their stock was never
+  // reserved (reported by XiangXia 2026-09-10, "缺少部份 bom").
+  const libByCode = {}
+  for (const c of lib) if (c?.code) libByCode[String(c.code).trim().toUpperCase()] = c
+
   const req = {}          // code → { code, name, plating_code, required, leadWeeks, usedBy:Set }
   const creq = {}         // same, for crystal stones
   const warnings = []     // { item_code, order, reason }
@@ -97,6 +105,13 @@ export function computeRequirements({ lines = [], products = [], lib = [], cryst
     const product = lineProduct(l, productsById, index)
     if (!product) {
       const code = (l.item_code || '').trim()
+      const direct = libByCode[code.toUpperCase()]
+      if (direct) {
+        // The line's own code is a stocked component: reserve it 1:1 × order qty.
+        if (qty > 0) bump(direct, qty * perUnit(l), code)
+        else warnings.push({ item_code: code, order, reason: 'no order quantity' })
+        continue
+      }
       if (looksLikeFigurineCode(code)) {
         unmatched.push({ item_code: code, description: l.description || '', qty: numOrNull(l.qty_ordered), order })
       } else {

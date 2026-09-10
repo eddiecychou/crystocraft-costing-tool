@@ -164,7 +164,7 @@ function PrintDoc({ po, lang }) {
             <tr key={i}>
               <td>{i + 1}</td>
               <td className="po-code">{ln.code || '—'}</td>
-              <td>{ln.description || '—'}</td>
+              <td style={{ whiteSpace: 'pre-line' }}>{ln.description || '—'}</td>
               <td className="r">{Number(ln.qty).toLocaleString()} {ln.unit || L.pcs}</td>
               <td className="r">{Number(ln.unit_price).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
               <td className="r">{lineAmount(ln).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>

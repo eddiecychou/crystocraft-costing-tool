@@ -442,8 +442,11 @@ export default function PurchaseOrderForm() {
                 <div className="grid grid-cols-2 sm:grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 items-center">
                   <input className="input text-sm font-mono" list="po-component-codes" value={ln.code}
                          onChange={e => onCodeChange(ln._uid, e.target.value)} placeholder="P-… / FM-… / MISC" />
-                  <input className="input text-sm" value={ln.description}
-                         onChange={e => updateLine(ln._uid, { description: e.target.value })} placeholder={t('Description')} />
+                  <textarea className="input text-sm resize-y min-h-[38px] py-1.5 self-start leading-snug" rows={1}
+                            value={ln.description}
+                            onChange={e => updateLine(ln._uid, { description: e.target.value })}
+                            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px` }}
+                            placeholder={t('Description')} />
                   <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={ln.qty}
                          onChange={e => updateLine(ln._uid, { qty: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0" />
                   <select className="input text-sm" value={ln.unit} onChange={e => updateLine(ln._uid, { unit: e.target.value })}>

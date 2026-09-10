@@ -156,6 +156,7 @@ the fast path from a request to the exact code.
 - Pages: `PurchaseOrders.jsx`, `PurchaseOrderForm.jsx`, `PurchaseOrderDetail.jsx`, `PurchaseOrderPrint.jsx` · Components: `PoReceiveStock.jsx`
 - Logic: `src/purchaseOrders.js`, `src/puNumber.js` (allocates `counters/pu_<yy>`), `src/poReceive.js` · Edge fns: `extract-po`
 - Collections: `purchase_orders/{id}` (**staff**; snapshots supplier name/code/address), `counters/pu_<yy>` (uniquely production-writable)
+- Line `description` is a multi-line `<textarea>` (V8.15) — `\n` is preserved on save and both `PurchaseOrderDetail`/`PurchaseOrderPrint` render it `white-space: pre-line`.
 
 ### Inventory & stock ledger
 - Pages: `InventoryStatus.jsx`, `WooStockReconcile.jsx` (`/woo-stock`, admin — Woo catalogue vs Finished Goods) · Components: `InventoryStockTab.jsx`, `StockEditor.jsx`, `StockLedger.jsx`, `ManualAdjust.jsx`, `PoReceiveStock.jsx`, `OrderStockIssue.jsx`, `OrderInventoryIssue.jsx`
@@ -171,6 +172,7 @@ the fast path from a request to the exact code.
 ### Shipments / Proforma Invoice / packing / UC registry
 - Pages: `ShipmentForm.jsx`, `Shipments.jsx`, `Shipping.jsx`, `ProformaInvoicePrint.jsx`, `PackingListEditor.jsx`, `PackingListPrint.jsx`, `UcRegistry.jsx`
 - Logic: `src/shipping.js` (`normLine` — **strict whitelist**), `src/packing.js`, `src/mrp.js`, `src/ucRegistry.js`, `src/soNumber.js`, `src/pdfFilename.js` · Edge fns: `extract-pi`, `uc`
+- Component reserve panel (`OrderStockIssue.jsx` → `orderStock.js` → `mrp.computeRequirements`): a figurine line explodes via its Range BOM; a line whose `item_code` is itself a `range_components` code reserves that component 1:1 × qty (V8.15, **L-19**). A figurine line with no Range match / no BOM is a visible gap, never a silent drop.
 - Collections: `orders/{id}`, `packing_lists/{id}`, `uc_invoices/{id}`, `counters/uc_<yy>`+`so_<yy>`. An invoice needs a **UC number, not an SO**; "PI"=JES **SO**, "invoice"=**SI** (`CLAUDE.md`). Known bug: corp-gift lines tagged `range_products` on Convert-to-PI (`TECH-DEBT.md`).
 
 ### Sales invoices & credit notes
