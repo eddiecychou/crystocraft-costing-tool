@@ -87,7 +87,7 @@ wins on *facts*; skill wins on *rules and lessons*.
 | `../reference/LOCAL-TOOLS.md` | What's installed/logged-in on this Mac (Node, firebase-tools, GA4 cred, Fly) |
 | `../../qa/README.md` | Headless render + the pre-push verification checks |
 | `../plans/JES-RETIREMENT-PLAN.md`, `../erp/V7.15_ERP_Inventory.md`, `../erp/PBIS-IMPORT-FORMAT.md`, `../../erp-sync/ERP-SYNC-V1.0.md` | The JES-retirement track |
-| Feature specs | `../specs/Corp_Gift_Customizer_Spec.md`, `../plans/Customizer_Build_Plan.md`, `../specs/Crystal_Fabric_Studio_Spec.md`, `../specs/Customer_Brand_Gallery_Spec.md`, `../specs/WooCommerce_B2C_Sync_Spec.md`, `../specs/Range_Colour_Preview_Spec.md`, `../specs/Sun-Life-Proposal-Build-Spec.md`, `../specs/Inventory_Roadmap_V7.13_Spec.md`, `../plans/PRODUCT-VARIANTS-PLAN.md` (SHELVED) |
+| Feature specs | `../specs/Corp_Gift_Customizer_Spec.md`, `../plans/Customizer_Build_Plan.md`, `../specs/Crystal_Fabric_Studio_Spec.md`, `../specs/Customer_Brand_Gallery_Spec.md`, `../specs/WooCommerce_B2C_Sync_Spec.md`, `../specs/Range_Colour_Preview_Spec.md`, `../specs/Sun-Life-Proposal-Build-Spec.md`, `../specs/Inventory_Roadmap_V7.13_Spec.md`, `../specs/Sales_Return_Credit_Note_Invoice_Spec.md` (proposed — Cindy's Amazon returns/credit-note need), `../specs/gift-selector.md` (brief), `../plans/PRODUCT-VARIANTS-PLAN.md` (SHELVED) |
 
 Persistent AI memory: `~/.claude/projects/-Users-eddie-Developer-costing-tool/memory/MEMORY.md`.
 
