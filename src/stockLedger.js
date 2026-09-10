@@ -8,7 +8,7 @@ import { db } from './firebase'
 // Stock ledger (V7.13a) — the append-only movement log behind an item's on-hand.
 // This is the foundation the whole inventory roadmap sits on: on-hand is a
 // DERIVED running balance over these movements, never a mutable number
-// decremented in place (see Inventory_Roadmap_V7.13_Spec.md §2).
+// decremented in place (see docs/specs/Inventory_Roadmap_V7.13_Spec.md §2).
 //
 //   {collectionPath}/{id}/movements/{movId}
 //

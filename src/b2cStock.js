@@ -5,7 +5,7 @@ import { parseFinishedGoodsPaste } from './b2cImport'
 
 // B2C finished-goods stock — one instance of the generic simple-inventory
 // class (inventoryClass.js). The JES retirement plan's last open item
-// (JES-RETIREMENT-PLAN.md §"Finished-goods stock"): B2C is a trading
+// (docs/plans/JES-RETIREMENT-PLAN.md §"Finished-goods stock"): B2C is a trading
 // operation, unconnected to production — stock is received, stock is sold,
 // nothing links it to a production event or an order reservation. So this
 // deliberately carries no `order` config (unlike crystalInventory /

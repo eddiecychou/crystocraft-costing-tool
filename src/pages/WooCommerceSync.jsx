@@ -11,7 +11,7 @@ import { CustomerPicker } from './CustomerAccounts'
 import LoadingBar from '../components/LoadingBar'
 import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass, Download, CheckCircle2, Link2, Users } from 'lucide-react'
 
-// WooCommerce sync — Phase 1 (WooCommerce_B2C_Sync_Spec.md) is read-only
+// WooCommerce sync — Phase 1 (docs/specs/WooCommerce_B2C_Sync_Spec.md) is read-only
 // review. Phase 2 adds actual Firestore writes: "Import" turns a reviewed
 // WooCommerce order into a real `orders/{id}` doc (wooImport.js), landing it
 // in the existing "awaiting invoice" list on SalesInvoices.jsx — same as any
@@ -418,7 +418,7 @@ export default function WooCommerceSync() {
         </div>
         <p className="text-sm text-ink-60 mt-1">
           Phase 1 — read-only. Pulls paid B2C orders and refunds from WooCommerce for review. Nothing here creates a
-          Sales Invoice, Credit Note or UC#; see <code>WooCommerce_B2C_Sync_Spec.md</code> for the full plan.
+          Sales Invoice, Credit Note or UC#; see <code>docs/specs/WooCommerce_B2C_Sync_Spec.md</code> for the full plan.
         </p>
       </div>
 

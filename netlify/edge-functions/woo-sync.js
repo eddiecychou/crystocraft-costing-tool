@@ -1,4 +1,4 @@
-// WooCommerce B2C sync — Phase 1 (WooCommerce_B2C_Sync_Spec.md). Read-only:
+// WooCommerce B2C sync — Phase 1 (docs/specs/WooCommerce_B2C_Sync_Spec.md). Read-only:
 // pulls paid orders and their refunds from the Crystocraft WordPress site's
 // WooCommerce REST API for review. Writes NOTHING to Firestore or Supabase —
 // no invoice numbers or UC#s are burned here. That starts in a later phase,

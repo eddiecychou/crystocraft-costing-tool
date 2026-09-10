@@ -1,5 +1,5 @@
 // Client for the Crystal Fabric Studio swatch library — see
-// Crystal_Fabric_Studio_Spec.md §5a/§5b. Registry data (photos, colours,
+// docs/specs/Crystal_Fabric_Studio_Spec.md §5a/§5b. Registry data (photos, colours,
 // backfilms) is proxied read-only from the render service via
 // /api/swatch-library, now open to admins AND approved portal customers
 // (§5b); curated notes (legacy_swarovski_refs) are a small Firestore

@@ -90,7 +90,29 @@ about the account before assuming the mechanism.
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending
-`LOCAL-TOOLS.md` note that the QA-admin password is now set (verified login).
+`docs/reference/LOCAL-TOOLS.md` note that the QA-admin password is now set
+(verified login).
+
+### Docs reorg — 22 loose root `.md` files moved under `docs/` (2026-09-10)
+
+The repo root had 27 `.md` files; navigation was by grep. Moved 22 with
+`git mv` (history preserved) into four folders, rewrote every reference —
+doc↔doc links **and** the ~20 source-file breadcrumb comments — in the same
+commit. Root now keeps only the agent entry points: `CLAUDE.md`, `AGENTS.md`,
+`INDEX.md`, `PROJECT-PLAN.md`, `TECH-DEBT.md` (+ all build config).
+
+| New home | Files |
+|---|---|
+| `docs/reference/` | API-REFERENCE, DOMAIN-MODULES, FIRESTORE-COLLECTIONS, LOCAL-TOOLS |
+| `docs/plans/` | JES-RETIREMENT-PLAN, RBAC-FLEX-PLAN, PRODUCT-VARIANTS-PLAN, Customizer_Build_Plan, RESERVE-QTY-EDIT-AUDIT |
+| `docs/specs/` | Corp_Gift_Customizer_Spec, Crystal_Fabric_Studio_Spec, Customer_Brand_Gallery_Spec, Range_Colour_Preview_Spec, Sun-Life-Proposal-Build-Spec, WooCommerce_B2C_Sync_Spec, Inventory_Roadmap_V7.13_Spec, gift-selector |
+| `docs/erp/` | V7.15_ERP_Inventory, PBIS-IMPORT-FORMAT |
+| `docs/archive/` | costing-tool-Perplexity-input-June1, ERP-coding-summary, TECHNICAL-Expense-Tool (zero inbound refs) |
+
+`docs/skills/` unchanged. Convention held: backtick paths in docs are
+repo-root-relative; markdown `[]()` links between `docs/` subfolders use `../`.
+This PROJECT-PLAN's own historical entries below were **not** rewritten — a bare
+`Foo_Spec.md` mention still resolves with `grep -r`.
 
 ### Crystal costs ↔ JES purchase prices — the buy-side mirror of V8.14's Item price history
 

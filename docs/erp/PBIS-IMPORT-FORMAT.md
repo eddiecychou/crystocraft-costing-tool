@@ -2,7 +2,7 @@
 
 Received from Cindy 2026-07-19: `invoice to import.xls` and `PO to import.xls`.
 
-This file was **the longest pole in `JES-RETIREMENT-PLAN.md`**. Step 8 (invoices)
+This file was **the longest pole in `../plans/JES-RETIREMENT-PLAN.md`**. Step 8 (invoices)
 was deliberately last because an app-generated invoice has to reproduce whatever
 PBIS ingests, and until now we had only PBIS *output* (`parse_pbis.py` reads the
 `.RPT` journal listing). This is the input side.

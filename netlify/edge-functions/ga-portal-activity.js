@@ -17,7 +17,7 @@
 // Auth to Google: a JWT-bearer service-account flow (RS256-signed
 // assertion → OAuth token), using the SAME service account already granted
 // Firebase Admin access (GA_CLIENT_EMAIL/GA_PRIVATE_KEY are that account's
-// own credentials — see LOCAL-TOOLS.md's GA4 section for how it was
+// own credentials — see docs/reference/LOCAL-TOOLS.md's GA4 section for how it was
 // granted Viewer access on the property). jose is already an edge-function
 // dependency elsewhere (lib/auth.js) — same version, no new import surface.
 import { SignJWT, importPKCS8 } from 'https://esm.sh/jose@5.9.6'

@@ -1,7 +1,7 @@
 # Crystal Fabric Customizer — Proof of Concept
 
 Deterministic (no-AI) render of a design into crystal fabric, validating the
-approach in `../Corp_Gift_Customizer_Spec.md` §14.
+approach in `docs/specs/Corp_Gift_Customizer_Spec.md` §14.
 
 **Idea:** the product is transparent crystals on a printed/black film — a colour
 layer + a crystal MATERIAL layer. Capture the material once from a real swatch

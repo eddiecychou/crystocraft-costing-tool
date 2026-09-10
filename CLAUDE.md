@@ -33,19 +33,19 @@ of record, one function at a time.
 | `docs/skills/DESIGN-SYSTEM.md` | The written spec of the shipped design system (V2.5) — token layer, component inventory + state matrix, WCAG contrast, drift baseline, V3 open decisions. `design-system/` holds the exported reference bundles. |
 | `INDEX.md` | Pointer into `docs/skills/` (kept so old links resolve) |
 | `PROJECT-PLAN.md` | The running record. Newest cycle first. **V8.14 CLOSED 2026-09-04 — read "Current Status — V8.14 CLOSED" + "Where V8.15 starts".** |
-| `JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |
-| `V7.15_ERP_Inventory.md` | What the ERP actually contains — measured, not assumed |
-| `PBIS-IMPORT-FORMAT.md` | The JES→PBIS import contract — what an app-generated invoice must reproduce |
+| `docs/plans/JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |
+| `docs/erp/V7.15_ERP_Inventory.md` | What the ERP actually contains — measured, not assumed |
+| `docs/erp/PBIS-IMPORT-FORMAT.md` | The JES→PBIS import contract — what an app-generated invoice must reproduce |
 | `erp-sync/ERP-SYNC-V1.0.md` | How the ERP mirror works |
 | `erp-sync/IMAGE-SYNC-PLAN.md` | Item images: prepared, needs the LAN |
-| `Corp_Gift_Customizer_Spec.md`, `Customizer_Build_Plan.md` | Customizer engine design — build history, superseded by current status below |
-| `Crystal_Fabric_Studio_Spec.md` | Swatch library + Physical Design Workbench build history (all closed under V7.21). Workbench paused mid-build: templates/canvas/zones/zone-rendering done, mode-unification and photo-compositing (workstreams 3/5) not started — see doc's own §5j. V7.22 fixed four real bugs in the render engine/admin tool itself (stone size, colour, caching, auth) without touching workstreams 3/5 — see `PROJECT-PLAN.md`'s V7.22 §2 and "Where V7.23 starts" |
-| `LOCAL-TOOLS.md` | What's already installed/logged-in on this Mac's shell (Node, firebase-tools) — check before telling the user to install something or reaching for a scratch-fetch workaround |
-| `API-REFERENCE.md` | All 37 Netlify edge functions (`/api/*`), grouped by feature area — route, purpose, auth posture, caller. Check before adding a new one (to avoid duplicating an existing endpoint) and update it when adding one |
-| `FIRESTORE-COLLECTIONS.md` | Every Firestore collection/subcollection — purpose, auth posture, owning domain file, and the pointer fields that connect collections to each other. Check before adding a collection or tracing data across two of them |
-| `DOMAIN-MODULES.md` | What each `src/domain/*.js` file owns and its main exports — the business-logic layer, distinct from the `src/*Api.js` edge-function wrappers already covered in API-REFERENCE.md |
+| `docs/specs/Corp_Gift_Customizer_Spec.md`, `docs/plans/Customizer_Build_Plan.md` | Customizer engine design — build history, superseded by current status below |
+| `docs/specs/Crystal_Fabric_Studio_Spec.md` | Swatch library + Physical Design Workbench build history (all closed under V7.21). Workbench paused mid-build: templates/canvas/zones/zone-rendering done, mode-unification and photo-compositing (workstreams 3/5) not started — see doc's own §5j. V7.22 fixed four real bugs in the render engine/admin tool itself (stone size, colour, caching, auth) without touching workstreams 3/5 — see `PROJECT-PLAN.md`'s V7.22 §2 and "Where V7.23 starts" |
+| `docs/reference/LOCAL-TOOLS.md` | What's already installed/logged-in on this Mac's shell (Node, firebase-tools) — check before telling the user to install something or reaching for a scratch-fetch workaround |
+| `docs/reference/API-REFERENCE.md` | All 37 Netlify edge functions (`/api/*`), grouped by feature area — route, purpose, auth posture, caller. Check before adding a new one (to avoid duplicating an existing endpoint) and update it when adding one |
+| `docs/reference/FIRESTORE-COLLECTIONS.md` | Every Firestore collection/subcollection — purpose, auth posture, owning domain file, and the pointer fields that connect collections to each other. Check before adding a collection or tracing data across two of them |
+| `docs/reference/DOMAIN-MODULES.md` | What each `src/domain/*.js` file owns and its main exports — the business-logic layer, distinct from the `src/*Api.js` edge-function wrappers already covered in docs/reference/API-REFERENCE.md |
 | `TECH-DEBT.md` | Known inconsistencies/gaps noticed in passing (unguarded edge functions, duplicate admin-check implementations, etc.) — check before "fixing" something that turns out to already be a known, deliberate tradeoff; add to it when you notice something new |
-| `PRODUCT-VARIANTS-PLAN.md` | **SHELVED 2026-08-28, never built** — size/colour variations on a corp-gift product, dropped as too complicated for the value. Kept for its §4 audit: why a typed per-variant price would break both the quote margin column and per-customer pricing, five other landmines, and one live pre-existing bug (also in `TECH-DEBT.md`). Read it before anyone revisits variations, or touches corp pricing/quote-line cost snapshots |
+| `docs/plans/PRODUCT-VARIANTS-PLAN.md` | **SHELVED 2026-08-28, never built** — size/colour variations on a corp-gift product, dropped as too complicated for the value. Kept for its §4 audit: why a typed per-variant price would break both the quote margin column and per-customer pricing, five other landmines, and one live pre-existing bug (also in `TECH-DEBT.md`). Read it before anyone revisits variations, or touches corp pricing/quote-line cost snapshots |
 
 ## Environment quirks that will otherwise waste your time
 
@@ -53,7 +53,7 @@ of record, one function at a time.
 found corrupting `.git`; the repo lives in `~/Developer/costing-tool` on both.
 `git pull` before starting, `git push` when done. See the top of `PROJECT-PLAN.md`.
 
-**Check `LOCAL-TOOLS.md` before assuming Node/firebase-tools need installing**
+**Check `docs/reference/LOCAL-TOOLS.md` before assuming Node/firebase-tools need installing**
 — this Mac has had a real Node on `PATH` since 2026-08-26 (confirmed there),
 and `npx firebase-tools` works logged-in already. Don't re-walk the user
 through installing them; if a *different* machine genuinely has neither and

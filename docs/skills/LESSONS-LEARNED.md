@@ -40,7 +40,7 @@
 - **Auditability (added 2026-09-02).** Both demotions were only *noticed*, never
   *explained* — there was no record of what wrote the doc or when. `AccountEdit.jsx`
   now appends to `audit_logs` on every `role`/`status`/`account_type` change
-  (`FIRESTORE-COLLECTIONS.md` → `audit_logs`; append-only, admin-read). A future
+  (`../reference/FIRESTORE-COLLECTIONS.md` → `audit_logs`; append-only, admin-read). A future
   unexplained flip leaves a trail. **TODO:** the invitation-approval path
   (`netlify/functions/portal-invite.js`, Admin SDK) and price-group edits are
   not yet audited.
@@ -201,7 +201,7 @@
   `roleGroupOf` and shows an "N matched / X unattributed" line so a blank column
   reads as "no traffic yet". Diagnostic lesson: **MUST** verify an integration by
   querying the source directly (`firebase-service-account.json` is a GA4 Viewer;
-  recipe in `LOCAL-TOOLS.md` §GA4) before concluding the pipeline is broken.
+  recipe in `../reference/LOCAL-TOOLS.md` §GA4) before concluding the pipeline is broken.
   The `byUid` query is wrapped `.catch(()=>null)`, so a bad dimension name fails
   *silently* — check the dimension is registered (`customUser:app_uid`).
 
@@ -249,7 +249,7 @@
   `['products','figurine','marketing']`). **MUST**, when retagging an edge fn's
   auth: `grep -rn "/api/<name>"` its callers, and use the module on the
   route's `<Gate module>` in `src/App.jsx` — never the name of the old role.
-  Per-fn key table in `API-REFERENCE.md`; `ARCHITECTURE-RULES.md` §2;
+  Per-fn key table in `../reference/API-REFERENCE.md`; `ARCHITECTURE-RULES.md` §2;
   `TECH-DEBT.md` "V8.14 code-review follow-up".
 
 ## L-16 · A CSS grid/flex track won't shrink below its content — `min-w-0`
@@ -352,7 +352,7 @@
 - **Netlify deploy credit is limited** — batch commits, confirm before pushing to
   `main` (memory `netlify-deploy-credit`).
 - **Node / firebase-tools are already on PATH** — don't re-walk install
-  (`LOCAL-TOOLS.md`; memory `local-tools-available`).
+  (`../reference/LOCAL-TOOLS.md`; memory `local-tools-available`).
 - **A local `/api/* 404` is normal** — dev runs `netlify-cli dev --offline`
   (memory `edge-functions-local-dev`).
 - **The QA-admin browser login may be dead** — `.env.local`'s
@@ -360,7 +360,7 @@
   V8.14, so nothing that cycle was click-tested. Check the value is real before
   planning any browser verification; if it's the placeholder, say so and ask
   the owner to set one (memory `qa-admin-login`).
-- **Don't revive `PRODUCT-VARIANTS-PLAN.md`** without reading its §4 audit — a
+- **Don't revive `../plans/PRODUCT-VARIANTS-PLAN.md`** without reading its §4 audit — a
   typed per-variant price breaks the quote margin column and per-customer pricing
   (+5 landmines).
 
@@ -381,4 +381,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-09-04 | Added L-15 (mechanical `requireFrontOffice→requireModule` migration mis-keyed AI-assist edge fns to `quotes` — retag by call graph + route `<Gate module>`, not by old role; `requireModule` now string-or-array), L-16 (a grid/flex `1fr` track won't shrink below content → `min-w-0` on the child or its inner `overflow-x` is dead), L-17 (`serverTimestamp()` throws inside a Firestore array — use `new Date()` for per-item timestamps in array fields). Operational reminder: the QA-admin login was non-functional all of V8.14 (placeholder password). |
 | 2026-09-10 | Added L-18 — portal login stamps failed silently for 26/43 customers (token race + a 9-field-equality self-update rule, both hidden by `stampLogin`'s `.catch(()=>{})`). Fix: `await getIdToken()` + one retry, and a `diff().affectedKeys().hasOnly(['last_login_at','login_count'])` rule clause; 26 rows backfilled from Auth `lastSignInTime`. |
 | 2026-09-10 | Added L-19 — loose component lines on an order (item code = a `range_components` code, not a figurine SKU) reserved no stock; `computeRequirements` only exploded through a matched Range BOM. Fix: direct component-code match → 1:1 requirement in `src/mrp.js`. Also: PU line `description` is now a growing `<textarea>` and prints with `white-space:pre-line` (line breaks preserved — reported by XiangXia). |
-| 2026-09-10 | Editable reserved quantity (XiangXia ask #2) — a reserved line's qty is now editable inline on the Component/Crystal/Packaging order-stock panels via `adjustReservedLine` (`orderStock.js`) + `EditableQty.jsx`. Movement key carries a per-line `adj_seq` so re-entering an earlier value can't collide with its earlier movement and get deduped by `postMovement`. Design record + landmines: `RESERVE-QTY-EDIT-AUDIT.md`. |
+| 2026-09-10 | Editable reserved quantity (XiangXia ask #2) — a reserved line's qty is now editable inline on the Component/Crystal/Packaging order-stock panels via `adjustReservedLine` (`orderStock.js`) + `EditableQty.jsx`. Movement key carries a per-line `adj_seq` so re-entering an earlier value can't collide with its earlier movement and get deduped by `postMovement`. Design record + landmines: `../plans/RESERVE-QTY-EDIT-AUDIT.md`. |

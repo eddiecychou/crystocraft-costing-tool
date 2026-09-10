@@ -43,7 +43,7 @@ photos. Isolation is enforced at three layers:
 - **Brand assets.** `customers/{id}/assets` default to `internal_only`; an admin
   must deliberately raise visibility to `customer_private` / `public_reference`.
   Marketing reuse additionally requires `can_use_in_marketing === true`
-  (`src/customerAssets.js`; `Customer_Brand_Gallery_Spec.md`).
+  (`src/customerAssets.js`; `../specs/Customer_Brand_Gallery_Spec.md`).
 
 **MUST NOT** add a cross-customer query (e.g. a `collectionGroup` over customer
 subcollections) without re-checking these rules — an equality filter that looks
@@ -97,7 +97,7 @@ the route `<Gate module>` its callers sit behind: `process-quote`/`extract-po` �
 (any-match), `scrape-images` → `figurine`, `woo-sync`/`seo-state` → `woo`.
 `requireModule(req, key)` now takes a string **or an array** (any-match). **When
 retagging an edge fn: grep `/api/<name>`, use the caller's Gate module — never
-the old role.** Full per-fn table in `../../API-REFERENCE.md`.
+the old role.** Full per-fn table in `../reference/API-REFERENCE.md`.
 
 **MUST — the multi-place sync.** No single source; these MUST agree or a menu
 opens onto a permission-denied page, or data is granted with no way to reach it:

@@ -6,7 +6,7 @@ import { normGallery, isStorefrontVisible, productStatusOf } from './constants'
 import { screenSensitiveImages } from './sensitiveImages'
 import { loadCustomerVisibleAssets, loadBrandedProductImages } from './customerAssets'
 
-// Customer proposal data layer — see Sun-Life-Proposal-Build-Spec.md §3/§6.
+// Customer proposal data layer — see docs/specs/Sun-Life-Proposal-Build-Spec.md §3/§6.
 //
 // Single doc per customer, fixed id 'current': customers/{customerId}/proposal/current.
 // References existing assets/products by id — never denormalises a file_url

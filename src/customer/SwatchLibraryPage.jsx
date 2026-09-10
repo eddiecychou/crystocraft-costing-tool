@@ -5,7 +5,7 @@ import LoadingBar from '../components/LoadingBar'
 import { fetchSwatchRegistry, fetchSwatchImageUrl, loadSwatchNotes } from '../swatchLibraryApi'
 import { useCart } from './store'
 
-// Portal-facing swatch browser — Crystal_Fabric_Studio_Spec.md §5b. Same
+// Portal-facing swatch browser — docs/specs/Crystal_Fabric_Studio_Spec.md §5b. Same
 // registry the admin Swatch Library reads (src/pages/SwatchLibrary.jsx),
 // same /api/swatch-library proxy, now open to any approved customer. What's
 // different from the admin version: no note-editing (legacy refs are

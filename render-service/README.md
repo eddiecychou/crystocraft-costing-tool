@@ -4,7 +4,7 @@ Server-side Python that renders the crystal customizer preview. The browser neve
 runs this — the React portal (via a Netlify edge proxy) POSTs the customer's
 selections and gets a PNG back. Deterministic numpy/PIL, no generative AI.
 
-Design: `../Corp_Gift_Customizer_Spec.md` · Plan: `../Customizer_Build_Plan.md`
+Design: `docs/specs/Corp_Gift_Customizer_Spec.md` · Plan: `docs/plans/Customizer_Build_Plan.md`
 
 ## Layout
 ```

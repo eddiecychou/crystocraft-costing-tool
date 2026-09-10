@@ -108,7 +108,7 @@ const blankForm = (prefill = {}) => {
 
 // V8.8 Phase 1 — one-SKU AI colour-preview experiment for a single variation.
 // A separate component (not inlined in the variants .map) so useColourPreviews
-// keeps a stable hook order across variant add/remove. See Range_Colour_Preview_Spec.md.
+// keeps a stable hook order across variant add/remove. See docs/specs/Range_Colour_Preview_Spec.md.
 function VariantColourPreview({ docId, index, variant, libColors, onPromote, onAddToGallery, galleryUrls, gallery }) {
   const [target, setTarget] = useState('')
   const [busy, setBusy] = useState(false)
@@ -1011,7 +1011,7 @@ export default function RangeForm() {
         // Selectable crystal colours for this plating — not a SKU/stock dimension.
         crystal_colors: [...new Set((v.crystal_colors || []).map(c => (c || '').trim().toUpperCase()).filter(Boolean))],
         // "Usable" colour photos — invoice/quote/PI + customer colour picker only,
-        // deliberately never gallery[] (V8.8 Phase 2, see Range_Colour_Preview_Spec.md §P2.1).
+        // deliberately never gallery[] (V8.8 Phase 2, see docs/specs/Range_Colour_Preview_Spec.md §P2.1).
         // Sourced from the server fetch above, NOT local state — see comment
         // at the top of handleSave for why.
         colour_images: Object.fromEntries(

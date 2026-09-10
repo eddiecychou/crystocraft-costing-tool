@@ -1,4 +1,4 @@
-// WooCommerce → app order import — Phase 2 (WooCommerce_B2C_Sync_Spec.md §2.4a,
+// WooCommerce → app order import — Phase 2 (docs/specs/WooCommerce_B2C_Sync_Spec.md §2.4a,
 // §4). Maps one summarized WooCommerce order (from wooSyncApi.js's
 // listWooOrders) onto the SAME `orders/{id}` model every other order already
 // uses, landing it directly in the existing "awaiting invoice" list on
@@ -105,7 +105,7 @@ export function mapWooOrderToOrder(o) {
   })
 
   // Fee/net/payout — automatable per spec §3.6/§8's "Fee details" (resolved
-  // 2026-08-22, see WooCommerce_B2C_Sync_Spec.md §3): folded into notes so
+  // 2026-08-22, see docs/specs/WooCommerce_B2C_Sync_Spec.md §3): folded into notes so
   // it travels with the order onto the printed invoice's Remarks field
   // (SalesInvoicePrint.jsx) without needing a new schema field.
   //

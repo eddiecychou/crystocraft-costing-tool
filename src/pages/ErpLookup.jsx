@@ -417,7 +417,7 @@ function DetailModal({ entity, row, onClose }) {
             )
           })}
 
-          {/* The ERP has no usable bank master (see V7.15_ERP_Inventory.md), so
+          {/* The ERP has no usable bank master (see docs/erp/V7.15_ERP_Inventory.md), so
               say so rather than leaving a silent gap where banking should be. */}
           <div className="text-xs text-ink-60 bg-ivory border border-warm-grey rounded-none px-3 py-2">
             No bank / remittance details: the ERP never stored them

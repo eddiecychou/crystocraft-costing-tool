@@ -5,7 +5,7 @@ import { db, storage } from './firebase'
 import { enhanceProductImage } from './enhanceImage'
 
 // V8.8 Phase 1 — one-SKU crystal-colour preview experiment. See
-// Range_Colour_Preview_Spec.md. Reuses the existing Gemini recolor endpoint
+// docs/specs/Range_Colour_Preview_Spec.md. Reuses the existing Gemini recolor endpoint
 // (enhanceImage.js, mode 'recolor') that already ships for plating/crystal
 // touch-ups on real range-product photos — no new AI plumbing.
 //

@@ -13,7 +13,7 @@ Each entry: what it is, why it's not already fixed, and where to look.
 `customizer-render.js`, `customizer-palette.js`, and `enhance-image.js`
 proxy third-party secrets (`RENDER_TOKEN`, `GEMINI_API_KEY`) but have no
 `isAdmin()`/`requireAdmin()` check in their source — every other AI/proxy
-function in `API-REFERENCE.md` does. The secret never reaches the browser,
+function in `docs/reference/API-REFERENCE.md` does. The secret never reaches the browser,
 so the exposure is **quota/CPU abuse, not secret theft**.
 
 **Owner decision (V8.13 code review): leave them open — "not important, no
@@ -134,7 +134,7 @@ badge — the UI asserts a match that isn't real, which is the part most likely
 to mislead someone.
 
 Found during the V8.12 product-variants audit (see
-`PRODUCT-VARIANTS-PLAN.md` §4.11), not fixed there because it is unrelated to
+`docs/plans/PRODUCT-VARIANTS-PLAN.md` §4.11), not fixed there because it is unrelated to
 that feature and deserves its own decision: either set `collection: 'products'`
 for corp items and teach the consumers, or leave corp lines
 `ad_hoc`/unmatched — which is what they effectively are for packing and MRP.
@@ -194,7 +194,7 @@ the reserve/consume flow, not a quick fix:
    doc that `computeOrderIssue` layers on top of the explosion.
 2. ~~**Editable reserved quantity.**~~ **DONE — V8.15.** Inline qty edit on the
    reserved Component / Crystal / Packaging panels via `adjustReservedLine`
-   (`orderStock.js`) + `EditableQty.jsx`. See `RESERVE-QTY-EDIT-AUDIT.md`.
+   (`orderStock.js`) + `EditableQty.jsx`. See `docs/plans/RESERVE-QTY-EDIT-AUDIT.md`.
 3. **PO list — JES-duplicate check.** Flag app POs whose PU/supplier/items
    already exist in JES (`PurchaseOrders.jsx`). A "Check app POs for JES
    duplicates" link already exists — she wants it to actually surface the

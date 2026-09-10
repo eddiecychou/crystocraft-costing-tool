@@ -1,5 +1,5 @@
 // WooCommerce refund → draft Credit Note import — Phase 4
-// (WooCommerce_B2C_Sync_Spec.md). Same posture as wooImport.js's order
+// (docs/specs/WooCommerce_B2C_Sync_Spec.md). Same posture as wooImport.js's order
 // import: this creates a DRAFT `credit_notes/{id}` doc for Cindy to review
 // and post herself via the existing CreditNoteForm.jsx — it never calls
 // postCreditNote()/allocates a CN number itself. Do not modify the original

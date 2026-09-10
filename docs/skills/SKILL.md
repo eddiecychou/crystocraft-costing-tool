@@ -31,7 +31,7 @@ inventory → supply chain → accounting hand-off**, plus a customer-facing
 storefront/portal and read-only access to the legacy **JES ERP**.
 
 **Current strategic focus: retiring the legacy JES ERP.** The app is becoming
-the system of record one function at a time — see `../../JES-RETIREMENT-PLAN.md`.
+the system of record one function at a time — see `../plans/JES-RETIREMENT-PLAN.md`.
 
 One React tree (`src/App.jsx`) serves two faces from one Netlify deployment:
 - **Operation Center** — internal admin/staff shell (`AdminApp`).
@@ -80,14 +80,14 @@ wins on *facts*; skill wins on *rules and lessons*.
 |---|---|
 | `../../CLAUDE.md` | Orientation, environment quirks, JES data facts, conventions |
 | `../../PROJECT-PLAN.md` | Running cycle log, newest first; permanent incident writeups near the top |
-| `../../API-REFERENCE.md` | All edge functions — route, purpose, auth posture, caller |
-| `../../FIRESTORE-COLLECTIONS.md` | Every collection/subcollection — auth, owning file, pointer fields |
-| `../../DOMAIN-MODULES.md` | What each `src/domain/*.js` owns and its exports |
+| `../reference/API-REFERENCE.md` | All edge functions — route, purpose, auth posture, caller |
+| `../reference/FIRESTORE-COLLECTIONS.md` | Every collection/subcollection — auth, owning file, pointer fields |
+| `../reference/DOMAIN-MODULES.md` | What each `src/domain/*.js` owns and its exports |
 | `../../TECH-DEBT.md` | Known footguns / deliberate tradeoffs |
-| `../../LOCAL-TOOLS.md` | What's installed/logged-in on this Mac (Node, firebase-tools, GA4 cred, Fly) |
+| `../reference/LOCAL-TOOLS.md` | What's installed/logged-in on this Mac (Node, firebase-tools, GA4 cred, Fly) |
 | `../../qa/README.md` | Headless render + the pre-push verification checks |
-| `../../JES-RETIREMENT-PLAN.md`, `../../V7.15_ERP_Inventory.md`, `../../PBIS-IMPORT-FORMAT.md`, `../../erp-sync/ERP-SYNC-V1.0.md` | The JES-retirement track |
-| Feature specs | `Corp_Gift_Customizer_Spec.md`, `Customizer_Build_Plan.md`, `Crystal_Fabric_Studio_Spec.md`, `Customer_Brand_Gallery_Spec.md`, `WooCommerce_B2C_Sync_Spec.md`, `Range_Colour_Preview_Spec.md`, `Sun-Life-Proposal-Build-Spec.md`, `Inventory_Roadmap_V7.13_Spec.md`, `PRODUCT-VARIANTS-PLAN.md` (SHELVED) |
+| `../plans/JES-RETIREMENT-PLAN.md`, `../erp/V7.15_ERP_Inventory.md`, `../erp/PBIS-IMPORT-FORMAT.md`, `../../erp-sync/ERP-SYNC-V1.0.md` | The JES-retirement track |
+| Feature specs | `../specs/Corp_Gift_Customizer_Spec.md`, `../plans/Customizer_Build_Plan.md`, `../specs/Crystal_Fabric_Studio_Spec.md`, `../specs/Customer_Brand_Gallery_Spec.md`, `../specs/WooCommerce_B2C_Sync_Spec.md`, `../specs/Range_Colour_Preview_Spec.md`, `../specs/Sun-Life-Proposal-Build-Spec.md`, `../specs/Inventory_Roadmap_V7.13_Spec.md`, `../plans/PRODUCT-VARIANTS-PLAN.md` (SHELVED) |
 
 Persistent AI memory: `~/.claude/projects/-Users-eddie-Developer-costing-tool/memory/MEMORY.md`.
 
@@ -95,7 +95,7 @@ Persistent AI memory: `~/.claude/projects/-Users-eddie-Developer-costing-tool/me
 - `src/pages/*.jsx` — one screen each; routed in `src/App.jsx`.
 - `src/marketing/DailyDrafts.jsx`, `src/customer/*` — the marketing tab and the storefront tree.
 - `src/components/*.jsx` — shared UI (galleries, editors, PDF renderers, modals).
-- `src/domain/*.js` — Firestore business logic (map: `DOMAIN-MODULES.md`).
+- `src/domain/*.js` — Firestore business logic (map: `../reference/DOMAIN-MODULES.md`).
 - `src/*.js` — `*Api.js` = edge-function wrappers; the rest = feature helpers.
 - `src/hooks/` — `useAuthState.js`, `useProfile.js`, `useScrollMemory.js`.
 - `netlify/edge-functions/*.js` — Deno edge fns; shared helpers in `netlify/edge-functions/lib/`.
@@ -112,7 +112,7 @@ Persistent AI memory: `~/.claude/projects/-Users-eddie-Developer-costing-tool/me
 3. Version/cycle: `src/appInfo.js` (`APP_VERSION`). Bump at cycle **start**, not
    close (`LESSONS-LEARNED.md`).
 4. Before any deploy: `ARCHITECTURE-RULES.md` §Verify-&-Deploy. Before telling
-   the user to install anything: `../../LOCAL-TOOLS.md`.
+   the user to install anything: `../reference/LOCAL-TOOLS.md`.
 
 ## 5. Feature-area router
 
@@ -130,7 +130,7 @@ the fast path from a request to the exact code.
 - Pages: `Range.jsx`, `RangeForm.jsx`, `RangeCosting.jsx`, `RangeComponentForm.jsx`, `CatalogueBand.jsx`
 - Logic: `src/rangeCosting.js`, `src/rangeSku.js`, `src/newArrivals.js`, `src/frontPageFeatured.js`, `src/colourPreviewApi.js`
 - Collections: `range_products/{id}` (mirrors all `products` subpaths), `range_components/{id}` (+ `supplier_quotes`, `movements`), `range_colour_previews/{id}` (**admin-only**, keeps drafts out of the portal wildcard)
-- Spec: `Range_Colour_Preview_Spec.md`. Note: `production` has **full** figurine access incl. wholesale price + costing (owner's call, V8.12)
+- Spec: `../specs/Range_Colour_Preview_Spec.md`. Note: `production` has **full** figurine access incl. wholesale price + costing (owner's call, V8.12)
 
 ### Catalogue — product images (upload + card display)
 - Upload/gallery: `src/components/ImageGallery.jsx` → `src/imageResize.js` (`resizeToJpeg`). **Downscale only** — aspect preserved, nothing cropped to square. An `orientation` field (`square` = ratio 0.85–1.18 / `landscape` / `portrait`) is auto-detected; only consumer is `BlogGenerator.jsx`. Manual crop: `ManualAdjust.jsx` / `src/imageCrop.js`.
@@ -161,19 +161,19 @@ the fast path from a request to the exact code.
 ### Inventory & stock ledger
 - Pages: `InventoryStatus.jsx`, `WooStockReconcile.jsx` (`/woo-stock`, admin — Woo catalogue vs Finished Goods) · Components: `InventoryStockTab.jsx`, `StockEditor.jsx`, `StockLedger.jsx`, `ManualAdjust.jsx`, `PoReceiveStock.jsx`, `OrderStockIssue.jsx`, `OrderInventoryIssue.jsx`
 - Logic: `src/stockLedger.js`, `src/orderStock.js`, `src/orderStockStatus.js`, `src/inventoryClass.js`, `src/b2cStock.js`, `src/b2cImport.js`, `src/wooCache.js`
-- Collections: `crystals`, `packaging`, `b2c_stock`, `range_components` — each with an **append-only `movements/{id}` ledger** (never mutate a balance; write a movement). Spec: `Inventory_Roadmap_V7.13_Spec.md`. JES stock is stale except crystals.
+- Collections: `crystals`, `packaging`, `b2c_stock`, `range_components` — each with an **append-only `movements/{id}` ledger** (never mutate a balance; write a movement). Spec: `../specs/Inventory_Roadmap_V7.13_Spec.md`. JES stock is stale except crystals.
 - **Woo ↔ Finished Goods reconciliation** (Spec Phase 6, 2026-09-02): `b2c_stock` gets an optional one-time manual map to WooCommerce (`woo_sku`/`woo_product_id`/`woo_variation_id`, written by `setWooLink`). Match = manual link first, then exact normalised SKU. Most B2C products are Woo **variable products** with often-blank variation SKUs, so most rows link by hand. Read-only against Woo; FG→Woo push is a later phase (open owner decision).
 
 ### Client quotes
 - Pages: `Quotes.jsx`, `QuoteDetail.jsx`, `QuoteForm.jsx`, `RangeQuoteForm.jsx` · Components: `QuotePDF.jsx`, `QuoteExport.jsx`, `LineImagePicker.jsx`
 - Logic: `src/quotes.js`, `src/domain/customer.js` (owns `client_quotes`) · Edge fns: `process-quote`
-- Collections: `client_quotes/{id}` (+ `items`) — **admin-only, hard wall**. Quote items **snapshot** product data (margin column + per-customer pricing depend on the snapshot — `PRODUCT-VARIANTS-PLAN.md` §4).
+- Collections: `client_quotes/{id}` (+ `items`) — **admin-only, hard wall**. Quote items **snapshot** product data (margin column + per-customer pricing depend on the snapshot — `../plans/PRODUCT-VARIANTS-PLAN.md` §4).
 
 ### Shipments / Proforma Invoice / packing / UC registry
 - Pages: `ShipmentForm.jsx`, `Shipments.jsx`, `Shipping.jsx`, `ProformaInvoicePrint.jsx`, `PackingListEditor.jsx`, `PackingListPrint.jsx`, `UcRegistry.jsx`
 - Logic: `src/shipping.js` (`normLine` — **strict whitelist**), `src/packing.js`, `src/mrp.js`, `src/ucRegistry.js`, `src/soNumber.js`, `src/pdfFilename.js` · Edge fns: `extract-pi`, `uc`
 - Component reserve panel (`OrderStockIssue.jsx` → `orderStock.js` → `mrp.computeRequirements`): a figurine line explodes via its Range BOM; a line whose `item_code` is itself a `range_components` code reserves that component 1:1 × qty (V8.15, **L-19**). A figurine line with no Range match / no BOM is a visible gap, never a silent drop.
-- A reserved (pre-production-in) line's qty is editable inline on all three panels (Component / Crystal / Packaging) — `adjustReservedLine` (`orderStock.js`) posts the reserve/release delta and rewrites the stored line; `EditableQty.jsx` is the cell (V8.15, `RESERVE-QTY-EDIT-AUDIT.md`).
+- A reserved (pre-production-in) line's qty is editable inline on all three panels (Component / Crystal / Packaging) — `adjustReservedLine` (`orderStock.js`) posts the reserve/release delta and rewrites the stored line; `EditableQty.jsx` is the cell (V8.15, `../plans/RESERVE-QTY-EDIT-AUDIT.md`).
 - Collections: `orders/{id}`, `packing_lists/{id}`, `uc_invoices/{id}`, `counters/uc_<yy>`+`so_<yy>`. An invoice needs a **UC number, not an SO**; "PI"=JES **SO**, "invoice"=**SI** (`CLAUDE.md`). Known bug: corp-gift lines tagged `range_products` on Convert-to-PI (`TECH-DEBT.md`).
 
 ### Sales invoices & credit notes
@@ -186,7 +186,7 @@ the fast path from a request to the exact code.
 - Components: `CustomerBrandGallery.jsx`, `ProposalEditor.jsx` (both rendered by `CustomerBrand.jsx`), `BrandProposalPDF.jsx`, `ContactPicker.jsx`
 - Logic: `src/domain/customer.js` (biggest module), `src/domain/interactionLog.js`, `src/customerAssets.js`, `src/customerProposal.js`, `src/sensitiveImages.js`
 - Edge fns: `compose-message`, `refresh-email-summary`, `discuss-customer-email`, `route-email-question`, `compose-email-answer`, `customer-order-history`
-- Collections: `customers/{id}` (+ `enquiries`=Interaction Log, `email_threads`, `whatsapp_threads`, `alibaba_threads`, `assets`, `proposal/current`) — **admin-only**. Spec: `Customer_Brand_Gallery_Spec.md`.
+- Collections: `customers/{id}` (+ `enquiries`=Interaction Log, `email_threads`, `whatsapp_threads`, `alibaba_threads`, `assets`, `proposal/current`) — **admin-only**. Spec: `../specs/Customer_Brand_Gallery_Spec.md`.
 
 ### CRM — Marketing contacts, campaigns, Daily Drafts → see `MARKETING-WORKFLOW.md`
 - Pages: `Marketing.jsx` (tabs), `src/marketing/DailyDrafts.jsx`, `MarketingContacts.jsx`, `MarketingContactDetail.jsx`, `Campaigns.jsx`, `BlogGenerator.jsx`
@@ -224,7 +224,7 @@ the fast path from a request to the exact code.
   `canAccess`), `firestore.rules` + `storage.rules` (`can(m)` / `moduleList()`),
   `netlify/edge-functions/lib/auth.js` (`requireModule(req, key)` — `key` may be a
   string or array/any-match; `erp.js` checks `erp` for the full surface, `bank.js`
-  checks `invoices`). Per-fn key table in `../../API-REFERENCE.md`; when retagging
+  checks `invoices`). Per-fn key table in `../reference/API-REFERENCE.md`; when retagging
   a fn, match the caller's route `<Gate module>`, not the old role.
 - UI: `src/components/Layout.jsx`, `src/App.jsx` (`<Gate module>`),
   `src/pages/ProductionDashboard.jsx` (fallback dashboard), `src/pages/AccountEdit.jsx`
@@ -260,7 +260,7 @@ the fast path from a request to the exact code.
 ### Customizer / Crystal Fabric Studio / swatches → see `MARKETING-WORKFLOW.md` §Artgen
 - Pages: `SwatchLibrary.jsx`, `FrontPageConfig.jsx`, `FrontPageProductPicker.jsx`
 - Logic: `src/customizerApi.js`, `src/customizerEngines.js`, `src/swatchLibraryApi.js` · Edge fns: `customizer-render`, `customizer-palette` (both **no auth check** — `TECH-DEBT.md`)
-- Render service: `render-service/` (Fly.io, PROTOTYPE). Specs: `Corp_Gift_Customizer_Spec.md`, `Customizer_Build_Plan.md`, `Crystal_Fabric_Studio_Spec.md`.
+- Render service: `render-service/` (Fly.io, PROTOTYPE). Specs: `../specs/Corp_Gift_Customizer_Spec.md`, `../plans/Customizer_Build_Plan.md`, `../specs/Crystal_Fabric_Studio_Spec.md`.
 
 ### ERP lookup (legacy JES, read-only)
 - Pages: `ErpLookup.jsx`, `SchemaAudit.jsx`, `ComponentCodeAudit.jsx`, `BankDetailsAudit.jsx` · Components: `ErpDocModal.jsx`, `ErpProductImport.jsx`
@@ -271,7 +271,7 @@ the fast path from a request to the exact code.
 
 ### WooCommerce B2C sync → see `ARCHITECTURE-RULES.md` §Woo-to-invoice
 - Pages: `WooCommerceSync.jsx`, `WooStockReconcile.jsx` (Woo ↔ `b2c_stock` **stock-qty** reconcile w/ manual link), `WooCatalogue.jsx` (`/woo-catalogue` — tabs: Catalogue · **In catalogue** (Woo SKU stem ↔ `range_products`/`products`/`b2c_stock`) · SEO checklist (Yoast v28.4) · Translations (WPML, 6 langs, inline `lang`/`translations`/`yoast_head_json` on `wc/v3/products`) · Diagnostics) · Logic: `src/wooSyncApi.js`, `src/wooImport.js`, `src/wooRefundImport.js`, `src/wooCustomerSync.js`, `src/wooCache.js` · Edge fns: `woo-sync` (read-only: orders/refunds Phase 1, `products_page` Phase 6, `catalogue_page` + `probe_i18n_seo` 2026-09-02)
-- Spec: `WooCommerce_B2C_Sync_Spec.md`. Pointer: `customers.woo_customer_id`. Shared shop customer: `online-crystocraft-o07`.
+- Spec: `../specs/WooCommerce_B2C_Sync_Spec.md`. Pointer: `customers.woo_customer_id`. Shared shop customer: `online-crystocraft-o07`.
 - **`woo_cache/{doc}`** (admin-only, pure cache): `orders`, `product_catalogue`, `customer_scan`, `catalogue_overview` (+ chunk docs) each hold the last pull so the pages restore on open instead of re-hitting WooCommerce; the fetch/scan button refreshes. Size-guarded at ~900 KB. Nothing downstream reads it — safe to wipe.
 
 ### SEO control plane (OC ⟷ DeepSeek Workbench) → `docs/skills/SEO-CONTROL-PLANE.md`
@@ -285,7 +285,7 @@ the fast path from a request to the exact code.
 - Bank: `BankAccounts.jsx`, `BankDetailsAudit.jsx`, `src/bankAccounts.js`, `bank` fn.
 - Logistics: `Logistics.jsx`, `LogisticsVendorForm.jsx`, `FreightComparison.jsx`, `src/logistics.js` → `logistics_vendors`, `freight_quotes`, `freight_rfqs` (admin-only).
 - Catalogues (printed PDF): `Catalogues.jsx`, `CatalogueForm.jsx`, `CatalogueDetail.jsx`, `CataloguePreview.jsx`, `RangeCataloguePDF.jsx` → `catalogues/{id}` (admin-only). Render check: `qa/render-catalogue.jsx`.
-- Settings/tools: `Settings.jsx`, `ImportData.jsx`, `ImportImages.jsx`, `TagManager.jsx`, `PricingTiers.jsx`, `Dashboard.jsx`. Edge fns: `fx-rates` (**never for the books**), `download-image`, `image-proxy`. `settings/{docId}` auth is mixed (`FIRESTORE-COLLECTIONS.md`).
+- Settings/tools: `Settings.jsx`, `ImportData.jsx`, `ImportImages.jsx`, `TagManager.jsx`, `PricingTiers.jsx`, `Dashboard.jsx`. Edge fns: `fx-rates` (**never for the books**), `download-image`, `image-proxy`. `settings/{docId}` auth is mixed (`../reference/FIRESTORE-COLLECTIONS.md`).
 
 ## 6. Keeping this current
 
@@ -300,5 +300,5 @@ authoritative detail stays in the doc it points to. Update the Change Log below.
 | 2026-08-31 | Skill system created and the root `INDEX.md` merged into it — SKILL.md absorbs the feature-area router + session start; cross-cutting/verify/deploy → `ARCHITECTURE-RULES.md`; mistakes → `LESSONS-LEARNED.md`. Grounded in codebase as of V8.12. |
 | 2026-09-02 | V8.14 — added §5 feature areas: **SEO control plane** (`/seo-state` · `/seo-review` · `/seo-reconcile`, `seo-state` edge fn, `seo-batch` Node fn, `seo_state`/`seo_state_history`/`seo_batches`, vendored `seo-control-plane/`) and extended **WooCommerce B2C** (Woo Catalogue + Yoast/WPML, `woo_cache` chunked). New docs `SEO-CONTROL-PLANE.md`, `MARKETING-WORKFLOW.md` §6.6. |
 | 2026-09-03 | V8.14 — **RBAC** entry rewritten for the flat `admin \| staff \| customer` + `modules[]` model (shim removed); new **i18n** entry (partial Simplified-Chinese supply/inventory UI: `src/i18n/`, `users/{uid}.ui_lang`, `scripts/i18n-translate.mjs`, per-print PO language toggle). See `PROJECT-PLAN.md` V8.14. |
-| 2026-09-03 | V8.14 code-review follow-up — edge-fn module keys corrected (AI/OCR-assist fns were mis-keyed to `quotes`; `erp.js`/`bank.js` per-entity tiers removed); `requireModule` now string-or-array. `API-REFERENCE.md` auth column + `ARCHITECTURE-RULES.md` §2 / `TECH-DEBT.md` updated. |
+| 2026-09-03 | V8.14 code-review follow-up — edge-fn module keys corrected (AI/OCR-assist fns were mis-keyed to `quotes`; `erp.js`/`bank.js` per-entity tiers removed); `requireModule` now string-or-array. `../reference/API-REFERENCE.md` auth column + `ARCHITECTURE-RULES.md` §2 / `TECH-DEBT.md` updated. |
 | 2026-09-04 | **V8.14 CLOSED.** §5 CRM: new `CustomerBrand.jsx` page (`/customers/:id/brand`) — Brand Gallery + Proposal moved off `CustomerDetail`, which shows `BrandProposalCard`. §5 ERP: new `item_history` entity / `erp_item_sales_history` view + `PriceSummary`. `MARKETING-WORKFLOW.md` §4a: `enhance-image` `PROMPT_VERSION` + `ai_enhance` provenance + two prompt-writing rules. `LESSONS-LEARNED.md` L-15/16/17. `PROJECT-PLAN.md` "Current Status — V8.14 CLOSED" + "Where V8.15 starts". |

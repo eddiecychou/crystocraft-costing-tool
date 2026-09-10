@@ -234,4 +234,4 @@ Manual test matrix (needs a real shipment in `reserved` stage):
 | `src/components/OrderStockIssue.jsx` | inline qty edit in the `reserved` table (`LinesTable`), + show `available` |
 | `src/components/OrderInventoryIssue.jsx` | inline qty edit in the `reserved` table |
 | `firestore.rules` | **no change** (`can('supply')` + `can('shipping')` already held) |
-| `FIRESTORE-COLLECTIONS.md` | note `*_lines[].adj_seq` once built |
+| `../reference/FIRESTORE-COLLECTIONS.md` | note `*_lines[].adj_seq` once built |

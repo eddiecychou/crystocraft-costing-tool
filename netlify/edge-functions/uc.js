@@ -195,7 +195,7 @@ export default async function handler(req) {
       accounting_total: accountingTotal,
       adjustment,
       adjustment_reason: adjustmentReason,
-      // WooCommerce B2C sync (WooCommerce_B2C_Sync_Spec.md Phase 3) — cross-
+      // WooCommerce B2C sync (docs/specs/WooCommerce_B2C_Sync_Spec.md Phase 3) — cross-
       // reference only, never used as a key; si_no stays in the app's own
       // series regardless of channel (see app_sales_invoice.sql's header).
       channel: body.channel ? String(body.channel).slice(0, 40) : null,

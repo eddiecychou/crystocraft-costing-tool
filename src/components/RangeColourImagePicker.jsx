@@ -25,7 +25,7 @@ function downloadColourImage(url, baseName) {
 // used from both LineImagePicker.jsx (Shipment/Proforma/Sales Invoice) and
 // QuoteDetail.jsx's ProductImagePicker. Deliberately reads only
 // variant.colour_images ("usable" tier), never gallery[] — see
-// Range_Colour_Preview_Spec.md §P2.1 for why the two must stay separate.
+// docs/specs/Range_Colour_Preview_Spec.md §P2.1 for why the two must stay separate.
 //
 // itemCode (the line's own raw SKU, e.g. "D0002-001-GPI") is parsed
 // best-effort to pre-select which variant/colour this line is actually for.

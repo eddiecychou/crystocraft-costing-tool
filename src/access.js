@@ -15,7 +15,7 @@ import { createContext, useContext } from 'react'
 // one (e.g. /products, /products/:id, /products/:id/edit are all 'products').
 // Tag each nav entry and each gated route with its key; access is decided
 // here and nowhere else. The Firestore rules mirror these keys with a
-// `can('<key>')` check — see RBAC-FLEX-PLAN.md §4.
+// `can('<key>')` check — see docs/plans/RBAC-FLEX-PLAN.md §4.
 
 // The full catalogue of module keys, grouped for the AccountEdit checklist.
 // `sensitive: true` = grants sight of costs / margins / all-customer data /

@@ -5,7 +5,7 @@ import { db } from './firebase'
 // 4-digit sequence) — same shape and same reasoning as soNumber.js's SO
 // allocator, written after it. Unlike SO's rollout, there is no ongoing
 // collision risk to manage here: JES was fully frozen 2026-08-05 (no more
-// entry by CuiLing/Cindy/XiangXia — see JES-RETIREMENT-PLAN.md §0), so this
+// entry by CuiLing/Cindy/XiangXia — see docs/plans/JES-RETIREMENT-PLAN.md §0), so this
 // is the sole source of new PU numbers from the day it ships, not a handoff
 // mid-year.
 //

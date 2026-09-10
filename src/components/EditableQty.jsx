@@ -7,7 +7,7 @@ const fmt = n => (Number.isFinite(Number(n)) ? Number(n).toLocaleString() : '0')
 // pencil is clicked; Enter / ✓ commits, Esc / ✗ cancels. Only fires `onSave`
 // for a positive integer that actually changed. Used by the Component and
 // Crystal/Packaging order-stock cards to adjust a reservation before
-// production-in (XiangXia ask #2 — see RESERVE-QTY-EDIT-AUDIT.md).
+// production-in (XiangXia ask #2 — see docs/plans/RESERVE-QTY-EDIT-AUDIT.md).
 export default function EditableQty({ value, onSave, busy }) {
   const current = Math.abs(Number(value) || 0)
   const [editing, setEditing] = useState(false)

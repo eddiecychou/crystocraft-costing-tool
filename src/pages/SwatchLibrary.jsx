@@ -4,7 +4,7 @@ import LoadingBar from '../components/LoadingBar'
 import { fetchSwatchRegistry, fetchSwatchImageUrl, loadSwatchNotes, saveSwatchNotes } from '../swatchLibraryApi'
 
 // Admin-facing browser over the render service's photographed swatch
-// registry — see Crystal_Fabric_Studio_Spec.md §5a. Built for a sales rep
+// registry — see docs/specs/Crystal_Fabric_Studio_Spec.md §5a. Built for a sales rep
 // to pull up mid-call, not for public/portal use. Reads the SAME registry
 // admin.html's photo-capture tool writes (via /api/swatch-library, proxying
 // GET /swatches on the Fly service) — no separate Firestore copy of the

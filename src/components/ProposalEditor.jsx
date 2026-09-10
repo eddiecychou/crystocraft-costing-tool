@@ -14,7 +14,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Trash2, Plus, X, Presentation, Search, ImageOff, Upload, Download, FileJson, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import { buildBrandProposalPdf } from '../brandProposalExport'
 
-// Admin editor for the customer proposal doc (Sun-Life-Proposal-Build-Spec.md
+// Admin editor for the customer proposal doc (docs/specs/Sun-Life-Proposal-Build-Spec.md
 // §6). Writes go through src/customerProposal.js only — this component never
 // touches Firestore directly, and never writes asset/product docs, only the
 // proposal doc's references to them (spec §3.3 — no denormalised file_url).

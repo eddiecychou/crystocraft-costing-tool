@@ -5,7 +5,7 @@ import {
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage, auth } from './firebase'
 
-// Customer Brand Gallery data layer — see Customer_Brand_Gallery_Spec.md.
+// Customer Brand Gallery data layer — see docs/specs/Customer_Brand_Gallery_Spec.md.
 //
 // Assets live in a NESTED subcollection `customers/{customerId}/assets` (not a
 // top-level collection), so a logged-in portal user reads exactly their own

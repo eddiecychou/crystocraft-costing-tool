@@ -33,7 +33,7 @@ function AssetThumb({ asset, className = '' }) {
   return <img src={asset.file_url} alt={asset.title || asset.filename} className={className} />
 }
 
-// Brand Gallery section on Customer Detail (Customer_Brand_Gallery_Spec.md §5.1).
+// Brand Gallery section on Customer Detail (docs/specs/Customer_Brand_Gallery_Spec.md §5.1).
 // Admin-only surface: upload a customer's assets, set visibility + marketing
 // consent, edit, delete. The privacy guarantee itself is the Firestore rule
 // (spec §6); this is the curation UI behind it.

@@ -1,6 +1,6 @@
 # Retiring JES — the plan
 
-Companion to `V7.15_ERP_Inventory.md` (what the ERP contains) and
+Companion to `../erp/V7.15_ERP_Inventory.md` (what the ERP contains) and
 `PROJECT-PLAN.md` (what the app does). This is the route from here to
 switching the old system off.
 
@@ -118,7 +118,7 @@ purchase orders move together. **Invoices split off and go last.**
 
 The reason invoices went last was that an app-generated invoice must reproduce
 the JES→PBIS import file, and that file had never been seen. **Cindy supplied it
-the same day** — see `PBIS-IMPORT-FORMAT.md`. It is header-level only, and the
+the same day** — see `../erp/PBIS-IMPORT-FORMAT.md`. It is header-level only, and the
 app's data validates 32/32 against it. Invoices stay last (the books are the one
 downstream consumer that must not break), but they are no longer *blocked*.
 
@@ -151,7 +151,7 @@ reproduce the JES→PBIS import file.
 > reproduce JES's line structure, surcharge tables or tax field. Validated
 > 32/32 against `uc_registry` on UC number, currency and total. Full column
 > contract and the four remaining questions for Cindy in
-> **`PBIS-IMPORT-FORMAT.md`**. This step can now be scoped rather than deferred.
+> **`../erp/PBIS-IMPORT-FORMAT.md`**. This step can now be scoped rather than deferred.
 
 ### Step 9 — Switch off
 Read-only for a period in case something surfaces, then decommission. The
@@ -453,7 +453,7 @@ Resist committing to a date before the screens have been seen.
 
 1. **Screen snapshots** — the whole plan's shape depends on them.
 2. ~~**The JES→PBIS import file** — blocks invoicing.~~ **Received 2026-07-19.**
-   Four follow-up questions for Cindy in `PBIS-IMPORT-FORMAT.md` (the `type`
+   Four follow-up questions for Cindy in `../erp/PBIS-IMPORT-FORMAT.md` (the `type`
    codes, who maintains the exchange rates, discount/charge semantics, and
    whether the name column is read on import).
 3. **A decision on the item master** (step 6) when we get there.

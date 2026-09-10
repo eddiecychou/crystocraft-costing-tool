@@ -1194,7 +1194,7 @@ export default function ShipmentForm() {
                           LineImagePicker now sources figurine lines from
                           variant.colour_images, a "usable" tier that's
                           reviewed per colour before it's ever offered here —
-                          see Range_Colour_Preview_Spec.md §P2.0/§P2.3a.
+                          see docs/specs/Range_Colour_Preview_Spec.md §P2.0/§P2.3a.
                           Charge lines still have nothing to show. */}
                       {(l.line_type === 'corp_gift' || l.line_type === 'ad_hoc' || l.line_type === 'range') ? (
                         <button type="button" onClick={() => setImgPickerLine(i)}

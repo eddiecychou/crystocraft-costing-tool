@@ -2,7 +2,7 @@
 //
 // The ERP knows what is physically in a product (31,154 of 31,494 finished
 // goods have a BOM); the app knows what things cost (the ERP's cost columns are
-// empty — see V7.15_ERP_Inventory.md §4c). So the ERP can answer the one
+// empty — see docs/erp/V7.15_ERP_Inventory.md §4c). So the ERP can answer the one
 // question a costing can't ask itself: is anything in this product not being
 // costed at all?
 //

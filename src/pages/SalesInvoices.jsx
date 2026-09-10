@@ -44,7 +44,7 @@ const AWAITING_PREVIEW = 5
 // Historical invoices are READ from the ERP mirror, never imported. Copying
 // 5,455 JES invoices into Firestore would duplicate the system of record and
 // invite the two to drift; the mirror is already the archive (see
-// JES-RETIREMENT-PLAN.md §9 — "the Supabase archive remains as history").
+// docs/plans/JES-RETIREMENT-PLAN.md §9 — "the Supabase archive remains as history").
 // So JES rows are visible and searchable here but not editable, and they carry
 // no Print action: the app cannot reissue a document JES produced.
 function useErpInvoices(search) {
@@ -258,7 +258,7 @@ export default function SalesInvoices() {
     INVOICE_COLUMNS, exportable,
   )
 
-  // WooCommerce accounting export — Phase 5 (WooCommerce_B2C_Sync_Spec.md
+  // WooCommerce accounting export — Phase 5 (docs/specs/WooCommerce_B2C_Sync_Spec.md
   // §8). A DIFFERENT column set from INVOICE_COLUMNS above: this is the
   // specific list Cindy asked for, in her own naming, for the accountant —
   // not the general invoice register. Only app rows can have a channel at

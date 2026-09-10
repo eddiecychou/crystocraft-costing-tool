@@ -24,7 +24,7 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
   // colour photos (V8.8 Phase 2 §P2.3a). This used to be impossible: range
   // lines had no image at all, deliberately, because there was no way to
   // guarantee the photo matched the ordered plating × crystal colour. See
-  // Range_Colour_Preview_Spec.md §P2.0. Skips the generic browse-all-
+  // docs/specs/Range_Colour_Preview_Spec.md §P2.0. Skips the generic browse-all-
   // corp-gift-products flow below entirely.
   const isRangeProduct = matchedProductRef?.collection === 'range_products'
   const [products, setProducts] = useState([])

@@ -97,7 +97,7 @@ export default function FigurineDetail({ profile }) {
   // V8.8 Phase 2 §P2.3a — when the customer has picked a crystal colour AND
   // this variant has a "usable" photo for that exact colour, show it instead
   // of the plating's generic photo. Deliberately reads colour_images, never
-  // gallery[] (see Range_Colour_Preview_Spec.md §P2.1) — and deliberately
+  // gallery[] (see docs/specs/Range_Colour_Preview_Spec.md §P2.1) — and deliberately
   // gated by the SAME crystal_colors[] list finishColors/needsColor already
   // use below, so removing a colour from that admin-curated list hides its
   // photo here too, with no separate customer-visibility flag needed.

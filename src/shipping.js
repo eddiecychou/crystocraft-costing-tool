@@ -120,7 +120,7 @@ const LINES  = orderId => collection(db, 'orders', orderId, 'lines')
 // (the retail "Direct Invoice" flow), 'duplicated' (Shipping.jsx's Duplicate
 // order), 'in_app_quote' (reserved — quote-to-order conversion doesn't exist
 // yet; no code writes this today, kept for when it does), 'woocommerce' (the
-// B2C sync's importer — WooCommerce_B2C_Sync_Spec.md Phase 2). Anything else
+// B2C sync's importer — docs/specs/WooCommerce_B2C_Sync_Spec.md Phase 2). Anything else
 // (blank/unrecognised, e.g. a pre-2026-08-17 order — see bug-fix pack B-02)
 // falls back to 'imported_pi', which was every order's value before this list
 // existed, so old records keep reading exactly as they did.
@@ -243,7 +243,7 @@ export const normOrder = o => ({
   total_amount:    numOrNull(o.total_amount),
   pi_subtotal:     numOrNull(o.pi_subtotal),
   pi_total:        numOrNull(o.pi_total),
-  // WooCommerce B2C sync (WooCommerce_B2C_Sync_Spec.md §2.1/§2.3). woo_order_id
+  // WooCommerce B2C sync (docs/specs/WooCommerce_B2C_Sync_Spec.md §2.1/§2.3). woo_order_id
   // is also encoded into the doc's own Firestore ID (see wooImport.js's
   // wooOrderDocId) so a re-import can never create a duplicate order even
   // under a race — but it's kept here too since a doc ID isn't queryable as a
@@ -255,7 +255,7 @@ export const normOrder = o => ({
   woo_order_id: numOrNull(o.woo_order_id),
   woo_order_no: str(o.woo_order_no),
   // Structured fee/payout figures for the Phase 5 accounting export
-  // (WooCommerce_B2C_Sync_Spec.md §8). Originally these only existed folded
+  // (docs/specs/WooCommerce_B2C_Sync_Spec.md §8). Originally these only existed folded
   // into a human-readable line in `notes` (for the printed invoice's
   // Remarks) — that's fine to read, but useless to EXPORT as its own column,
   // which is exactly what §8 needs. Both now co-exist: notes keeps the
@@ -334,7 +334,7 @@ export function createOrderWithLines(orderData, lines) {
 // Same as createOrderWithLines, but the order lands at a CALLER-CHOSEN doc
 // ID rather than an auto-generated one, and refuses to create a second order
 // there if one already exists. This is the actual idempotency mechanism for
-// the WooCommerce importer (WooCommerce_B2C_Sync_Spec.md §2.3/§2.4): the doc
+// the WooCommerce importer (docs/specs/WooCommerce_B2C_Sync_Spec.md §2.3/§2.4): the doc
 // ID is derived from the WooCommerce order id (wooOrderDocId in wooImport.js),
 // so re-running an import for an order already brought in is a no-op instead
 // of a duplicate order — the check-then-create happens inside one

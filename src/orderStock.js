@@ -9,7 +9,7 @@ import { postMovement } from './stockLedger'
 // production actually draws the parts. We reuse the MRP explosion so the issued
 // quantities are IDENTICAL to what the Component Requirements report says the
 // order needs (plating-aware, shared parts counted once). See
-// Inventory_Roadmap_V7.13_Spec.md — deduction timing = manual issue.
+// docs/specs/Inventory_Roadmap_V7.13_Spec.md — deduction timing = manual issue.
 //
 // State lives on the order doc:
 //   components_issued     : bool
@@ -140,7 +140,7 @@ function summariseGaps(gaps) {
 }
 
 // Adjust ONE already-reserved line to a new absolute qty, before production-in
-// (XiangXia ask #2 — see RESERVE-QTY-EDIT-AUDIT.md). Posts the delta as a
+// (XiangXia ask #2 — see docs/plans/RESERVE-QTY-EDIT-AUDIT.md). Posts the delta as a
 // `reserve` (increase) or `release` (decrease) movement on that item's ledger,
 // then rewrites the stored line's qty — the number produceForOrder /
 // releaseForOrder already trust. Class-agnostic: works for metal, crystals and

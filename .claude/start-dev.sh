@@ -24,5 +24,5 @@ fi
 # call 404'd here (discovered 2026-08-26 chasing a "WooCommerce sync failed
 # (404)" that turned out to be this, not a real bug). --offline skips the
 # Netlify-account env-var pull, which fails without a CLI login (see
-# LOCAL-TOOLS.md) — .env.local's vars are injected either way.
+# docs/reference/LOCAL-TOOLS.md) — .env.local's vars are injected either way.
 exec npx netlify-cli dev --offline --port "${PORT:-5179}"

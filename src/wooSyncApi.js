@@ -1,5 +1,5 @@
 // Client for the WooCommerce sync edge function (Phase 1, read-only — see
-// WooCommerce_B2C_Sync_Spec.md). Same shape as erpApi.js: the browser sends
+// docs/specs/WooCommerce_B2C_Sync_Spec.md). Same shape as erpApi.js: the browser sends
 // the signed-in admin's Firebase token, the edge function holds the
 // WooCommerce Consumer Key/Secret and does the actual fetch.
 import { authedUser } from './firebase'

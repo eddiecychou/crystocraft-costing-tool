@@ -17,7 +17,7 @@ const fmtWhen = (d) => {
 }
 
 // WooCommerce ↔ Finished-Goods stock reconciliation (Phase 6 of
-// WooCommerce_B2C_Sync_Spec.md). READ-ONLY against WooCommerce — the only
+// docs/specs/WooCommerce_B2C_Sync_Spec.md). READ-ONLY against WooCommerce — the only
 // write this page makes is the one-time manual SKU mapping onto the
 // b2c_stock doc (b2cStock.js setWooLink). It does NOT push stock in either
 // direction; that is a later phase, blocked until this mapping exists.

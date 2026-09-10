@@ -1,7 +1,7 @@
 # Customizer — Build Plan (for review, no app code yet)
 
 Implementation plan for the customer-facing crystal customizer. Design rationale
-is in `Corp_Gift_Customizer_Spec.md`; this doc is the **how/where to build it**.
+is in `../specs/Corp_Gift_Customizer_Spec.md`; this doc is the **how/where to build it**.
 
 **Decisions locked (owner):**
 - Render engine runs **server-side in Python on Fly.io** (reuse the validated

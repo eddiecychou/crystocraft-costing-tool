@@ -15,7 +15,7 @@ import logoUrl from '../assets/logo.png'
 // Proforma Invoice so a customer sees one document family; what differs is the
 // title, the number shown, and that this one is the demand for payment.
 //
-// The PBIS export (see PBIS-IMPORT-FORMAT.md) reads the same three facts this
+// The PBIS export (see docs/erp/PBIS-IMPORT-FORMAT.md) reads the same three facts this
 // prints — invoice number, date, total — so what a customer receives and what
 // reaches the books cannot drift apart.
 

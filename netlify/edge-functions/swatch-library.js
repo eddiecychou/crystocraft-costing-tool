@@ -1,6 +1,6 @@
 // Proxy from the browser to the Fly.io render service's swatch-registry
 // endpoints (/swatches, /swatches/image/{filename}) — see
-// Crystal_Fabric_Studio_Spec.md §5a/§5b. Those routes are gated on the Fly
+// docs/specs/Crystal_Fabric_Studio_Spec.md §5a/§5b. Those routes are gated on the Fly
 // side by a signed `admin_session` cookie (ADMIN_PASSWORD, app.py's
 // require_admin/_session_valid) — HTTP Basic auth was removed there on
 // 2026-08-11 (browsers cache Basic credentials per-origin with no way to
