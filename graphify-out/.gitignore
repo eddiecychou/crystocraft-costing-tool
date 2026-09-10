@@ -1,0 +1,3 @@
+# Transient Graphify build artifacts — not part of the committed knowledge graph.
+cache/
+20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]/

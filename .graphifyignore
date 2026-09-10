@@ -1,0 +1,25 @@
+# Graphify index scope. .gitignore is already respected (node_modules, dist,
+# .venv, *.xlsx/pdf, LocalWeb/, etc. are excluded via that). This file trims
+# tracked-but-not-useful-for-a-code-graph noise so semantic extraction spends
+# its LLM calls on code and docs.
+
+# Binary media (tracked under src/assets, public/, docs/, qa/)
+**/*.gif
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.webp
+**/*.svg
+**/*.ico
+**/*.ttf
+**/*.woff
+**/*.woff2
+
+# Generated / vendored
+package-lock.json
+**/*.min.js
+**/*.min.css
+
+# Data dumps, not source
+**/*.csv
+**/*.tsv
