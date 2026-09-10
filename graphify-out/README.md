@@ -13,7 +13,18 @@ agents and teammates. Built with [`graphifyy`](https://pypi.org/project/graphify
 | `.graphify_analysis.json`, `.graphify_labels.json` | community analysis + names — needed by `query` / `explain` / `path`. |
 | `manifest.json` | per-file extraction manifest; lets `graphify update` do incremental re-extraction. |
 | `vendor/vis-network.min.js` | vendored so `graph.html` works offline / in restricted viewers (see below). |
+| `merged-graph.json` | this repo + the Crystocraft Expense Tool, unioned. Each node carries `repo: "costing-tool" \| "Expense Tool V1"`; ids are namespaced `<repo>::`. **No cross-repo edges** — the two apps talk over HTTP (`sync-operation-center.js` → `/api/finance-po-sync`), not by shared symbols. |
+| `merged-graph.html` | node-level viewer for `merged-graph.json` with a **Repository toggle** — uncheck either repo to see the other codebase alone. graphify's own `export html` collapses >5000 nodes to a community blob, so this is a hand-rolled viewer (`scripts/build-merged-html.py`). |
 | `cache/`, `YYYY-MM-DD/` | transient build cache + backups — gitignored. |
+
+## Rebuilding the merged graph
+
+```sh
+graphify update .                                    # refresh this repo's graph.json
+(cd "$EXPENSE_TOOL" && graphify update .)            # refresh the Expense Tool's
+scripts/graphify-merge.sh                            # union + regenerate merged-graph.{json,html}
+```
+`EXPENSE_TOOL` defaults to `~/Documents/Coding/Crystocraft/Accounting/Expense Tool V1`.
 
 ## Viewing `graph.html`
 
