@@ -105,6 +105,53 @@ same relationship depending on how quick the reply is.
 - "Thanks for your message" / "Thanks for your patience" are the standard
   acknowledgement openers for a reply that took a while.
 
+### 4a. Genuine crisis / complaint / bad-news register (targeted search)
+
+A separate pass specifically hunted for angry-customer and complaint
+language across all 375 customers' threads (not just Eddie's outbound
+messages) to check whether the calm, factual tone above holds up under real
+pressure. It does — three real examples:
+
+- **Fraud alert (someone impersonating the company to steal a payment)** —
+  the most urgent register found. Apology is one plain clause, then
+  straight into the protective warning, no corporate hedging:
+  > "Hi Yoshihara-San, I am terrible sorry this is a scam and not from our
+  > company. Please ignore this and I will inform all our customers about
+  > this."
+  followed by:
+  > "Please double check with the emails address, the scammer uses our
+  > company name and names but the email address is not from us. Please pay
+  > extra careful when you make payment. They may try to trick you by
+  > asking you paying to a different bank account."
+- **Product defect with a real fix, resolved well enough that the customer
+  placed another order right after** — states the mechanism of the fix
+  like an engineer, not a customer-service script:
+  > "Hi Dawid, Just to update, we will add a spring to dampen the harmonics
+  > like in the attached images in future production. The spring will
+  > absorb some of the vibrations which create the scratching noises. We
+  > will also put glue in the crystal holes to prevent them from shaking."
+- **Delivering genuinely bad business news** (can no longer sustain a
+  product line profitably) — explains the real underlying economics
+  honestly instead of a vague brush-off, and still offers what help remains
+  possible:
+  > "Dear Michael, Thanks for your email. The economy has been difficult
+  > these years and we have tried our very bests to find ways to sustain
+  > the product line with flexible quantity with reasonable pricing.
+  > However with the rising cost of labor and processes... most of the
+  > products and parts we developed in the past is no longer competitive
+  > nowadays... We do have some inventory and we can support you with the
+  > current stock parts we have. However for freshly produce parts, we are
+  > no longer be able to supply..."
+
+**What this search did *not* find:** an example of a customer being
+personally hostile toward Eddie and him having to de-escalate real anger
+directed at him. Every "complaint-shaped" thread in this corpus turned out
+to be a practical problem (a scam targeting a customer, a product defect, a
+line becoming unsustainable) handled matter-of-factly — not a customer
+shouting and Eddie calming them down. If a Daily Draft ever needs that
+specific register, treat it as unverified rather than assume the pattern
+above extends to it unchanged.
+
 ## 5. Anti-AI patterns — never use these in Eddie's voice
 
 Absolutely avoid, even when generating a "polished" version:
@@ -240,6 +287,29 @@ Eddie's voice:
 > Best regards,
 > Eddie
 
+**Example 5 — urgent fraud/scam alert (the highest-stakes register found)**
+
+AI draft:
+> Dear Valued Customer,
+> We regret to inform you that we have become aware of a fraudulent
+> communication that may have been sent using our company name. We take
+> matters of security extremely seriously and sincerely apologize for any
+> concern this may have caused. Please rest assured that we are conducting
+> a thorough investigation into this matter and will keep you updated with
+> a comprehensive resolution.
+> Warm regards,
+> The Crystocraft Team
+
+Eddie's voice:
+> Hi Yoshihara-San,
+> I am terrible sorry this is a scam and not from our company. Please
+> ignore this and I will inform all our customers about this.
+>
+> Please double check with the emails address, the scammer uses our
+> company name and names but the email address is not from us. Please pay
+> extra careful when you make payment. They may try to trick you by asking
+> you paying to a different bank account.
+
 ## 8. Source
 
 **Primary source (this revision):** `eddie@uart.com.hk` sent mail, pulled
@@ -259,10 +329,21 @@ customers from — the correct primary source going forward.
 Coverage confirmed in this pass: cold/reconnect outreach, order status and
 tracking, price and spec corrections, quality complaints and their
 resolution, contract/negotiation language, PO and invoice handling, and
-personal-register asides inside business threads. Not deliberately sampled:
-anything explicitly negative (an angry customer, a cancelled order, a
-dispute) — none surfaced in the messages reviewed, so treat that gap as
-unverified rather than assume the tone above extends to it unchanged.
+personal-register asides inside business threads.
+
+A follow-up targeted pass specifically searched all 375 customers' full
+thread text (both directions, not just Eddie's outbound) for angry/
+complaint/dispute language (`disappoint`, `unacceptable`, `refund`,
+`compensat`, `faulty`, `sue`, `lawyer`, `scam`, etc.) — 210 threads matched
+at least one keyword, 64 matched a strong-signal one. The genuine
+high-stakes threads found (a fraud alert, a product-defect resolution, a
+line-becomes-unsustainable conversation — see §4a) confirm the same calm,
+factual, one-clause-apology-then-substance tone holds under real pressure.
+**Still not found:** a thread where a customer was personally hostile toward
+Eddie and he had to de-escalate anger directed at him — every
+complaint-shaped thread turned out to be a practical problem handled
+matter-of-factly, not a shouting match. Treat that narrower register as
+unverified if a Daily Draft ever needs it.
 
 Excluded, same as before: `sales@uart.com.hk` (Angel Kwan's voice) and any
 `crystocraft@gmail.com` message not unambiguously personal. Internal notes
