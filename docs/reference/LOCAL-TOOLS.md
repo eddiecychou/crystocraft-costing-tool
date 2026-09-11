@@ -229,6 +229,72 @@ delete/edit real customer records with it unless the owner specifically asks
 to test that action. Say plainly what was actually clicked through in the
 browser versus what was only syntax-checked.
 
+## Graphify (codebase knowledge graph)
+
+Set up 2026-09-10. A code-graph CLI (`graphifyy` on PyPI) that turns this repo
+— code + docs — into a queryable graph: community detection, god nodes,
+doc↔code links. Not something Claude reaches for automatically; a deliberate
+alternative to grep when orienting in an unfamiliar area. Full design record
+and file-by-file contents: **`graphify-out/README.md`**.
+
+**Install** (already done on this Mac):
+```bash
+brew install uv                                    # Astral's Python tool runner
+uv tool install "graphifyy[openai,sql]"             # openai extra = DeepSeek's OpenAI-compatible API; sql = the erp-sync view files
+```
+Installs to `~/.local/bin` — **not on PATH by default**:
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # add to ~/.zshrc to persist
+```
+
+**Use:**
+```bash
+graphify update .                                    # AST re-extract, free, seconds — after code changes
+graphify extract . --backend deepseek                # full rebuild incl. doc<->code semantic links — a few minutes, ~$0.05 (DEEPSEEK_API_KEY from .env.local)
+graphify cluster-only . --backend deepseek            # re-name communities + regenerate GRAPH_REPORT.md
+graphify query "<question>"                           # BFS traversal, scoped context
+graphify explain "<symbol>" · graphify path "A" "B" --undirected · graphify god-nodes
+```
+
+**Gotchas:**
+- `graph.html` loads vis-network from `unpkg.com` by default, which every
+  non-browser viewer blocks ("vis is not defined"). Fixed by vendoring the
+  library locally — `scripts/graphify-localize.sh` re-applies this after any
+  rebuild that regenerates `graph.html`.
+- `graphify merge-graphs` (used to build the cross-repo view with the
+  Crystocraft Expense Tool, see below) tags each input graph by its
+  `graph.json`'s **grandparent directory name** — a relative path silently
+  tags a graph literally `"repo"`. Always pass absolute paths (see
+  `scripts/graphify-merge.sh`).
+- `graphify export html` on a graph over 5,000 nodes collapses to a
+  community-only blob, not the real node graph — irrelevant for this repo
+  alone (4,794 nodes) but hit immediately on the merged graph (5,292). The
+  merged viewer (`graphify-out/merged-graph.html`) is hand-rolled instead
+  (`scripts/build-merged-html.py`), with a checkbox to view either repo's
+  nodes alone or both together.
+
+**Deliberately not installed:** `graphify claude install` (would append a
+"graphify" section to `CLAUDE.md` and add a Claude Code PreToolUse hook that
+nudges/blocks file reads until a `graphify query` runs first) and
+`graphify hook install` (git `post-commit`/`post-checkout` hooks that
+auto-rebuild the graph). Both were considered and declined 2026-09-10 — the
+hook fights the decision to keep `graph.json`/`graph.html` tracked in git
+(every auto-rebuild would dirty ~9 MB of tracked files), and the CLAUDE.md
+edit + read-gating hook adds friction disproportionate to the payoff. Revisit
+if the graph stays reliably fresh and the friction turns out to be worth it.
+
+**Cross-repo:** this repo is "somehow related" (owner's words) to the
+separate **Crystocraft Expense Tool** (`~/Documents/Coding/Crystocraft/Accounting/Expense Tool V1`,
+its own git repo, `github.com/eddiecychou/crystocraft-expenses`) via an HTTP
+sync (`netlify/edge-functions/finance-po-sync.js` here ↔
+`sync-operation-center.js` there — see `docs/archive/TECHNICAL-Expense-Tool.md`).
+That app has its own `graphify-out/` (built + committed the same day). The two
+are unioned into `graphify-out/merged-graph.json` / `merged-graph.html` —
+**no cross-repo edges** (the link is an HTTP boundary, not a shared symbol),
+so the merged view's only value is browsing both — or either alone via the
+viewer's Repository toggle. Rebuild: `scripts/graphify-merge.sh`
+(`EXPENSE_TOOL=<path>` env var overrides the default location).
+
 ## Updating this file
 
 When a new tool gets set up in a session (installed, logged in, confirmed

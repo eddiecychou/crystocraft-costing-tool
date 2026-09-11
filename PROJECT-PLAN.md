@@ -114,6 +114,48 @@ repo-root-relative; markdown `[]()` links between `docs/` subfolders use `../`.
 This PROJECT-PLAN's own historical entries below were **not** rewritten — a bare
 `Foo_Spec.md` mention still resolves with `grep -r`.
 
+### Graphify — a code-graph orientation tool, set up (2026-09-10)
+
+Owner asked to index the repo for AI-agent use. Installed `graphifyy` (PyPI,
+via `uv tool install "graphifyy[openai,sql]"`) — turns code + docs into a
+queryable graph: communities, god nodes, doc↔code links. Full detail lives in
+`graphify-out/README.md` and `docs/reference/LOCAL-TOOLS.md` "Graphify"
+(install, gotchas, the two deliberately-skipped auto-wiring steps); this entry
+is the pointer + the decision record.
+
+- **Full semantic extraction** (DeepSeek backend, `DEEPSEEK_API_KEY` from
+  `.env.local`): 4,401 nodes / 10,094 edges / 298 communities, 98% EXTRACTED,
+  ~$0.05. God nodes: `react`, `db` (Firestore — confirms no data-access layer
+  between components and Firestore), `lucide-react`, `useT()`, `authedUser()`.
+  It reconstructed real workflows unprompted as hyperedges (the SEO
+  control-plane write loop, the Sales Invoice/Credit Note/UC allocation flow,
+  the ERP read-only sync steps) and linked `LESSONS-LEARNED.md` entries to the
+  code they describe.
+- **`graph.html` fixed to work offline** — it defaults to loading vis-network
+  from `unpkg.com`, which every non-browser viewer blocks. Vendored the
+  library in (`graphify-out/vendor/`); `scripts/graphify-localize.sh`
+  re-applies this after any rebuild.
+- **Cross-repo merge with the Crystocraft Expense Tool** (separate repo,
+  `~/Documents/Coding/Crystocraft/Accounting/Expense Tool V1` —
+  `github.com/eddiecychou/crystocraft-expenses`; linked via an HTTP sync,
+  `finance-po-sync.js` ↔ `sync-operation-center.js`, not shared code). Indexed
+  it too (498 nodes / 1205 edges, ~$0.05), then `graphify merge-graphs`
+  unioned both into `graphify-out/merged-graph.json` (5,292 nodes — **no
+  cross-repo edges**, the link is an HTTP boundary). Built a hand-rolled
+  viewer, `merged-graph.html`, with a **Repository toggle** (graphify's own
+  `export html` collapses anything over 5,000 nodes to a community blob, so
+  it can't render this one) — unchecking either repo shows the other alone.
+  Rebuild both: `scripts/graphify-merge.sh`.
+- **Deliberately not installed:** `graphify claude install` (CLAUDE.md
+  section + a PreToolUse hook that nudges/blocks file reads toward
+  `graphify query` first) and `graphify hook install` (git hooks that
+  auto-rebuild the graph on every commit). The git-hook path fights the choice
+  to keep `graph.json`/`graph.html` tracked (~9 MB churn per commit); the
+  CLAUDE.md+hook path adds read-gating friction for a graph that isn't
+  continuously kept fresh. Revisit either if usage patterns change.
+- Indexed via `SKILL.md` §4 step 5 as an optional orientation aid — not a
+  replacement for §5's feature-area router.
+
 ### Crystal costs ↔ JES purchase prices — the buy-side mirror of V8.14's Item price history
 
 The owner sets `settings/crystal_unit_costs` by hand. For big facet stones

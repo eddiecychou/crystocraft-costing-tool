@@ -113,6 +113,11 @@ Persistent AI memory: `~/.claude/projects/-Users-eddie-Developer-costing-tool/me
    close (`LESSONS-LEARNED.md`).
 4. Before any deploy: `ARCHITECTURE-RULES.md` §Verify-&-Deploy. Before telling
    the user to install anything: `../reference/LOCAL-TOOLS.md`.
+5. Optional orientation aid: a Graphify code graph exists at `../../graphify-out/`
+   (`graphify query "<question>"`, `graphify explain "<symbol>"` — not wired
+   into every tool call, see `../reference/LOCAL-TOOLS.md` "Graphify"). Useful
+   for "what touches X" questions in an unfamiliar area; §5 below is still the
+   authoritative feature-area router.
 
 ## 5. Feature-area router
 
