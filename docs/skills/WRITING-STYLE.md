@@ -1,8 +1,13 @@
 # Eddie's Writing Style — for Daily Draft generation
 
-Built from actual sent mail (`crystocraft@gmail.com`, `sales@uart.com.hk` threads,
-2021–2025 — customer replies, supplier/distributor replies, internal forwards to
-Philip/Hero/Pinky). This is a reference for generating Daily Drafts and other
+Built from actual sent mail attributable to Eddie personally. **Caveat on
+sources:** `sales@uart.com.hk` is a shared mailbox actually written by Angel
+Kwan (every substantive thread there is signed "Angel") — excluded entirely.
+`crystocraft@gmail.com` is a shared inbox too, mostly used by a colleague —
+only the messages explicitly signed "Sent from Eddie's iPhone" are used here,
+and treated as slightly lower-confidence than mail sent directly from
+`eddie@uart.com.hk`, which is the primary, highest-confidence source (small
+sample — see §6). This is a reference for generating Daily Drafts and other
 outbound copy that reads like Eddie wrote it, not like an AI wrote it. See
 `docs/skills/MARKETING-WORKFLOW.md` for where Daily Drafts are generated.
 
@@ -63,6 +68,11 @@ warmth; warmth (when present) is via helpfulness and speed, not adjectives.
   > it should not affect the wine taste and food safe. Eddie"
 - Uses "check out" as a soft imperative ("check out our drinkware in stock",
   "you have to check out the importing procedure").
+- Task delegation to colleagues is a bare imperative, often in Chinese when
+  the colleague is mainland-based, with zero framing:
+  > "可以看看能否修改一下链接增加点击率" (eddie@uart.com.hk, forwarding a Google
+  > Merchant Center report to a colleague — "see if the link can be tweaked
+  > to improve click-through rate")
 
 ## 4. Anti-AI patterns — never use these in Eddie's voice
 
@@ -151,10 +161,22 @@ Eddie's voice:
 > check with Angel about some Kazak customers we have in the past for some
 > ideas of items they like.
 
-## Source
+## 6. Source
 
-Derived from ~25 real sent threads across `crystocraft@gmail.com` and
-`sales@uart.com.hk`, 2021-07 through 2025-07: customer product enquiries,
-distributor/trade enquiries, and internal routing to Philip/Hero/Pinky.
-Not derived from any single formal document — re-derive by sampling `in:sent`
-again if the voice drifts or a fresher sample is wanted.
+Primary source: `eddie@uart.com.hk` sent mail — a small but direct sample
+(2017–2026), including one formal reply ("Dear Joann, Thanks for the
+arrangement...") and one bare task-delegation forward in Chinese. Small
+sample size — treat conclusions from it as higher-confidence than the
+crystocraft@gmail.com ones but don't over-index on any single example.
+
+Secondary source: `crystocraft@gmail.com` messages explicitly signed "Sent
+from Eddie's iPhone" only (~20 threads, 2021–2025) — customer product
+enquiries, distributor/trade enquiries, internal routing to Philip/Hero/Pinky.
+Excluded: any `crystocraft@gmail.com` message without that phone signature
+(likely the colleague), and all `sales@uart.com.hk` mail (Angel Kwan's voice,
+not Eddie's).
+
+Re-derive by searching `from:eddie@uart.com.hk` (and, cautiously,
+`from:crystocraft@gmail.com "Sent from Eddie's iPhone"`) again if the voice
+drifts, a fresher sample is wanted, or a larger eddie@uart.com.hk sample
+becomes available.
