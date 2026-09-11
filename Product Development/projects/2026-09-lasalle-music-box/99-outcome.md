@@ -170,3 +170,64 @@ the same product family as the Wuhan/Nanjing/Chongqing/Xiamen line.
 - Logo/nameplate still deliberately absent — per the owner's decision this
   gets composited in separately (Photoshop) rather than fought for through
   the image model.
+
+## v9 — 2026-09-12 — SUCCESS: actual photorealistic render, precise brand extraction, element-count parity
+
+Two real gaps the owner identified in v8, both addressed:
+
+1. **v8 was flat lid artwork, not a rendered product photo.** The owner
+   asked for what the supplier's OWN reference photos are: photographs of
+   the real physical object, not print-ready graphics.
+2. **The building was described in my own prose, not extracted via the same
+   JSON-analysis rigor applied to the supplier references.** Fixed by
+   running the same `response_mime_type: 'application/json'` extraction
+   technique on the brand's own source images, not just the style
+   references.
+
+**New extractions, all saved:**
+- `school-building-analysis.json` — the real building's architecture read
+  directly from `school-building-streetview.jpg`: exact floor count (8),
+  curve direction, balcony-banding pattern, window ribbon arrangement,
+  roofline, ground-floor canopy, materials — specific, not "a curved white
+  building."
+- `box-construction-analysis.json` — the box's real physical construction
+  and the supplier's actual product photography, extracted from
+  `supplier-box-wuhan-front.jpg` + `supplier-box-spec-sheet.jpg` +
+  `supplier-box-knob-detail.jpg`. **Caught and corrected two factual errors
+  in Gemini's own extraction before using it** — it placed the knob on the
+  box's bottom (wrong; every reference shows it on a side wall) and gave
+  dimensions of 12×9×8cm (wrong; the spec sheet says 8.7×7.1×4.2cm,
+  verified ground truth). Another instance of the standing rule: verify an
+  extraction against known facts before trusting it, the same as never
+  trusting a self-reported compliance claim.
+- `catholic-motifs-analysis.json` — per the owner's explicit request to
+  include Catholic/Lasallian elements (reversing the earlier "subtle nod
+  only" scope decision), extracted abstractable motifs from the previously-
+  excluded stained-glass and mosaic images — specifically WITHOUT the human
+  figures in those images (Christ, students) — landing on a Latin cross
+  silhouette with the mosaic's radiating-arch pattern as the one motif that
+  reads as Catholic/Lasallian without depicting a person.
+
+**Element-count parity:** the owner pointed out Wuhan's design has ~10
+distinct elements (1 dominant + 6 secondary + filler + delight + nameplate)
+while the project had only been using ~5. `v9-generation.json` explicitly
+lists 10 elements matched to real, verifiable La Salle facts: the building
+(dominant), entrance canopy, sports court, the real mosaic mural on a
+nearby building wall (`school-building-mural.jpg`), the Kowloon skyline,
+the Catholic cross motif, laurel, holly (the crest's other heraldic side
+ornament, previously dropped), street trees, and the pool+trophy delight
+element — no padding with invented content, every element traced to a real
+source.
+
+**Result (`v9-result.png`):** the best result of the entire project.
+Genuinely photorealistic — correct laser-cut charred-edge texture, correct
+knob position, correct box proportions, studio lighting/shadow matching the
+supplier's own photography — with a dense, richly-detailed lid graphic
+carrying real La Salle elements at a density and element-count comparable
+to the Wuhan reference, zero human figures, zero fabricated logo/text.
+
+**Minor remaining gaps:** laurel rendered on both left and right edges
+(mirrored) rather than laurel-left/holly-right as specified; the sports
+court element is mostly cropped out of frame on the left edge. Neither is
+severe enough to warrant another full round without the owner's direction
+on priority.

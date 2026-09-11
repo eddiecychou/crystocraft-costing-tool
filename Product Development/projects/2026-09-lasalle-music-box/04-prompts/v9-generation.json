@@ -1,0 +1,75 @@
+{
+  "action": "generate_image",
+  "output_type": "PHOTOREALISTIC PRODUCT PHOTOGRAPH of a real physical object — NOT a flat graphic, NOT an illustration, NOT a 3D CG render look. This must look like an actual photograph of a manufactured wooden box, matching references/supplier-box-wuhan-front.jpg's own photographic quality exactly.",
+
+  "lid_graphic_content": {
+    "_source": "Element-count parity with the Wuhan reference, per the owner's explicit direction: wuhan-design-analysis.json has 1 dominant + 6 secondary + 1 filler + 1 delight + 1 nameplate = 10 distinct elements. This spec matches that count with real, verified La Salle equivalents (nameplate/text still excluded per the standing logo decision, so a 10th visual element replaces it rather than leaving the count short).",
+    "element_1_dominant_landmark": {
+      "_source": "school-building-analysis.json — extracted directly from the real building photo, not a paraphrase",
+      "overall_form": "Single multi-story building, prominent continuously curved convex facade on the upper section (curving outward toward viewer), transitioning to a flatter lower section",
+      "floor_count": 8,
+      "facade_banding": "Wide, light-colored, evenly-spaced horizontal balcony bands projecting from the curve, strong horizontal emphasis",
+      "window_pattern": "Continuous horizontal ribbon windows set back behind the balcony bands on the upper curved floors, with visible vertical mullions; large multi-pane rectangular windows on the first floor above ground",
+      "roofline": "Flat roofline defined by the topmost projecting balcony band, slight overhang",
+      "materials": "Light grey concrete/stucco facade and balcony bands, dark grey/black window mullions, reflective glass"
+    },
+    "element_2_secondary": {
+      "element": "Entrance canopy / covered walkway at street level",
+      "_source": "school-building-analysis.json's ground_floor_treatment — wide, slightly curved overhang above the entrance, multiple glass door panels. NO signage or text on it."
+    },
+    "element_3_secondary": {
+      "element": "A sports court with fence line",
+      "_source": "visible in references/school-students-jumping.jpg's background — a real campus feature, plays the same role as Wuhan's secondary buildings"
+    },
+    "element_4_secondary": {
+      "element": "A colorful abstract mosaic mural on a nearby school building wall",
+      "_source": "references/school-building-mural.jpg — a real, distinct visual feature of the campus (blue/multicolor abstract art on a large building facade), adds the same kind of visual variety Wuhan gets from mixing pagoda + modern building + European-style building"
+    },
+    "element_5_secondary_context": "Distant Kowloon residential apartment towers in the background sky, grounding the scene in a real Hong Kong location — same role as Wuhan's own distant background buildings",
+    "element_6_secondary_catholic_motif": {
+      "_source": "catholic-motifs-analysis.json — abstracted from the school's real stained-glass and mosaic, WITHOUT any human figures",
+      "element": "A simple bold Latin cross silhouette with concentric radiating arced bands behind it (gold, red/orange, blue), echoing the mosaic's radiating-arch pattern",
+      "rendering": "Flat, solid color fills, crisp clean lines, no gradients, no shading, no human figures of any kind",
+      "placement": "Positioned in the upper sky area, sized comparably to Wuhan's hot-air-balloon accent — visible and legible, not tiny, but not the dominant element either"
+    },
+    "element_7_secondary_heraldic": "A laurel branch (left edge, vertical) — from the crest's heraldic framing",
+    "element_8_secondary_heraldic": "A holly branch (right edge, vertical) — the crest's OTHER heraldic side ornament, paired with the laurel the way the crest itself balances them left/right",
+    "element_9_secondary_natural": "Street trees along the building's base, matching what's actually visible in references/school-building-streetview.jpg",
+    "element_10_delight": {
+      "element": "The school's real indoor competitive swimming pool: red-and-navy striped lane ropes across the water, a small winner's podium with a trophy",
+      "why": "The one large, singular, TRUE local detail — this school's actual real championship pool — matching how Wuhan's ferris wheel or Chongqing's hotpot bowl is one true specific detail, not a generic symbol"
+    },
+    "human_figures": "NONE ANYWHERE — hard rule, confirmed across every supplier reference design",
+    "text_or_logo": "NONE ANYWHERE — reserved for separate compositing, not part of this render",
+    "density_target": "90 percent of the lid area filled with layered detail, matching the supplier references' own density — with 10 elements plus filler greenery this should be achievable naturally, not by padding",
+    "composition_style": "Match references/supplier-box-wuhan-front.jpg and references/supplier-box-nanjing-3stack.jpg exactly: flat-vector illustration technique (medium-thin dark brown outlines, flat color fills, minimal cel-shading, stylized 3/4 isometric perspective) printed onto the lid — the ILLUSTRATION STYLE is flat-vector even though the OVERALL PHOTO of the box is photorealistic. Think: a real photo of a real box whose lid happens to have a flat-vector graphic UV-printed on it, same as every supplier reference photo actually is."
+  },
+
+  "physical_construction": {
+    "_source": "box-construction-analysis.json — extracted directly from the real supplier product photos, with two factual corrections applied (dimensions, knob position) after verifying against the spec sheet",
+    "material": "Light-colored plywood (birch-like), laser-cut",
+    "edge_technique": "Laser-cut finger joints with uniformly dark brown/charred edges from the laser cutting process — matte, slightly rough, fibrous texture, sharply contrasting with the smooth painted surfaces. This charred edge texture is critical to get right.",
+    "body_color_and_finish": "Uniform light pastel sky-blue paint, smooth matte-to-satin finish, no visible wood grain on painted surfaces",
+    "lid_construction": "The lid graphic panel sits recessed slightly within a frame formed by the box's side-wall top edges; the frame shows the same charred laser-cut edge texture; rounded corners matching the box profile",
+    "hardware": "A single oval brushed-silver metal wind-up knob on a SIDE WALL (not the bottom), roughly centered vertically, with a fine knurled grid pattern on its face and a visible Phillips-head screw, approximately 2.5-3cm long, protruding about 1cm",
+    "dimensions_cm": {"length": 8.7, "width": 7.1, "height": 4.2}
+  },
+
+  "photography": {
+    "_source": "box-construction-analysis.json, extracted from references/supplier-box-wuhan-front.jpg",
+    "camera_angle": "Slightly elevated eye-level shot, looking directly at the front/top face of the box with a subtle downward angle, box centered in frame",
+    "background": "Seamless pure white studio background",
+    "lighting": "Soft, diffused lighting from front-top-left, bright and even, minimal harsh reflections",
+    "shadow": "Very soft, subtle, short shadow directly beneath the box",
+    "depth_of_field": "Deep — entire product in sharp focus front to back",
+    "color_grading": "Bright, clean, neutral, accurate color reproduction, fresh and product-focused"
+  },
+
+  "hard_exclusions": [
+    "no people, children, or human figures anywhere, including within the Catholic motif",
+    "no text of any kind",
+    "no logo, crest, shield, badge, plaque, or nameplate shape",
+    "no large empty/blank lid areas — the lid graphic must be dense (90%) like the reference boxes",
+    "do not render this as a flat 2D illustration overall — the OVERALL image must be a photorealistic product photograph; only the lid's own printed graphic is flat-vector in style"
+  ]
+}
