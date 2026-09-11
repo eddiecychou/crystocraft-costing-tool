@@ -69,7 +69,6 @@ wins on *facts*; skill wins on *rules and lessons*.
 | **`ARCHITECTURE-RULES.md`** | Hard boundaries: isolation, RBAC, data lifecycles, snapshots, verify/deploy | Any change to auth, rules, roles, or cross-collection data |
 | **`MARKETING-WORKFLOW.md`** | Daily Drafts, campaigns, blog→WordPress/SEO, image retouch ("Artgen") | Touching outreach, content, or product-image editing |
 | **`WRITING-STYLE.md`** | Eddie's actual writing voice — tone, sentence structure, vocabulary, anti-AI-cliché list, imitation examples — derived from real sent mail | Generating any Daily Draft, customer reply, or other outbound copy meant to read as Eddie's own |
-| **`ATELIER-ART-ENGINE.md`** | Claude-as-Art-Director protocol for client-brand illustration work (Technical Brief structure, Brand Deconstruction Framework, the Atelier Style Library, Coordinate Correction feedback) — distinct producer/purpose from the external DSH Artgen engine in `MARKETING-WORKFLOW.md` §6, but shares its percentage-anchoring technique | Theming a real product around a specific client's brand (proposal/mockup/gift-selector visual) |
 | **`SOURCING-HUB.md`** | Suppliers, 1688/Taobao/Alibaba links, comms capture | Touching suppliers, quotes, or message ingestion |
 | **`UI-POLISH.md`** | The Crystocraft visual language (square/flat/hairline), storefront-vs-OpsCenter treatment, the measurable Second-Pass checklist, §7 Mobile | Any UI/layout/styling change — before "it looks fine" |
 | **`DESIGN-SYSTEM.md`** | The written spec of what's shipped (V2.5): token layer, component inventory + state matrix, WCAG contrast, the OpsCenter drift baseline, the V3 open-decision list | Changing tokens / component classes, or any V2.5→V3 work |
@@ -268,6 +267,13 @@ the fast path from a request to the exact code.
 - Pages: `SwatchLibrary.jsx`, `FrontPageConfig.jsx`, `FrontPageProductPicker.jsx`
 - Logic: `src/customizerApi.js`, `src/customizerEngines.js`, `src/swatchLibraryApi.js` · Edge fns: `customizer-render`, `customizer-palette` (both **no auth check** — `TECH-DEBT.md`)
 - Render service: `render-service/` (Fly.io, PROTOTYPE). Specs: `../specs/Corp_Gift_Customizer_Spec.md`, `../plans/Customizer_Build_Plan.md`, `../specs/Crystal_Fabric_Studio_Spec.md`.
+- **`ATELIER-ART-ENGINE.md`** — the Claude-as-Art-Director protocol for
+  theming a real product around a specific client's brand (product
+  development / proposal design work — e.g. the Sun Life corp-gift example),
+  not outreach copy. Technical Brief structure, Brand Deconstruction
+  Framework, the Atelier Style Library, Coordinate Correction feedback. Not
+  yet wired to a specific edge function — check before assuming it drives
+  `enhance-image.js`.
 
 ### ERP lookup (legacy JES, read-only)
 - Pages: `ErpLookup.jsx`, `SchemaAudit.jsx`, `ComponentCodeAudit.jsx`, `BankDetailsAudit.jsx` · Components: `ErpDocModal.jsx`, `ErpProductImport.jsx`

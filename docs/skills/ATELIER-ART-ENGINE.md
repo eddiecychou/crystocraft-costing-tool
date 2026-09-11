@@ -1,24 +1,28 @@
 # Atelier Art Engine — Brand-to-Illustration Intelligence
 
-**Scope note (read this first):** this protocol is for **Claude-directed,
-client-brand illustration work** — e.g. theming a real Crystocraft product
-around a specific corporate client's brand (the Sun Life example in §6) for
-a proposal, mockup, or gift-selector visual. This is a **different producer
-and purpose** than the external DeepSeek SEO/blog "Artgen" engine documented
-in `docs/skills/MARKETING-WORKFLOW.md` §6 (zodiac/astrology blog art, run by
-DSH, Operation Center as custodian only). The two share real prompting
-technique — percentage-based anchoring and the "rewrite the anchors, don't
-patch the feedback" recovery rule below are the same idea as
-MARKETING-WORKFLOW.md §6.1a's `[FOUNDATION]`/`[NARRATIVE]`/`[ANCHORS]`
-three-layer structure — but **where the two name an actual overlapping hard
-rule, §6.2's Product Truth is the authoritative one**: it's backed by
-`product-truth.js`'s code classifier, not just prompt wording. This doc's
-"Material Truth" (§4) is a narrower, supplier-specific instance of the same
-idea, not a competing rule. Which in-repo image call this actually drives
-(`enhance-image.js` and its Gemini image models, `generate-blog.js`, or a
-future dedicated endpoint) is not yet fixed — check `enhance-image.js`'s
-model list (`gemini-2.5-flash-image` / `gemini-3.1-flash-image`, see its own
-deprecation-tracking comment) before assuming a specific call site.
+**Scope note (read this first):** this protocol is for **Crystocraft product
+development** — theming a real product around a specific corporate client's
+brand for a proposal, mockup, gift-selector visual, or new product concept
+(the Sun Life example in §6). It belongs with the Customizer / Crystal
+Fabric Studio product-development area (`SKILL.md`'s "Customizer / Crystal
+Fabric Studio / swatches" section, alongside `Corp_Gift_Customizer_Spec.md`
+and `Crystal_Fabric_Studio_Spec.md`) — **it is not an outreach/marketing
+copy tool**, and has nothing to do with Daily Drafts or `WRITING-STYLE.md`.
+It's also a different producer/purpose than the external DeepSeek SEO/blog
+"Artgen" engine in `MARKETING-WORKFLOW.md` §6 (zodiac/astrology blog art,
+run by DSH, Operation Center as custodian only) — worth naming only because
+the two happen to share real prompting technique: percentage-based
+anchoring and the "rewrite the anchors, don't patch the feedback" recovery
+rule below are the same idea as MARKETING-WORKFLOW.md §6.1a's
+`[FOUNDATION]`/`[NARRATIVE]`/`[ANCHORS]` three-layer structure. Where the
+two name an overlapping hard rule, §6.2's Product Truth stays authoritative
+for actual sellable-product imagery — it's backed by `product-truth.js`'s
+code classifier, not just prompt wording; this doc's "Material Truth" (§4)
+is a narrower, supplier-specific instance of the same idea, not a competing
+rule. Which in-repo image call this actually drives (`enhance-image.js` and
+its Gemini image models, the Customizer render service, or a future
+dedicated endpoint) is not yet fixed — check before assuming a specific call
+site.
 
 This skill defines the "Art Director-to-Renderer" protocol. In the
 Crystocraft ecosystem, Claude acts as the Art Director (analyzing brand
