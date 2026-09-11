@@ -3,6 +3,56 @@
 Assembled from `../03-concept.md` per `docs/skills/ATELIER-ART-ENGINE.md` §1.
 Not yet sent to Gemini — see this project's outcome log once it has been.
 
+## Attach these images with the text brief
+
+See `references/README.md` for the full index and reasoning. The short
+version — attach these four, in this order:
+
+1. `references/school-crest.jpg` — **[LOGO REFERENCE — DO NOT MODIFY]**
+2. `references/school-building-streetview.jpg` — **[BUILDING REFERENCE]**
+3. `references/supplier-box-wuhan-front.jpg` — **[STYLE + FORM REFERENCE]**
+   (the single most important one — style, box form, and composition
+   layout all in one image)
+4. `references/supplier-box-nanjing-3stack.jpg` — **[STYLE REFERENCE]**
+   (confirms the style across more than one example)
+
+Do NOT attach `school-stainedglass-NOTUSED.jpg` or
+`school-mosaic-NOTUSED.jpg` — see the owner's religious-imagery decision in
+`../03-concept.md`. Do NOT attach `school-students-jumping.jpg` to an actual
+generation call — see `references/README.md`'s note on real identifiable
+children.
+
+## Hard rule — the logo is fixed, not a starting point
+
+**The crest (and any element drawn from it, including the star used in this
+composition) must be reproduced EXACTLY as shown in
+`references/school-crest.jpg` — do not redraw, restyle, simplify, recolor,
+reinterpret, or "improve" it.** Treat it as a fixed asset to place into the
+scene at the correct position/scale, the same way a real production process
+would place a die-cut logo piece — not as creative inspiration for a
+Gemini-drawn version of a star. If the model cannot place the exact logo
+asset directly (a real risk with image-generation models, which tend to
+redraw everything they're shown), say so explicitly in the output/response
+rather than silently substituting an invented star — that's a v2 problem to
+solve deliberately (e.g. compositing the real logo in afterward), not one to
+paper over with a close-enough redraw.
+
+## Generation settings
+
+**Temperature as low as possible** (0, or the minimum the interface allows)
+— per `enhance-image.js`'s own precedent for "faithful" modes in this
+codebase (see `docs/skills/MARKETING-WORKFLOW.md`), low temperature is what
+keeps a model from drifting away from a detailed brief like this one. Low
+temperature is NOT the same as low quality — it constrains *how much the
+model improvises*, not how polished the render looks; a highly-specified
+brief like this one (exact colors, exact positions, exact reference images)
+is exactly the case where low temperature helps rather than produces
+something flat, because there's nothing worth improvising here that the
+brief hasn't already decided. If the output looks stiff or low-effort at
+temperature 0, that's a brief-specificity problem to fix in a v2 (add more
+concrete detail), not a reason to raise the temperature and let the model
+guess.
+
 ```
 [SOURCE ANCHOR]
 Base: reference_style_match — the supplier's own city-souvenir music box
@@ -49,6 +99,10 @@ as its own reference-matched style for this brief.
 - Aspect ratio: ~5:4 landscape (88mm x 71mm).
 
 [QA CHECKLIST]
+- Star matches references/school-crest.jpg's actual star EXACTLY (same
+  point count, proportions, ray pattern) — not a generic five-point star or
+  a reinterpreted version. This is the single most important check — a
+  close-enough star is a FAILURE, not a minor variance.
 - School building silhouette present and recognizable as a curved modern
   facade (not a generic tower/pagoda).
 - Star present but small/secondary — not the dominant element.
@@ -71,9 +125,14 @@ as its own reference-matched style for this brief.
 
 ## Status
 
-**Not yet run.** Per `docs/skills/ATELIER-ART-ENGINE.md`'s scope note and
-this workflow's own "Open question" in `05-Working-Notes.md`, there is no
-direct tool call from this session to Gemini yet — the manual handoff path
-applies: copy the block above into Gemini (AI Studio / the image model
-directly), save the result as `v1-result.png` alongside this file, and log
-the outcome in `../99-outcome.md`.
+**Image package ready, not yet run.** `references/` now holds the full,
+labeled set (17 files, indexed in `references/README.md`). Per
+`docs/skills/ATELIER-ART-ENGINE.md`'s scope note and this workflow's own
+"Open question" in `05-Working-Notes.md`, there is still no direct tool call
+from this session to Gemini — the manual handoff path applies: attach the
+four images listed above, paste the text block below, set temperature to 0
+(or the interface's minimum), save the result as `v1-result.png` alongside
+this file, and log the outcome in `../99-outcome.md`. Given the "logo must
+not be modified" hard rule above, **check the star against
+`references/school-crest.jpg` specifically before accepting any result** —
+that's the one thing most likely to drift even at low temperature.
