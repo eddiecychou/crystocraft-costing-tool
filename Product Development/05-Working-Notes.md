@@ -180,7 +180,36 @@ as the first move — do this instead:**
    used in the wider Gemini/Nano-Banana prompting community, not something
    specific to this repo.
 
-**Two sharp, non-obvious lessons from getting there, worth not re-learning
+**Extended after v9, same project, two more real gaps found and fixed:**
+
+5. **Extract the BRAND's own source images with the same JSON rigor as the
+   product's style references — don't describe them from memory/
+   eyeballing.** v8 described the school building as "a curved white
+   building" in prose; this reads as generic and is exactly what "just a
+   building doesn't tell the story" (the owner's own words) was catching.
+   v9 ran the actual building photo through its own structured-JSON
+   extraction (`school-building-analysis.json`) and got the real floor
+   count, curve direction, balcony-banding pattern, window arrangement —
+   specific facts, not an impression. Do this for every brand asset that
+   matters (a building, a crest, a product), not just the base product's
+   own reference line.
+6. **Match element count to the reference, as an explicit number, not a
+   vibe.** The reference designs (Wuhan etc.) turned out to have ~10
+   distinct elements each once counted from the JSON analysis (1 dominant
+   + 6 secondary + filler + delight + nameplate). Earlier attempts used
+   ~5 for the new brand and read as comparatively sparse/plain even after
+   density was fixed — density alone (% of frame filled) isn't the same
+   thing as element variety, and both matter.
+7. **If the actual deliverable is a physical product, the generation
+   request needs BOTH the flat "what's printed on it" content JSON AND a
+   separate extraction of the real physical construction/photography** —
+   material, edge treatment, hardware placement, camera angle, lighting,
+   background — from the reference's own product photos. Asking for "an
+   image in this style" when what's actually needed is "a photorealistic
+   photo of the physical object" produces a technically-competent wrong
+   deliverable (v8: a fine flat graphic when a product photo was needed).
+
+**Four sharp, non-obvious lessons from getting there, worth not re-learning
 the hard way:**
 
 - **Don't show the model a reference photo containing real text/a logo it
@@ -203,6 +232,13 @@ the hard way:**
   contradicted it, in confident detail). Always compare the actual output
   pixels to the actual reference — an AI's own grading of its own work is
   not verification.
+- **This extends to structured JSON extractions too — verify them against
+  known facts before using them downstream.** v9's box-construction
+  extraction put the metal knob on the wrong face of the box and got the
+  dimensions wrong by nearly 40% (12×9×8cm vs. the real 8.7×7.1×4.2cm from
+  the spec sheet) — caught only because it was checked against ground
+  truth before being fed into the generation prompt. A JSON extraction
+  that parses cleanly is not the same as an extraction that's correct.
 
 Browser-driven and wired-into-the-app remain real options if this
 API-key approach ever stops being available, but direct API calls from a

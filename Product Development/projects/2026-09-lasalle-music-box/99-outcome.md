@@ -231,3 +231,45 @@ to the Wuhan reference, zero human figures, zero fabricated logo/text.
 court element is mostly cropped out of frame on the left edge. Neither is
 severe enough to warrant another full round without the owner's direction
 on priority.
+
+## Status — paused here 2026-09-12, owner returning to this tomorrow
+
+**Where things stand:** on track. `v9-result.png` is the current best —
+genuinely photorealistic, correctly constructed, richly detailed, zero
+human figures, zero fabricated logo/text, built from precise JSON
+extractions of both the supplier's reference line and La Salle's own real
+brand assets rather than prose description. The generalizable technique
+that got here is now documented in `docs/skills/ATELIER-ART-ENGINE.md` §7
+and `Product Development/04-Gemini-Image-Prompts.md` — not just this
+project's own record — so the next product-dev project doesn't have to
+rediscover it.
+
+**Open items for next session, roughly in likely priority order:**
+1. **Laurel vs. holly** — v9 rendered laurel on both edges (mirrored)
+   instead of laurel-left/holly-right as the crest actually has. A
+   Coordinate Correction round on this specific field should be quick.
+2. **Sports court element mostly cropped** — either reposition it in the
+   `layout_map` or accept it's a minor element and not worth a full rerun
+   on its own.
+3. **Aspect ratio** — v8/v9 have both come back roughly square; the
+   original 5:4 landscape target (matching the box's real 88×71mm lid
+   proportions) hasn't actually been hit yet. Worth checking whether this
+   matters for a concept-review image or only once actual print artwork is
+   commissioned.
+4. **Logo/wordmark compositing** — still deliberately excluded from every
+   render per the owner's standing decision (composited in afterward,
+   Photoshop). Not started. Worth deciding whether Claude should attempt a
+   first-pass composite (the real crest photo + a cropped/isolated star
+   onto the reserved zone, as an HTML/SVG mockup) or whether that stays
+   entirely the owner's own step.
+5. **Not yet checked against the actual business facts** — `00-brief.md`
+   flagged that this music box was one of ~10 P6 graduation souvenir ideas
+   discussed with Heymans Ho, with budget/quantity/deadline still
+   unconfirmed. Worth confirming the music box is still the one moving
+   forward before investing further design rounds.
+6. **No `suppliers/{id}` record yet** for Xiamen Ling Er Gong Chuang (noted
+   in `02-supplier-spec.md`) — still fine to defer until this becomes a
+   real order.
+
+Pick up by reading this file top to bottom, then `05-Working-Notes.md` if
+the technique itself needs a refresher — don't restart from v1.
