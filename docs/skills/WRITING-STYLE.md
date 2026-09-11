@@ -9,10 +9,13 @@ a shared mailbox actually written by Angel Kwan (every substantive thread
 there is signed "Angel") — excluded entirely. `crystocraft@gmail.com` is a
 shared inbox too, mostly used by a colleague — only the messages explicitly
 signed "Sent from Eddie's iPhone" AND addressed to a customer/prospect (not
-forwarded internally to Hero/Philip/Pinky) are used here. This is currently a
-small, confirmed sample — see §7. This is a reference for generating Daily
-Drafts and other outbound copy that reads like Eddie wrote it, not like an AI
-wrote it. See `docs/skills/MARKETING-WORKFLOW.md` for where Daily Drafts are
+forwarded internally to Hero/Philip/Pinky) are used here. **Known gap:** the
+user says he replies to most customers through `eddie@uart.com.hk` directly,
+but that mailbox's own Sent folder isn't reachable from here (see §7) — this
+guide is built from `crystocraft@gmail.com` as the best available fallback,
+not the primary source. This is a reference for generating Daily Drafts and
+other outbound copy that reads like Eddie wrote it, not like an AI wrote it.
+See `docs/skills/MARKETING-WORKFLOW.md` for where Daily Drafts are
 generated.
 
 ## 1. Tone
@@ -50,6 +53,16 @@ warmth; warmth (when present) is via helpfulness and speed, not adjectives.
   personally** — "Regards, Crystocraft Online Shop" for a payment-link email.
   Use the shop signature only for a transactional message (payment link,
   order confirmation); use "Eddie" or nothing for an actual conversation.
+- A third register: **step-by-step product support / complaint handling is
+  signed "Best Regards, CRYSTOCRAFT Team"** (not "Eddie") and is the one
+  place a real sign-off block and a little more warmth show up — a genuine
+  apology when something's wrong ("Please accept our many apologies for the
+  inconvenience caused to you by this issue"), then numbered instructions,
+  then an offer to help further, occasionally a warm personal closer tied to
+  the customer's own words ("We sincerely hope that your mother will love
+  your present and wish her a happy birthday" — echoing that it was a
+  birthday gift). Even here it never drifts into "delighted"/"comprehensive"
+  territory — the warmth is specific to what the customer said, not generic.
 
 ## 3. High-frequency vocabulary & patterns
 
@@ -78,6 +91,18 @@ warmth; warmth (when present) is via helpfulness and speed, not adjectives.
   procedural, signed as the shop:
   > "Dear Yo Lam Please see below payment link. https://www.paypal.com/... 
   > Regards Crystocraft Online shop"
+- Product-support replies are numbered step-by-step instructions with a
+  plain closing offer to help further:
+  > "Dear Tina, Thank you for your inquiry. To adjust the time for our mini
+  > clock products please refer to the attached photos and below steps.
+  > 1. ... 2. ... 3. ... 4. ... If you still have any further question,
+  > please feel free to contact us. Best Regards, CRYSTOCRAFT Team"
+- A genuine complaint gets one plain apology clause, then straight into
+  fixing it — never a defensive or over-long apology:
+  > "Dear Victoria, Thank you for your inquiry about the clock your bough is
+  > out of service. Please accept our many apologies for the inconvenience
+  > caused to you by this issue. To change the battery for our mini clock
+  > products please refer to attached instructions..."
 
 ## 4. Anti-AI patterns — never use these in Eddie's voice
 
@@ -180,6 +205,33 @@ Eddie's voice:
 > Best regards,
 > Eddie
 
+**Example 4 — product complaint (something's actually wrong)**
+
+AI draft:
+> Dear Valued Customer,
+> We are so sorry to hear about the issue you've experienced with your
+> Crystocraft figurine! Please accept our sincerest apologies for any
+> inconvenience this may have caused. Our team is fully committed to
+> ensuring your complete satisfaction, and we would be more than happy to
+> provide comprehensive support to resolve this matter promptly!
+> Warm regards,
+> The Crystocraft Team
+
+Eddie's voice:
+> Dear Victoria,
+> Thank you for your inquiry about the clock your bough is out of service.
+> Please accept our many apologies for the inconvenience caused to you by
+> this issue.
+> To change the battery for our mini clock products please refer to
+> attached instructions and below steps.
+> 1. ... 2. ... 3. ... 4. ... 5. ...
+> If you still have any further question, please feel free to contact us.
+> You can also contact the local retailer directly.
+> We sincerely hope that your mother will love your present and wish her a
+> happy birthday.
+> Best Regards,
+> CRYSTOCRAFT Team
+
 ## 7. Source
 
 Scope: customer- and prospect-facing replies only — cold enquiries, product
@@ -189,11 +241,12 @@ found in Eddie's own sent mail, because Daily Drafts go to customers and that
 internal register (near-zero framing, bare imperatives) is not the right
 model for it.
 
-Confirmed source, after a wider pass (searched all `crystocraft@gmail.com`
-sent mail that isn't a `Fwd:`/`Re: Fwd:`, ~200 threads scanned): four direct
-customer/prospect replies survive the filter (signed "Sent from Eddie's
-iPhone" or otherwise unambiguously personal, and not a forward to
-Hero/Philip/Pinky/Cindy/Angel):
+Confirmed source, after a wide pass (searched all `crystocraft@gmail.com`
+sent mail that isn't a `Fwd:`/`Re: Fwd:`, ~200+ threads scanned across
+2008–2026, plus targeted keyword passes for price/shipping/complaint
+language): six direct customer/prospect replies survive the filter (signed
+"Sent from Eddie's iPhone" or otherwise unambiguously personal/company, and
+not a forward to Hero/Philip/Pinky/Cindy/Angel):
 
 1. Natnaree — retired product, alloy/food-safety question (2024)
 2. Luis — Chile distributor lead (2024)
@@ -201,21 +254,33 @@ Hero/Philip/Pinky/Cindy/Angel):
    with full contact block (2014)
 4. Yo Lam — payment-link/order reply, signed as the shop not personally
    (2018)
+5. Tina — product support, step-by-step clock time-adjustment (2013)
+6. Victoria — genuine complaint (dead clock, birthday gift), apology +
+   step-by-step battery-change instructions (2013)
 
 The overwhelming majority of `crystocraft@gmail.com` sent mail is either
 spam-bot "CRYSTOCRAFT Registration/Feedback/Password Retrieval" junk
 (forwarded on, untouched) or genuine internal routing to staff — both
-excluded by scope. `eddie@uart.com.hk` itself still turned up no clean
-direct-to-customer example — every substantive thread from that address was
-either internal routing/delegation or an external-but-non-customer reply (an
-event RSVP to a trade-show organizer). All `sales@uart.com.hk` mail stays
-excluded (Angel Kwan's voice, not Eddie's).
+excluded by scope. All `sales@uart.com.hk` mail stays excluded (Angel Kwan's
+voice, not Eddie's).
 
-Four examples is still a small sample — enough to see a consistent pattern
-(short, factual, "Thanks for your enquiry" opener, plain sign-off) but not
-enough to claim full coverage of every enquiry type (e.g. a complaint,
-a price negotiation, a shipping delay — none of those turned up in this
-pass). Re-derive by searching `from:crystocraft@gmail.com in:sent
--subject:Fwd -subject:"Re: Fwd"` (paginating past the registration-form
-spam) or `from:eddie@uart.com.hk` if a fresher or larger customer-facing
-sample is wanted.
+**Important gap, found on this pass:** `eddie@uart.com.hk` is *not* fully
+reachable from this mailbox. `from:eddie@uart.com.hk in:sent` returns
+nothing (this connector is authenticated as `crystocraft@gmail.com`, not
+`eddie@uart.com.hk` — it has no visibility into that mailbox's own Sent
+folder), and `from:eddie@uart.com.hk in:anywhere` surfaces only 7 threads
+total, all of them mail *received into* `crystocraft@gmail.com` from
+`eddie@uart.com.hk` (forwards, routing notes, one 2017 RSVP) — none of them
+customer replies. The user has said he replies to most customers through
+`eddie@uart.com.hk` directly, which — if true — means the bulk of his actual
+customer-facing writing is sitting in a mailbox this guide cannot see at
+all, and everything above is necessarily built from the `crystocraft@gmail.com`
+shared inbox instead. **This guide should be treated as a reasonable proxy,
+not the real thing, until `eddie@uart.com.hk`'s own Sent folder can be
+searched directly** (e.g. by connecting that mailbox, or by the user
+forwarding/exporting a batch of his own sent customer replies from it).
+
+Re-derive by searching `from:eddie@uart.com.hk in:sent` once that mailbox is
+reachable — that should supersede the `crystocraft@gmail.com`-based examples
+above, which are the best available fallback but not the primary source the
+user actually described.
