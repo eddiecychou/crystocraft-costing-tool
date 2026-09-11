@@ -345,6 +345,31 @@
   directly is a real requirement — never silently drop it because it isn't a
   figurine SKU. (`src/mrp.js`.)
 
+## L-20 · A hand-rolled vis-network viewer left physics running forever
+
+- **Symptom.** Owner: "the app response is slow recently." Audit found
+  `corespotlightd` (macOS Spotlight) pinned at 226% CPU from this session's own
+  file churn — a real, transient cause — but the owner asked a sharper
+  follow-up: "could that be the graphify.html that runs locally?"
+- **Root cause.** `graphify-out/graph.html` (graphify's own generated output)
+  correctly does `network.once('stabilizationIterationsDone', () =>
+  network.setOptions({ physics: { enabled: false } }))` — the force layout
+  runs once, settles, then stops. The hand-rolled `graphify-out/merged-graph.html`
+  (`scripts/build-merged-html.py`, built for the Repository-toggle view over
+  the merged 5,292-node graph, V8.15) never did this: `vis.Network`'s barnesHut
+  solver kept recalculating forces on every animation frame **indefinitely**,
+  for as long as that tab stayed open — foreground or background, browser
+  throttling only slows it, doesn't stop it. On ~5,000 nodes that's a real,
+  sustained CPU cost, not a one-off spike.
+- **Permanent fix.** Added the same `stabilizationIterationsDone` listener
+  (`on`, not `once` — the viewer rebuilds the node/edge DataSet on every
+  repo/leaf-node toggle, so physics is deliberately re-enabled for one
+  re-layout pass each time, then switched off again once it resettles).
+  Verified: `network.physics.physicsEnabled` → `false` ~10–14s after load.
+  **MUST:** any hand-rolled `vis.Network` view must disable physics once
+  stabilized — copy graphify's own pattern, don't assume the library does it
+  by default (it doesn't). (`scripts/build-merged-html.py`.)
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
@@ -382,3 +407,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-09-10 | Added L-18 — portal login stamps failed silently for 26/43 customers (token race + a 9-field-equality self-update rule, both hidden by `stampLogin`'s `.catch(()=>{})`). Fix: `await getIdToken()` + one retry, and a `diff().affectedKeys().hasOnly(['last_login_at','login_count'])` rule clause; 26 rows backfilled from Auth `lastSignInTime`. |
 | 2026-09-10 | Added L-19 — loose component lines on an order (item code = a `range_components` code, not a figurine SKU) reserved no stock; `computeRequirements` only exploded through a matched Range BOM. Fix: direct component-code match → 1:1 requirement in `src/mrp.js`. Also: PU line `description` is now a growing `<textarea>` and prints with `white-space:pre-line` (line breaks preserved — reported by XiangXia). |
 | 2026-09-10 | Editable reserved quantity (XiangXia ask #2) — a reserved line's qty is now editable inline on the Component/Crystal/Packaging order-stock panels via `adjustReservedLine` (`orderStock.js`) + `EditableQty.jsx`. Movement key carries a per-line `adj_seq` so re-entering an earlier value can't collide with its earlier movement and get deduped by `postMovement`. Design record + landmines: `../plans/RESERVE-QTY-EDIT-AUDIT.md`. |
+| 2026-09-11 | Added L-20 — `graphify-out/merged-graph.html`'s hand-rolled vis-network view never disabled physics after the layout settled (graphify's own `graph.html` does), so the barnesHut solver ran on ~5,000 nodes every frame indefinitely while that tab was open. Fixed in `scripts/build-merged-html.py`. Also fixed: Corp Gift product save (`ProductForm.jsx`) had a bare `finally` with no `catch` — a failed write reset the button with nothing on screen; now shows the real error. |
