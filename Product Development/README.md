@@ -20,6 +20,7 @@ worksheet you fill by hand (or with Claude's help) per concept.
 | 2 | Supplier Product Specification | [`02-Supplier-Product-Specification.md`](02-Supplier-Product-Specification.md) | Ground the concept in what's actually buildable — material, size, MOQ, printability, from a real supplier record. |
 | 3 | Product Concept Spec | [`03-Product-Concept-Spec.md`](03-Product-Concept-Spec.md) | Merge stages 1+2 into one concept sheet: base product, brand tokens, chosen style profile, composition map. |
 | 4 | Gemini Image Prompt | [`04-Gemini-Image-Prompts.md`](04-Gemini-Image-Prompts.md) | Turn the concept sheet into an actual Technical Brief for Gemini, plus how to correct a failed render. |
+| — | Working Notes | [`05-Working-Notes.md`](05-Working-Notes.md) | How this actually runs day to day: project folder layout, pulling real data from the app, the requirement-gathering conversation pattern. Read this once before running the workflow for real. |
 
 Each stage feeds the next — stage 3's concept sheet is built *from* stages
 1 and 2's filled-in worksheets, and stage 4's prompt is built *from* stage
@@ -55,13 +56,10 @@ here in full:
   quotes live (`suppliers/{id}`, `supplier_quotes`); stage 2 pulls from here,
   it doesn't invent supplier data.
 
-## Where filled-in concepts should live
+## Where filled-in concepts live
 
-This folder holds the **workflow templates**, not a growing archive of every
-concept ever run through them. Once a concept sheet (stage 3) and its
-prompt (stage 4) are finalized for a real client pitch, save that concept's
-own copy under the relevant customer or product record (e.g. attached to the
-customer's record in `CustomerDetail.jsx` / `CustomerBrand.jsx`, or wherever
-the proposal itself is tracked) — not committed back into this folder as a
-new file per product. If that turns out to be the wrong call once this is
-actually used a few times, revisit.
+Decided 2026-09-12: **kept here**, not pushed out to a customer record. Each
+concept gets its own subfolder under `projects/` — see
+`05-Working-Notes.md` for the actual folder layout, how to pull real data
+from the app into stage 1/2 automatically, and how the requirement-gathering
+conversation is meant to run before a prompt ever ships to Gemini.
