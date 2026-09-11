@@ -1,4 +1,5 @@
 import { requireModule } from './lib/auth.js'
+import { EDDIE_STYLE_GUIDE } from './lib/writingStyle.js'
 
 export default async (request) => {
   const auth = await requireModule(request, 'customers')
@@ -7,7 +8,9 @@ export default async (request) => {
   const { customer, product, channel, context: ctx } = await request.json()
 
   const channelInstructions = {
-    'Email':             'Write a complete, professional email of roughly 150-250 words with a Subject: line at the top. Open with a warm greeting, develop the situation across 2-4 short paragraphs, and close with a clear next step. Sign off as "Eddie Chou, Crystocraft".',
+    // "Best regards, Eddie" / "Eddie" (not "Eddie Chou, Crystocraft") per
+    // WRITING-STYLE.md's analysis of his real sent mail — see EDDIE_STYLE_GUIDE below.
+    'Email':             'Write a complete, professional email of roughly 150-250 words with a Subject: line at the top. Open with a warm greeting, develop the situation across 2-4 short paragraphs, and close with a clear next step. Sign off as "Best regards,\\nEddie".',
     'WhatsApp Business': 'Write a WhatsApp Business message of roughly 100-180 words across a few short paragraphs. Conversational but professional, with enough detail to be useful. Sign off as "Eddie - Crystocraft".',
     'Alibaba':           'Write an Alibaba Trade Manager message of roughly 150-250 words. Mention verified supplier status and develop the message fully. Sign off as "Eddie, Crystocraft (Verified Gold Supplier)".',
     'Personal WhatsApp': 'Very warm and casual tone — like texting a friend you do business with. Roughly 80-140 words. Use first name only. No formal sign-off.',
@@ -24,6 +27,8 @@ Situation / what Eddie wants to say:
 ${ctx}
 
 ${channelInstructions[channel] || channelInstructions['Email']}
+
+${channel === 'Email' || !channel ? EDDIE_STYLE_GUIDE : ''}
 
 Rules:
 - Write the message based on the situation described above — that is the primary instruction

@@ -17,6 +17,7 @@
 //   VITE_FIREBASE_PROJECT_ID / FIREBASE_PROJECT_ID — for admin-token verification
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
 import { buildMemoryBlock } from './lib/draftMemory.js'
+import { EDDIE_STYLE_GUIDE } from './lib/writingStyle.js'
 
 const JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
@@ -72,6 +73,7 @@ const SYSTEM = 'You are an expert B2B sales assistant for Crystocraft, a premium
   '- Sound like a real person writing a quick personal note, not a marketing robot or corporate announcement.\n' +
   '- Do NOT mention any specific customer name — this is a starting template that gets personalized per recipient later.\n' +
   '- NEVER start with "Elevate", "Discover", "Introducing", "Transform", or "Unleash".\n\n' +
+  `${EDDIE_STYLE_GUIDE}\n\n` +
   'Return ONLY a valid JSON object: { "subject": "string", "body": "string" }.'
 
 export default async function handler(req) {

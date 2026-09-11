@@ -26,6 +26,7 @@
 //   VITE_FIREBASE_PROJECT_ID / FIREBASE_PROJECT_ID — for admin-token verification
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
 import { buildMemoryBlock } from './lib/draftMemory.js'
+import { EDDIE_STYLE_GUIDE } from './lib/writingStyle.js'
 
 const JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
@@ -68,6 +69,7 @@ const SYSTEM = 'You are an expert B2B sales assistant for Crystocraft, helping t
   'SAME response MUST be non-null and MUST actually contain that change. Never claim a change was made while ' +
   'returning null for both — if you are not actually changing the email, your reply must say so plainly instead ' +
   '(e.g. "Got it, but I don\'t think that needs a wording change — let me know if you want me to adjust it anyway").\n\n' +
+  `\n\n${EDDIE_STYLE_GUIDE}\n\n` +
   'Return ONLY a valid JSON object: { "reply": "short conversational reply to the owner, 1-2 sentences", ' +
   '"subject": "string or null (null = unchanged)", "body": "string or null (null = unchanged)" }.'
 

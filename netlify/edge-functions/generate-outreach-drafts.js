@@ -79,6 +79,7 @@
 //   VITE_FIREBASE_PROJECT_ID / FIREBASE_PROJECT_ID — for admin-token verification
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
 import { buildMemoryBlock } from './lib/draftMemory.js'
+import { EDDIE_STYLE_GUIDE } from './lib/writingStyle.js'
 
 const JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
@@ -212,6 +213,7 @@ function personalizePrompt(master, candidate, customerContext, memoryBlock) {
       '- Sound like a real person, not a marketing robot.\n' +
       '- Do NOT mention any other customer names.' +
       reminderNote +
+      `\n\n${EDDIE_STYLE_GUIDE}` +
       (memoryBlock ? `\n\n${memoryBlock}` : '') + '\n\n' +
       'Return ONLY a valid JSON object: { "subject": "string", "body": "string", "explanation": "one short sentence on what you personalized" }.',
     user: `Approved message:\nSubject: ${master.subject}\nBody: ${master.body}\n\n` +
