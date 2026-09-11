@@ -1,15 +1,19 @@
 # Eddie's Writing Style — for Daily Draft generation
 
-Built from actual sent mail attributable to Eddie personally. **Caveat on
-sources:** `sales@uart.com.hk` is a shared mailbox actually written by Angel
-Kwan (every substantive thread there is signed "Angel") — excluded entirely.
-`crystocraft@gmail.com` is a shared inbox too, mostly used by a colleague —
-only the messages explicitly signed "Sent from Eddie's iPhone" are used here,
-and treated as slightly lower-confidence than mail sent directly from
-`eddie@uart.com.hk`, which is the primary, highest-confidence source (small
-sample — see §6). This is a reference for generating Daily Drafts and other
-outbound copy that reads like Eddie wrote it, not like an AI wrote it. See
-`docs/skills/MARKETING-WORKFLOW.md` for where Daily Drafts are generated.
+Built from actual sent mail attributable to Eddie personally, **customer/
+prospect-facing only** — Daily Drafts go to customers, so internal notes to
+staff (Hero, Pinky, Philip) and colleague task-delegation are deliberately
+excluded here; that's a different, more clipped register that would be the
+wrong model for outbound copy. **Caveat on sources:** `sales@uart.com.hk` is
+a shared mailbox actually written by Angel Kwan (every substantive thread
+there is signed "Angel") — excluded entirely. `crystocraft@gmail.com` is a
+shared inbox too, mostly used by a colleague — only the messages explicitly
+signed "Sent from Eddie's iPhone" AND addressed to a customer/prospect (not
+forwarded internally to Hero/Philip/Pinky) are used here. This is currently a
+small, confirmed sample — see §7. This is a reference for generating Daily
+Drafts and other outbound copy that reads like Eddie wrote it, not like an AI
+wrote it. See `docs/skills/MARKETING-WORKFLOW.md` for where Daily Drafts are
+generated.
 
 ## 1. Tone
 
@@ -25,23 +29,15 @@ warmth; warmth (when present) is via helpfulness and speed, not adjectives.
   the actual content.
 - Apologizes plainly when there's something to apologize for ("Sorry The
   bottle stopper is a retired item") — one word, not a paragraph.
-- Internal notes to staff (Hero, Pinky, Philip) drop the greeting entirely and
-  get even shorter — pure instruction: "Hi Hero, please follow up with this
-  customer from Kazakhstan." / "This is Naresh customer in India. They need
-  table top items."
 
 ## 2. Sentence structure
 
 - Short declarative sentences. Rarely more than one clause.
 - No throat-clearing lead-ins ("I just wanted to reach out to...",
   "I hope this email finds you..."). Straight to the point in sentence one.
-- Fragments are fine for internal notes ("Jo might go Frankfurt. I will
-  forward to Philip for the code once he confirms.")
 - HK business-English patterns that show up repeatedly:
   - "kindly" almost never used by Eddie himself (it shows up in *incoming*
     mail from overseas contacts, not his replies) — don't put it in his voice.
-  - Country/role used as a quick descriptor instead of a full clause: "this
-    customer from Kazakhstan", "This is Naresh customer in India."
   - Practical, logistics-first framing for trade enquiries: point straight at
     what the other party needs to go check (importing procedure, minimum
     order) rather than a sales pitch.
@@ -60,19 +56,11 @@ warmth; warmth (when present) is via helpfulness and speed, not adjectives.
   > "Hi Luis, Thanks for your interest in Crystocraft. We are looking for
   > distributor in Chile. Goods will be shipped out from Shenzhen China so you
   > have to check out the importing procedure to Chile for..."
-- Forward-with-context pattern for anything routed internally: one line of
-  context, then the forwarded thread below it. Never rewrites or summarizes
-  the forwarded content at length.
 - Direct factual answers to product questions with no hedging filler:
   > "Hi Natnaree, The bottle stopper is made of alloy and as a bottle stopper
   > it should not affect the wine taste and food safe. Eddie"
 - Uses "check out" as a soft imperative ("check out our drinkware in stock",
   "you have to check out the importing procedure").
-- Task delegation to colleagues is a bare imperative, often in Chinese when
-  the colleague is mainland-based, with zero framing:
-  > "可以看看能否修改一下链接增加点击率" (eddie@uart.com.hk, forwarding a Google
-  > Merchant Center report to a colleague — "see if the link can be tweaked
-  > to improve click-through rate")
 
 ## 4. Anti-AI patterns — never use these in Eddie's voice
 
@@ -145,38 +133,33 @@ Eddie's voice:
 > distributor in Chile. Goods will be shipped out from Shenzhen China so you
 > have to check out the importing procedure to Chile for [duty/etc].
 
-**Example 3 — internal routing**
+## 7. Source
 
-AI draft:
-> Hi Hero,
-> I hope you're doing well. I wanted to flag an enquiry we received from a
-> customer based in Kazakhstan. Could you kindly follow up with them at your
-> earliest convenience? It would also be great if you could check with Angel
-> regarding any historical context on Kazakh customers we may have worked
-> with previously, as this could help inform our approach. Thanks so much for
-> your help with this!
+Scope: customer- and prospect-facing replies only — cold enquiries, product
+questions, distributor/trade leads. Internal notes to staff (Hero, Pinky,
+Philip) and colleague task-delegation were deliberately excluded, even where
+found in Eddie's own sent mail, because Daily Drafts go to customers and that
+internal register (near-zero framing, bare imperatives) is not the right
+model for it.
 
-Eddie's voice:
-> Hi Hero, please follow up with this customer from Kazakhstan. Please also
-> check with Angel about some Kazak customers we have in the past for some
-> ideas of items they like.
+Confirmed source: `crystocraft@gmail.com` messages explicitly signed "Sent
+from Eddie's iPhone" that are themselves customer/prospect replies (the
+Natnaree bottle-stopper reply, the Luis distributor reply) — not the ones on
+that account that are just Eddie forwarding an enquiry on to
+Hero/Philip/Pinky. Excluded: any `crystocraft@gmail.com` message without that
+phone signature (likely the colleague), and all `sales@uart.com.hk` mail
+(Angel Kwan's voice, not Eddie's).
 
-## 6. Source
+`eddie@uart.com.hk` itself turned up no clean direct-to-customer example on
+this pass — every substantive thread from that address found so far was
+either internal routing/delegation (excluded per the scope above) or an
+external-but-non-customer reply (an event RSVP to a trade-show organizer).
+So this guide currently rests on a small, confirmed customer-facing sample
+from `crystocraft@gmail.com` only — treat it as a reasonable first cut, not
+exhaustive.
 
-Primary source: `eddie@uart.com.hk` sent mail — a small but direct sample
-(2017–2026), including one formal reply ("Dear Joann, Thanks for the
-arrangement...") and one bare task-delegation forward in Chinese. Small
-sample size — treat conclusions from it as higher-confidence than the
-crystocraft@gmail.com ones but don't over-index on any single example.
-
-Secondary source: `crystocraft@gmail.com` messages explicitly signed "Sent
-from Eddie's iPhone" only (~20 threads, 2021–2025) — customer product
-enquiries, distributor/trade enquiries, internal routing to Philip/Hero/Pinky.
-Excluded: any `crystocraft@gmail.com` message without that phone signature
-(likely the colleague), and all `sales@uart.com.hk` mail (Angel Kwan's voice,
-not Eddie's).
-
-Re-derive by searching `from:eddie@uart.com.hk` (and, cautiously,
-`from:crystocraft@gmail.com "Sent from Eddie's iPhone"`) again if the voice
-drifts, a fresher sample is wanted, or a larger eddie@uart.com.hk sample
-becomes available.
+Re-derive by searching `from:crystocraft@gmail.com "Sent from Eddie's
+iPhone"` and manually filtering out anything addressed to
+hero.shum/pinky.lo/philip@uart.com.hk, or by searching
+`from:eddie@uart.com.hk` with the same filter, if the voice drifts, a fresher
+sample is wanted, or a larger customer-facing sample becomes available.
