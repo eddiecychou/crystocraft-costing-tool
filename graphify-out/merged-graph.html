@@ -47,6 +47,14 @@ const network = new vis.Network(container, {nodes, edges}, {
   physics: { solver:'barnesHut', barnesHut:{gravitationalConstant:-2600,springLength:95,springConstant:0.02,damping:0.55,avoidOverlap:0.1}, stabilization:{iterations:260,updateInterval:40} },
   interaction: { hover:true, tooltipDelay:120, hideEdgesOnDrag:true, navigationButtons:false },
 });
+// Physics runs the barnesHut solver every animation frame while enabled — on
+// ~5,000 nodes that pegs a CPU core for as long as this tab stays open
+// (foreground or background), which graphify's own graph.html avoids by
+// switching physics off once stabilizationIterationsDone fires. This viewer
+// rebuilds the DataSet on every repo/leaf toggle though (a fresh subset needs
+// a fresh layout), so `on` (not `once`) re-arms it each time, and rebuild()
+// re-enables physics only for that one re-layout pass.
+network.on('stabilizationIterationsDone', () => network.setOptions({physics:{enabled:false}}));
 
 function activeRepos() {
   return [...document.querySelectorAll('input[data-repo]')].filter(c=>c.checked).map(c=>c.dataset.repo);
@@ -60,6 +68,8 @@ function rebuild() {
   nodes.clear(); edges.clear();
   nodes.add(nsub.map(n => ({id:n.id,label:n.label,value:n.value,color:n.color,group:n.group})));
   edges.add(esub.map((e,i) => ({id:'e'+i,from:e.from,to:e.to})));
+  network.setOptions({physics:{enabled:true}});
+  network.stabilize(260);
   document.getElementById('stats').textContent = nsub.length + ' nodes · ' + esub.length + ' edges shown';
 }
 document.querySelectorAll('input[data-repo],#hideLeaf').forEach(c => c.addEventListener('change', rebuild));
