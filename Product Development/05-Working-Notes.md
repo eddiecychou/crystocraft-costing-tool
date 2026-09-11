@@ -132,27 +132,78 @@ calls get asked** — never the reverse. That's what stops this from either
 (a) me guessing at your client's brand palette from vibes, or (b) you having
 to manually type in supplier specs that are already sitting in the app.
 
-## Open question — how does the Gemini call actually happen?
+## RESOLVED — how the Gemini call actually happens (updated after the La Salle project)
 
-Right now nothing in this repo lets me directly trigger a Gemini image
-generation call on your behalf as a tool — `enhance-image.js` calls Gemini
-server-side from the app itself (with an image source + auth), not from a
-Claude Code session. Three real options, in rough order of effort:
+**There's already a `GEMINI_API_KEY` in `.env.local`** — the same one
+`enhance-image.js` uses in production. Claude can call
+`generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
+directly via a short read-only Python/Bash script, same request shape as
+that edge function (`responseModalities: ['IMAGE']`, `temperature: 0` for a
+faithful/deterministic result). No manual copy-paste needed — this was the
+"manual handoff" option below, superseded once it turned out the key was
+already available locally. Use `gemini-2.5-flash-image` with
+`gemini-3.1-flash-image` as a fallback (`enhance-image.js`'s own model
+list — 2.5 is scheduled to retire 2026-10-02).
 
-- **Manual handoff (works today, zero build):** I produce the finished
-  Technical Brief text, you paste it into Gemini (AI Studio / the
-  "nano-banana" image model) yourself, save the result into the project
-  folder. Slower, but needs nothing new.
-- **Browser-driven (small build):** I use the Browser pane to drive
-  Gemini's web UI directly with the assembled brief, screenshot the result
-  back into the project folder myself. Cuts out the copy-paste step.
-- **Wired into the app (real build, later):** a dedicated edge function
-  (or extending `enhance-image.js`) that this workflow calls directly,
-  the same way `generate-outreach-drafts.js` calls DeepSeek — the "proper"
-  long-term answer, but only worth it once the manual process has run
-  enough times to know what the function actually needs to accept.
+### The technique that actually produced a usable result: structured JSON Controlled Generation
 
-I'd start with the manual handoff and only build further once you've felt
-the friction of doing it by hand a few times — building the wired-in
-version now would be guessing at requirements the same way this whole
-workflow is designed to avoid.
+Proven on the La Salle music box project (see its `99-outcome.md` for the
+full account) after six prose-prompt attempts (v2-v7) each fixed one
+problem and revealed another. **Do not hand-write a prose Technical Brief
+as the first move — do this instead:**
+
+1. **Analyze the reference images with Gemini itself, in structured JSON**
+   (`response_mime_type: 'application/json'` on a plain `gemini-2.5-flash`
+   text+vision call, NOT the image-gen model) — ask it to reverse-engineer
+   the reference design(s) into a fixed schema: dominant element, secondary
+   elements, filler/texture motif, the one "delight" element, how any
+   nameplate/text is constructed, a layering order, a measured density
+   percentage, and what's deliberately omitted. Do this for more than one
+   reference example if the base product has a whole existing line (a
+   single example can't tell you what's a hard rule vs. incidental).
+2. **Compare the JSON across examples before touching the new brand's
+   content.** This is where the real information is — La Salle's project
+   found two hard, load-bearing rules (zero human figures; 85-95% frame
+   density) that were invisible from just looking at the pictures and had
+   been silently violated in every prose-prompt attempt.
+3. **Populate a new JSON with the target brand's real elements**, field by
+   field, matching the same schema — not a redesign, a substitution. Where
+   the target doesn't have an obvious equivalent for a field (La Salle has
+   no city landmarks for "secondary elements"), that's a real judgment call
+   to make deliberately (see that project's "delight element" reasoning),
+   not a gap to paper over with a generic placeholder.
+4. **Send the populated JSON itself as the generation prompt** — serialize
+   it, prepend one line telling the model to treat every field literally,
+   attach it alongside the actual reference images. Include a `layout_map`
+   with bbox (fractional x/y/width/height) coordinates for anything that
+   needs a specific position — this is the "JSON as a layout map" technique
+   used in the wider Gemini/Nano-Banana prompting community, not something
+   specific to this repo.
+
+**Two sharp, non-obvious lessons from getting there, worth not re-learning
+the hard way:**
+
+- **Don't show the model a reference photo containing real text/a logo it
+  shouldn't reproduce — crop the text out of the source image before
+  attaching it.** Describing it as a negative instruction ("don't
+  reproduce this crest") still primes the model to reproduce it anyway;
+  it happened twice (v4's building signage, v6's borrowed Wuhan content)
+  before the fix — physically removing it from the source image — actually
+  held. This matches an unrelated project's own art-pipeline lesson
+  ("don't let a subject invite text," "don't name example objects in style
+  text" — naming a thing, even to forbid it, still invites it).
+- **When multiple reference images are attached for different purposes
+  (one for content, others for style/material only), say so explicitly and
+  expect it to still leak anyway** — v6 printed the Wuhan reference box's
+  own artwork onto the lid despite being attached "for style only." Keep
+  the "this one is content, these are style-only" instruction explicit, and
+  verify the actual output rather than trusting the instruction held.
+- **Never trust an image model's own self-reported compliance/audit text**
+  (Gemini has volunteered a fidelity "audit" alongside a result that
+  contradicted it, in confident detail). Always compare the actual output
+  pixels to the actual reference — an AI's own grading of its own work is
+  not verification.
+
+Browser-driven and wired-into-the-app remain real options if this
+API-key approach ever stops being available, but direct API calls from a
+short script are simpler than either and are now the default.

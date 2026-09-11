@@ -1,0 +1,47 @@
+{
+  "action": "generate_image",
+  "subject": {
+    "primary_landmark": "The curved modern white La Salle Primary School building — match the attached building-photo reference's silhouette exactly: curved cream/white facade, horizontal window bands, rounded roofline",
+    "secondary_elements": [
+      "covered entrance canopy at street level",
+      "a sports court with fence line, visible nearby",
+      "distant Kowloon residential apartment towers in the background",
+      "street trees along the building's base"
+    ],
+    "delight_element": "A large, singular stylized indoor swimming pool scene: red-and-navy striped lane ropes across the water, a small winner's podium with a trophy on it — this is the ONE whimsical/cultural focal object, matching the scale and singularity of the supplier references' own delight elements (a hot air balloon, a hotpot bowl, a record player)",
+    "human_figures": "ABSOLUTELY NONE — no people, no children, no silhouettes, no figures of any kind anywhere in the image. This is a hard rule confirmed across every supplier reference design."
+  },
+  "visual_style": {
+    "match_reference": "the attached supplier souvenir-box images — reproduce their exact illustration technique, not your own interpretation of 'flat style'",
+    "line_work": "consistent medium-thin dark brown outlines on all foreground/midground objects",
+    "color": "muted yet colorful palette, flat fills only, 1-2 base colors per object, minimal or no cel-shading, NO gradients, NO airbrushing",
+    "density": "90 percent of the frame filled with layered detail — this is the most important rule. Minimal empty background. Fill gaps with plausible supporting scenery (more trees, more distant buildings, clouds) in the same style",
+    "perspective": "stylized 3/4 isometric, slightly elevated angle, no realistic vanishing point",
+    "texture": "simplified graphic patterns — foliage as stylized solid-color clusters, windows as simple repetitive grids, no photorealistic texture",
+    "edges": "hard silhouette overlaps between layered elements, distinct unblended outlines"
+  },
+  "layout_map": {
+    "objects": [
+      {"id": "sky_and_clouds", "bbox": {"x": 0.0, "y": 0.0, "width": 1.0, "height": 0.25}},
+      {"id": "kowloon_skyline", "bbox": {"x": 0.55, "y": 0.08, "width": 0.4, "height": 0.25}, "layer": "distant background"},
+      {"id": "school_building", "bbox": {"x": 0.12, "y": 0.15, "width": 0.5, "height": 0.55}, "layer": "dominant landmark"},
+      {"id": "laurel_and_campus_greenery", "bbox": {"x": 0.0, "y": 0.25, "width": 0.18, "height": 0.65}, "layer": "left-edge filler texture, dense"},
+      {"id": "sports_court_and_trees", "bbox": {"x": 0.45, "y": 0.55, "width": 0.3, "height": 0.2}, "layer": "midground secondary element"},
+      {"id": "pool_delight_element", "bbox": {"x": 0.55, "y": 0.6, "width": 0.42, "height": 0.35}, "layer": "foreground, singular focal object"},
+      {"id": "reserved_calm_zone_for_logo_added_later", "bbox": {"x": 0.6, "y": 0.35, "width": 0.18, "height": 0.15}, "note": "keep this specific pocket visually simple/uncluttered — nothing is placed here by you, a real logo asset gets composited in afterward. Do NOT leave it as stark empty white; just make it the calmest part of an otherwise dense scene (e.g. plain sky)."}
+    ]
+  },
+  "camera_settings": {
+    "type": "flat 2D print-ready vector illustration — NOT a photograph, NOT a 3D render, NOT an isometric CG render",
+    "aspect_ratio": "5:4 landscape",
+    "framing": "fills the entire frame edge to edge, no white margin, no product-photo pedestal or background"
+  },
+  "hard_exclusions": [
+    "no people, children, or human figures anywhere",
+    "no text of any kind",
+    "no logo, crest, shield, or badge",
+    "no plaque, medallion, or nameplate shape",
+    "no photorealistic rendering",
+    "no large empty/blank background areas outside the one reserved calm zone"
+  ]
+}
