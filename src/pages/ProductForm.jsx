@@ -17,6 +17,7 @@ export default function ProductForm() {
     is_new: false, customizer_type: '', active: true,
   })
   const [loading, setLoading]   = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [fetching, setFetching] = useState(isEdit)
   const [aiLoading, setAiLoading]     = useState(false)
   const [aiError, setAiError]         = useState('')
@@ -98,10 +99,12 @@ export default function ProductForm() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (loading) return   // guard a double-click/double-Enter from firing two writes
     setLoading(true)
-    const videos = normVideos(form.videos)
-    const payload = { ...form, videos, video_url: videos[0] || '' }
+    setSaveError('')
     try {
+      const videos = normVideos(form.videos)
+      const payload = { ...form, videos, video_url: videos[0] || '' }
       if (isEdit) {
         await updateDoc(doc(db, 'products', id), { ...payload, updatedAt: serverTimestamp() })
         navigate(`/products/${id}`)
@@ -111,6 +114,13 @@ export default function ProductForm() {
         })
         navigate(`/products/${ref.id}`)
       }
+    } catch (err) {
+      // Previously uncaught: a failed write (permission-denied, offline,
+      // malformed video URL from normVideos) reset the button to "Save
+      // Changes" with nothing on screen to explain why — reported as
+      // "the save button doesn't work, no response" (2026-09-11).
+      console.error('ProductForm save failed:', err)
+      setSaveError(err?.message || 'Could not save — please try again.')
     } finally {
       setLoading(false)
     }
@@ -268,6 +278,7 @@ export default function ProductForm() {
 
         <VideoUrlsEditor videos={form.videos} onChange={v => setForm(f => ({ ...f, videos: v }))} />
 
+        {saveError && <p className="text-sm text-red-600">{saveError}</p>}
         <div className="flex gap-3 pt-2">
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Product'}
