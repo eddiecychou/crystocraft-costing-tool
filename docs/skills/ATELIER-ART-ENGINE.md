@@ -136,14 +136,23 @@ Crystal."
 ## 7. Controlled Generation — structured JSON prompting (the proven, preferred technique)
 
 **Added 2026-09-12**, after the La Salle Primary School music box project
-(`Product Development/projects/2026-09-lasalle-music-box/`) tried six
-prose-Technical-Brief iterations (v2–v7) that each fixed one problem and
-revealed another, then got a correct result on the first attempt after
-switching to this technique. **Use this instead of a hand-written prose
-Technical Brief whenever the supplier/reference has more than one existing
-example to analyze** — the prose §1 structure above still describes *what*
-information the brief needs, but assembling it as JSON rather than
-paragraphs is what actually held up under a real image model.
+tried six prose-Technical-Brief iterations (v2–v7) that each fixed one
+problem and revealed another, then got a correct result on the first
+attempt after switching to this technique. **Use this instead of a
+hand-written prose Technical Brief whenever the supplier/reference has more
+than one existing example to analyze** — the prose §1 structure above still
+describes *what* information the brief needs, but assembling it as JSON
+rather than paragraphs is what actually held up under a real image model.
+
+**This whole workflow (and the La Salle project itself) has since moved to
+its own repo, `Product Design` (`~/Developer/Product Design`), separate
+from this one** — it started as this repo's own `Product Development/`
+folder, then merged with a related `gemini-image-prompts` effort once it
+became clear they were the same project at two stages of maturity. This
+section stays here because the underlying protocol is this repo's own
+(§1–§6 above), but the worked example and the actual tooling now live in
+that other repo — see its `04-Gemini-Image-Prompts.md` and
+`tools/parameter-visualizer.html`.
 
 This is a named, documented industry technique, not a house invention —
 worth knowing the real names if researching further: **Controlled
@@ -211,8 +220,9 @@ layout maps.
   the actual result rather than trusting the instruction held (see §5's
   corollary above on self-reported compliance).
 
-See `Product Development/projects/2026-09-lasalle-music-box/99-outcome.md`
-for the full worked account, `wuhan-design-analysis.json` +
+See the `Product Design` repo's
+`projects/2026-09-lasalle-music-box/99-outcome.md` for the full worked
+account, `wuhan-design-analysis.json` +
 `nanjing-chongqing-xiamen-design-analysis.json` for the analysis step, and
 `v8-generation.json` for the actual populated generation prompt that
 produced the best result.

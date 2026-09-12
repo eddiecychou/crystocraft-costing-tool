@@ -274,11 +274,12 @@ the fast path from a request to the exact code.
   Framework, the Atelier Style Library, Coordinate Correction feedback. Not
   yet wired to a specific edge function — check before assuming it drives
   `enhance-image.js`.
-- **`Product Development/` (repo root, not under `docs/`)** — the
-  step-by-step WORKFLOW that applies `ATELIER-ART-ENGINE.md` to one concept
-  at a time: customer branding elements → supplier product specification →
-  product concept spec → Gemini image prompt, one file per stage, each a
-  fill-in worksheet. Start at `Product Development/README.md`.
+- **The step-by-step WORKFLOW that applies `ATELIER-ART-ENGINE.md`** to one
+  concept at a time (customer branding elements → supplier product
+  specification → product concept spec → Gemini image prompt) **now lives
+  in its own separate repo, `Product Design`** (`~/Developer/Product Design`
+  — started life as this repo's own `Product Development/` folder, moved
+  out 2026-09-12). Start at that repo's own `README.md`.
 
 ### ERP lookup (legacy JES, read-only)
 - Pages: `ErpLookup.jsx`, `SchemaAudit.jsx`, `ComponentCodeAudit.jsx`, `BankDetailsAudit.jsx` · Components: `ErpDocModal.jsx`, `ErpProductImport.jsx`
