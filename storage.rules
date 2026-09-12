@@ -92,5 +92,12 @@ service firebase.storage {
     match /campaign_images/{allPaths=**} {
       allow read, write: if can('marketing');
     }
+
+    // Product Design app (separate repo, ~/Developer/Product Design) —
+    // admin-only, pd_ prefixed to avoid colliding with the products/{id}
+    // path above (this app's own catalogue images).
+    match /pd_products/{productId}/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
   }
 }
