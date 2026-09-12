@@ -63,3 +63,13 @@ concept gets its own subfolder under `projects/` — see
 `05-Working-Notes.md` for the actual folder layout, how to pull real data
 from the app into stage 1/2 automatically, and how the requirement-gathering
 conversation is meant to run before a prompt ever ships to Gemini.
+
+## Tools
+
+`tools/parameter-visualizer.html` — a local, standalone tool (open directly
+in a browser, no server) for inspecting and editing Stage 4's JSON
+extractions/generation prompts side-by-side with the reference images they
+came from, with a growing cross-project vocabulary of the field names/shapes
+Gemini actually uses. See `tools/README.md`. Built once hand-rolling Python
+scripts for every JSON round-trip on the La Salle project (nine rounds) made
+the need for a real tool obvious.

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Product Development — Parameter Visualizer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #16161f; color: #e2e2ea; height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: #1e1e2b; border-bottom: 1px solid #2e2e40; flex-wrap: wrap;
+  }
+  header h1 { font-size: 13px; font-weight: 600; color: #b9b9ff; margin-right: 12px; }
+  button {
+    background: #2a2a3d; color: #e2e2ea; border: 1px solid #3d3d55; border-radius: 6px;
+    padding: 6px 11px; font-size: 12px; cursor: pointer;
+  }
+  button:hover { background: #34344a; }
+  button.primary { background: #4a4ae0; border-color: #5a5af0; }
+  button.primary:hover { background: #5a5af0; }
+  input[type=file] { display: none; }
+  .spacer { flex: 1; }
+  .status { color: #8a8aa0; font-size: 11px; }
+
+  #tabs { display: flex; gap: 4px; padding: 6px 14px; background: #1a1a26; border-bottom: 1px solid #2e2e40; overflow-x: auto; flex-shrink: 0; }
+  .tab {
+    padding: 5px 10px; border-radius: 6px 6px 0 0; background: #23232f; color: #9a9ab0;
+    cursor: pointer; font-size: 11.5px; white-space: nowrap; border: 1px solid transparent;
+  }
+  .tab.active { background: #16161f; color: #d8d8ff; border: 1px solid #3d3d55; border-bottom: none; }
+  .tab .x { margin-left: 6px; opacity: .5; }
+  .tab .x:hover { opacity: 1; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #imgPane {
+    flex: 1.1; position: relative; background: #0d0d13; display: flex;
+    align-items: center; justify-content: center; overflow: auto; border-right: 1px solid #2e2e40;
+  }
+  #imgWrap { position: relative; max-width: 100%; }
+  #imgWrap img { display: block; max-width: 100%; max-height: 78vh; }
+  #overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
+  #imgPicker {
+    position: absolute; top: 8px; left: 8px; background: #1e1e2bcc; border-radius: 6px;
+    padding: 6px 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; max-width: calc(100% - 16px);
+  }
+  #imgPicker select { background: #2a2a3d; color: #e2e2ea; border: 1px solid #3d3d55; border-radius: 4px; padding: 3px 6px; font-size: 11px; }
+  #noImage { color: #6a6a80; font-size: 12px; text-align: center; padding: 20px; }
+
+  #jsonPane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #jsonHeader { padding: 8px 12px; border-bottom: 1px solid #2e2e40; display: flex; gap: 8px; align-items: center; }
+  #jsonHeader .fname { font-size: 12px; color: #b9b9ff; font-weight: 600; }
+  #jsonTree { flex: 1; overflow: auto; padding: 10px 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.6; }
+  #noJson { color: #6a6a80; padding: 20px; font-size: 12px; }
+
+  .node { margin-left: 16px; }
+  .row { display: flex; align-items: flex-start; gap: 6px; cursor: default; }
+  .key { color: #7ec8ff; }
+  .keyBbox { cursor: pointer; text-decoration: underline dotted; }
+  .keyBbox:hover { color: #ffd27e; }
+  .type-string { color: #b6e29a; }
+  .type-number { color: #f0b86e; }
+  .type-boolean { color: #f08ea0; }
+  .type-null { color: #7a7a90; }
+  .editable { border-bottom: 1px dashed #555; cursor: text; }
+  .editable:hover { background: #232338; }
+  .toggle { cursor: pointer; color: #6a6a80; width: 14px; display: inline-block; user-select: none; }
+  .bracket { color: #6a6a80; }
+  .collapsed > .children { display: none; }
+
+  #vocabPane { display: none; flex: 1; overflow: auto; padding: 14px 18px; }
+  #vocabPane.show { display: block; }
+  #vocabPane h2 { font-size: 13px; color: #b9b9ff; margin: 18px 0 8px; }
+  #vocabPane h2:first-child { margin-top: 0; }
+  .vocabSearch { width: 100%; max-width: 420px; padding: 7px 10px; border-radius: 6px; border: 1px solid #3d3d55; background: #1e1e2b; color: #e2e2ea; margin-bottom: 12px; }
+  .vfield { border: 1px solid #2e2e40; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; background: #1a1a24; }
+  .vfield .vkey { color: #7ec8ff; font-family: ui-monospace, monospace; font-size: 12px; }
+  .vfield .vtype { color: #f0b86e; font-size: 11px; margin-left: 8px; }
+  .vfield .vdesc { color: #b8b8c8; font-size: 11.5px; margin-top: 3px; }
+  .vfield .vexample { color: #6a6a80; font-size: 11px; margin-top: 2px; font-family: ui-monospace, monospace; }
+
+  #diffPane { display: none; position: fixed; inset: 0; background: #000000aa; z-index: 10; align-items: center; justify-content: center; }
+  #diffPane.show { display: flex; }
+  #diffBox { background: #1e1e2b; border: 1px solid #3d3d55; border-radius: 10px; width: min(680px, 92vw); max-height: 80vh; display: flex; flex-direction: column; }
+  #diffBox header2 { padding: 12px 16px; border-bottom: 1px solid #2e2e40; font-weight: 600; color: #b9b9ff; display:block; }
+  #diffList { overflow: auto; padding: 12px 16px; flex: 1; }
+  #diffList .dnew { padding: 6px 0; border-bottom: 1px solid #26263a; font-family: ui-monospace, monospace; font-size: 12px; }
+  #diffActions { padding: 10px 16px; border-top: 1px solid #2e2e40; display: flex; gap: 8px; justify-content: flex-end; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #33334a; border-radius: 5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Parameter Visualizer</h1>
+  <button onclick="document.getElementById('jsonInput').click()">Load JSON…</button>
+  <input type="file" id="jsonInput" accept=".json" multiple>
+  <button onclick="document.getElementById('imgInput').click()">Load Images…</button>
+  <input type="file" id="imgInput" accept="image/*" multiple>
+  <span style="width:1px;background:#3d3d55;align-self:stretch;margin:0 4px;"></span>
+  <button onclick="document.getElementById('vocabInput').click()">Load Vocabulary…</button>
+  <input type="file" id="vocabInput" accept=".json">
+  <button id="exportVocabBtn" onclick="exportVocabulary()">Export Vocabulary</button>
+  <span class="spacer"></span>
+  <button id="exportJsonBtn" onclick="exportActiveJson()">Export Edited JSON</button>
+  <button class="primary" onclick="showVocabPane(!vocabShown)">Vocabulary Browser</button>
+  <span class="status" id="statusLine"></span>
+</header>
+
+<div id="tabs"></div>
+
+<main>
+  <div id="imgPane">
+    <div id="noImage">No image loaded.<br>Load one or more reference images, then pick which one each JSON file should link to.</div>
+    <div id="imgWrap" style="display:none;">
+      <img id="mainImg">
+      <canvas id="overlay"></canvas>
+    </div>
+    <div id="imgPicker" style="display:none;">
+      <label style="font-size:11px;color:#9a9ab0;">Image:</label>
+      <select id="imgSelect" onchange="onImageSelect()"></select>
+    </div>
+  </div>
+
+  <div id="jsonPane">
+    <div id="jsonHeader" style="display:none;">
+      <span class="fname" id="jsonFname"></span>
+      <span class="status" id="jsonStatus"></span>
+    </div>
+    <div id="jsonTree"><div id="noJson">Load one or more JSON files (analysis output, or a generation prompt) to inspect and edit them here. Click any underlined key with position/bbox data to highlight it on the linked image.</div></div>
+  </div>
+
+  <div id="vocabPane">
+    <input class="vocabSearch" id="vocabSearch" placeholder="Search field names, types, descriptions…" oninput="renderVocab()">
+    <div id="vocabContent"></div>
+  </div>
+</main>
+
+<div id="diffPane">
+  <div id="diffBox">
+    <header2>New fields found — merge into vocabulary?</header2>
+    <div id="diffList"></div>
+    <div id="diffActions">
+      <button onclick="closeDiff()">Cancel</button>
+      <button class="primary" onclick="mergeDiff()">Merge selected</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- state ----------
+let files = {};          // filename -> {data: parsedJSON, linkedImage: filename|null}
+let activeFile = null;
+let images = {};         // filename -> {url, el:Image}
+let vocabulary = { categories: {} };
+let vocabShown = false;
+let pendingDiff = [];
+
+function setStatus(msg) { document.getElementById('statusLine').textContent = msg; }
+
+// ---------- file loading ----------
+document.getElementById('jsonInput').addEventListener('change', async (e) => {
+  for (const f of e.target.files) {
+    try {
+      const text = await f.text();
+      const data = JSON.parse(text);
+      files[f.name] = { data, linkedImage: guessLinkedImage(f.name) };
+    } catch (err) {
+      alert(`${f.name}: not valid JSON (${err.message})`);
+    }
+  }
+  renderTabs();
+  if (!activeFile && Object.keys(files).length) selectFile(Object.keys(files)[0]);
+  setStatus(`${Object.keys(files).length} JSON file(s) loaded`);
+  e.target.value = '';
+});
+
+document.getElementById('imgInput').addEventListener('change', (e) => {
+  for (const f of e.target.files) {
+    const url = URL.createObjectURL(f);
+    images[f.name] = { url };
+  }
+  refreshImgSelect();
+  setStatus(`${Object.keys(images).length} image(s) loaded`);
+  if (activeFile) renderImageForActive();
+  e.target.value = '';
+});
+
+document.getElementById('vocabInput').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    vocabulary = JSON.parse(await f.text());
+    if (!vocabulary.categories) vocabulary.categories = {};
+    setStatus('Vocabulary loaded: ' + Object.keys(vocabulary.categories).length + ' categories');
+    renderVocab();
+  } catch (err) { alert('Not valid JSON: ' + err.message); }
+  e.target.value = '';
+});
+
+function guessLinkedImage(jsonFilename) {
+  const stem = jsonFilename.replace(/\.json$/i, '').replace(/-analysis|-design-json|-generation/g, '');
+  const candidates = Object.keys(images);
+  return candidates.find(c => c.includes(stem) || stem.includes(c.replace(/\.(jpg|jpeg|png)$/i, ''))) || null;
+}
+
+// ---------- tabs ----------
+function renderTabs() {
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  Object.keys(files).forEach(fname => {
+    const t = document.createElement('div');
+    t.className = 'tab' + (fname === activeFile ? ' active' : '');
+    t.innerHTML = `${fname} <span class="x" onclick="event.stopPropagation(); closeFile('${fname.replace(/'/g, "\\'")}')">✕</span>`;
+    t.onclick = () => selectFile(fname);
+    tabs.appendChild(t);
+  });
+}
+function closeFile(fname) {
+  delete files[fname];
+  if (activeFile === fname) activeFile = Object.keys(files)[0] || null;
+  renderTabs();
+  if (activeFile) selectFile(activeFile); else clearPanes();
+}
+function clearPanes() {
+  document.getElementById('jsonHeader').style.display = 'none';
+  document.getElementById('jsonTree').innerHTML = '<div id="noJson">No JSON loaded.</div>';
+  document.getElementById('imgWrap').style.display = 'none';
+  document.getElementById('imgPicker').style.display = 'none';
+  document.getElementById('noImage').style.display = 'block';
+}
+
+function selectFile(fname) {
+  activeFile = fname;
+  renderTabs();
+  document.getElementById('jsonHeader').style.display = 'flex';
+  document.getElementById('jsonFname').textContent = fname;
+  renderJsonTree();
+  refreshImgSelect();
+  renderImageForActive();
+}
+
+// ---------- image linking ----------
+function refreshImgSelect() {
+  const sel = document.getElementById('imgSelect');
+  sel.innerHTML = '<option value="">— none —</option>';
+  Object.keys(images).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  });
+  if (activeFile && files[activeFile]) sel.value = files[activeFile].linkedImage || '';
+  document.getElementById('imgPicker').style.display = Object.keys(images).length ? 'flex' : 'none';
+}
+function onImageSelect() {
+  if (!activeFile) return;
+  files[activeFile].linkedImage = document.getElementById('imgSelect').value || null;
+  renderImageForActive();
+}
+function renderImageForActive() {
+  const f = activeFile && files[activeFile];
+  const linked = f && f.linkedImage && images[f.linkedImage];
+  if (!linked) {
+    document.getElementById('imgWrap').style.display = 'none';
+    document.getElementById('noImage').style.display = 'block';
+    return;
+  }
+  document.getElementById('noImage').style.display = 'none';
+  document.getElementById('imgWrap').style.display = 'block';
+  const img = document.getElementById('mainImg');
+  img.onload = () => sizeOverlay();
+  img.src = linked.url;
+}
+function sizeOverlay() {
+  const img = document.getElementById('mainImg');
+  const cv = document.getElementById('overlay');
+  cv.width = img.clientWidth; cv.height = img.clientHeight;
+  cv.style.width = img.clientWidth + 'px'; cv.style.height = img.clientHeight + 'px';
+}
+window.addEventListener('resize', () => { if (document.getElementById('imgWrap').style.display !== 'none') sizeOverlay(); });
+
+function highlightBbox(box, label) {
+  sizeOverlay();
+  const cv = document.getElementById('overlay');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  let x, y, w, h;
+  if (box.bbox) {
+    x = box.bbox.x * cv.width; y = box.bbox.y * cv.height;
+    w = box.bbox.width * cv.width; h = box.bbox.height * cv.height;
+  } else if (box.position_pct) {
+    const [px, py] = box.position_pct;
+    const bw = (box.size_pct_of_frame ? Math.sqrt(box.size_pct_of_frame) : 10);
+    w = cv.width * bw / 100; h = cv.height * bw / 100;
+    x = cv.width * px / 100 - w / 2; y = cv.height * py / 100 - h / 2;
+  } else return;
+  ctx.strokeStyle = '#ffd27e'; ctx.lineWidth = 3; ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(255,210,126,0.18)'; ctx.fillRect(x, y, w, h);
+  if (label) {
+    ctx.font = '12px sans-serif'; ctx.fillStyle = '#16161f';
+    const tw = ctx.measureText(label).width + 8;
+    ctx.fillStyle = '#ffd27e'; ctx.fillRect(x, Math.max(0, y - 18), tw, 18);
+    ctx.fillStyle = '#16161f'; ctx.fillText(label, x + 4, Math.max(12, y - 5));
+  }
+}
+
+// ---------- JSON tree render + edit ----------
+function renderJsonTree() {
+  const root = document.getElementById('jsonTree');
+  root.innerHTML = '';
+  const data = files[activeFile].data;
+  root.appendChild(buildNode('', data, []));
+}
+
+function hasPositionData(v) {
+  return v && typeof v === 'object' && !Array.isArray(v) &&
+    (v.bbox && typeof v.bbox.x === 'number' || Array.isArray(v.position_pct));
+}
+
+function buildNode(key, value, path) {
+  const wrap = document.createElement('div');
+  const row = document.createElement('div');
+  row.className = 'row';
+
+  const isObj = value && typeof value === 'object';
+  if (isObj) {
+    const toggle = document.createElement('span');
+    toggle.className = 'toggle'; toggle.textContent = '▾';
+    toggle.onclick = () => { wrap.classList.toggle('collapsed'); toggle.textContent = wrap.classList.contains('collapsed') ? '▸' : '▾'; };
+    row.appendChild(toggle);
+  } else {
+    const sp = document.createElement('span'); sp.style.width = '14px'; sp.style.display = 'inline-block';
+    row.appendChild(sp);
+  }
+
+  if (key !== '') {
+    const k = document.createElement('span');
+    k.className = 'key';
+    k.textContent = `"${key}": `;
+    if (hasPositionData(value)) {
+      k.classList.add('keyBbox');
+      k.title = 'Click to highlight on the linked image';
+      k.onclick = () => highlightBbox(value, key);
+    }
+    row.appendChild(k);
+  }
+
+  if (isObj) {
+    const isArr = Array.isArray(value);
+    const br = document.createElement('span'); br.className = 'bracket';
+    br.textContent = isArr ? '[' : '{';
+    row.appendChild(br);
+    wrap.appendChild(row);
+    const children = document.createElement('div'); children.className = 'children node';
+    const entries = isArr ? value.map((v, i) => [i, v]) : Object.entries(value);
+    entries.forEach(([k, v]) => children.appendChild(buildNode(String(k), v, path.concat(k))));
+    wrap.appendChild(children);
+    const closeRow = document.createElement('div'); closeRow.className = 'row';
+    const sp = document.createElement('span'); sp.style.width = '14px'; sp.style.display = 'inline-block';
+    closeRow.appendChild(sp);
+    const brc = document.createElement('span'); brc.className = 'bracket'; brc.textContent = isArr ? ']' : '}';
+    closeRow.appendChild(brc);
+    wrap.appendChild(closeRow);
+  } else {
+    const v = document.createElement('span');
+    const t = value === null ? 'null' : typeof value;
+    v.className = 'type-' + t + ' editable';
+    v.textContent = typeof value === 'string' ? `"${value}"` : String(value);
+    v.title = 'Click to edit';
+    v.onclick = () => editLeaf(v, path);
+    row.appendChild(v);
+    wrap.appendChild(row);
+  }
+  return wrap;
+}
+
+function getAt(obj, path) { return path.reduce((o, k) => o[k], obj); }
+function setAt(obj, path, val) {
+  const parent = path.slice(0, -1).reduce((o, k) => o[k], obj);
+  parent[path[path.length - 1]] = val;
+}
+
+function editLeaf(span, path) {
+  const current = getAt(files[activeFile].data, path);
+  const input = document.createElement('input');
+  input.value = typeof current === 'string' ? current : JSON.stringify(current);
+  input.style.cssText = 'background:#0d0d13;color:#e2e2ea;border:1px solid #4a4ae0;border-radius:4px;padding:1px 4px;font:inherit;width:' + Math.max(120, span.offsetWidth + 40) + 'px;';
+  span.replaceWith(input);
+  input.focus(); input.select();
+  const commit = () => {
+    let val = input.value;
+    let parsed;
+    if (typeof current === 'number') parsed = Number(val);
+    else if (typeof current === 'boolean') parsed = val === 'true';
+    else if (current === null) parsed = val === 'null' ? null : val;
+    else parsed = val; // string — stored raw, no surrounding quotes needed from user
+    setAt(files[activeFile].data, path, parsed);
+    renderJsonTree();
+    document.getElementById('jsonStatus').textContent = '● edited (not yet exported)';
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.value = typeof current === 'string' ? current : JSON.stringify(current); input.blur(); } });
+}
+
+// ---------- export ----------
+function downloadBlob(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function exportActiveJson() {
+  if (!activeFile) { alert('No JSON file selected.'); return; }
+  downloadBlob(activeFile.replace(/\.json$/i, '') + '-edited.json', JSON.stringify(files[activeFile].data, null, 2), 'application/json');
+}
+function exportVocabulary() {
+  downloadBlob('vocabulary.json', JSON.stringify(vocabulary, null, 2), 'application/json');
+}
+
+// ---------- vocabulary browser + scan/merge ----------
+function showVocabPane(show) {
+  vocabShown = show;
+  document.getElementById('vocabPane').classList.toggle('show', show);
+  document.getElementById('jsonPane').style.display = show ? 'none' : 'flex';
+  document.getElementById('imgPane').style.display = show ? 'none' : 'flex';
+  if (show) renderVocab();
+}
+function flattenVocabFields(cat, prefix, out) {
+  if (!cat) return;
+  if (cat.fields) {
+    Object.entries(cat.fields).forEach(([k, v]) => {
+      out.push({ path: prefix + k, ...v });
+      if (v.sub_fields) flattenVocabFields({ fields: v.sub_fields }, prefix + k + '.', out);
+    });
+  }
+}
+function renderVocab() {
+  const q = (document.getElementById('vocabSearch').value || '').toLowerCase();
+  const content = document.getElementById('vocabContent');
+  content.innerHTML = '';
+  Object.entries(vocabulary.categories || {}).forEach(([catName, cat]) => {
+    const items = [];
+    flattenVocabFields(cat, '', items);
+    const filtered = items.filter(it => !q || (it.path + ' ' + (it.description||'') + ' ' + (it.type||'')).toLowerCase().includes(q));
+    if (!filtered.length) return;
+    const h = document.createElement('h2');
+    h.textContent = catName + (cat.description ? ' — ' + cat.description : '');
+    content.appendChild(h);
+    filtered.forEach(it => {
+      const d = document.createElement('div'); d.className = 'vfield';
+      d.innerHTML = `<span class="vkey">${it.path}</span><span class="vtype">${it.type || ''}</span>` +
+        (it.description ? `<div class="vdesc">${it.description}</div>` : '') +
+        (it.example !== undefined ? `<div class="vexample">e.g. ${typeof it.example === 'string' ? it.example : JSON.stringify(it.example)}</div>` : '');
+      content.appendChild(d);
+    });
+  });
+  if (!content.children.length) content.innerHTML = '<div class="status">No vocabulary loaded yet, or nothing matches — load Product Development/tools/vocabulary.json, or load a JSON file and click "Scan into vocabulary".</div>';
+}
+
+function scanIntoVocabulary() {
+  if (!activeFile) { alert('Select a JSON file first.'); return; }
+  const known = new Set();
+  Object.values(vocabulary.categories || {}).forEach(cat => {
+    const items = []; flattenVocabFields(cat, '', items);
+    items.forEach(it => known.add(it.path));
+  });
+  const found = [];
+  function walk(obj, path) {
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      Object.entries(obj).forEach(([k, v]) => {
+        const p = path ? path + '.' + k : k;
+        if (!known.has(p) && !k.startsWith('_')) {
+          found.push({ path: p, type: Array.isArray(v) ? 'array' : typeof v, example: typeof v === 'object' ? undefined : v });
+        }
+        walk(v, p);
+      });
+    } else if (Array.isArray(obj)) {
+      obj.slice(0, 1).forEach(v => walk(v, path + '[]'));
+    }
+  }
+  walk(files[activeFile].data, '');
+  if (!found.length) { setStatus('No new fields — every key already exists in the loaded vocabulary.'); return; }
+  pendingDiff = found;
+  const list = document.getElementById('diffList');
+  list.innerHTML = '';
+  found.forEach((f, i) => {
+    const row = document.createElement('label'); row.className = 'dnew'; row.style.display = 'block';
+    row.innerHTML = `<input type="checkbox" checked data-i="${i}"> <span class="key">${f.path}</span> <span class="vtype">${f.type}</span>` +
+      (f.example !== undefined ? ` <span class="vexample">= ${JSON.stringify(f.example)}</span>` : '');
+    list.appendChild(row);
+  });
+  document.getElementById('diffPane').classList.add('show');
+}
+function closeDiff() { document.getElementById('diffPane').classList.remove('show'); }
+function mergeDiff() {
+  const checks = document.querySelectorAll('#diffList input[type=checkbox]');
+  const catName = 'uncategorized_' + (activeFile || 'scan').replace(/\.json$/i, '');
+  if (!vocabulary.categories[catName]) vocabulary.categories[catName] = { description: 'Auto-scanned from ' + activeFile + ' — recategorize by hand when convenient.', fields: {} };
+  checks.forEach(cb => {
+    if (!cb.checked) return;
+    const f = pendingDiff[+cb.dataset.i];
+    vocabulary.categories[catName].fields[f.path] = { type: f.type, example: f.example };
+  });
+  closeDiff();
+  renderVocab();
+  setStatus('Merged into vocabulary — remember to Export Vocabulary and commit it.');
+}
+
+// wire the scan button into the json header once a file is active
+document.getElementById('jsonHeader').insertAdjacentHTML('beforeend', '<button style="margin-left:auto" onclick="scanIntoVocabulary()">Scan into vocabulary</button>');
+</script>
+</body>
+</html>

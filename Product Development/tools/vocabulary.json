@@ -1,0 +1,109 @@
+{
+  "_meta": {
+    "purpose": "Cross-project growing glossary of the JSON field names/shapes Gemini has actually used, across both directions: (a) analyzing a reference design into JSON, (b) analyzing a brand's own source images into JSON, (c) the final generation-prompt JSON sent back to Gemini. Load this in tools/parameter-visualizer.html — it grows every time a new analysis JSON is loaded there and you choose to merge new fields in.",
+    "how_to_extend": "Open parameter-visualizer.html, load a new analysis/generation JSON, click 'Scan into vocabulary', review the diff, export, and commit the updated vocabulary.json here.",
+    "seeded_from": "Product Development/projects/2026-09-lasalle-music-box/04-prompts/*.json, 2026-09-12"
+  },
+  "categories": {
+    "design_analysis_schema": {
+      "description": "Fields Gemini uses when asked to reverse-engineer an existing reference product design into JSON (the 'analyze the supplier's design' step).",
+      "fields": {
+        "dominant_landmark": {"type": "object", "description": "The single largest/most central visual element.", "sub_fields": {
+          "element": {"type": "string", "example": "Ferris Wheel"},
+          "position_pct": {"type": "[number,number]", "description": "[x,y] as 0-100 percentages of frame, origin top-left", "example": "[50, 55]"},
+          "size_pct_of_frame": {"type": "number", "example": 38},
+          "why_dominant": {"type": "string"}
+        }},
+        "secondary_elements": {"type": "array of object", "description": "Supporting elements, each with element + role (and sometimes position_pct).", "example": "[{\"element\": \"Pagoda\", \"role\": \"Historical landmark, adds background depth\"}]"},
+        "filler_motif": {"type": "object", "description": "The repeated texture/natural element used to fill space.", "sub_fields": {
+          "element": {"type": "string", "example": "Cherry Blossoms"},
+          "coverage_pct_of_frame": {"type": "number", "example": 40},
+          "placement_rule": {"type": "string"}
+        }},
+        "delight_element": {"type": "object", "description": "Exactly ONE whimsical/non-geographic object that exists purely for charm.", "sub_fields": {
+          "element": {"type": "string", "example": "Hot Air Balloon"},
+          "why_included": {"type": "string"},
+          "emotional_function": {"type": "string"},
+          "position_pct": {"type": "[number,number]"}
+        }},
+        "nameplate": {"type": "object", "description": "How the product/place name is physically constructed and where it sits.", "sub_fields": {
+          "shape": {"type": "string", "example": "Irregular polygon with rounded corners"},
+          "construction": {"type": "string", "example": "Die-cut, layered element"},
+          "integrated_with": {"type": "string", "description": "What element the nameplate is physically attached to/part of — nameplates are almost never free-floating.", "example": "Ferris Wheel"},
+          "text_content": {"type": "string"},
+          "position_pct": {"type": "[number,number]"}
+        }},
+        "color_palette": {"type": "object", "sub_fields": {
+          "dominant_hues": {"type": "array of string"},
+          "accent_hues": {"type": "array of string"},
+          "sky_treatment": {"type": "string"}
+        }},
+        "layering_order_back_to_front": {"type": "array of string", "description": "Explicit z-order, sky first."},
+        "density_pct_frame_filled": {"type": "number", "description": "Measured, not vibe-based — a key discovery: reference lines are consistently 85-95%, and generations that come back sparse are a precise measurable deviation from this, not a vague aesthetic complaint.", "example": 95},
+        "what_is_deliberately_omitted": {"type": "array of string", "description": "What a literal photo would include that the design deliberately leaves out — e.g. human figures, in every reference example found so far.", "example": "[\"Human figures\", \"Vehicles\", \"Harsh shadows\"]"},
+        "human_figures_present": {"type": "boolean", "description": "HARD RULE discovered across the La Salle project's 4 reference examples: always false. Worth checking explicitly on every new reference line rather than assuming."},
+        "single_sentence_design_thesis": {"type": "string"}
+      }
+    },
+    "brand_extraction_schema": {
+      "description": "Fields used when analyzing the TARGET BRAND's own real source images (a building, a product, a cultural motif) — same rigor as design_analysis_schema, applied to the new brand instead of the reference. Schema varies more by subject matter than the design-analysis schema does; these are examples per subject type, not one fixed shape.",
+      "fields": {
+        "_subject_type_building": {
+          "overall_form": {"type": "string", "example": "Single curved tower, convex facade, no straight-line sections"},
+          "curve_direction": {"type": "string"},
+          "floor_count_visible": {"type": "number"},
+          "facade_banding": {"type": "string"},
+          "window_pattern": {"type": "string"},
+          "roofline": {"type": "string"},
+          "ground_floor_treatment": {"type": "string", "description": "Exclude signage/text/logos from this description entirely — naming them still invites the model to reproduce them later."},
+          "material_and_color": {"type": "object", "sub_fields": {"primary": "string", "secondary": "string", "accent": "string"}},
+          "distinguishing_silhouette_features": {"type": "array of string", "description": "The 2-4 things that make THIS instance recognizable vs. a generic version of the same category."},
+          "camera_angle_of_this_photo": {"type": "string"},
+          "surrounding_context_visible": {"type": "string"}
+        },
+        "_subject_type_physical_product_construction": {
+          "material": {"type": "string"},
+          "edge_technique": {"type": "string", "description": "Be very specific about surface/texture, not generic '3D render' language."},
+          "body_color_and_finish": {"type": "string"},
+          "lid_construction": {"type": "string"},
+          "hardware": {"type": "string", "description": "VERIFY placement/position against a second reference photo — an extraction placed a knob on the wrong face in one project, caught only by cross-checking."},
+          "dimensions_cm": {"type": "object", "sub_fields": {"length": "number", "width": "number", "height": "number"}, "description": "VERIFY against a spec-sheet/label if one is visible in any reference photo — an extraction was off by ~40% in one project."}
+        },
+        "_subject_type_product_photography": {
+          "camera_angle": {"type": "string"},
+          "background": {"type": "string"},
+          "lighting_direction_and_quality": {"type": "string"},
+          "shadow_treatment": {"type": "string"},
+          "depth_of_field": {"type": "string"},
+          "color_grading_mood": {"type": "string"}
+        },
+        "_subject_type_cultural_or_symbolic_motif": {
+          "dominant_shape": {"type": "string"},
+          "color_palette": {"type": "array of string"},
+          "abstractable_motifs": {"type": "array of string", "description": "Geometric/symbolic elements that could be extracted WITHOUT reproducing any human figures present."},
+          "figures_present_not_to_reproduce": {"type": "array of string", "description": "Explicitly name what NOT to carry forward, so a later generation prompt can exclude it by name."}
+        }
+      }
+    },
+    "generation_prompt_schema": {
+      "description": "The final JSON sent AS the literal generation prompt (Controlled Generation) — merges a populated design-analysis-shaped object with brand-extraction data, plus generation-specific control fields.",
+      "fields": {
+        "action": {"type": "string", "example": "generate_image", "description": "Community convention, not a real Gemini API field — just a strong signal to the model that this whole JSON is a literal instruction set."},
+        "output_type": {"type": "string", "description": "State explicitly whether the deliverable is a flat print-ready illustration or a photorealistic product photograph — these are different requests and asking for one when the other is needed produces a technically-fine WRONG deliverable."},
+        "subject": {"type": "object", "description": "Community-convention key grouping what should be depicted."},
+        "visual_style": {"type": "object", "description": "Community-convention key for line/color/density/perspective/texture/edge-treatment rules — best populated FROM a design_analysis_schema extraction, not invented."},
+        "layout_map": {"type": "object", "sub_fields": {
+          "objects": {"type": "array of object", "sub_fields": {
+            "id": {"type": "string"},
+            "bbox": {"type": "object", "sub_fields": {"x": "number (0-1 fraction)", "y": "number (0-1 fraction)", "width": "number (0-1 fraction)", "height": "number (0-1 fraction)"}, "description": "Fractional, origin top-left — the 'JSON as layout map' community technique."},
+            "layer": {"type": "string", "description": "Optional z-order hint, e.g. 'dominant landmark', 'distant background'."},
+            "note": {"type": "string", "description": "Used for a reserved/calm zone instruction, e.g. a logo pocket to leave uncluttered."}
+          }}
+        }},
+        "camera_settings": {"type": "object", "sub_fields": {"type": "string", "aspect_ratio": "string", "framing": "string"}},
+        "hard_exclusions": {"type": "array of string", "description": "Absolute negative constraints, most effective when the excluded thing was never shown/named in an attached reference image either — describing a forbidden thing still invites it."},
+        "_source / _correction / _why prefixed keys": {"type": "string (convention, not a real field)", "description": "House convention introduced in this project: prefix an explanatory key with an underscore to record provenance or a manual correction inline in the JSON itself, without it being mistaken for an actual generation instruction. Gemini appears to ignore underscore-prefixed keys as instructions while still 'reading' them as context — unverified assumption, worth testing directly if it ever matters."}
+      }
+    }
+  }
+}
