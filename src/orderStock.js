@@ -184,6 +184,75 @@ export async function adjustReservedLine(cfg, orderId, orderLabel, lineId, newQt
   return { oldQty, newQty: target, delta }
 }
 
+// Add a brand-new component to an existing reservation — the BOM didn't call
+// for it, but the actual production run needs it (XiangXia ask #3,
+// 2026-09-12: "有些 BOM 可能跟实际有出入" — some BOMs deviate from actual need).
+// Posts a plain `reserve` (this component_id has no existing line, so there's
+// no delta) and appends the line. Blocks a component already on the list —
+// edit that line's qty instead, so one component_id never has two lines
+// fighting over the same reserved balance.
+export async function addReservedLine(cfg, orderId, orderLabel, { component_id, code, qty }) {
+  const { collectionPath, order } = cfg
+  const idField = order.lineIdField
+  const target = Math.round(Number(qty))
+  if (!component_id) throw new Error('Pick a component.')
+  if (!Number.isFinite(target) || target <= 0) throw new Error('Enter a quantity greater than zero.')
+
+  const orderRef = doc(db, 'orders', orderId)
+  const d = (await getDoc(orderRef)).data() || {}
+  if (!d[order.reserved]) throw new Error('Nothing is reserved for this order yet.')
+  if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
+
+  const lines = Array.isArray(d[order.lines]) ? d[order.lines] : []
+  if (lines.some(l => l[idField] === component_id)) {
+    throw new Error('That component is already on the list — edit its quantity instead of adding it again.')
+  }
+
+  const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
+  await postMovement(collectionPath, component_id, {
+    type: 'reserve', qty: target, order_id: orderId,
+    note: `Added to reservation — order ${orderLabel || orderId}`,
+    idempotencyKey: `add_${orderId}_g${generation}_${component_id}`,
+  })
+
+  const nextLines = [...lines, { [idField]: component_id, code: code || '', qty: target, adj_seq: 0 }]
+  await updateDoc(orderRef, { [order.lines]: nextLines })
+  return { component_id, qty: target }
+}
+
+// Remove a line entirely — the BOM called for it, this run doesn't need it.
+// Releases whatever was reserved on that line back to free stock, then drops
+// it from the stored lines. Distinct verb prefix ("remove_") from
+// adjust/reserve/release so its idempotency key can never collide with an
+// edit to the same line (L-A, RESERVE-QTY-EDIT-AUDIT.md).
+export async function removeReservedLine(cfg, orderId, orderLabel, lineId) {
+  const { collectionPath, order } = cfg
+  const idField = order.lineIdField
+  if (!lineId) throw new Error('No line to remove.')
+
+  const orderRef = doc(db, 'orders', orderId)
+  const d = (await getDoc(orderRef)).data() || {}
+  if (!d[order.reserved]) throw new Error('Nothing is reserved for this order.')
+  if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
+
+  const lines = Array.isArray(d[order.lines]) ? d[order.lines] : []
+  const idx = lines.findIndex(l => l[idField] === lineId)
+  if (idx < 0) throw new Error('That line is not part of the reservation.')
+  const qty = Math.abs(Number(lines[idx].qty) || 0)
+
+  const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
+  if (qty > 0) {
+    await postMovement(collectionPath, lineId, {
+      type: 'release', qty, order_id: orderId,
+      note: `Removed from reservation — order ${orderLabel || orderId}`,
+      idempotencyKey: `remove_${orderId}_g${generation}_${lineId}`,
+    })
+  }
+
+  const nextLines = lines.filter((_, i) => i !== idx)
+  await updateDoc(orderRef, { [order.lines]: nextLines })
+}
+
 // Production-in: consume the reservation into finished goods (on-hand ↓, reserved ↓).
 export async function produceForOrder(cfg, orderId, orderLabel) {
   const { collectionPath, order } = cfg

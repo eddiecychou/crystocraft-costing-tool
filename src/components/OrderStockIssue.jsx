@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import { computeOrderIssue, reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder, adjustReservedLine, metalOrderConfig } from '../orderStock'
+import { computeOrderIssue, reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder, adjustReservedLine, addReservedLine, removeReservedLine, metalOrderConfig } from '../orderStock'
 import { gapsOf } from '../orderStockStatus'
-import { loadComponents } from '../criticalComponents'
+import { loadComponents, availableOf } from '../criticalComponents'
 import { downloadCsv } from '../exportCsv'
 import EditableQty from './EditableQty'
-import { Lock, Factory, RotateCcw, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download } from 'lucide-react'
+import { Lock, Factory, RotateCcw, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download, Plus, Trash2 } from 'lucide-react'
 
 // Order → component stock card (V7.13a R1). Two-stage, matching the ERP:
 // Reserve at confirmation (allocated, on-hand unchanged) → Production-in when
@@ -22,6 +22,13 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
+  const [library, setLibrary] = useState([])
+
+  // The component library backs the "add a component" picker at both stages
+  // (XiangXia ask #3, 2026-09-12 — a BOM-derived list doesn't always match
+  // what a run actually needs). Loaded once the card is opened, not on mount,
+  // so a page full of orders doesn't each fetch the whole component list.
+  useEffect(() => { if (open && library.length === 0) loadComponents().then(setLibrary) }, [open, library.length])
 
   useEffect(() => {
     if (!orderId) return
@@ -72,6 +79,40 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
   const doAdjust = (lineId, code, newQty) => run(
     () => adjustReservedLine(cfg, orderId, orderLabel, lineId, newQty),
     `Change the reserved quantity for ${code} to ${fmt(newQty)}? The difference is reserved or released on the component ledger.`)
+  const doAddLine = (component_id, code, qty) => run(
+    () => addReservedLine(cfg, orderId, orderLabel, { component_id, code, qty }),
+    `Add ${code} × ${fmt(qty)} to this reservation? This reserves it on the component ledger.`)
+  const doRemoveLine = (lineId, code) => run(
+    () => removeReservedLine(cfg, orderId, orderLabel, lineId),
+    `Remove ${code} from this reservation? Its reserved quantity returns to free stock.`)
+
+  // Preview-stage edits (before Reserve) — pure local state, nothing is
+  // persisted until "Reserve components" is clicked, which reserves exactly
+  // whatever is in `preview.items` at that moment. Lets a deviation from the
+  // BOM (a substitute part, an extra add-on, a part this run skips) be fixed
+  // before it's ever written to the ledger.
+  const byLibId = Object.fromEntries(library.map(c => [c.id, c]))
+  const updatePreviewQty = (component_id, newQty) => setPreview(p => ({
+    ...p,
+    items: p.items.map(it => it.component_id === component_id
+      ? { ...it, required: newQty, after: it.inStock - newQty, manual: true }
+      : it),
+  }))
+  const removePreviewItem = component_id => setPreview(p => ({
+    ...p, items: p.items.filter(it => it.component_id !== component_id),
+  }))
+  const addPreviewItem = (component_id, qty) => {
+    const c = byLibId[component_id]
+    if (!c) return
+    // inStock here is AVAILABLE (on-hand − already reserved), matching
+    // computeOrderIssue/mrp.js's own r.inStock exactly (mrp.js: "'In stock'
+    // for planning = AVAILABLE... reserved parts can't cover new demand").
+    const inStock = availableOf(c)
+    setPreview(p => ({
+      ...p,
+      items: [...p.items, { component_id, code: c.code, name: c.name, required: qty, inStock, after: inStock - qty, manual: true }],
+    }))
+  }
 
   const dateStr = state.at?.toDate ? state.at.toDate().toLocaleDateString() : null
 
@@ -149,8 +190,14 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
             </>
           ) : state.stage === 'reserved' ? (
             <>
-              <p className="text-xs text-ink-60 mb-2">{state.lines.length} component(s) reserved — on the line, not yet consumed. Edit a quantity if this run isn’t standard.</p>
-              <LinesTable lines={state.lines} onAdjust={doAdjust} busy={busy} />
+              <p className="text-xs text-ink-60 mb-2">{state.lines.length} component(s) reserved — on the line, not yet consumed. Edit a quantity, remove a line, or add one if this run isn’t standard.</p>
+              <LinesTable lines={state.lines} onAdjust={doAdjust} onRemove={doRemoveLine} busy={busy} />
+              <AddComponentRow
+                library={library}
+                excludeIds={state.lines.map(l => l.component_id)}
+                busy={busy}
+                onAdd={doAddLine}
+              />
               <div className="mt-3 flex items-center gap-3 flex-wrap">
                 <button type="button" onClick={doProduce} disabled={busy} className="inline-flex items-center gap-1.5 btn-primary text-sm">
                   <Factory size={14} /> {busy ? 'Working…' : 'Production-in (consume)'}
@@ -166,14 +213,20 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
           ) : preview ? (
             <>
               {preview.items.length === 0 ? (
-                <p className="text-sm text-ink-60 py-2">No metal-component BOM to reserve on this order.</p>
+                <p className="text-sm text-ink-60 py-2">No metal-component BOM on this order — add one below if this run needs a component anyway.</p>
               ) : (
-                <>
-                  <PreviewTable items={preview.items} />
-                  <button type="button" onClick={doReserve} disabled={busy} className="mt-3 inline-flex items-center gap-1.5 btn-primary text-sm">
-                    <Lock size={14} /> {busy ? 'Reserving…' : 'Reserve components'}
-                  </button>
-                </>
+                <PreviewTable items={preview.items} onAdjust={updatePreviewQty} onRemove={removePreviewItem} busy={busy} />
+              )}
+              <AddComponentRow
+                library={library}
+                excludeIds={preview.items.map(it => it.component_id)}
+                busy={busy}
+                onAdd={(id, code, qty) => addPreviewItem(id, qty)}
+              />
+              {preview.items.length > 0 && (
+                <button type="button" onClick={doReserve} disabled={busy} className="mt-3 inline-flex items-center gap-1.5 btn-primary text-sm">
+                  <Lock size={14} /> {busy ? 'Reserving…' : 'Reserve components'}
+                </button>
               )}
               {(preview.missing?.length > 0 || preview.unmatched?.length > 0) && (
                 <div className="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">
@@ -223,7 +276,11 @@ function GapNotice({ gaps }) {
   )
 }
 
-function PreviewTable({ items }) {
+// items: BOM-derived rows, optionally flagged `manual: true` for a
+// hand-added one (never confuse it for a BOM-exact figure — L-C,
+// RESERVE-QTY-EDIT-AUDIT.md). onAdjust/onRemove are only passed while still
+// in the editable preview stage.
+function PreviewTable({ items, onAdjust, onRemove, busy }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -233,15 +290,30 @@ function PreviewTable({ items }) {
             <th className="py-1.5 pr-2 font-medium text-right">Need</th>
             <th className="py-1.5 pr-2 font-medium text-right">In stock</th>
             <th className="py-1.5 font-medium text-right">After reserve</th>
+            {onRemove && <th className="py-1.5 pl-2 w-6" />}
           </tr>
         </thead>
         <tbody className="divide-y divide-warm-grey">
           {items.map(it => (
             <tr key={it.component_id}>
-              <td className="py-1.5 pr-2"><span className="font-mono text-xs">{it.code}</span>{it.name ? <span className="text-ink-60"> · {it.name}</span> : ''}</td>
-              <td className="py-1.5 pr-2 text-right font-mono tabular-nums text-amber-700">{fmt(it.required)}</td>
+              <td className="py-1.5 pr-2">
+                <span className="font-mono text-xs">{it.code}</span>{it.name ? <span className="text-ink-60"> · {it.name}</span> : ''}
+                {it.manual && <span className="ml-1.5 text-2xs uppercase tracking-wide text-brand-600">manual</span>}
+              </td>
+              <td className="py-1.5 pr-2 text-right font-mono tabular-nums text-amber-700">
+                {onAdjust
+                  ? <EditableQty value={it.required} busy={busy} onSave={n => onAdjust(it.component_id, n)} />
+                  : fmt(it.required)}
+              </td>
               <td className="py-1.5 pr-2 text-right font-mono tabular-nums text-ink-60">{fmt(it.inStock)}</td>
               <td className={`py-1.5 text-right font-mono tabular-nums ${it.after < 0 ? 'text-red-600 font-semibold' : 'text-green-700'}`}>{fmt(it.after)}</td>
+              {onRemove && (
+                <td className="py-1.5 pl-2 text-right">
+                  <button type="button" onClick={() => onRemove(it.component_id)} className="text-platinum hover:text-red-500" title="Remove this component from the reservation">
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -250,7 +322,7 @@ function PreviewTable({ items }) {
   )
 }
 
-function LinesTable({ lines, onAdjust, busy }) {
+function LinesTable({ lines, onAdjust, onRemove, busy }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -263,10 +335,56 @@ function LinesTable({ lines, onAdjust, busy }) {
                   ? <EditableQty value={l.qty} busy={busy} onSave={n => onAdjust(l.component_id, l.code, n)} />
                   : <span className="font-mono tabular-nums text-ink-70">{fmt(l.qty)}</span>}
               </td>
+              {onRemove && (
+                <td className="py-1.5 pl-2 text-right w-6">
+                  <button type="button" onClick={() => onRemove(l.component_id, l.code)} disabled={busy}
+                    className="text-platinum hover:text-red-500 disabled:opacity-50" title="Remove this component from the reservation">
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// Shared "add a component that isn't already on the list" picker — same
+// shape at both the preview and reserved stages, just wired to a different
+// onAdd. Mirrors OrderInventoryIssue.jsx's existing add-row UX (crystals/
+// packaging), since that panel has always allowed hand-picking a line where
+// this one previously only ever showed the BOM explosion.
+function AddComponentRow({ library, excludeIds, busy, onAdd }) {
+  const [componentId, setComponentId] = useState('')
+  const [qty, setQty] = useState('')
+  const excluded = new Set(excludeIds)
+  const options = library.filter(c => !excluded.has(c.id))
+  const selected = library.find(c => c.id === componentId)
+
+  function add() {
+    const n = Math.round(Number(qty))
+    if (!componentId || !Number.isFinite(n) || n <= 0) return
+    onAdd(componentId, selected?.code || '', n)
+    setComponentId(''); setQty('')
+  }
+
+  if (options.length === 0 && !componentId) return null
+  return (
+    <div className="flex flex-col sm:flex-row gap-2 sm:items-center mt-2">
+      <select className="input text-sm flex-1" value={componentId} onChange={e => setComponentId(e.target.value)}>
+        <option value="">— add a component —</option>
+        {options.map(c => <option key={c.id} value={c.id}>{c.code}{c.name ? ` · ${c.name}` : ''}</option>)}
+      </select>
+      <div className="flex gap-2 items-center">
+        <input className="input text-sm w-24 text-right tabular-nums" inputMode="numeric" value={qty}
+               onChange={e => setQty(e.target.value.replace(/[^\d]/g, ''))} placeholder="Qty" />
+        <button type="button" onClick={add} disabled={busy || !componentId || !qty}
+          className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-800 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+          <Plus size={14} /> Add
+        </button>
+      </div>
     </div>
   )
 }
