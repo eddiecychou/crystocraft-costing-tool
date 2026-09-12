@@ -99,5 +99,10 @@ service firebase.storage {
     match /pd_products/{productId}/{allPaths=**} {
       allow read, write: if isAdmin();
     }
+    // Generation result images, keyed by templateId (not productId --
+    // several templates for different customers share one product).
+    match /pd_generations/{templateId}/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
   }
 }
