@@ -434,24 +434,27 @@ service cloud.firestore {
     // admin-only for now, no `modules[]` key allocated yet. Reuses this
     // Firebase project so the two stay mergeable later; not reachable from
     // the costing-tool UI itself. `pd_` prefix is deliberate — this repo's
-    // own `products`/`customers` would collide with costing-tool's existing
-    // catalogue/CRM collections of the same bare name (see L-90 — matched
-    // above at lines ~92/262), so the Product Design entities get their own
-    // namespace instead of reading/writing live ops data. There is no
-    // pd_suppliers — Product Design reads this repo's own real `suppliers`
-    // collection directly (admin already has read via `can('supply')`
-    // above at line ~194) rather than keeping a separate freely-created
-    // supplier list; suppliers are managed here, not there. -----
+    // own `products` would collide with costing-tool's existing catalogue
+    // collection of the same bare name (see L-90 — matched above at line
+    // ~92), so the Product Design entities get their own namespace instead
+    // of reading/writing live ops data. There is no pd_suppliers or
+    // pd_customers — Product Design reads this repo's own real `suppliers`
+    // and `customers` collections directly (admin already has read via
+    // `can('supply')`/`can('customers')` above) rather than keeping a
+    // separate freely-created copy; those two are managed here, not there.
+    // pd_customer_brands is genuinely new data this repo doesn't have (a
+    // customer's Visual Tokens for image generation), keyed by the real
+    // customer's own id. -----
     match /pd_products/{id} {
-      allow read, write: if isAdmin();
-    }
-    match /pd_customers/{id} {
       allow read, write: if isAdmin();
     }
     match /pd_prompt_templates/{id} {
       allow read, write: if isAdmin();
     }
     match /pd_generations/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /pd_customer_brands/{customerId} {
       allow read, write: if isAdmin();
     }
   }
