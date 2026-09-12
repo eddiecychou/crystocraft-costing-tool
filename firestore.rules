@@ -429,5 +429,29 @@ service cloud.firestore {
         || (can('supply') && name.matches('pu_[0-9]+'))
         || (can('quotes') && name.matches('(uc|so)_[0-9]+'));
     }
+
+    // ---- Product Design app (separate repo, ~/Developer/Product Design) —
+    // admin-only for now, no `modules[]` key allocated yet. Reuses this
+    // Firebase project so the two stay mergeable later; not reachable from
+    // the costing-tool UI itself. `pd_` prefix is deliberate — this repo's
+    // own `suppliers`/`products`/`customers` collision with costing-tool's
+    // existing catalogue/CRM collections of the same bare name (see L-90 —
+    // matched above at lines ~92/194/262), so the Product Design entities
+    // get their own namespace instead of reading/writing live ops data. -----
+    match /pd_suppliers/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /pd_products/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /pd_customers/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /pd_prompt_templates/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /pd_generations/{id} {
+      allow read, write: if isAdmin();
+    }
   }
 }
