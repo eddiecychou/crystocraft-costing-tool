@@ -104,5 +104,10 @@ service firebase.storage {
     match /pd_generations/{templateId}/{allPaths=**} {
       allow read, write: if isAdmin();
     }
+    // Brand reference images (logos, marketing material) a customer's
+    // brand profile was extracted from.
+    match /pd_customer_brands/{customerId}/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
   }
 }
