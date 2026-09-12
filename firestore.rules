@@ -457,5 +457,8 @@ service cloud.firestore {
     match /pd_customer_brands/{customerId} {
       allow read, write: if isAdmin();
     }
+    match /pd_spec_sheet_templates/{id} {
+      allow read, write: if isAdmin();
+    }
   }
 }
