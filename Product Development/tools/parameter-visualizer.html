@@ -19,11 +19,38 @@
     padding: 6px 11px; font-size: 12px; cursor: pointer;
   }
   button:hover { background: #34344a; }
+  /* Second-Pass rule: exactly ONE primary action visible per step — see
+     updateStepGuide(), which toggles .primary onto whichever button is the
+     actual next action instead of it being hardcoded on one button forever. */
   button.primary { background: #4a4ae0; border-color: #5a5af0; }
   button.primary:hover { background: #5a5af0; }
   input[type=file] { display: none; }
   .spacer { flex: 1; }
   .status { color: #8a8aa0; font-size: 11px; }
+
+  #steps {
+    display: flex; align-items: center; gap: 0; padding: 8px 14px;
+    background: #1a1a26; border-bottom: 1px solid #2e2e40; flex-shrink: 0; flex-wrap: wrap;
+  }
+  #steps .step {
+    display: flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 6px;
+    color: #6a6a80; font-size: 12px;
+  }
+  #steps .step.done { color: #7ec8ff; }
+  #steps .step.current { color: #ffd27e; background: #2a260f; font-weight: 600; }
+  #steps .step .n {
+    width: 16px; height: 16px; border-radius: 50%; background: #2a2a3d; color: #9a9ab0;
+    font-size: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  #steps .step.done .n { background: #234a3d; color: #7ec8ff; }
+  #steps .step.current .n { background: #4a3f16; color: #ffd27e; }
+  #steps .arrow { color: #3d3d55; margin: 0 4px; }
+  #stepHint {
+    padding: 6px 14px; background: #201f14; border-bottom: 1px solid #3d3320;
+    color: #ffd27e; font-size: 12px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  #stepHint button { background: #4a3f16; border-color: #6a5a20; color: #ffd27e; }
+  #stepHint button:hover { background: #5a4c1c; }
 
   #tabs { display: flex; gap: 4px; padding: 6px 14px; background: #1a1a26; border-bottom: 1px solid #2e2e40; overflow-x: auto; flex-shrink: 0; }
   .tab {
@@ -97,9 +124,9 @@
 
 <header>
   <h1>Parameter Visualizer</h1>
-  <button onclick="document.getElementById('jsonInput').click()">Load JSON…</button>
+  <button id="loadJsonBtn" onclick="document.getElementById('jsonInput').click()">① Load JSON…</button>
   <input type="file" id="jsonInput" accept=".json" multiple>
-  <button onclick="document.getElementById('imgInput').click()">Load Images…</button>
+  <button id="loadImgBtn" onclick="document.getElementById('imgInput').click()">② Load Images…</button>
   <input type="file" id="imgInput" accept="image/*" multiple>
   <span style="width:1px;background:#3d3d55;align-self:stretch;margin:0 4px;"></span>
   <button onclick="document.getElementById('vocabInput').click()">Load Vocabulary…</button>
@@ -107,9 +134,24 @@
   <button id="exportVocabBtn" onclick="exportVocabulary()">Export Vocabulary</button>
   <span class="spacer"></span>
   <button id="exportJsonBtn" onclick="exportActiveJson()">Export Edited JSON</button>
-  <button class="primary" onclick="showVocabPane(!vocabShown)">Vocabulary Browser</button>
+  <button id="vocabBtn" onclick="showVocabPane(!vocabShown)">Vocabulary Browser</button>
   <span class="status" id="statusLine"></span>
 </header>
+
+<!-- What this tool does, step by step, and where you actually are right now.
+     Second-Pass rule #13 ("dead-end empty state -> one link out") applied to
+     the WHOLE tool, not just one empty state: there is always a next action
+     spelled out here, never just a static label. -->
+<div id="steps">
+  <div class="step" id="step1"><span class="n">1</span> Load JSON</div>
+  <span class="arrow">→</span>
+  <div class="step" id="step2"><span class="n">2</span> Load &amp; link an image</div>
+  <span class="arrow">→</span>
+  <div class="step" id="step3"><span class="n">3</span> Click a field to inspect it</div>
+  <span class="arrow">→</span>
+  <div class="step" id="step4"><span class="n">4</span> Edit / export</div>
+</div>
+<div id="stepHint"></div>
 
 <div id="tabs"></div>
 
@@ -162,6 +204,48 @@ let pendingDiff = [];
 
 function setStatus(msg) { document.getElementById('statusLine').textContent = msg; }
 
+// ---------- step guide: always says what to do RIGHT NOW, never a dead end ----------
+function updateStepGuide() {
+  const hasJson = Object.keys(files).length > 0;
+  const hasImages = Object.keys(images).length > 0;
+  const linked = activeFile && files[activeFile] && files[activeFile].linkedImage;
+  const steps = [
+    document.getElementById('step1'), document.getElementById('step2'),
+    document.getElementById('step3'), document.getElementById('step4'),
+  ];
+  steps.forEach(s => s.className = 'step');
+
+  const hint = document.getElementById('stepHint');
+  const loadJsonBtn = document.getElementById('loadJsonBtn');
+  const loadImgBtn = document.getElementById('loadImgBtn');
+  loadJsonBtn.className = ''; loadImgBtn.className = '';
+
+  if (!hasJson && !hasImages) {
+    steps[0].className = 'step current';
+    hint.style.display = 'flex';
+    hint.innerHTML = 'Start here: <b>Load JSON</b> loads an analysis file (or a generation prompt) to inspect. Load an image too — either order is fine, you\'ll link them next.';
+    loadJsonBtn.className = 'primary';
+  } else if (hasImages && !hasJson) {
+    steps[0].className = 'step current';
+    hint.style.display = 'flex';
+    hint.innerHTML = `Image loaded. Nothing to inspect yet — <b>Load JSON</b> now (an analysis file or generation prompt). Once it's loaded, use the "Image" dropdown above the picture to link this image to it.`;
+    loadJsonBtn.className = 'primary';
+  } else if (hasJson && !hasImages) {
+    steps[0].className = 'step done'; steps[1].className = 'step current';
+    hint.style.display = 'flex';
+    hint.innerHTML = `JSON loaded — click through its fields on the right. To see position/bbox fields highlighted visually, <b>Load Images</b> too, then pick one from the "Image" dropdown.`;
+    loadImgBtn.className = 'primary';
+  } else if (hasJson && hasImages && !linked) {
+    steps[0].className = 'step done'; steps[1].className = 'step current';
+    hint.style.display = 'flex';
+    hint.innerHTML = `Both loaded, but this JSON tab isn't linked to an image yet — pick one from the <b>"Image" dropdown</b> in the top-left of the picture pane.`;
+  } else {
+    steps[0].className = 'step done'; steps[1].className = 'step done'; steps[2].className = 'step current';
+    hint.style.display = 'flex';
+    hint.innerHTML = `Linked. Click any <u>underlined key</u> in the JSON tree (right) to highlight where Gemini placed it on the image (left). Click any value to edit it, then use <b>Export Edited JSON</b> (top) when done.`;
+  }
+}
+
 // ---------- file loading ----------
 document.getElementById('jsonInput').addEventListener('change', async (e) => {
   for (const f of e.target.files) {
@@ -176,6 +260,7 @@ document.getElementById('jsonInput').addEventListener('change', async (e) => {
   renderTabs();
   if (!activeFile && Object.keys(files).length) selectFile(Object.keys(files)[0]);
   setStatus(`${Object.keys(files).length} JSON file(s) loaded`);
+  updateStepGuide();
   e.target.value = '';
 });
 
@@ -187,6 +272,7 @@ document.getElementById('imgInput').addEventListener('change', (e) => {
   refreshImgSelect();
   setStatus(`${Object.keys(images).length} image(s) loaded`);
   if (activeFile) renderImageForActive();
+  updateStepGuide();
   e.target.value = '';
 });
 
@@ -242,6 +328,7 @@ function selectFile(fname) {
   renderJsonTree();
   refreshImgSelect();
   renderImageForActive();
+  updateStepGuide();
 }
 
 // ---------- image linking ----------
@@ -260,6 +347,7 @@ function onImageSelect() {
   if (!activeFile) return;
   files[activeFile].linkedImage = document.getElementById('imgSelect').value || null;
   renderImageForActive();
+  updateStepGuide();
 }
 function renderImageForActive() {
   const f = activeFile && files[activeFile];
@@ -513,6 +601,8 @@ function mergeDiff() {
 
 // wire the scan button into the json header once a file is active
 document.getElementById('jsonHeader').insertAdjacentHTML('beforeend', '<button style="margin-left:auto" onclick="scanIntoVocabulary()">Scan into vocabulary</button>');
+
+updateStepGuide(); // initial state on page load — always show what to do first, never a blank screen
 </script>
 </body>
 </html>
