@@ -19,14 +19,19 @@
     padding: 6px 11px; font-size: 12px; cursor: pointer;
   }
   button:hover { background: #34344a; }
-  /* Second-Pass rule: exactly ONE primary action visible per step — see
-     updateStepGuide(), which toggles .primary onto whichever button is the
-     actual next action instead of it being hardcoded on one button forever. */
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  /* Second-Pass rule: exactly ONE primary action visible per step. */
   button.primary { background: #4a4ae0; border-color: #5a5af0; }
   button.primary:hover { background: #5a5af0; }
+  button.secondary { background: transparent; border-color: #2e2e40; color: #8a8aa0; }
+  button.secondary:hover { background: #23232f; }
   input[type=file] { display: none; }
   .spacer { flex: 1; }
   .status { color: #8a8aa0; font-size: 11px; }
+  select, textarea, input[type=text], input[type=password] {
+    background: #1e1e2b; color: #e2e2ea; border: 1px solid #3d3d55; border-radius: 6px;
+    padding: 6px 8px; font-size: 12px; font-family: inherit;
+  }
 
   #steps {
     display: flex; align-items: center; gap: 0; padding: 8px 14px;
@@ -46,20 +51,21 @@
   #steps .step.current .n { background: #4a3f16; color: #ffd27e; }
   #steps .arrow { color: #3d3d55; margin: 0 4px; }
   #stepHint {
-    padding: 6px 14px; background: #201f14; border-bottom: 1px solid #3d3320;
+    padding: 8px 14px; background: #201f14; border-bottom: 1px solid #3d3320;
     color: #ffd27e; font-size: 12px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
   }
-  #stepHint button { background: #4a3f16; border-color: #6a5a20; color: #ffd27e; }
-  #stepHint button:hover { background: #5a4c1c; }
 
   #tabs { display: flex; gap: 4px; padding: 6px 14px; background: #1a1a26; border-bottom: 1px solid #2e2e40; overflow-x: auto; flex-shrink: 0; }
   .tab {
     padding: 5px 10px; border-radius: 6px 6px 0 0; background: #23232f; color: #9a9ab0;
     cursor: pointer; font-size: 11.5px; white-space: nowrap; border: 1px solid transparent;
+    display: flex; align-items: center; gap: 6px;
   }
   .tab.active { background: #16161f; color: #d8d8ff; border: 1px solid #3d3d55; border-bottom: none; }
-  .tab .x { margin-left: 6px; opacity: .5; }
+  .tab .x { margin-left: 2px; opacity: .5; }
   .tab .x:hover { opacity: 1; }
+  .tab .dot { width: 6px; height: 6px; border-radius: 50%; background: #ffd27e; flex-shrink: 0; }
+  .tab .warn { color: #f08ea0; }
 
   main { flex: 1; display: flex; min-height: 0; }
   #imgPane {
@@ -69,18 +75,27 @@
   #imgWrap { position: relative; max-width: 100%; }
   #imgWrap img { display: block; max-width: 100%; max-height: 78vh; }
   #overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
-  #imgPicker {
-    position: absolute; top: 8px; left: 8px; background: #1e1e2bcc; border-radius: 6px;
-    padding: 6px 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; max-width: calc(100% - 16px);
-  }
-  #imgPicker select { background: #2a2a3d; color: #e2e2ea; border: 1px solid #3d3d55; border-radius: 4px; padding: 3px 6px; font-size: 11px; }
-  #noImage { color: #6a6a80; font-size: 12px; text-align: center; padding: 20px; }
+  #noPair { color: #6a6a80; font-size: 12px; text-align: center; padding: 20px; max-width: 320px; }
+  #noPair button { margin-top: 10px; }
 
   #jsonPane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   #jsonHeader { padding: 8px 12px; border-bottom: 1px solid #2e2e40; display: flex; gap: 8px; align-items: center; }
   #jsonHeader .fname { font-size: 12px; color: #b9b9ff; font-weight: 600; }
   #jsonTree { flex: 1; overflow: auto; padding: 10px 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.6; }
   #noJson { color: #6a6a80; padding: 20px; font-size: 12px; }
+
+  /* --- Analyze panel: shown INSTEAD of the JSON tree when a pair has no JSON
+     yet, because in this tool a JSON is never created except FROM its image. --- */
+  #analyzePanel { padding: 18px; max-width: 480px; }
+  #analyzePanel h3 { color: #ffd27e; font-size: 13px; margin: 0 0 10px; }
+  #analyzePanel p { color: #b8b8c8; font-size: 12px; line-height: 1.6; margin: 0 0 12px; }
+  #analyzePanel label { display: block; color: #9a9ab0; font-size: 11px; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+  #analyzePanel select, #analyzePanel textarea { width: 100%; }
+  #analyzePanel textarea { height: 140px; resize: vertical; font-family: ui-monospace, monospace; font-size: 11.5px; }
+  #analyzeRunRow { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  #analyzeStatus { font-size: 11.5px; color: #8a8aa0; }
+  #analyzeStatus.err { color: #f08ea0; }
+  .keyRow { display: flex; gap: 6px; align-items: center; }
 
   .node { margin-left: 16px; }
   .row { display: flex; align-items: flex-start; gap: 6px; cursor: default; }
@@ -101,7 +116,7 @@
   #vocabPane.show { display: block; }
   #vocabPane h2 { font-size: 13px; color: #b9b9ff; margin: 18px 0 8px; }
   #vocabPane h2:first-child { margin-top: 0; }
-  .vocabSearch { width: 100%; max-width: 420px; padding: 7px 10px; border-radius: 6px; border: 1px solid #3d3d55; background: #1e1e2b; color: #e2e2ea; margin-bottom: 12px; }
+  .vocabSearch { width: 100%; max-width: 420px; margin-bottom: 12px; }
   .vfield { border: 1px solid #2e2e40; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; background: #1a1a24; }
   .vfield .vkey { color: #7ec8ff; font-family: ui-monospace, monospace; font-size: 12px; }
   .vfield .vtype { color: #f0b86e; font-size: 11px; margin-left: 8px; }
@@ -124,28 +139,28 @@
 
 <header>
   <h1>Parameter Visualizer</h1>
-  <button id="loadJsonBtn" onclick="document.getElementById('jsonInput').click()">① Load JSON…</button>
-  <input type="file" id="jsonInput" accept=".json" multiple>
-  <button id="loadImgBtn" onclick="document.getElementById('imgInput').click()">② Load Images…</button>
+  <button id="loadImgBtn" onclick="document.getElementById('imgInput').click()">① Load Image(s)…</button>
   <input type="file" id="imgInput" accept="image/*" multiple>
+  <button class="secondary" onclick="document.getElementById('jsonInput').click()" title="Re-open a JSON file you already exported/saved previously — it will try to re-attach to a matching image by filename.">Re-open saved analysis…</button>
+  <input type="file" id="jsonInput" accept=".json" multiple>
   <span style="width:1px;background:#3d3d55;align-self:stretch;margin:0 4px;"></span>
-  <button onclick="document.getElementById('vocabInput').click()">Load Vocabulary…</button>
+  <button class="secondary" onclick="document.getElementById('envInput').click()" id="keyBtn" title="Reads GEMINI_API_KEY straight out of the repo's own .env.local — nothing retyped, nothing stored elsewhere.">🔑 Load .env.local…</button>
+  <input type="file" id="envInput">
+  <button class="secondary" onclick="document.getElementById('vocabInput').click()">Load Vocabulary…</button>
   <input type="file" id="vocabInput" accept=".json">
-  <button id="exportVocabBtn" onclick="exportVocabulary()">Export Vocabulary</button>
+  <button class="secondary" onclick="exportVocabulary()">Export Vocabulary</button>
   <span class="spacer"></span>
   <button id="exportJsonBtn" onclick="exportActiveJson()">Export Edited JSON</button>
-  <button id="vocabBtn" onclick="showVocabPane(!vocabShown)">Vocabulary Browser</button>
+  <button class="secondary" onclick="showVocabPane(!vocabShown)">Vocabulary Browser</button>
   <span class="status" id="statusLine"></span>
 </header>
 
-<!-- What this tool does, step by step, and where you actually are right now.
-     Second-Pass rule #13 ("dead-end empty state -> one link out") applied to
-     the WHOLE tool, not just one empty state: there is always a next action
-     spelled out here, never just a static label. -->
+<!-- Always states the actual next action for the current state — never a
+     dead-end empty view (UI-POLISH.md §4 rules #2 and #13). -->
 <div id="steps">
-  <div class="step" id="step1"><span class="n">1</span> Load JSON</div>
+  <div class="step" id="step1"><span class="n">1</span> Load an image</div>
   <span class="arrow">→</span>
-  <div class="step" id="step2"><span class="n">2</span> Load &amp; link an image</div>
+  <div class="step" id="step2"><span class="n">2</span> Analyze it with Gemini</div>
   <span class="arrow">→</span>
   <div class="step" id="step3"><span class="n">3</span> Click a field to inspect it</div>
   <span class="arrow">→</span>
@@ -157,14 +172,16 @@
 
 <main>
   <div id="imgPane">
-    <div id="noImage">No image loaded.<br>Load one or more reference images, then pick which one each JSON file should link to.</div>
+    <div id="noPair">
+      No image loaded yet.<br><br>
+      In this tool, a JSON analysis is always created FROM an image — load one
+      to start; you'll analyze it into JSON on the right, and the two stay
+      permanently paired.
+      <br><button class="primary" onclick="document.getElementById('imgInput').click()">Load an image</button>
+    </div>
     <div id="imgWrap" style="display:none;">
       <img id="mainImg">
       <canvas id="overlay"></canvas>
-    </div>
-    <div id="imgPicker" style="display:none;">
-      <label style="font-size:11px;color:#9a9ab0;">Image:</label>
-      <select id="imgSelect" onchange="onImageSelect()"></select>
     </div>
   </div>
 
@@ -172,8 +189,10 @@
     <div id="jsonHeader" style="display:none;">
       <span class="fname" id="jsonFname"></span>
       <span class="status" id="jsonStatus"></span>
+      <button style="margin-left:auto" onclick="scanIntoVocabulary()">Scan into vocabulary</button>
+      <button class="secondary" onclick="reanalyzeActivePair()" title="Re-run analysis on this same image, e.g. after editing the prompt">Re-analyze…</button>
     </div>
-    <div id="jsonTree"><div id="noJson">Load one or more JSON files (analysis output, or a generation prompt) to inspect and edit them here. Click any underlined key with position/bbox data to highlight it on the linked image.</div></div>
+    <div id="jsonTree"><div id="noJson">Load an image on the left to get started.</div></div>
   </div>
 
   <div id="vocabPane">
@@ -193,86 +212,184 @@
   </div>
 </div>
 
+
 <script>
 // ---------- state ----------
-let files = {};          // filename -> {data: parsedJSON, linkedImage: filename|null}
-let activeFile = null;
-let images = {};         // filename -> {url, el:Image}
+// A "pair" is the core unit: one image + (once analyzed) its JSON. They are
+// never separately loaded/linked — the JSON is either created FROM the image
+// in this tool, or (via "Re-open saved analysis") re-attached to it by name.
+let pairs = {};        // id (image filename) -> {id, imageName, imageUrl, imageFile, json, promptUsed, status}
+let activePair = null;
 let vocabulary = { categories: {} };
 let vocabShown = false;
 let pendingDiff = [];
 
 function setStatus(msg) { document.getElementById('statusLine').textContent = msg; }
 
-// ---------- step guide: always says what to do RIGHT NOW, never a dead end ----------
-function updateStepGuide() {
-  const hasJson = Object.keys(files).length > 0;
-  const hasImages = Object.keys(images).length > 0;
-  const linked = activeFile && files[activeFile] && files[activeFile].linkedImage;
-  const steps = [
-    document.getElementById('step1'), document.getElementById('step2'),
-    document.getElementById('step3'), document.getElementById('step4'),
-  ];
-  steps.forEach(s => s.className = 'step');
+// ---------- prompt presets (proven prompts from the La Salle project) ----------
+const PRESETS = {
+  design_analysis: {
+    label: 'Design analysis (an existing reference product design)',
+    prompt: `Analyze the attached product/design photo as a professional design director reverse-engineering another designer's work. Return ONLY a valid JSON object (no markdown fences, no prose outside the JSON) with this schema:
 
-  const hint = document.getElementById('stepHint');
-  const loadJsonBtn = document.getElementById('loadJsonBtn');
-  const loadImgBtn = document.getElementById('loadImgBtn');
-  loadJsonBtn.className = ''; loadImgBtn.className = '';
+{
+  "dominant_landmark": {"element": string, "position_pct": [x,y], "size_pct_of_frame": number, "why_dominant": string},
+  "secondary_elements": [{"element": string, "position_pct": [x,y], "role": string}],
+  "filler_motif": {"element": string, "coverage_pct_of_frame": number, "placement_rule": string},
+  "delight_element": {"element": string, "position_pct": [x,y], "why_included": string, "emotional_function": string},
+  "nameplate": {"shape": string, "position_pct": [x,y], "construction": string, "integrated_with": string, "text_content": string},
+  "color_palette": {"dominant_hues": [string], "accent_hues": [string], "sky_treatment": string},
+  "layering_order_back_to_front": [string],
+  "density_pct_frame_filled": number,
+  "what_is_deliberately_omitted": [string],
+  "single_sentence_design_thesis": string
+}
 
-  if (!hasJson && !hasImages) {
-    steps[0].className = 'step current';
-    hint.style.display = 'flex';
-    hint.innerHTML = 'Start here: <b>Load JSON</b> loads an analysis file (or a generation prompt) to inspect. Load an image too — either order is fine, you\'ll link them next.';
-    loadJsonBtn.className = 'primary';
-  } else if (hasImages && !hasJson) {
-    steps[0].className = 'step current';
-    hint.style.display = 'flex';
-    hint.innerHTML = `Image loaded. Nothing to inspect yet — <b>Load JSON</b> now (an analysis file or generation prompt). Once it's loaded, use the "Image" dropdown above the picture to link this image to it.`;
-    loadJsonBtn.className = 'primary';
-  } else if (hasJson && !hasImages) {
-    steps[0].className = 'step done'; steps[1].className = 'step current';
-    hint.style.display = 'flex';
-    hint.innerHTML = `JSON loaded — click through its fields on the right. To see position/bbox fields highlighted visually, <b>Load Images</b> too, then pick one from the "Image" dropdown.`;
-    loadImgBtn.className = 'primary';
-  } else if (hasJson && hasImages && !linked) {
-    steps[0].className = 'step done'; steps[1].className = 'step current';
-    hint.style.display = 'flex';
-    hint.innerHTML = `Both loaded, but this JSON tab isn't linked to an image yet — pick one from the <b>"Image" dropdown</b> in the top-left of the picture pane.`;
+Be precise with position_pct as [x,y] percentages of the frame (0-100). Base every field on what is ACTUALLY VISIBLE in the image, not assumptions.`
+  },
+  building_extraction: {
+    label: 'Building / architecture extraction (a real brand asset)',
+    prompt: `Analyze the attached photo of a real building as an architectural illustrator preparing to redraw it accurately in a stylized flat-vector illustration. Return ONLY a valid JSON object (no markdown fences, no prose outside JSON), describing ONLY what is actually visible in THIS photo:
+
+{
+  "overall_form": string,
+  "curve_direction": string,
+  "floor_count_visible": number,
+  "facade_banding": string,
+  "window_pattern": string,
+  "roofline": string,
+  "ground_floor_treatment": string (EXCLUDE any signage/text/logos from this description entirely),
+  "material_and_color": {"primary": string, "secondary": string, "accent": string},
+  "distinguishing_silhouette_features": [string],
+  "camera_angle_of_this_photo": string,
+  "surrounding_context_visible": string
+}
+
+Be precise and literal. Do not invent architectural details not visible in the photo.`
+  },
+  construction_extraction: {
+    label: 'Physical construction + photography extraction (a real product photo)',
+    prompt: `Analyze the attached product photo of a real physical object as a product photographer and industrial designer preparing a photorealistic render brief. Return ONLY a valid JSON object (no markdown fences, no prose outside JSON):
+
+{
+  "construction": {
+    "material": string,
+    "edge_technique": string,
+    "body_color_and_finish": string,
+    "lid_construction": string,
+    "hardware": string
+  },
+  "photography": {
+    "camera_angle": string,
+    "background": string,
+    "lighting_direction_and_quality": string,
+    "shadow_treatment": string,
+    "depth_of_field": string,
+    "color_grading_mood": string
+  },
+  "dimensions_cm": {"length": number, "width": number, "height": number}
+}
+
+Be precise and literal about what's visible. IMPORTANT: dimensions and hardware placement are easy to get wrong from a single photo — note in your response if you are uncertain, so it can be verified against a spec sheet before use.`
+  },
+  motif_extraction: {
+    label: 'Cultural / symbolic motif extraction (abstract WITHOUT figures)',
+    prompt: `Analyze the attached image as a design director extracting reusable visual motifs — NOT figurative scenes, geometric/symbolic elements that could be abstracted into a flat-vector illustration WITHOUT reproducing any human figures shown. Return ONLY a valid JSON object (no markdown fences, no prose outside JSON):
+
+{
+  "dominant_shape": string,
+  "color_palette": [string],
+  "abstractable_motifs": [string],
+  "figures_present_not_to_reproduce": [string],
+  "recommended_abstract_motif": {"element": string, "why_this_one": string, "how_to_render_it_flat_vector": string}
+}`
+  },
+  custom: { label: 'Custom prompt…', prompt: '' }
+};
+
+// ---------- API key ----------
+// In-memory only — never localStorage, never re-typed. Read straight out of
+// the repo's own .env.local (the same GEMINI_API_KEY enhance-image.js uses)
+// via a one-time file picker, since a static local page has no other way to
+// read a file the user didn't explicitly select.
+let geminiApiKey = '';
+function getKey() { return geminiApiKey; }
+document.getElementById('envInput').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const text = await f.text();
+  const match = text.match(/^GEMINI_API_KEY=(.+)$/m);
+  if (!match) {
+    alert(`No GEMINI_API_KEY= line found in "${f.name}" — pick the actual .env.local file from the repo root.`);
   } else {
+    geminiApiKey = match[1].trim();
+    setStatus('Gemini API key loaded from ' + f.name);
+    updateStepGuide();
+  }
+  e.target.value = '';
+});
+
+// ---------- step guide ----------
+function updateStepGuide() {
+  const hasPairs = Object.keys(pairs).length > 0;
+  const p = activePair && pairs[activePair];
+  const hasKey = !!getKey();
+  const steps = [document.getElementById('step1'), document.getElementById('step2'), document.getElementById('step3'), document.getElementById('step4')];
+  steps.forEach(s => s.className = 'step');
+  const hint = document.getElementById('stepHint');
+  const loadImgBtn = document.getElementById('loadImgBtn');
+  loadImgBtn.className = '';
+
+  if (!hasPairs) {
+    steps[0].className = 'step current';
+    hint.innerHTML = `Start here: <b>Load an image</b> — the reference photo, brand asset, or product shot you want Gemini to analyze into JSON.`;
+    loadImgBtn.className = 'primary';
+  } else if (p && !p.json) {
+    steps[0].className = 'step done'; steps[1].className = 'step current';
+    hint.innerHTML = !hasKey
+      ? `Image loaded. <b>Load .env.local</b> (top right) first — reads the key straight from the repo, nothing to type. Then pick a prompt preset below and click Analyze.`
+      : `Image loaded — pick a prompt preset on the right (or write your own) and click <b>Analyze with Gemini</b>. The JSON it returns stays permanently paired with this image.`;
+  } else if (p && p.json) {
     steps[0].className = 'step done'; steps[1].className = 'step done'; steps[2].className = 'step current';
-    hint.style.display = 'flex';
-    hint.innerHTML = `Linked. Click any <u>underlined key</u> in the JSON tree (right) to highlight where Gemini placed it on the image (left). Click any value to edit it, then use <b>Export Edited JSON</b> (top) when done.`;
+    hint.innerHTML = `Analyzed. Click any <u>underlined key</u> in the tree (right) to highlight it on the image (left). Click a value to edit it, then <b>Export Edited JSON</b> when done.`;
+  } else {
+    hint.innerHTML = `Select a tab above.`;
   }
 }
 
-// ---------- file loading ----------
+// ---------- loading an image creates a pair (no JSON yet) ----------
+document.getElementById('imgInput').addEventListener('change', (e) => {
+  let firstNew = null;
+  for (const f of e.target.files) {
+    const id = f.name;
+    pairs[id] = { id, imageName: f.name, imageUrl: URL.createObjectURL(f), imageFile: f, json: null, promptUsed: null, status: 'awaiting-analysis' };
+    if (!firstNew) firstNew = id;
+  }
+  renderTabs();
+  if (firstNew) selectPair(firstNew);
+  setStatus(`${Object.keys(pairs).length} image(s) loaded`);
+  e.target.value = '';
+});
+
+// ---------- re-opening a previously exported JSON (secondary path) ----------
 document.getElementById('jsonInput').addEventListener('change', async (e) => {
   for (const f of e.target.files) {
     try {
       const text = await f.text();
       const data = JSON.parse(text);
-      files[f.name] = { data, linkedImage: guessLinkedImage(f.name) };
-    } catch (err) {
-      alert(`${f.name}: not valid JSON (${err.message})`);
-    }
+      const stem = f.name.replace(/\.json$/i, '').replace(/-analysis|-design-json|-generation|-edited/g, '');
+      const match = Object.keys(pairs).find(id => id.includes(stem) || stem.includes(id.replace(/\.(jpg|jpeg|png)$/i, '')));
+      if (match) {
+        pairs[match].json = data; pairs[match].status = 'done';
+        selectPair(match);
+      } else {
+        const id = '(no image) ' + f.name;
+        pairs[id] = { id, imageName: null, imageUrl: null, imageFile: null, json: data, promptUsed: null, status: 'detached' };
+        selectPair(id);
+      }
+    } catch (err) { alert(`${f.name}: not valid JSON (${err.message})`); }
   }
   renderTabs();
-  if (!activeFile && Object.keys(files).length) selectFile(Object.keys(files)[0]);
-  setStatus(`${Object.keys(files).length} JSON file(s) loaded`);
-  updateStepGuide();
-  e.target.value = '';
-});
-
-document.getElementById('imgInput').addEventListener('change', (e) => {
-  for (const f of e.target.files) {
-    const url = URL.createObjectURL(f);
-    images[f.name] = { url };
-  }
-  refreshImgSelect();
-  setStatus(`${Object.keys(images).length} image(s) loaded`);
-  if (activeFile) renderImageForActive();
-  updateStepGuide();
   e.target.value = '';
 });
 
@@ -288,81 +405,53 @@ document.getElementById('vocabInput').addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
-function guessLinkedImage(jsonFilename) {
-  const stem = jsonFilename.replace(/\.json$/i, '').replace(/-analysis|-design-json|-generation/g, '');
-  const candidates = Object.keys(images);
-  return candidates.find(c => c.includes(stem) || stem.includes(c.replace(/\.(jpg|jpeg|png)$/i, ''))) || null;
-}
-
 // ---------- tabs ----------
 function renderTabs() {
   const tabs = document.getElementById('tabs');
   tabs.innerHTML = '';
-  Object.keys(files).forEach(fname => {
+  Object.values(pairs).forEach(p => {
     const t = document.createElement('div');
-    t.className = 'tab' + (fname === activeFile ? ' active' : '');
-    t.innerHTML = `${fname} <span class="x" onclick="event.stopPropagation(); closeFile('${fname.replace(/'/g, "\\'")}')">✕</span>`;
-    t.onclick = () => selectFile(fname);
+    t.className = 'tab' + (p.id === activePair ? ' active' : '');
+    const indicator = p.status === 'detached' ? '<span class="warn">⚠</span>' : (!p.json ? '<span class="dot"></span>' : '');
+    t.innerHTML = `${indicator} ${p.imageName || p.id} <span class="x" onclick="event.stopPropagation(); closePair('${p.id.replace(/'/g, "\\'")}')">✕</span>`;
+    t.onclick = () => selectPair(p.id);
     tabs.appendChild(t);
   });
 }
-function closeFile(fname) {
-  delete files[fname];
-  if (activeFile === fname) activeFile = Object.keys(files)[0] || null;
+function closePair(id) {
+  delete pairs[id];
+  if (activePair === id) activePair = Object.keys(pairs)[0] || null;
   renderTabs();
-  if (activeFile) selectFile(activeFile); else clearPanes();
+  if (activePair) selectPair(activePair); else clearPanes();
 }
 function clearPanes() {
   document.getElementById('jsonHeader').style.display = 'none';
-  document.getElementById('jsonTree').innerHTML = '<div id="noJson">No JSON loaded.</div>';
+  document.getElementById('jsonTree').innerHTML = '<div id="noJson">Load an image on the left to get started.</div>';
   document.getElementById('imgWrap').style.display = 'none';
-  document.getElementById('imgPicker').style.display = 'none';
-  document.getElementById('noImage').style.display = 'block';
+  document.getElementById('noPair').style.display = 'block';
+  updateStepGuide();
 }
 
-function selectFile(fname) {
-  activeFile = fname;
+function selectPair(id) {
+  activePair = id;
   renderTabs();
+  const p = pairs[id];
+  document.getElementById('noPair').style.display = p.imageUrl ? 'none' : 'block';
+  if (p.imageUrl) {
+    document.getElementById('imgWrap').style.display = 'block';
+    const img = document.getElementById('mainImg');
+    img.onload = () => sizeOverlay();
+    img.src = p.imageUrl;
+  } else {
+    document.getElementById('imgWrap').style.display = 'none';
+    document.getElementById('noPair').innerHTML = `⚠ "${p.id}" was loaded with no matching image (re-opened from a saved file). <br><button onclick="document.getElementById('imgInput').click()">Load its image to pair it</button>`;
+  }
   document.getElementById('jsonHeader').style.display = 'flex';
-  document.getElementById('jsonFname').textContent = fname;
-  renderJsonTree();
-  refreshImgSelect();
-  renderImageForActive();
+  document.getElementById('jsonFname').textContent = p.imageName || p.id;
+  if (p.json) { renderJsonTree(); } else { renderAnalyzePanel(); }
   updateStepGuide();
 }
 
-// ---------- image linking ----------
-function refreshImgSelect() {
-  const sel = document.getElementById('imgSelect');
-  sel.innerHTML = '<option value="">— none —</option>';
-  Object.keys(images).forEach(name => {
-    const o = document.createElement('option');
-    o.value = name; o.textContent = name;
-    sel.appendChild(o);
-  });
-  if (activeFile && files[activeFile]) sel.value = files[activeFile].linkedImage || '';
-  document.getElementById('imgPicker').style.display = Object.keys(images).length ? 'flex' : 'none';
-}
-function onImageSelect() {
-  if (!activeFile) return;
-  files[activeFile].linkedImage = document.getElementById('imgSelect').value || null;
-  renderImageForActive();
-  updateStepGuide();
-}
-function renderImageForActive() {
-  const f = activeFile && files[activeFile];
-  const linked = f && f.linkedImage && images[f.linkedImage];
-  if (!linked) {
-    document.getElementById('imgWrap').style.display = 'none';
-    document.getElementById('noImage').style.display = 'block';
-    return;
-  }
-  document.getElementById('noImage').style.display = 'none';
-  document.getElementById('imgWrap').style.display = 'block';
-  const img = document.getElementById('mainImg');
-  img.onload = () => sizeOverlay();
-  img.src = linked.url;
-}
 function sizeOverlay() {
   const img = document.getElementById('mainImg');
   const cv = document.getElementById('overlay');
@@ -396,24 +485,233 @@ function highlightBbox(box, label) {
   }
 }
 
+// ---------- the Analyze panel (shown instead of a JSON tree until analyzed) ----------
+function renderAnalyzePanel() {
+  const root = document.getElementById('jsonTree');
+  const p = pairs[activePair];
+  root.innerHTML = '';
+  const div = document.createElement('div');
+  div.id = 'analyzePanel';
+  const optionsHtml = Object.entries(PRESETS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  div.innerHTML = `
+    <h3>Analyze this image with Gemini</h3>
+    <p>Pick what kind of thing this image shows, review/edit the prompt, then run it.
+       The resulting JSON is created FROM this image and stays permanently paired with it —
+       that pairing is never a separate manual step.</p>
+    <label>What is this image?</label>
+    <select id="presetSelect" onchange="onPresetChange()">${optionsHtml}</select>
+    <label>Prompt sent to Gemini (edit freely)</label>
+    <textarea id="promptText"></textarea>
+    <div id="analyzeRunRow">
+      <button class="primary" onclick="runAnalysis()">Analyze with Gemini →</button>
+      <span id="analyzeStatus"></span>
+    </div>
+  `;
+  root.appendChild(div);
+  document.getElementById('presetSelect').value = 'design_analysis';
+  onPresetChange();
+}
+function onPresetChange() {
+  const key = document.getElementById('presetSelect').value;
+  document.getElementById('promptText').value = PRESETS[key].prompt;
+}
+async function runAnalysis() {
+  const p = pairs[activePair];
+  const apiKey = getKey();
+  const statusEl = document.getElementById('analyzeStatus');
+  if (!apiKey) { document.getElementById('envInput').click(); return; }
+  if (!p.imageFile) { statusEl.className = 'err'; statusEl.textContent = 'No image file attached to this tab.'; return; }
+  const promptText = document.getElementById('promptText').value.trim();
+  if (!promptText) { statusEl.className = 'err'; statusEl.textContent = 'Prompt is empty.'; return; }
+
+  statusEl.className = ''; statusEl.textContent = 'Calling Gemini…';
+  document.querySelector('#analyzeRunRow button').disabled = true;
+  try {
+    const dataUrl = await fileToDataUrl(p.imageFile);
+    const [, mimeType, base64] = dataUrl.match(/^data:(.+);base64,(.*)$/);
+    const body = {
+      contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
+      generationConfig: { temperature: 0, response_mime_type: 'application/json' },
+    };
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Gemini ${res.status}: ${errText.slice(0, 300)}`);
+    }
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('No text returned — check the API key and try again.');
+    const parsed = JSON.parse(text);
+    p.json = parsed;
+    p.promptUsed = promptText;
+    p.status = 'done';
+    renderTabs();
+    renderJsonTree();
+    updateStepGuide();
+    setStatus('Analyzed ' + p.imageName);
+  } catch (err) {
+    statusEl.className = 'err';
+    statusEl.textContent = 'Failed: ' + err.message + (err.message.includes('Failed to fetch') ? ' — possibly a CORS/network block; the proven fallback is the Python script approach from 99-outcome.md.' : '');
+  } finally {
+    document.querySelector('#analyzeRunRow button') && (document.querySelector('#analyzeRunRow button').disabled = false);
+  }
+}
+function reanalyzeActivePair() {
+  const p = pairs[activePair];
+  if (!p) return;
+  p.json = null;
+  renderAnalyzePanel();
+  if (p.promptUsed) document.getElementById('promptText').value = p.promptUsed;
+  updateStepGuide();
+}
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 // ---------- JSON tree render + edit ----------
 function renderJsonTree() {
   const root = document.getElementById('jsonTree');
   root.innerHTML = '';
-  const data = files[activeFile].data;
+  const data = pairs[activePair].json;
   root.appendChild(buildNode('', data, []));
+  root.appendChild(buildGeneratePanel());
 }
 
+// ---------- Step 4b: generate an actual image FROM this edited JSON, without
+// leaving the tool — this is the loop-closing step the owner asked for. ----------
+function buildGeneratePanel() {
+  const p = pairs[activePair];
+  const wrap = document.createElement('div');
+  wrap.id = 'generateSection';
+  wrap.style.cssText = 'margin:20px -14px -10px; padding:16px 14px; background:#191927; border-top:1px solid #2e2e40;';
+  const otherPairs = Object.values(pairs).filter(o => o.id !== p.id && o.imageFile);
+  const refsHtml = otherPairs.map(o =>
+    `<label style="display:flex;align-items:center;gap:6px;margin:4px 0;font-size:12px;color:#b8b8c8;">
+       <input type="checkbox" class="genRef" value="${o.id.replace(/"/g, '&quot;')}"> ${o.imageName}
+     </label>`
+  ).join('') || '<div class="status">(no other images loaded to include as style/context references)</div>';
+  wrap.innerHTML = `
+    <div style="color:#ffd27e;font-weight:600;font-size:13px;margin-bottom:6px;">Generate an image from this JSON</div>
+    <div style="color:#8a8aa0;font-size:11.5px;margin-bottom:10px;line-height:1.5;">
+      Sends this tab's (possibly edited) JSON as the literal prompt, along with this
+      image as the source anchor. Optionally include other loaded images as extra
+      style/reference material — same technique as the La Salle project's v8/v9 briefs.
+    </div>
+    <div style="margin-bottom:8px;">${refsHtml}</div>
+    <label style="display:block;color:#9a9ab0;font-size:11px;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.04em;">Output type</label>
+    <select id="genOutputType" style="width:100%;margin-bottom:10px;">
+      <option value="flat">Flat print-ready illustration (matches the JSON's own style fields)</option>
+      <option value="photoreal">Photorealistic product photograph (if the JSON includes construction/photography data)</option>
+    </select>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="primary" onclick="runGeneration()">Generate Image →</button>
+      <span id="genStatus" class="status"></span>
+    </div>
+    <div id="genResultWrap" style="margin-top:14px;"></div>
+  `;
+  return wrap;
+}
+
+async function runGeneration() {
+  const p = pairs[activePair];
+  const apiKey = getKey();
+  const statusEl = document.getElementById('genStatus');
+  if (!apiKey) { document.getElementById('envInput').click(); return; }
+  statusEl.className = 'status'; statusEl.textContent = 'Calling Gemini (image model)…';
+  const btn = document.querySelector('#generateSection button.primary');
+  btn.disabled = true;
+  try {
+    const outputType = document.getElementById('genOutputType').value;
+    const preamble = outputType === 'photoreal'
+      ? 'Generate a photorealistic product photograph following this JSON art-direction spec exactly. Treat every field as a literal instruction:\n\n'
+      : 'Generate a flat, print-ready illustration following this JSON art-direction spec exactly. Treat every field as a literal instruction:\n\n';
+    const parts = [{ text: preamble + JSON.stringify(p.json, null, 2) }];
+    const mainDataUrl = await fileToDataUrl(p.imageFile);
+    const [, mainMime, mainB64] = mainDataUrl.match(/^data:(.+);base64,(.*)$/);
+    parts.push({ inline_data: { mime_type: mainMime, data: mainB64 } });
+    const checked = Array.from(document.querySelectorAll('.genRef:checked')).map(cb => cb.value);
+    for (const id of checked) {
+      const ref = pairs[id];
+      if (!ref || !ref.imageFile) continue;
+      const du = await fileToDataUrl(ref.imageFile);
+      const [, mime, b64] = du.match(/^data:(.+);base64,(.*)$/);
+      parts.push({ inline_data: { mime_type: mime, data: b64 } });
+    }
+    const body = { contents: [{ parts }], generationConfig: { responseModalities: ['IMAGE'], temperature: 0 } };
+    const models = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image'];
+    let lastErr = null, imgBytes = null, servedBy = null;
+    for (const model of models) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        });
+        if (!res.ok) { lastErr = `${model}: HTTP ${res.status} — ${(await res.text()).slice(0, 200)}`; continue; }
+        const data = await res.json();
+        const cparts = data.candidates?.[0]?.content?.parts || [];
+        const imgPart = cparts.find(pp => pp.inline_data?.data || pp.inlineData?.data);
+        const inline = imgPart && (imgPart.inline_data || imgPart.inlineData);
+        if (!inline?.data) { lastErr = `${model}: no image returned`; continue; }
+        imgBytes = inline.data; servedBy = model; break;
+      } catch (e) { lastErr = `${model}: ${e.message}`; }
+    }
+    if (!imgBytes) throw new Error(lastErr || 'No model produced an image.');
+
+    const resultWrap = document.getElementById('genResultWrap');
+    const blobUrl = 'data:image/png;base64,' + imgBytes;
+    const genId = 'generated-' + p.id + '-' + Date.now() + '.png';
+    resultWrap.innerHTML = `
+      <div style="color:#7ec8ff;font-size:11.5px;margin-bottom:6px;">Result (served by ${servedBy}):</div>
+      <img src="${blobUrl}" style="max-width:100%;border:1px solid #3d3d55;border-radius:6px;">
+      <div id="genBtnRow" style="display:flex;gap:8px;margin-top:8px;"></div>
+    `;
+    // wired as real event handlers, not inline onclick, to avoid escaping a
+    // huge base64 string into an HTML attribute
+    const btnRow = document.getElementById('genBtnRow');
+    const dlBtn = document.createElement('button');
+    dlBtn.textContent = 'Download PNG';
+    dlBtn.onclick = () => downloadBlob(genId, base64ToBytes(imgBytes), 'image/png');
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'secondary';
+    saveBtn.textContent = 'Save as new tab (to inspect/re-analyze/iterate on)';
+    saveBtn.onclick = () => {
+      const bytes = base64ToBytes(imgBytes);
+      const blob = new Blob([bytes], { type: 'image/png' });
+      const file = new File([blob], genId, { type: 'image/png' });
+      pairs[genId] = { id: genId, imageName: genId, imageUrl: URL.createObjectURL(blob), imageFile: file, json: null, promptUsed: null, status: 'awaiting-analysis' };
+      renderTabs();
+      selectPair(genId);
+    };
+    btnRow.appendChild(dlBtn); btnRow.appendChild(saveBtn);
+
+    statusEl.textContent = 'Done.';
+    setStatus('Generated from ' + p.imageName);
+  } catch (err) {
+    statusEl.className = 'err'; statusEl.textContent = 'Failed: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+function base64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 function hasPositionData(v) {
   return v && typeof v === 'object' && !Array.isArray(v) &&
     (v.bbox && typeof v.bbox.x === 'number' || Array.isArray(v.position_pct));
 }
-
 function buildNode(key, value, path) {
   const wrap = document.createElement('div');
   const row = document.createElement('div');
   row.className = 'row';
-
   const isObj = value && typeof value === 'object';
   if (isObj) {
     const toggle = document.createElement('span');
@@ -424,19 +722,17 @@ function buildNode(key, value, path) {
     const sp = document.createElement('span'); sp.style.width = '14px'; sp.style.display = 'inline-block';
     row.appendChild(sp);
   }
-
   if (key !== '') {
     const k = document.createElement('span');
     k.className = 'key';
     k.textContent = `"${key}": `;
     if (hasPositionData(value)) {
       k.classList.add('keyBbox');
-      k.title = 'Click to highlight on the linked image';
+      k.title = 'Click to highlight on the image';
       k.onclick = () => highlightBbox(value, key);
     }
     row.appendChild(k);
   }
-
   if (isObj) {
     const isArr = Array.isArray(value);
     const br = document.createElement('span'); br.className = 'bracket';
@@ -465,28 +761,26 @@ function buildNode(key, value, path) {
   }
   return wrap;
 }
-
 function getAt(obj, path) { return path.reduce((o, k) => o[k], obj); }
 function setAt(obj, path, val) {
   const parent = path.slice(0, -1).reduce((o, k) => o[k], obj);
   parent[path[path.length - 1]] = val;
 }
-
 function editLeaf(span, path) {
-  const current = getAt(files[activeFile].data, path);
+  const current = getAt(pairs[activePair].json, path);
   const input = document.createElement('input');
+  input.type = 'text';
   input.value = typeof current === 'string' ? current : JSON.stringify(current);
-  input.style.cssText = 'background:#0d0d13;color:#e2e2ea;border:1px solid #4a4ae0;border-radius:4px;padding:1px 4px;font:inherit;width:' + Math.max(120, span.offsetWidth + 40) + 'px;';
+  input.style.width = Math.max(120, span.offsetWidth + 40) + 'px';
   span.replaceWith(input);
   input.focus(); input.select();
   const commit = () => {
-    let val = input.value;
-    let parsed;
+    let val = input.value, parsed;
     if (typeof current === 'number') parsed = Number(val);
     else if (typeof current === 'boolean') parsed = val === 'true';
     else if (current === null) parsed = val === 'null' ? null : val;
-    else parsed = val; // string — stored raw, no surrounding quotes needed from user
-    setAt(files[activeFile].data, path, parsed);
+    else parsed = val;
+    setAt(pairs[activePair].json, path, parsed);
     renderJsonTree();
     document.getElementById('jsonStatus').textContent = '● edited (not yet exported)';
   };
@@ -503,12 +797,11 @@ function downloadBlob(filename, content, type) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 function exportActiveJson() {
-  if (!activeFile) { alert('No JSON file selected.'); return; }
-  downloadBlob(activeFile.replace(/\.json$/i, '') + '-edited.json', JSON.stringify(files[activeFile].data, null, 2), 'application/json');
+  const p = activePair && pairs[activePair];
+  if (!p || !p.json) { alert('No analyzed JSON to export for this tab yet.'); return; }
+  downloadBlob((p.imageName || p.id).replace(/\.(jpg|jpeg|png)$/i, '') + '-analysis-edited.json', JSON.stringify(p.json, null, 2), 'application/json');
 }
-function exportVocabulary() {
-  downloadBlob('vocabulary.json', JSON.stringify(vocabulary, null, 2), 'application/json');
-}
+function exportVocabulary() { downloadBlob('vocabulary.json', JSON.stringify(vocabulary, null, 2), 'application/json'); }
 
 // ---------- vocabulary browser + scan/merge ----------
 function showVocabPane(show) {
@@ -547,11 +840,11 @@ function renderVocab() {
       content.appendChild(d);
     });
   });
-  if (!content.children.length) content.innerHTML = '<div class="status">No vocabulary loaded yet, or nothing matches — load Product Development/tools/vocabulary.json, or load a JSON file and click "Scan into vocabulary".</div>';
+  if (!content.children.length) content.innerHTML = '<div class="status">No vocabulary loaded yet, or nothing matches — load Product Development/tools/vocabulary.json, or analyze an image and click "Scan into vocabulary".</div>';
 }
-
 function scanIntoVocabulary() {
-  if (!activeFile) { alert('Select a JSON file first.'); return; }
+  const p = activePair && pairs[activePair];
+  if (!p || !p.json) { alert('Analyze this image first — nothing to scan yet.'); return; }
   const known = new Set();
   Object.values(vocabulary.categories || {}).forEach(cat => {
     const items = []; flattenVocabFields(cat, '', items);
@@ -561,17 +854,15 @@ function scanIntoVocabulary() {
   function walk(obj, path) {
     if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
       Object.entries(obj).forEach(([k, v]) => {
-        const p = path ? path + '.' + k : k;
-        if (!known.has(p) && !k.startsWith('_')) {
-          found.push({ path: p, type: Array.isArray(v) ? 'array' : typeof v, example: typeof v === 'object' ? undefined : v });
-        }
-        walk(v, p);
+        const p2 = path ? path + '.' + k : k;
+        if (!known.has(p2) && !k.startsWith('_')) found.push({ path: p2, type: Array.isArray(v) ? 'array' : typeof v, example: typeof v === 'object' ? undefined : v });
+        walk(v, p2);
       });
     } else if (Array.isArray(obj)) {
       obj.slice(0, 1).forEach(v => walk(v, path + '[]'));
     }
   }
-  walk(files[activeFile].data, '');
+  walk(p.json, '');
   if (!found.length) { setStatus('No new fields — every key already exists in the loaded vocabulary.'); return; }
   pendingDiff = found;
   const list = document.getElementById('diffList');
@@ -587,8 +878,9 @@ function scanIntoVocabulary() {
 function closeDiff() { document.getElementById('diffPane').classList.remove('show'); }
 function mergeDiff() {
   const checks = document.querySelectorAll('#diffList input[type=checkbox]');
-  const catName = 'uncategorized_' + (activeFile || 'scan').replace(/\.json$/i, '');
-  if (!vocabulary.categories[catName]) vocabulary.categories[catName] = { description: 'Auto-scanned from ' + activeFile + ' — recategorize by hand when convenient.', fields: {} };
+  const p = pairs[activePair];
+  const catName = 'uncategorized_' + (p.imageName || p.id).replace(/\.(jpg|jpeg|png|json)$/i, '');
+  if (!vocabulary.categories[catName]) vocabulary.categories[catName] = { description: 'Auto-scanned from ' + (p.imageName || p.id) + ' — recategorize by hand when convenient.', fields: {} };
   checks.forEach(cb => {
     if (!cb.checked) return;
     const f = pendingDiff[+cb.dataset.i];
@@ -599,10 +891,7 @@ function mergeDiff() {
   setStatus('Merged into vocabulary — remember to Export Vocabulary and commit it.');
 }
 
-// wire the scan button into the json header once a file is active
-document.getElementById('jsonHeader').insertAdjacentHTML('beforeend', '<button style="margin-left:auto" onclick="scanIntoVocabulary()">Scan into vocabulary</button>');
-
-updateStepGuide(); // initial state on page load — always show what to do first, never a blank screen
+updateStepGuide();
 </script>
 </body>
 </html>
