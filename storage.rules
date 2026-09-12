@@ -109,5 +109,11 @@ service firebase.storage {
     match /pd_customer_brands/{customerId}/{allPaths=**} {
       allow read, write: if isAdmin();
     }
+    // Scratch uploads for the Edit Template "extract elements from image"
+    // flow — a reference photo passed to Gemini for analysis, not part of
+    // any saved record. Same admin-only posture as the rest of pd_*.
+    match /pd_extraction_scratch/{templateId}/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
   }
 }
