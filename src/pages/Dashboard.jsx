@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
+import { loadWeeklySummary, generateWeeklySummary } from '../domain/weeklySummary'
 import { orderStatusOf, orderUc } from '../shipping'
 
 // Orders in these statuses are "in production" — committed and being made, but
@@ -12,7 +13,7 @@ import { orderStatusOf, orderUc } from '../shipping'
 const IN_PRODUCTION_ORDER_STATUSES = ['confirmed', 'packing', 'ready']
 import {
   AlertTriangle, ClipboardList, Factory, Trophy, Calendar, Check,
-  Store, ShoppingCart, Gift, Sparkles, Smartphone, X, RefreshCw, ChevronUp, ShoppingBag,
+  Store, ShoppingCart, Gift, Sparkles, Smartphone, X, RefreshCw, ChevronUp, ShoppingBag, Mail,
 } from 'lucide-react'
 
 function fmtDate(ts) {
@@ -77,6 +78,10 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter]     = useState(null) // 'overdue' | 'open' | 'quotes' | 'won'
   const [categoryFilter, setCategoryFilter] = useState(null) // customer category pill
   const [retailFilter, setRetailFilter] = useState(false) // Retail-tagged-only toggle — independent of category
+  const [weeklySummary, setWeeklySummary] = useState(null) // { generatedAt, weekStart, items[] } | null (never generated yet)
+  const [weeklyLoading, setWeeklyLoading] = useState(true)
+  const [weeklyGenerating, setWeeklyGenerating] = useState(false)
+  const [weeklyError, setWeeklyError] = useState('')
 
   function refresh() { setRefreshKey(k => k + 1); setRefreshing(true) }
 
@@ -149,6 +154,29 @@ export default function Dashboard() {
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
   }, [])
+
+  // On-demand only (V8.15) — load whatever was cached from the last time
+  // someone clicked "Refresh" below; never auto-generates on its own.
+  useEffect(() => {
+    let cancelled = false
+    loadWeeklySummary().then(cached => { if (!cancelled) setWeeklySummary(cached) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setWeeklyLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  async function handleGenerateWeeklySummary() {
+    setWeeklyGenerating(true)
+    setWeeklyError('')
+    try {
+      const result = await generateWeeklySummary()
+      setWeeklySummary({ ...result, generatedAt: { toDate: () => new Date() }, weekStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() })
+    } catch (e) {
+      setWeeklyError(e.message || 'Could not generate the weekly summary.')
+    } finally {
+      setWeeklyGenerating(false)
+    }
+  }
 
   const customerMap = Object.fromEntries(customers.map(c => [c.id, c]))
 
@@ -300,6 +328,59 @@ export default function Dashboard() {
           active={activeFilter === 'won'}
           onClick={() => toggleFilter('won')}
         />
+      </div>
+
+      {/* This Week — a per-customer AI digest of the last 7 days, built from
+          the CRM Interaction Log + ingested email only (V8.15). On-demand:
+          generated fresh only when "Refresh" is clicked, then cached. */}
+      <div className="card mb-6">
+        <div className="px-5 py-4 border-b border-warm-grey flex items-center justify-between">
+          <h2 className="flex items-center gap-1.5 text-sm text-ink-80">
+            <Mail size={15} />
+            This Week
+            {weeklySummary?.generatedAt && (
+              <span className="ml-2 text-xs font-normal text-ink-60">
+                · generated {weeklySummary.generatedAt.toDate().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </h2>
+          <button
+            onClick={handleGenerateWeeklySummary}
+            disabled={weeklyGenerating}
+            className="text-sm text-brand-600 hover:text-brand-800 font-medium flex items-center gap-1.5"
+          >
+            <RefreshCw size={14} className={weeklyGenerating ? 'animate-spin' : ''} />
+            {weeklyGenerating ? 'Generating…' : 'Refresh'}
+          </button>
+        </div>
+        {weeklyError && <p className="text-sm text-red-700 px-5 py-3">{weeklyError}</p>}
+        {weeklyLoading ? (
+          <p className="text-sm text-ink-60 text-center py-8">Loading…</p>
+        ) : !weeklySummary ? (
+          <p className="text-sm text-ink-60 text-center py-8">Not generated yet — click Refresh to summarize this week's customer activity.</p>
+        ) : weeklySummary.items.length === 0 ? (
+          <p className="text-sm text-ink-60 text-center py-8">No customer activity (Interaction Log or email) in the last 7 days.</p>
+        ) : (
+          <div className="divide-y divide-warm-grey">
+            {weeklySummary.items.map(item => (
+              <Link
+                key={item.customerId}
+                to={`/customers/${item.customerId}`}
+                className="flex items-start gap-3 px-5 py-3.5 hover:bg-ivory transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-ink">{item.customerName}</p>
+                    {item.channels.map(ch => (
+                      <span key={ch} className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CHANNEL_BADGE[ch] || 'bg-ivory-dark text-ink-70'}`}>{ch}</span>
+                    ))}
+                  </div>
+                  <p className="text-sm text-ink-70 mt-1">{item.digest}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Customer Type filter pills — Retail Customer sits alongside

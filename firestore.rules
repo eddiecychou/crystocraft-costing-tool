@@ -331,6 +331,18 @@ service cloud.firestore {
     match /{path=**}/enquiries/{enquiryId} {
       allow read: if can('customers');
     }
+    // Collection-group query over every customer's/lead's email_threads
+    // subcollection — added for the Dashboard "This Week" digest (V8.15),
+    // which needs to find which customers had new email across ALL of them
+    // at once, not one customer at a time.
+    match /{path=**}/email_threads/{threadId} {
+      allow read: if can('customers');
+    }
+    // Cached weekly digest (V8.15) — one singleton doc, regenerated on
+    // demand from the Dashboard, not written by anything else.
+    match /dashboard_cache/{docId} {
+      allow read, write: if can('customers');
+    }
     // Collection-group query over supplier_quotes.
     match /{path=**}/supplier_quotes/{quoteId} {
       allow read, write: if can('supply');
