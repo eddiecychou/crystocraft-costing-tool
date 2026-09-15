@@ -70,9 +70,11 @@ Rules:
   }
 
   try {
-    // gemini-2.5-flash with thinkingBudget:0 — full PDF/vision capability (these
+    // gemini-3.8-flash with thinkingBudget:0 — full PDF/vision capability (these
     // ERP POs are image-only scans), no thinking overhead, within the 30s edge limit.
-    let res = await callGemini('gemini-2.5-flash')
+    // Retry falls back to 2.5-flash (a different model, not the same one twice)
+    // before the older 1.5-pro-latest last resort.
+    let res = await callGemini('gemini-3.8-flash')
     if (res.status === 429 || res.status === 503) {
       res = await callGemini('gemini-2.5-flash')
     }

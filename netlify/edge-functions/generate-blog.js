@@ -164,7 +164,7 @@ Return ONLY a valid JSON object with this structure:
   }
 
   try {
-    let res = await callGemini('gemini-2.0-flash')
+    let res = await callGemini('gemini-3.8-flash')
     if (!res.ok) res = await callGemini('gemini-2.5-flash')
 
     const data = await res.json()

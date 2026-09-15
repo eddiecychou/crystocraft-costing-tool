@@ -8,16 +8,21 @@
 // image is base64. Faithfulness is enforced by the prompt; the caller always
 // shows a before/after and only replaces on explicit Keep.
 
-// gemini-2.5-flash-image (the original "nano-banana") is scheduled to shut
-// down 2026-10-02 (checked ai.google.dev/gemini-api/docs/deprecations,
-// 2026-08-23). Keeping it primary for now — it's what every existing prompt
-// here has actually been tuned against — but falling back automatically to
-// gemini-3.1-flash-image (the stable GA successor; NOT the "-preview"
-// variant, which has its own 2026-06-25 shutdown) on any failure. Once 2.5
-// actually goes away this starts serving every request from the fallback
-// with no further deploy needed. Same request/response contract on both —
-// this is the "flash image" family's shared interface, not model-specific.
-const IMAGE_MODELS = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image']
+// gemini-2.5-flash-image (the original "nano-banana") shuts down 2026-10-02
+// (ai.google.dev/gemini-api/docs/deprecations, checked 2026-08-23) — dropped
+// entirely rather than kept as a fallback for its last few weeks.
+//
+// Primary is now gemini-3.1-flash-lite-image ("Nano Banana 2 Lite" — Eddie,
+// 2026-09-15: fastest/cheapest of the current image family). NOTE this is
+// an unverified quality tradeoff for THIS specific tool: every prompt below
+// was tuned against 2.5-flash-image, and this retoucher exists specifically
+// to preserve product fidelity (the caller's before/after + explicit Keep
+// step is the safety net, but a "lite" model is a real risk of drift here in
+// a way it isn't for e.g. marketing copy). Falls back to the full
+// gemini-3.1-flash-image (the stable GA non-lite model) on any failure —
+// if Lite's output quality looks off in practice, swap the array order
+// rather than the fallback logic.
+const IMAGE_MODELS = ['gemini-3.1-flash-lite-image', 'gemini-3.1-flash-image']
 
 // Bump whenever PROMPTS / FRAMING / EXCLUDE / COLOR_RULES text changes below.
 // Returned alongside the edited image so the caller can save it onto the

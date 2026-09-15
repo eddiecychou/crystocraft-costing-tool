@@ -46,7 +46,7 @@ Return ONLY a valid JSON object:
   "body": "string"
 }`
 
-  const models = ['gemini-2.0-flash', 'gemini-2.5-flash']
+  const models = ['gemini-3.8-flash', 'gemini-2.5-flash']
 
   for (const model of models) {
     try {

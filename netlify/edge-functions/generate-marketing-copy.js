@@ -98,7 +98,7 @@ ${commonReqs}
 Marketing description:`
 
   const promptParts = imagePart ? [{ text: prompt }, imagePart] : [{ text: prompt }]
-  const models = ['gemini-2.0-flash', 'gemini-2.5-flash']
+  const models = ['gemini-3.8-flash', 'gemini-2.5-flash']
 
   for (const model of models) {
     try {
@@ -106,8 +106,9 @@ Marketing description:`
         contents: [{ parts: promptParts }],
         generationConfig: { temperature: 0.75, maxOutputTokens: 1024 },
       }
-      // Disable thinking for 2.5-flash — thinking tokens eat into output budget
-      if (model === 'gemini-2.5-flash') {
+      // Disable thinking — thinking tokens eat into output budget (verified
+      // live: gemini-3.8-flash accepts the same thinkingConfig shape as 2.5).
+      if (model === 'gemini-2.5-flash' || model === 'gemini-3.8-flash') {
         body.generationConfig.thinkingConfig = { thinkingBudget: 0 }
       }
       const res = await fetch(

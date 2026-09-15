@@ -54,7 +54,7 @@ Rules:
   }
 
   try {
-    let res = await callGemini('gemini-2.5-flash')
+    let res = await callGemini('gemini-3.8-flash')
 
     if (res.status === 429 || res.status === 503) {
       await new Promise(r => setTimeout(r, 3000))

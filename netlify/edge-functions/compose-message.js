@@ -39,14 +39,15 @@ Rules:
 - NEVER start the message body with "Elevate", "Discover", "Introducing", "Transform", or "Unleash"
 - Write a complete, fully developed message that hits the target length for this channel — do not cut it short or reply with just a sentence or two`
 
-  const models = ['gemini-2.0-flash', 'gemini-2.5-flash']
+  const models = ['gemini-3.8-flash', 'gemini-2.5-flash']
 
   for (const model of models) {
     try {
       const generationConfig = { maxOutputTokens: 2048, temperature: 0.7 }
-      // 2.5-flash spends maxOutputTokens on hidden "thinking" first, which can
-      // truncate the visible message mid-sentence. Disable thinking for it.
-      if (model.startsWith('gemini-2.5')) generationConfig.thinkingConfig = { thinkingBudget: 0 }
+      // Both models spend maxOutputTokens on hidden "thinking" first, which can
+      // truncate the visible message mid-sentence. Disable thinking for both
+      // (verified live: gemini-3.8-flash accepts the same thinkingConfig shape).
+      if (model.startsWith('gemini-2.5') || model.startsWith('gemini-3')) generationConfig.thinkingConfig = { thinkingBudget: 0 }
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${Deno.env.get('GEMINI_API_KEY')}`,
         {
