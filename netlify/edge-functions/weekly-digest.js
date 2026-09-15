@@ -29,7 +29,7 @@ async function isFrontOffice(uid, idToken, projectId, moduleKey) {
 
 // Cap total customers per call and per-customer text (weeklySummary.js
 // already caps each customer's text at 4000 chars) — a genuinely busy week
-// across many customers should still fit comfortably under deepseek-chat's
+// across many customers should still fit comfortably under deepseek-flash's
 // context window with room for the system prompt and every customer's block.
 const MAX_CUSTOMERS_PER_CALL = 40
 
@@ -49,7 +49,7 @@ async function callDeepSeek(apiKey, system, user) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'deepseek-flash', reasoning_effort: 'none',
           messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
           response_format: { type: 'json_object' },
           temperature: 0.3, max_tokens: 2000,

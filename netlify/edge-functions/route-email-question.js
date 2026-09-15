@@ -62,7 +62,7 @@ async function callDeepSeek(apiKey, yearIndex, question) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'deepseek-flash', reasoning_effort: 'none',
           messages: [
             { role: 'system', content: SYSTEM },
             { role: 'user', content: `Year -> thread count: ${yearIndex}\n\nQuestion: ${question}` },

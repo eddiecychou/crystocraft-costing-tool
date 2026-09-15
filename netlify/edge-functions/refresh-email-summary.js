@@ -40,7 +40,7 @@ async function isFrontOffice(uid, idToken, projectId, moduleKey) {
 }
 
 // Cap what actually reaches the model — a customer with a long ingested
-// history could otherwise blow past deepseek-chat's context window. This is
+// history could otherwise blow past deepseek-chat's context window (same limit family on deepseek-flash). This is
 // the "stuff everything in the prompt" retrieval the Phase 1 spike used,
 // carried forward deliberately (see PROJECT-PLAN.md's V8.1 entry) — real
 // retrieval (embeddings/vector search) is a bigger build than this cycle
@@ -73,7 +73,7 @@ async function callDeepSeek(apiKey, system, user) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'deepseek-flash', reasoning_effort: 'none',
           messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
           response_format: { type: 'json_object' },
           temperature: 0.3, max_tokens: 700,

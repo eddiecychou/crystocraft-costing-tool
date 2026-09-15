@@ -117,7 +117,7 @@ async function callDeepSeek(apiKey, { system, user, temperature, maxTokens }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'deepseek-flash', reasoning_effort: 'none',
           messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
           response_format: { type: 'json_object' },
           temperature,
