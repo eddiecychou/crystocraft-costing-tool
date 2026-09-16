@@ -9,6 +9,7 @@ import { IMAGE_TYPES, productStatusOf } from '../constants'
 import { Star, X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { useCan } from '../access'
+import { RETAIL_TAG } from '../domain/customer'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -59,10 +60,18 @@ export default function ProductDetail() {
   // Lightweight customer list for "branded for" image tagging — id + name
   // only. Admin-only: the customers collection is owner-gated, and a
   // production login would just hit permission-denied here.
+  // B2C/Retail-tagged customers are filtered out here (Eddie, 2026-09-16):
+  // product-image "branded for" tagging is a B2B concept — a retail
+  // customer never gets custom-branded product photography — so they'd
+  // only clutter this picker.
   useEffect(() => {
     if (!isAdmin) return
     getDocs(query(collection(db, 'customers'), orderBy('company_name')))
-      .then(snap => setCustomers(snap.docs.map(d => ({ id: d.id, company_name: d.data().company_name || '' }))))
+      .then(snap => setCustomers(
+        snap.docs
+          .map(d => ({ id: d.id, company_name: d.data().company_name || '', tags: d.data().tags || [] }))
+          .filter(c => !c.tags.includes(RETAIL_TAG))
+      ))
       .catch(() => setCustomers([]))
   }, [isAdmin])
 
