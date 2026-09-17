@@ -1,5 +1,6 @@
 import { collectionGroup, collection, doc, getDoc, getDocs, query, where, orderBy, Timestamp, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, authedUser } from '../firebase'
+import { NOT_CUSTOMER_TAG } from './customer'
 
 // Dashboard "This Month" section (V8.15, extended 2026-09-17) — a per-customer
 // AI digest of what happened in the last 30 days, built from the two channels
@@ -129,6 +130,13 @@ export async function findActiveCustomers() {
   const ids = new Set([...enquiriesByCustomer.keys(), ...threadsByCustomer.keys()])
   const entries = await Promise.all([...ids].map(async (id) => {
     const custSnap = await getDoc(doc(db, 'customers', id))
+    // Not every `customers` doc is a real relationship — a personal/company
+    // bank account or an inbound marketing email can get matched here by
+    // email-sync just like a genuine customer would. Tagged with
+    // NOT_CUSTOMER_TAG (via the ordinary tag editor), excluded here entirely
+    // rather than just not mentioned — no point spending a raw activity
+    // read/render on something that'll never appear in the digest.
+    if (custSnap.exists() && (custSnap.data().tags || []).includes(NOT_CUSTOMER_TAG)) return null
     const name = custSnap.exists() ? (custSnap.data().company_name || custSnap.data().name || 'Unnamed customer') : 'Unknown customer'
     const enquiries = enquiriesByCustomer.get(id) || []
     const threads = threadsByCustomer.get(id) || []
@@ -146,7 +154,7 @@ export async function findActiveCustomers() {
       text: renderCustomerText(enquiries, threads),
     }
   }))
-  return entries.sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))
+  return entries.filter(Boolean).sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))
 }
 
 // Step 2 — one batched DeepSeek call covering every active customer (not

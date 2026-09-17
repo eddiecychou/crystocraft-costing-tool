@@ -61,6 +61,16 @@ export const CUSTOMER_SOURCES = ['Alibaba', 'Website', 'Email Marketing', 'Refer
 // would collide two unrelated facts onto one tag).
 export const RETAIL_TAG = 'Retail Customer'
 
+// A handful of `customers` records aren't real customer relationships at
+// all — a personal/company bank account (email-sync matched "HSBC Commercial
+// Banking" notification mail to a customer-shaped record) or an inbound
+// marketing/spam email that got the same treatment ("Dazzling Giftz
+// Enterprise") — Eddie, 2026-09-17. Tag one of these with NOT_CUSTOMER_TAG
+// (same free-tag mechanism as RETAIL_TAG, via the existing tag editor — no
+// new UI needed) to exclude it from anything that reads "real customer
+// activity", starting with weeklySummary.js's Dashboard digest.
+export const NOT_CUSTOMER_TAG = 'Not a Real Customer'
+
 // Country picker — single source (previously duplicated, and drifted, between
 // Customers.jsx's filter dropdown and CustomerForm.jsx's search combobox).
 // Base list plus everywhere a real customer or marketing contact is on record
