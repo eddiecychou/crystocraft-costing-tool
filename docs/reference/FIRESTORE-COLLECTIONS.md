@@ -75,9 +75,9 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 - `draft_memory_rules/{id}` — admin-confirmed writing rules fed into Daily Drafts prompts; `status`: pending/active/disabled. Auth: admin only. Owned by `src/domain/draftMemoryRules.js`.
 - `outreach_topic_templates/{id}` — saved reusable "what do you want to say?" topics for Daily Drafts (V8.11). Auth: admin only. Owned by `src/domain/outreachTopicTemplates.js`.
 - `{path=**}/enquiries` — **not its own collection** — a collection-group rule authorizing a cross-collection query over every `enquiries` subcollection (customers + marketing_contacts) at once, for Daily Drafts' topic-dedup check.
-- `{path=**}/email_threads` — same pattern (V8.15): a collection-group query over every customer's/lead's `email_threads` at once, for the Dashboard "This Week" digest to find who had new email in the last 7 days without reading one customer at a time. Auth: module `customers`.
+- `{path=**}/email_threads` — same pattern (V8.15): a collection-group query over every customer's/lead's `email_threads` at once, for the Dashboard "This Month" digest to find who had new email in the last 30 days without reading one customer at a time. Auth: module `customers`.
 - `{path=**}/supplier_quotes` — same pattern, for querying every `supplier_quotes` subcollection across products/components and range_components at once. Auth: **staff** (V8.12).
-- `dashboard_cache/weekly_summary` (fixed doc id, V8.15) — cached output of the Dashboard's "This Week" AI digest: `{ generatedAt, weekStart, items: [{customerId, customerName, channels, lastActivity, digest}] }`. Regenerated only when the Dashboard's "Refresh" button is clicked (no scheduled job). Auth: module `customers`. Owned by `src/domain/weeklySummary.js`.
+- `dashboard_cache/weekly_summary` (fixed doc id, V8.15) — cached output of the Dashboard's "This Month" AI digest: `{ generatedAt, weekStart, items: [{customerId, customerName, channels, lastActivity, digest}] }`. Regenerated only when the Dashboard's "Refresh" button is clicked (no scheduled job). Auth: module `customers`. Owned by `src/domain/weeklySummary.js`.
 
 ## Costing & catalogue documents
 

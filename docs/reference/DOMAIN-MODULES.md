@@ -80,11 +80,11 @@ id, interactionId)`. `collectionName` is `'customers'` or
 subcollections (see FIRESTORE-COLLECTIONS.md's note that the *word*
 "enquiries" means two different things at the top level vs. here).
 
-## `weeklySummary.js` — Dashboard "This Week" digest (V8.15)
+## `weeklySummary.js` — Dashboard "This Month" digest (V8.15, 30-day window since 2026-09-17)
 
 `findActiveCustomers()` — collectionGroup-queries `enquiries` (Timestamp
 `date`) and `email_threads` (string `synced_at`, compared lexicographically —
-ISO 8601 sorts correctly as text) for anything in the last 7 days, groups by
+ISO 8601 sorts correctly as text) for anything in the last 30 days (widened from 7), groups by
 customer, renders a compact per-customer text block. WhatsApp/Alibaba
 deliberately excluded (owner: not the most up-to-date channels).
 `generateWeeklySummary()` sends every active customer's block in ONE batched

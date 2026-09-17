@@ -1,18 +1,22 @@
 import { collectionGroup, collection, doc, getDoc, getDocs, query, where, orderBy, Timestamp, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, authedUser } from '../firebase'
 
-// Dashboard "This Week" section (V8.15) — a per-customer AI digest of what
-// happened in the last 7 days, built from the two channels that are
-// actually kept current day-to-day: the CRM Interaction Log (`enquiries`,
-// hand-logged) and ingested email (`email_threads`, synced daily by
-// email-sync/sync.py). WhatsApp/Alibaba are deliberately excluded for now
-// (Eddie: "not the most updated communication channels") — see
+// Dashboard "This Month" section (V8.15, extended 2026-09-17) — a per-customer
+// AI digest of what happened in the last 30 days, built from the two channels
+// that are actually kept current day-to-day: the CRM Interaction Log
+// (`enquiries`, hand-logged) and ingested email (`email_threads`, synced
+// daily by email-sync/sync.py). WhatsApp/Alibaba are deliberately excluded
+// for now (Eddie: "not the most updated communication channels") — see
 // PROJECT-PLAN.md's V8.15 entry if that changes.
+//
+// Originally a 7-day window; widened to 30 (Eddie: "not all issues are
+// resolved in a week") — function/doc names below still say "weekly" to
+// avoid an unnecessary rename churn, but the actual lookback is LOOKBACK_MS.
 //
 // On-demand only (no scheduled job): generateWeeklySummary() is called from
 // a Dashboard "Refresh" button, result cached in dashboard_cache/weekly_summary
 // so reopening the dashboard doesn't require a fresh AI call every time.
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+const LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000
 const CACHE_DOC = doc(db, 'dashboard_cache', 'weekly_summary')
 
 // Same split every other AI feature here uses: the browser holds Firestore
@@ -109,15 +113,15 @@ function renderCustomerText(enquiries = [], threads = []) {
       }
     }
   }
-  return parts.join('\n').slice(0, 4000) // per-customer cap — this is a week's worth, not a full history
+  return parts.join('\n').slice(0, 6000) // per-customer cap — a month's worth, not a full history (bumped from 4000 alongside the 7d->30d window)
 }
 
-// Step 1 — gather this week's raw activity, grouped per customer, with no
+// Step 1 — gather the trailing month's raw activity, grouped per customer, with no
 // AI call yet. Exposed separately from generateWeeklySummary so the
-// Dashboard can show "N customers active this week" immediately, before
+// Dashboard can show "N customers active this month" immediately, before
 // the (slower) digest call resolves.
 export async function findActiveCustomers() {
-  const cutoff = new Date(Date.now() - WEEK_MS)
+  const cutoff = new Date(Date.now() - LOOKBACK_MS)
   const [enquiriesByCustomer, threadsByCustomer] = await Promise.all([
     activityFromEnquiries(cutoff),
     activityFromEmailThreads(cutoff),
@@ -151,7 +155,7 @@ export async function findActiveCustomers() {
 export async function generateWeeklySummary() {
   const entries = await findActiveCustomers()
   if (entries.length === 0) {
-    const empty = { generatedAt: serverTimestamp(), weekStart: new Date(Date.now() - WEEK_MS).toISOString(), items: [] }
+    const empty = { generatedAt: serverTimestamp(), weekStart: new Date(Date.now() - LOOKBACK_MS).toISOString(), items: [] }
     await setDoc(CACHE_DOC, empty)
     return { items: [] }
   }
@@ -169,7 +173,7 @@ export async function generateWeeklySummary() {
     digest: digestById.get(e.customerId) || '(no digest returned)',
   }))
 
-  await setDoc(CACHE_DOC, { generatedAt: serverTimestamp(), weekStart: new Date(Date.now() - WEEK_MS).toISOString(), items })
+  await setDoc(CACHE_DOC, { generatedAt: serverTimestamp(), weekStart: new Date(Date.now() - LOOKBACK_MS).toISOString(), items })
   return { items }
 }
 

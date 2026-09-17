@@ -170,7 +170,7 @@ export default function Dashboard() {
     setWeeklyError('')
     try {
       const result = await generateWeeklySummary()
-      setWeeklySummary({ ...result, generatedAt: { toDate: () => new Date() }, weekStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() })
+      setWeeklySummary({ ...result, generatedAt: { toDate: () => new Date() }, weekStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() })
     } catch (e) {
       setWeeklyError(e.message || 'Could not generate the weekly summary.')
     } finally {
@@ -330,14 +330,15 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* This Week — a per-customer AI digest of the last 7 days, built from
-          the CRM Interaction Log + ingested email only (V8.15). On-demand:
-          generated fresh only when "Refresh" is clicked, then cached. */}
+      {/* This Month — a per-customer AI digest of the last 30 days (widened
+          from 7, 2026-09-17: "not all issues are resolved in a week"), built
+          from the CRM Interaction Log + ingested email only (V8.15).
+          On-demand: generated fresh only when "Refresh" is clicked, then cached. */}
       <div className="card mb-6">
         <div className="px-5 py-4 border-b border-warm-grey flex items-center justify-between">
           <h2 className="flex items-center gap-1.5 text-sm text-ink-80">
             <Mail size={15} />
-            This Week
+            This Month
             {weeklySummary?.generatedAt && (
               <span className="ml-2 text-xs font-normal text-ink-60">
                 · generated {weeklySummary.generatedAt.toDate().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -357,9 +358,9 @@ export default function Dashboard() {
         {weeklyLoading ? (
           <p className="text-sm text-ink-60 text-center py-8">Loading…</p>
         ) : !weeklySummary ? (
-          <p className="text-sm text-ink-60 text-center py-8">Not generated yet — click Refresh to summarize this week's customer activity.</p>
+          <p className="text-sm text-ink-60 text-center py-8">Not generated yet — click Refresh to summarize this month's customer activity.</p>
         ) : weeklySummary.items.length === 0 ? (
-          <p className="text-sm text-ink-60 text-center py-8">No customer activity (Interaction Log or email) in the last 7 days.</p>
+          <p className="text-sm text-ink-60 text-center py-8">No customer activity (Interaction Log or email) in the last 30 days.</p>
         ) : (
           <div className="divide-y divide-warm-grey">
             {weeklySummary.items.map(item => (

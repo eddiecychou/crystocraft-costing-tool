@@ -28,14 +28,18 @@ async function isFrontOffice(uid, idToken, projectId, moduleKey) {
 }
 
 // Cap total customers per call and per-customer text (weeklySummary.js
-// already caps each customer's text at 4000 chars) — a genuinely busy week
-// across many customers should still fit comfortably under deepseek-flash's
-// context window with room for the system prompt and every customer's block.
+// caps each customer's text at 6000 chars, up from 4000 when the window was
+// widened 7d->30d, 2026-09-17). MAX_TOTAL_INPUT_CHARS is a second, blunter
+// safety net on the JOINED prompt: a genuinely busy month across many
+// customers (up to MAX_CUSTOMERS_PER_CALL of them) is real headroom beyond
+// what a busy WEEK ever needed — better to truncate the tail of the prompt
+// than send an oversized request and get an opaque failure back.
 const MAX_CUSTOMERS_PER_CALL = 40
+const MAX_TOTAL_INPUT_CHARS = 180000
 
-const SYSTEM = 'You are reading THIS WEEK\'s activity for several B2B customers of Crystocraft (a corporate ' +
+const SYSTEM = 'You are reading the last 30 days\' activity for several B2B customers of Crystocraft (a corporate ' +
   'gift/crystal products supplier), across two channels: a manually-logged CRM Interaction Log, and recent ' +
-  'email. For EACH customer block below, write a short digest (1-2 sentences) of what happened this week and ' +
+  'email. For EACH customer block below, write a short digest (1-2 sentences) of what happened this month and ' +
   'what (if anything) is outstanding — factual only, do not invent details not present in the text. ' +
   'Return ONLY a valid JSON object: { "digests": [ { "id": "<the customer id exactly as given>", ' +
   '"digest": "1-2 sentence summary" }, ... ] } — one entry per customer id given, in any order.'
@@ -98,6 +102,7 @@ export default async function handler(req) {
   const userPrompt = customers
     .map(c => `--- Customer id="${c.id}" name="${c.name}" ---\n${c.text}`)
     .join('\n\n')
+    .slice(0, MAX_TOTAL_INPUT_CHARS)
 
   const { result, reason } = await callDeepSeek(DEEPSEEK_API_KEY, SYSTEM, userPrompt)
   if (!Array.isArray(result?.digests)) return json({ error: `DeepSeek did not return usable digests: ${reason || 'unknown'}` }, 502)
