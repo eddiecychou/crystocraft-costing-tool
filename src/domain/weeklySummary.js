@@ -1,6 +1,6 @@
 import { collectionGroup, collection, doc, getDoc, getDocs, query, where, orderBy, Timestamp, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, authedUser } from '../firebase'
-import { NOT_CUSTOMER_TAG } from './customer'
+import { NOT_CUSTOMER_TAG, RETAIL_TAG } from './customer'
 
 // Dashboard "This Month" section (V8.15, extended 2026-09-17) — a per-customer
 // AI digest of what happened in the last 30 days, built from the two channels
@@ -165,7 +165,16 @@ export async function findActiveCustomers() {
     // NOT_CUSTOMER_TAG (via the ordinary tag editor), excluded here entirely
     // rather than just not mentioned — no point spending a raw activity
     // read/render on something that'll never appear in the digest.
-    if (custSnap.exists() && (custSnap.data().tags || []).includes(NOT_CUSTOMER_TAG)) return null
+    //
+    // Retail/B2C customers excluded too (Eddie, 2026-09-17: "too many names,
+    // not much importance... transaction amount is very small compared to
+    // B2B" — e.g. Tiffany Mak). Same RETAIL_TAG ProductDetail.jsx's "branded
+    // for" picker already filters on — B2C is a tag, not a crm_category, so
+    // this can't be a query filter and has to be this same read-then-check.
+    if (custSnap.exists()) {
+      const tags = custSnap.data().tags || []
+      if (tags.includes(NOT_CUSTOMER_TAG) || tags.includes(RETAIL_TAG)) return null
+    }
     const name = custSnap.exists() ? (custSnap.data().company_name || custSnap.data().name || 'Unnamed customer') : 'Unknown customer'
     const enquiries = enquiriesByCustomer.get(id) || []
     const threads = threadsByCustomer.get(id) || []
