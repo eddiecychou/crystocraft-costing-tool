@@ -69,6 +69,33 @@ async function activityFromEnquiries(cutoffDate) {
   return byCustomer
 }
 
+// Sender-level noise exclusion (Eddie, 2026-09-17, correcting the earlier
+// customer-level NOT_CUSTOMER_TAG attempt): "HSBC Commercial Banking" and
+// "Dazzling Giftz Enterprise" ARE real customers (their crm tags say so) —
+// email-sync's domain-based matching just also swept in unrelated mail onto
+// the SAME customer record: Crystocraft's own HSBC bank-notification bots
+// (@hsbc.com.hk, same domain as the real HSBC relationship-manager contact),
+// and Dazzling Giftz's own outbound marketing blasts (sales@dazzling-giftz.com).
+// Excluding these SENDERS from the digest input keeps any real correspondence
+// on the same customer record intact — excluding the whole customer would have
+// thrown that away too. Matched case-insensitively as a substring of `from`
+// (a raw "Name <addr>" header, not a clean address) — extend this list as
+// more notification/marketing-bot senders turn up on real customer records.
+const EXCLUDED_SENDER_PATTERNS = [
+  'payment.notification@hsbc.com.hk',
+  'estatement.and.eadvice',
+  'business.banking@hsbc.com.hk',
+  'businessinternetbanking@hsbc.com.hk',
+  'instantadvice@hsbc.com.hk',
+  'support-visiongo@hsbc.com.hk',
+  'support-businessgo@hsbc.com.hk',
+  'sales@dazzling-giftz.com',
+]
+function isExcludedSender(from) {
+  const f = (from || '').toLowerCase()
+  return EXCLUDED_SENDER_PATTERNS.some(p => f.includes(p))
+}
+
 async function activityFromEmailThreads(cutoffDate) {
   const cutoffIso = cutoffDate.toISOString()
   // synced_at is a plain ISO string (email-sync/sync.py), not a Firestore
@@ -81,8 +108,10 @@ async function activityFromEmailThreads(cutoffDate) {
     const customerId = customerIdOf(d)
     if (!customerId) continue
     const r = d.data()
-    const recentMessages = (r.messages || []).filter(m => m.date && m.date >= cutoffIso)
-    if (recentMessages.length === 0) continue // thread touched by sync, but its actual new messages predate the cutoff
+    const recentMessages = (r.messages || [])
+      .filter(m => m.date && m.date >= cutoffIso)
+      .filter(m => !isExcludedSender(m.from))
+    if (recentMessages.length === 0) continue // thread touched by sync, but nothing left after the cutoff/sender filters
     if (!byCustomer.has(customerId)) byCustomer.set(customerId, [])
     byCustomer.get(customerId).push({
       subject: r.subject || '(no subject)',
