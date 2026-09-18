@@ -1,8 +1,17 @@
 import { defineConfig } from 'vite'
+import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react-swc'
 
 export default defineConfig({
   plugins: [react()],
+  // `@` → src. Added for the Product Design pages ported in from the
+  // standalone Next.js app (V8.16), which import as `@/lib/...`, `@/types/...`,
+  // `@/components/...`. Vite/SWC transpiles their .tsx natively (no type-check,
+  // same posture as the rest of this JS app). Pre-existing code uses relative
+  // imports and is unaffected.
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   define: {
     // Stamped at build time so the app can show which build is live. The
     // version string alone can't tell you whether a deploy actually went out.

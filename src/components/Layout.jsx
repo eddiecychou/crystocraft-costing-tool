@@ -10,7 +10,7 @@ import { useT } from '../i18n'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
   Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles, RotateCcw, ShoppingCart,
-  PanelLeftClose, PanelLeftOpen, LogOut,
+  PanelLeftClose, PanelLeftOpen, LogOut, Palette,
 } from 'lucide-react'
 
 // Grouped so the list stays readable as it grows — the flat version was hard
@@ -30,6 +30,7 @@ const nav = [
   { to: '/range',      label: 'Figurine Gifts',short: 'Figurine', Icon: Gem, primary: true, module: 'figurine' },
   { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true, module: 'products' },
   { to: '/swatch-library', label: 'Swatch Library', short: 'Swatches', Icon: Sparkles, module: 'swatch' },
+  { to: '/design/products', label: 'Product Design', short: 'Design', Icon: Palette, module: 'product_design' },
 
   { group: 'Sales' },
   { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true, module: 'quotes' },

@@ -87,6 +87,62 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.16 — Product Design folded into Operation Center (2026-09-18)
+
+The standalone **Product Design** app (`~/Developer/Product Design`, a separate
+Next.js 16 project) was ported into this repo as first-class `/design/*` pages,
+replacing the option of running it as a second deployment/login. It's a
+brand-aware image-prompt workbench: analyse a product photo into structured
+JSON, extract a customer's brand identity (from an image or their website),
+apply that brand onto a product's prompt while keeping physical facts intact
+(logos/text only ever come back as blank `reserved_areas` for manual
+compositing), and manage spec sheets + generations.
+
+**Why it was cheap:** the standalone app already shared this Firebase project,
+kept its own data in `pd_`-prefixed collections (`pd_products`,
+`pd_customer_brands`, `pd_prompt_templates`, `pd_generations`,
+`pd_spec_sheet_templates` — no collision with the ops schema), and read the
+live `customers`/`suppliers` collections read-only. So there was no data
+migration and no sync layer — only a code port.
+
+**What the port did:**
+- **Pages** → `src/pages/pd/*.tsx` (kept as TypeScript — Vite/SWC transpiles it
+  with no type-check, same posture as the JS app; a few `.tsx` files among
+  `.jsx`). Next App-Router → React-Router (`useRouter`→`useNavigate`,
+  `next/link`→RR `Link`, `useSearchParams` tuple). Mounted under **`/design/*`**
+  because this app already owns `/products`, `/customers`, `/suppliers`,
+  `/templates`, and even `/customers/:id/brand` (a *different* brand feature).
+- **Lib/types** → `src/lib/{jsonHighlight.tsx,jsonPaths.ts}`,
+  `src/lib/firestore/*.ts`, `src/types/*.ts`. `@/lib/firebase` is a shim
+  re-exporting the one real `src/firebase.js` (added `ignoreUndefinedProperties`
+  there for the ported modules' `{x: v || undefined}` payloads). `@`→`src` Vite
+  alias added.
+- **7 Gemini routes** (Next API) → Netlify Deno edge functions `pd-*.js`, now
+  gated on `requireModule('product_design')` (they had **no** auth as Next
+  routes); client calls repointed to `/api/pd-*` with `authHeader()`. Shared
+  `lib/pdGemini.js`.
+- **RBAC:** new `product_design` module key (access.js), nav entry (Catalogue
+  group, Palette icon), routes wrapped in `<Gate>`, `pd_*` Firestore + Storage
+  rules widened from `isAdmin()` → `can('product_design')`.
+- **Folded entry points:** a "Brand (Design)" link on `CustomerDetail` →
+  `/design/customers/:id/brand`, and a "Design mockup" link on `SupplierDetail`
+  → `/design/products/new?supplierId=:id` (both gated on the module). PD's own
+  parallel customer/supplier *browse* pages were dropped in favour of these.
+
+**Verified live** (QA admin, dev server): nav integration, products browse +
+detail (live `pd_products` + real supplier cross-read), template detail with
+JSON syntax highlighting, template edit field editor + lock toggles,
+generations, and the full brand-profile editor with live `pd_customer_brands`
+data — no console errors, `npm run build` green. The `/api/pd-*` calls are
+wired but not fired in QA (would burn Gemini credit).
+
+**New dependency:** `html-to-image@^1.11.13` (spec-sheet PNG export).
+
+**Not done / open:** the `product_design` Firestore + Storage rule changes
+must be deployed (rules-first, before/independent of the Netlify push, per the
+standing RBAC deploy rule) for a *staff* account granted the module to use it —
+admin already works via `can()`. No staff account has the module ticked yet.
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending

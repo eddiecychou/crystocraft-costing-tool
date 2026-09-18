@@ -26,6 +26,7 @@ export const MODULE_GROUPS = [
     { key: 'figurine',    label: 'Figurine Gifts (catalogue + costing)' },
     { key: 'swatch',      label: 'Swatch Library' },
     { key: 'catalogues',  label: 'Printed Catalogues' },
+    { key: 'product_design', label: 'Product Design — brand mockups + spec sheets' },
     { key: 'pricing',     label: 'Pricing — corp-gift tier editor', sensitive: true },
   ] },
   { group: 'Front office', keys: [

@@ -195,6 +195,36 @@
   function = "ga-portal-activity"
   path = "/api/ga-portal-activity"
 
+# Product Design (V8.16) — brand-aware image-prompt workbench. All text/vision
+# Gemini calls, gated on the product_design module (see lib/pdGemini.js).
+[[edge_functions]]
+  function = "pd-analyze-image"
+  path = "/api/pd-analyze-image"
+
+[[edge_functions]]
+  function = "pd-analyze-brand-image"
+  path = "/api/pd-analyze-brand-image"
+
+[[edge_functions]]
+  function = "pd-analyze-brand-website"
+  path = "/api/pd-analyze-brand-website"
+
+[[edge_functions]]
+  function = "pd-apply-brand"
+  path = "/api/pd-apply-brand"
+
+[[edge_functions]]
+  function = "pd-extract-elements"
+  path = "/api/pd-extract-elements"
+
+[[edge_functions]]
+  function = "pd-merge-elements"
+  path = "/api/pd-merge-elements"
+
+[[edge_functions]]
+  function = "pd-tweak-json"
+  path = "/api/pd-tweak-json"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

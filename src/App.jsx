@@ -83,6 +83,22 @@ const SeoState = lazy(() => import('./pages/SeoState'))
 const SeoReview = lazy(() => import('./pages/SeoReview'))
 const SeoReconcile = lazy(() => import('./pages/SeoReconcile'))
 const ProductionDashboard = lazy(() => import('./pages/ProductionDashboard'))
+// Product Design (V8.16) — ported from the standalone Next.js app, mounted
+// under /design/* to avoid colliding with this app's own /products,
+// /customers, /suppliers, /templates routes. All gated on product_design.
+const DesignHome = lazy(() => import('./pages/pd/DesignHome'))
+const PdProducts = lazy(() => import('./pages/pd/Products'))
+const PdProductNew = lazy(() => import('./pages/pd/ProductNew'))
+const PdProductDetail = lazy(() => import('./pages/pd/ProductDetail'))
+const PdProductEdit = lazy(() => import('./pages/pd/ProductEdit'))
+const PdTemplateNew = lazy(() => import('./pages/pd/TemplateNew'))
+const PdSpecSheetNew = lazy(() => import('./pages/pd/SpecSheetNew'))
+const PdTemplates = lazy(() => import('./pages/pd/Templates'))
+const PdTemplateDetail = lazy(() => import('./pages/pd/TemplateDetail'))
+const PdTemplateEdit = lazy(() => import('./pages/pd/TemplateEdit'))
+const PdSpecSheetDetail = lazy(() => import('./pages/pd/SpecSheetDetail'))
+const PdGenerations = lazy(() => import('./pages/pd/Generations'))
+const PdCustomerBrand = lazy(() => import('./pages/pd/CustomerBrand'))
 
 export default function App() {
   const user = useAuthState()
@@ -309,6 +325,21 @@ function AdminApp({ user, profile, role }) {
                 <Route path="/enquiries" element={<Navigate to="/portal" replace />} />
                 <Route path="/catalogue-band" element={<Navigate to="/settings" replace />} />
                 <Route path="/import-data" element={<Gate module="settings"><ImportData /></Gate>} />
+                {/* Product Design (V8.16) — /design/* namespace. Specific
+                    routes before the :id ones so RR matches new/edit first. */}
+                <Route path="/design" element={<Gate module="product_design"><DesignHome /></Gate>} />
+                <Route path="/design/products" element={<Gate module="product_design"><PdProducts /></Gate>} />
+                <Route path="/design/products/new" element={<Gate module="product_design"><PdProductNew /></Gate>} />
+                <Route path="/design/products/:id" element={<Gate module="product_design"><PdProductDetail /></Gate>} />
+                <Route path="/design/products/:id/edit" element={<Gate module="product_design"><PdProductEdit /></Gate>} />
+                <Route path="/design/products/:id/templates/new" element={<Gate module="product_design"><PdTemplateNew /></Gate>} />
+                <Route path="/design/products/:id/spec-sheet/new" element={<Gate module="product_design"><PdSpecSheetNew /></Gate>} />
+                <Route path="/design/templates" element={<Gate module="product_design"><PdTemplates /></Gate>} />
+                <Route path="/design/templates/:id" element={<Gate module="product_design"><PdTemplateDetail /></Gate>} />
+                <Route path="/design/templates/:id/edit" element={<Gate module="product_design"><PdTemplateEdit /></Gate>} />
+                <Route path="/design/spec-sheets/:id" element={<Gate module="product_design"><PdSpecSheetDetail /></Gate>} />
+                <Route path="/design/generations" element={<Gate module="product_design"><PdGenerations /></Gate>} />
+                <Route path="/design/customers/:id/brand" element={<Gate module="product_design"><PdCustomerBrand /></Gate>} />
               </Routes>
               </Suspense>
               </ErrorBoundary>

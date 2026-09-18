@@ -442,10 +442,10 @@ service cloud.firestore {
         || (can('quotes') && name.matches('(uc|so)_[0-9]+'));
     }
 
-    // ---- Product Design app (separate repo, ~/Developer/Product Design) —
-    // admin-only for now, no `modules[]` key allocated yet. Reuses this
-    // Firebase project so the two stay mergeable later; not reachable from
-    // the costing-tool UI itself. `pd_` prefix is deliberate — this repo's
+    // ---- Product Design (folded into this app under /design/* in V8.16 —
+    // was a separate Next.js repo). Gated on the `product_design` module
+    // (admin, or a staff account granted it). Reuses this Firebase project;
+    // the pages now live in src/pages/pd/. `pd_` prefix is deliberate — this repo's
     // own `products` would collide with costing-tool's existing catalogue
     // collection of the same bare name (see L-90 — matched above at line
     // ~92), so the Product Design entities get their own namespace instead
@@ -458,19 +458,19 @@ service cloud.firestore {
     // customer's Visual Tokens for image generation), keyed by the real
     // customer's own id. -----
     match /pd_products/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('product_design');
     }
     match /pd_prompt_templates/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('product_design');
     }
     match /pd_generations/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('product_design');
     }
     match /pd_customer_brands/{customerId} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('product_design');
     }
     match /pd_spec_sheet_templates/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('product_design');
     }
   }
 }

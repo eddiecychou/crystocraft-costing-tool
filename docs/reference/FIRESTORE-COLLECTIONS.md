@@ -124,6 +124,26 @@ collections:
 | `branded_for_customer_id` | `products/{id}/images/{id}` | `customers/{id}` | which customer a "sensitive" product image is restricted to |
 | `woo_customer_id` | `customers/{id}` | (external WooCommerce, not Firestore) | drives `/api/woo-sync`'s order lookups — see API-REFERENCE.md |
 
+## Product Design (`pd_*`, V8.16)
+
+The `/design/*` pages' own collections — folded in from a standalone app,
+`pd_`-prefixed so `pd_products` doesn't collide with this repo's own
+`products` catalogue. All gated on the `product_design` module; owning data
+layer is `src/lib/firestore/*.ts` (not `src/domain/`). Storage blobs live
+under matching `pd_*` paths (see `storage.rules`).
+
+| Collection | Purpose | Owning file | Pointer fields |
+|---|---|---|---|
+| `pd_products/{id}` | Product Design's own product catalogue (photos + analysis), separate from `products` | `src/lib/firestore/products.ts` | `supplierId` → real `suppliers/{id}` |
+| `pd_customer_brands/{customerId}` | a customer's Visual Tokens (palette/motifs/tone) for brand-applying; **keyed by the real `customers/{id}`** | `src/lib/firestore/customerBrands.ts` | doc id **is** `customers/{id}` |
+| `pd_prompt_templates/{id}` | per-customer image-prompt template (the JSON) for a product | `src/lib/firestore/promptTemplates.ts` | `productId` → `pd_products/{id}`; `customerId` → real `customers/{id}` |
+| `pd_generations/{id}` | uploaded render results per template | `src/lib/firestore/generations.ts` | `templateId` → `pd_prompt_templates/{id}`; `productId`, `customerId` |
+| `pd_spec_sheet_templates/{id}` | printable product spec-sheet layouts | `src/lib/firestore/specSheetTemplates.ts` | `productId` → `pd_products/{id}` |
+
+Product Design reads the live `customers`/`suppliers` collections read-only
+(`realCustomers.ts`/`realSuppliers.ts`) — there is deliberately no
+`pd_customers`/`pd_suppliers`.
+
 ## Keeping this current
 
 When adding a new collection: add its `match` block to `firestore.rules`,

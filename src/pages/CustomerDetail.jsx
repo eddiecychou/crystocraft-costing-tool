@@ -5,6 +5,7 @@ import {
   onSnapshot, deleteDoc as deleteDocument, serverTimestamp,
 } from 'firebase/firestore'
 import { db, storage, authHeader } from '../firebase'
+import { useCan } from '../access'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -332,6 +333,7 @@ function BrandProposalCard({ customerId }) {
 export default function CustomerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const can = useCan()
 
   const [customer, setCustomer]         = useState(null)
   // SU-07A — "Invite to portal" per-contact busy/result state, keyed by
@@ -996,6 +998,9 @@ export default function CustomerDetail() {
           </div>
           <div className="flex gap-2 shrink-0 flex-wrap">
             <Link to={`/customers/${id}/edit`} onClick={remember} className="btn-secondary text-sm">Edit</Link>
+            {can('product_design') && (
+              <Link to={`/design/customers/${id}/brand`} onClick={remember} className="btn-secondary text-sm">Brand (Design)</Link>
+            )}
             <button className="btn-secondary text-sm" onClick={() => setMerging(true)}>Merge…</button>
             <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
           </div>

@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design-token CSS custom properties consumed directly (via var()) by the
+   ported Product Design JSON-highlight components (jsonHighlight.tsx), which
+   were authored against Tailwind v4's generated `--color-*` variables. This
+   app is on Tailwind v3, which doesn't emit those, so the handful they use are
+   declared here by hand. Values mirror tailwind.config.js — keep in sync. */
+:root {
+  --color-sapphire: #1C4F64;
+  --color-brand-600: #6e2433;
+  --color-bronze: #8A5B2C;
+  --color-emerald-700: #047857;
+  --color-amber-700: #b45309;
+  --color-ink-80: #4A4A47;
+}
+
 @layer base {
   /* Crystocraft Design System 2026 V2 — direct CSS values so tokens
      don't depend on a dev-server restart to take effect */

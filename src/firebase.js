@@ -18,6 +18,13 @@ export const auth = getAuth(app)
 
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  // ignoreUndefinedProperties (added V8.16 with the Product Design port): the
+  // ported pd_* data modules build update payloads like `{ caption: caption ||
+  // undefined }` to mean "leave this field out". Firestore's default REJECTS
+  // any undefined field value outright; this makes it silently drop those keys
+  // instead — which is what those call sites intend. Pre-existing code never
+  // passes undefined, so this only affects the ported modules.
+  ignoreUndefinedProperties: true,
 })
 
 export const storage = getStorage(app)

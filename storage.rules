@@ -93,27 +93,28 @@ service firebase.storage {
       allow read, write: if can('marketing');
     }
 
-    // Product Design app (separate repo, ~/Developer/Product Design) —
-    // admin-only, pd_ prefixed to avoid colliding with the products/{id}
-    // path above (this app's own catalogue images).
+    // Product Design (folded into this app under /design/* in V8.16 — was a
+    // separate Next.js repo) — gated on the product_design module, pd_
+    // prefixed to avoid colliding with the products/{id} path above (this
+    // app's own catalogue images).
     match /pd_products/{productId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('product_design');
     }
     // Generation result images, keyed by templateId (not productId --
     // several templates for different customers share one product).
     match /pd_generations/{templateId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('product_design');
     }
     // Brand reference images (logos, marketing material) a customer's
     // brand profile was extracted from.
     match /pd_customer_brands/{customerId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('product_design');
     }
     // Scratch uploads for the Edit Template "extract elements from image"
     // flow — a reference photo passed to Gemini for analysis, not part of
-    // any saved record. Same admin-only posture as the rest of pd_*.
+    // any saved record. Same product_design posture as the rest of pd_*.
     match /pd_extraction_scratch/{templateId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('product_design');
     }
   }
 }

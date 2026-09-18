@@ -88,6 +88,23 @@ shape or a gotcha, read the function itself; the file names below are exact.
 - `woo-sync.js` (`/api/woo-sync`) — Read-only WooCommerce B2C sync. `list_orders`/`search_orders`/`orders_page`/`order_refunds`/`order_meta`/`probe_payout` (Phase 1): paid orders + refunds for review. `products_page` (Phase 6): one client-paginated page of the product catalogue with per-variation stock (variable products fetched via `/products/<id>/variations` in parallel batches), for `WooStockReconcile.jsx`. `catalogue_page` (2026-09-02): the same catalogue as product-shaped rows + SEO-heuristic fields (word counts, image-alt coverage) + `translations_map` (`{lang: postId}`), for `WooCatalogue.jsx` and `SeoState.jsx`. Takes **one `lang` per call** (WPML `lang=all` proved unreliable — returned English only); the client loops `seoLanguages()` and merges. `zh-hans` is skipped (not planned). `probe_i18n_seo`: diagnostic — reports whether the WP site exposes WPML/Polylang + Yoast over REST. Writes nothing to Woo. Auth: module `woo`. Called from `src/wooSyncApi.js`.
 - `resend-webhook.js` (`/api/resend-webhook`) — Receives Resend's delivery webhook (delivered/opened/clicked/bounced/complained), records status on the matching `outreach_drafts` doc. Auth: public — invoked by Resend's servers, not the app. No frontend caller.
 
+## Product Design (V8.16)
+
+Seven text/vision Gemini calls behind the `/design/*` pages (folded in from a
+standalone Next.js app). All on `gemini-3.8-flash`, all gated on the
+`product_design` module, all hold `GEMINI_API_KEY` server-side. Shared helpers
+in `netlify/edge-functions/lib/pdGemini.js` (base64, image fetch, generateContent
+wrapper). Callers are the ported pages in `src/pages/pd/` (fetch with
+`authHeader()`), not a `*Api.js` wrapper.
+
+- `pd-analyze-image.js` (`/api/pd-analyze-image`) — reverse-engineer a product photo into structured JSON (physical facts / graphic surface / text+logo bboxes). Caller: `TemplateNew.tsx`.
+- `pd-analyze-brand-image.js` (`/api/pd-analyze-brand-image`) — extract a brand's visual identity (palette/motifs/tone) from a reference image. Caller: `CustomerBrand.tsx`.
+- `pd-analyze-brand-website.js` (`/api/pd-analyze-brand-website`) — same, reading the brand's own site via Gemini's `url_context` tool; reports a retrieval failure rather than guessing. Caller: `CustomerBrand.tsx`.
+- `pd-apply-brand.js` (`/api/pd-apply-brand`) — produce a new prompt JSON keeping the product's physical facts but swapping its graphic surface for a customer's brand; logos/text only ever come back as blank `reserved_areas`. Caller: `TemplateNew.tsx`.
+- `pd-extract-elements.js` (`/api/pd-extract-elements`) — from a reference image + a template's current JSON, return click-to-apply field candidates. Caller: `TemplateEdit.tsx`.
+- `pd-merge-elements.js` (`/api/pd-merge-elements`) — propose near-duplicate motif/colour groups to consolidate (owner accepts each). Caller: `CustomerBrand.tsx`.
+- `pd-tweak-json.js` (`/api/pd-tweak-json`) — apply one owner-described change to a prompt JSON, restoring any locked field the model drifted (path helpers inlined from `src/lib/jsonPaths.ts`). Callers: `TemplateEdit.tsx`, `TemplateNew.tsx`.
+
 ---
 
 Two things noticed while compiling this list — an auth gap in three

@@ -14,6 +14,7 @@ import { poTotals } from '../purchaseOrders'
 import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen, MessageCircle, Check, Sparkles, X } from 'lucide-react'
 import { previewSupplierMerge, mergeSuppliers } from '../domain/supplierMerge'
 import { useT } from '../i18n'
+import { useCan } from '../access'
 
 // Supplier Workstation Phase 1 — quick-access sourcing links. Order matters:
 // website first, then each marketplace's shop before its product/catalogue
@@ -220,6 +221,7 @@ export default function SupplierDetail() {
   const t = useT()
   const { id } = useParams()
   const navigate = useNavigate()
+  const can = useCan()
   const [supplier, setSupplier]         = useState(null)
   const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -409,6 +411,9 @@ export default function SupplierDetail() {
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
           <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary text-sm">{t('Edit')}</Link>
+          {can('product_design') && (
+            <Link to={`/design/products/new?supplierId=${id}`} onClick={remember} className="btn-secondary text-sm">Design mockup</Link>
+          )}
           <button className="btn-secondary text-sm" onClick={() => setShowMerge(true)}>{t('Merge')}</button>
           <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>{t('Delete')}</button>
         </div>
