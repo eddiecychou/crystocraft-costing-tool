@@ -405,9 +405,10 @@ export default function CustomerBrandPage() {
 
           <div className="card p-4 bg-brand-50 border-brand-100">
             <label className="label" htmlFor="logo">Logo Description (reference only)</label>
-            <input
+            <textarea
               id="logo"
               className="input"
+              rows={3}
               value={profile.logo_description}
               onChange={(e) => updateField("logo_description", e.target.value)}
               placeholder="Shape, colors, layout — words only"

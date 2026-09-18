@@ -50,7 +50,7 @@ export default function SpecSheetDetailPage() {
   if (!sheet || !product) return <main className="p-10 text-ink-60">Spec sheet not found.</main>;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <div className="flex items-center justify-between mb-6 print:hidden">
         <h1 className="text-2xl">{product.name} — Spec Sheet</h1>
         <button type="button" className="btn btn-secondary text-red-700" onClick={handleDelete} disabled={deleting}>

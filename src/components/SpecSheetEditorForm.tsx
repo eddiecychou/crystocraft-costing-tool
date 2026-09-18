@@ -6,10 +6,12 @@ import SpecSheetLayout from "@/components/SpecSheetLayout";
 import type { Product } from "@/types/product";
 import type { SpecSheetField } from "@/types/specSheetTemplate";
 
-// Must match SpecSheetLayout's fixed A4-at-150dpi size.
-const SHEET_W = 1240;
-const SHEET_H = 1754;
-const PREVIEW_SCALE = 0.5;
+// Must match SpecSheetLayout's fixed A4-landscape-at-150dpi size.
+const SHEET_W = 1754;
+const SHEET_H = 1240;
+// Smaller than portrait's 0.5 — a 1754px-wide sheet at 0.5 (877px) is wider
+// than the editor's own right column; 0.4 (702px) fits max-w-6xl's grid.
+const PREVIEW_SCALE = 0.4;
 
 export interface SpecSheetFormValue {
   name: string;

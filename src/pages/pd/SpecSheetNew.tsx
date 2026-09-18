@@ -36,7 +36,7 @@ export default function NewSpecSheetPage() {
   if (!product) return <main className="p-10 text-ink-60">Product not found.</main>;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <h1 className="text-2xl mb-6 print:hidden">New Spec Sheet — {product.name}</h1>
       <SpecSheetEditorForm product={product} value={value} onChange={setValue} onSave={handleSave} saving={saving} />
     </main>

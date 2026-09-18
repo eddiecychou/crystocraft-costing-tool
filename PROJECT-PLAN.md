@@ -143,6 +143,57 @@ must be deployed (rules-first, before/independent of the Netlify push, per the
 standing RBAC deploy rule) for a *staff* account granted the module to use it —
 admin already works via `can()`. No staff account has the module ticked yet.
 
+### V8.16 post-launch fixes (2026-09-19)
+
+Four rounds of fixes reported live against the just-shipped port, each
+verified against real data before pushing:
+
+1. **Fold-in entry points** (`a44bd8a`) — the header buttons added for
+   "Design mockup"/"Brand (Design)" squeezed long supplier/customer titles
+   down to one word per line (the extra button collapsed the title's flex
+   column to its longest word — `flex-1 min-w-0` on the title container
+   fixes it generally). Replaced with real content sections instead of bare
+   links: `SupplierDetail.jsx` gained a **Product Design** card listing that
+   supplier's `pd_products` (thumbnail + link), `CustomerDetail.jsx` gained a
+   **Brand Profile (Design)** section reusing `BrandQuickView`. Also added
+   the two Tailwind tokens the ported components needed (`border-line`,
+   `text-ink-40`) that were missing from the v3 config.
+2. **Tag overflow + section grouping** (`f16eec6`) — `CustomerBrand.tsx`'s
+   core-motif chips used the shared `.tag` class (nowrap, right for short
+   filter chips elsewhere, wrong for a long AI-extracted phrase) — one long
+   motif forced the whole editor to scroll horizontally instead of wrapping;
+   overridden to wrap for this one call site. The new "Brand Profile
+   (Design)" section also duplicated the existing "Brand & Proposal" card as
+   a second top-level section — nested it inside instead
+   (`BrandProposalCard` now takes a `showDesignProfile` prop).
+3. **Spec sheet PNG/PDF export** — `Download PNG` failed with a CORS error:
+   `html-to-image` fetches the product photo itself to inline it in the
+   canvas, and Firebase Storage sends no `Access-Control-Allow-Origin`
+   header. Routed the photo through the app's existing `/api/image-proxy`
+   edge function (same pattern as `BlogGenerator.jsx`/`ManualAdjust.jsx`).
+   Separately, `Print / Save as PDF` was printing the whole Operation Center
+   page (sidebar included) because the `@media print` rule that isolates
+   `#spec-sheet-print-target` — present in the original standalone app's
+   `globals.css` — never made it into this repo's `index.css` during the
+   port; added it (landscape `@page` size, see next point).
+4. **Spec sheet visual redesign** (Eddie: "spec words are very small... make
+   it landscape and have the Spec table and title on right side... too much
+   white space") — `SpecSheetLayout.tsx` rebuilt landscape A4
+   (1754×1240 @150dpi, was portrait 1240×1754): the photo now bleeds full
+   sheet-height on the left, and the spec column runs top-to-bottom with a
+   burgundy "Specification" eyebrow, the DS's own bronze facet-divider glyph,
+   and field rows stretched with `flex-1` to fill the remaining height
+   evenly (no dead gap regardless of field count) — value text 18px→28px.
+   Built from the Crystocraft Design System's existing tokens throughout
+   (brand-600, bronze, ivory-mid, Questrial/Work Sans), not a new palette.
+   `SpecSheetEditorForm.tsx`'s `SHEET_W`/`SHEET_H` swapped accordingly and
+   `PREVIEW_SCALE` reduced (0.5→0.4) so the wider preview still fits its
+   editor column; the two spec-sheet pages widened `max-w-5xl`→`max-w-6xl`
+   to give it room.
+
+All four verified live (QA admin, dev server) before pushing: exact
+screenshots of the reported bug, then of the fix.
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending
