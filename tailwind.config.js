@@ -23,7 +23,11 @@ export default {
           80:      '#4A4A47',  // strong secondary
           70:      '#585853',  // mid secondary — AA on beige (6.2:1). Added V3.
           60:      '#666666',  // mid-grey — body copy / lightest AA-safe grey
+          40:      '#8A8A88',  // faint — muted placeholder/empty-state text (V8.16, Product Design)
         },
+        // Hairline border token used by the ported Product Design components
+        // (border-line). Same value as warm-grey — the app's standard hairline.
+        line: '#E9E8E6',
         // "ivory" token kept for back-compat; now maps to V2 Beige warm bg
         ivory: {
           DEFAULT: '#F7EEE3',  // beige — warm section background

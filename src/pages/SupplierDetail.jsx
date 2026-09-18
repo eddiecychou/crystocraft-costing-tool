@@ -15,6 +15,7 @@ import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen, MessageCircle,
 import { previewSupplierMerge, mergeSuppliers } from '../domain/supplierMerge'
 import { useT } from '../i18n'
 import { useCan } from '../access'
+import { listProductsBySupplier } from '../lib/firestore/products'
 
 // Supplier Workstation Phase 1 — quick-access sourcing links. Order matters:
 // website first, then each marketplace's shop before its product/catalogue
@@ -237,6 +238,7 @@ export default function SupplierDetail() {
   const [showAllRangeQuotes, setShowAllRangeQuotes] = useState(false)
   const [pos, setPos]             = useState([])
   const [posLoading, setPosLoading] = useState(true)
+  const [pdProducts, setPdProducts] = useState(null) // Product Design mockups for this supplier
   const [photos, setPhotos]      = useState([])
   const videosRef = useRef(null)
   // WeChat has no reliable per-contact deep link (owner re-tested 2026-08-28,
@@ -363,6 +365,16 @@ export default function SupplierDetail() {
 
   useEffect(() => { loadQuotes() }, [id])
 
+  // Product Design mockups for this supplier (pd_products.supplierId == id).
+  useEffect(() => {
+    if (!can('product_design')) { setPdProducts([]); return }
+    let alive = true
+    listProductsBySupplier(id)
+      .then(rows => { if (alive) setPdProducts(rows) })
+      .catch(() => { if (alive) setPdProducts([]) })
+    return () => { alive = false }
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleDelete() {
     await deleteDoc(doc(db, 'suppliers', id))
     navigate('/suppliers')
@@ -392,7 +404,7 @@ export default function SupplierDetail() {
       <Link to="/suppliers" className="text-sm text-brand-600 hover:underline">← Suppliers</Link>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mt-2 mb-6">
-        <div className="min-w-0">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl text-ink break-words">{supplier.name}</h1>
             {supplier.erp_code && (
@@ -411,9 +423,6 @@ export default function SupplierDetail() {
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
           <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary text-sm">{t('Edit')}</Link>
-          {can('product_design') && (
-            <Link to={`/design/products/new?supplierId=${id}`} onClick={remember} className="btn-secondary text-sm">Design mockup</Link>
-          )}
           <button className="btn-secondary text-sm" onClick={() => setShowMerge(true)}>{t('Merge')}</button>
           <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>{t('Delete')}</button>
         </div>
@@ -590,6 +599,37 @@ export default function SupplierDetail() {
           </div>
         )}
       </div>
+
+      {/* Product Design mockups (V8.16) — pd_products for this supplier. */}
+      {can('product_design') && (
+        <div className="card mb-6">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
+            <h2 className="text-sm text-ink-80">
+              Product Design {pdProducts !== null && <span className="text-ink-60 font-normal">({pdProducts.length})</span>}
+            </h2>
+            <Link to={`/design/products/new?supplierId=${id}`} onClick={remember} className="btn-primary text-xs py-1.5 px-3">+ New mockup</Link>
+          </div>
+          {pdProducts === null ? (
+            <p className="text-sm text-ink-60 text-center py-8">Loading…</p>
+          ) : pdProducts.length === 0 ? (
+            <p className="text-sm text-ink-60 text-center py-8">No design products for this supplier yet.</p>
+          ) : (
+            <div className="divide-y divide-warm-grey">
+              {pdProducts.map(p => (
+                <Link key={p.id} to={`/design/products/${p.id}`} onClick={remember}
+                      className="flex items-center gap-3 px-5 py-3 hover:bg-ivory transition-colors">
+                  <div className="h-10 w-10 bg-ivory-dark shrink-0 flex items-center justify-center overflow-hidden">
+                    {p.images?.[0]
+                      ? <img src={p.images[0].url} alt="" className="h-full w-full object-cover" />
+                      : <span className="text-ink-60 text-2xs">no image</span>}
+                  </div>
+                  <span className="text-sm font-medium text-ink min-w-0 flex-1 truncate">{p.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Supplier Quotes */}
       <div className="card mb-6">

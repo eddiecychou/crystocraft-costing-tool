@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore'
 import { db, storage, authHeader } from '../firebase'
 import { useCan } from '../access'
+import BrandQuickView from '../components/BrandQuickView'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -961,7 +962,7 @@ export default function CustomerDetail() {
             name on a narrow screen — stack instead, buttons get their own
             full-width row below the title there. */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-xl md:text-2xl text-ink">{customer.company_name}</h1>
@@ -998,9 +999,6 @@ export default function CustomerDetail() {
           </div>
           <div className="flex gap-2 shrink-0 flex-wrap">
             <Link to={`/customers/${id}/edit`} onClick={remember} className="btn-secondary text-sm">Edit</Link>
-            {can('product_design') && (
-              <Link to={`/design/customers/${id}/brand`} onClick={remember} className="btn-secondary text-sm">Brand (Design)</Link>
-            )}
             <button className="btn-secondary text-sm" onClick={() => setMerging(true)}>Merge…</button>
             <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
           </div>
@@ -1545,6 +1543,20 @@ export default function CustomerDetail() {
       {/* Brand assets + customer proposal now live on their own page
           (/customers/:id/brand) — this is the summary + entry point. */}
       <BrandProposalCard customerId={id} />
+
+      {/* Product Design brand profile (V8.16) — the Visual Tokens used when
+          applying this customer's brand to a product mockup. Distinct from the
+          Brand Gallery above (logos/competitor photos). Full editor at
+          /design/customers/:id/brand. */}
+      {can('product_design') && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-1.5">
+            <h2 className="text-sm text-ink-80">Brand Profile (Design)</h2>
+            <Link to={`/design/customers/${id}/brand`} onClick={remember} className="text-xs text-brand-600 hover:underline">Edit →</Link>
+          </div>
+          <BrandQuickView customerId={id} />
+        </div>
+      )}
 
       {/* Portal Enquiries (from the storefront) */}
       <Collapsible storageKey={`${id}:portal-enquiries`} title={`Portal Enquiries (${portalEnquiries.length})`} bodyClassName=""
