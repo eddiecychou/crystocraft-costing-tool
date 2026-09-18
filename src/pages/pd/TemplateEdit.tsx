@@ -123,6 +123,58 @@ export default function EditTemplatePage() {
     });
   }
 
+  // Key typed per-section in the "+ Add field" row below its existing fields —
+  // plain "theme" for a new field, or "materials[4]" to append an array item
+  // (setPath's own path parser already handles both, same as any edited leaf).
+  const [newFieldKeys, setNewFieldKeys] = useState<Record<string, string>>({});
+
+  function addField(section: string) {
+    const key = (newFieldKeys[section] || "").trim();
+    if (!key) return;
+    const path = `${section}.${key}`;
+    if (getPath(promptJson, path) !== undefined) {
+      window.alert(`"${path}" already exists.`);
+      return;
+    }
+    const updated = setPath(promptJson, path, "");
+    setPromptJson(updated);
+    setRawText(JSON.stringify(updated, null, 2));
+    setNewFieldKeys((prev) => ({ ...prev, [section]: "" }));
+    setHighlightPath(path);
+  }
+
+  // Recursively blanks every leaf to "" while keeping the container shape —
+  // used to seed a new array item (below) so it arrives with the same
+  // editable sub-fields as its siblings instead of an empty {} that would
+  // render zero rows (flattenLeaves skips empty objects/arrays entirely).
+  function blankLeaves(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(blankLeaves);
+    if (value && typeof value === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = blankLeaves(v);
+      return out;
+    }
+    return "";
+  }
+
+  // When the SECTION ITSELF is a JSON array (e.g. reserved_areas — several
+  // sections here are objects of scalar leaves, but this one is a list of
+  // {label, bbox, note} entries), "+ Add field" can't just join
+  // `${section}.${key}` — that sets a plain object property on the array,
+  // which JSON.stringify silently drops (arrays only serialize their index
+  // entries), so the field would vanish with no error. Appending a new
+  // element (shaped like the last one, blanked) is the correct "add" for an
+  // array section instead.
+  function addArrayItem(section: string) {
+    const arr = promptJson[section];
+    if (!Array.isArray(arr)) return;
+    const template = arr.length > 0 ? blankLeaves(arr[arr.length - 1]) : {};
+    const updated = { ...promptJson, [section]: [...arr, template] };
+    setPromptJson(updated);
+    setRawText(JSON.stringify(updated, null, 2));
+    if (arr.length > 0) setHighlightPath(`${section}[${arr.length}]`);
+  }
+
   function applyRawText() {
     try {
       const parsed = JSON.parse(rawText);
@@ -330,7 +382,10 @@ export default function EditTemplatePage() {
             </div>
           ) : (
             <div className="flex flex-col gap-3 overflow-y-auto pr-1" style={{ maxHeight: "60vh" }}>
-              {Array.from(sections.entries()).map(([section, leaves]) => (
+              {Array.from(sections.entries()).map(([section, leaves]) => {
+                const sectionValue = promptJson[section];
+                const isArraySection = Array.isArray(sectionValue) && sectionValue.length > 0;
+                return (
                 <div key={section} className="border border-line rounded p-3">
                   <p className="text-2xs uppercase tracking-wide text-ink-60 mb-2">{section}</p>
                   <div className="flex flex-col gap-1.5">
@@ -391,9 +446,42 @@ export default function EditTemplatePage() {
                         </div>
                       );
                     })}
+                    {isArraySection ? (
+                      // Array section (e.g. reserved_areas) — "add" means a new
+                      // list item, shaped like the last one so it arrives with
+                      // real editable sub-fields, not a free-text path.
+                      <button
+                        type="button"
+                        className="self-start text-2xs font-medium shrink-0 rounded-full px-2 py-0.5 border border-line text-ink-60 hover:border-ink-30 hover:text-ink mt-1 pt-1 border-t"
+                        onClick={() => addArrayItem(section)}
+                      >
+                        + Add item (like the last one)
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 pt-1 mt-1 border-t border-line">
+                        <input
+                          className="input text-xs py-1 flex-1 min-w-0"
+                          placeholder="e.g. new_field or materials[4]"
+                          value={newFieldKeys[section] || ""}
+                          onChange={(e) => setNewFieldKeys((prev) => ({ ...prev, [section]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); addField(section); }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="text-2xs font-medium shrink-0 rounded-full px-2 py-0.5 border border-line text-ink-60 hover:border-ink-30 hover:text-ink disabled:text-ink-30 disabled:cursor-not-allowed"
+                          disabled={!(newFieldKeys[section] || "").trim()}
+                          onClick={() => addField(section)}
+                        >
+                          + Add field
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
               {rows.length === 0 && <p className="text-xs text-ink-60">No fields yet.</p>}
             </div>
           )}

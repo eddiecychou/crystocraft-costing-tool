@@ -190,8 +190,24 @@ verified against real data before pushing:
    `PREVIEW_SCALE` reduced (0.5→0.4) so the wider preview still fits its
    editor column; the two spec-sheet pages widened `max-w-5xl`→`max-w-6xl`
    to give it room.
+5. **Structured field editor could only delete, not add** (Eddie: "make this
+   edit mode be able to add new fields as well") — `TemplateEdit.tsx`'s
+   per-field editor (lock/edit/delete) had no way to add a field; only the
+   raw-JSON toggle could. Added a "+ Add field" row per section (plain
+   `key` or `materials[4]`-style path, via the existing `setPath` helper).
+   Found a real bug while building it: a *section itself* can be a JSON
+   array (`reserved_areas`, a list of `{label, bbox, note}` entries, not an
+   object of scalar leaves like the others) — joining `${section}.${key}`
+   for that case sets a plain property on the array, which
+   `JSON.stringify` silently drops (arrays only serialize index entries),
+   so the field would vanish with no error shown. Fixed by detecting an
+   array-shaped section and switching to "+ Add item (like the last one)"
+   instead — appends a new element cloned from the last one's shape with
+   every leaf blanked (`blankLeaves`), so it arrives with real editable
+   sub-fields rather than an empty `{}` that would render nothing
+   (`flattenLeaves` skips empty containers entirely).
 
-All four verified live (QA admin, dev server) before pushing: exact
+All five verified live (QA admin, dev server) before pushing: exact
 screenshots of the reported bug, then of the fix.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
