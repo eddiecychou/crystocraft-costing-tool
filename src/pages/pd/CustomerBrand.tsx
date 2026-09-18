@@ -371,9 +371,13 @@ export default function CustomerBrandPage() {
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
               {profile.core_motifs.map((m, i) => (
-                <span key={i} className="tag">
-                  {m}
-                  <button type="button" onClick={() => removeMotif(i)} className="ml-1 hover:text-red-700">×</button>
+                // .tag is nowrap by default (for short filter chips elsewhere) — an
+                // AI-extracted motif can be a long phrase, which forced this whole
+                // page to scroll horizontally instead of wrapping. Override to wrap
+                // within the column instead.
+                <span key={i} className="tag whitespace-normal break-words max-w-full items-start">
+                  <span className="min-w-0">{m}</span>
+                  <button type="button" onClick={() => removeMotif(i)} className="ml-1 hover:text-red-700 shrink-0">×</button>
                 </span>
               ))}
               {profile.core_motifs.length === 0 && <p className="text-xs text-ink-60">No motifs yet.</p>}
