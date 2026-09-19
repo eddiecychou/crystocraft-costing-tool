@@ -284,6 +284,31 @@ session); Product Design Concepts correctly showed one card after setting a
 template to `approved`, and correctly disappeared again after reverting it
 to `draft` — confirming both the populated and empty states.
 
+4. **Product Design Concepts card was invisible when empty** (Eddie: "I
+   can't find that in customer, where did you put it") — it returned `null`
+   entirely with zero approved concepts, which was every customer right
+   after shipping (the verification template above got reverted to draft).
+   Now always renders — loading / empty / populated states, matching every
+   other section on the page — with the empty state linking to Product
+   Design and explaining how a template gets there.
+5. **B2C/Retail customers leaking into Product Design's customer picker**
+   (Eddie: "Please also ignore all the B2C customers for this... check for
+   other similar module that we only target B2B customers") —
+   `listRealCustomers()` in `realCustomers.ts` is the ONE shared source
+   every Product Design customer picker/lookup reads from (New Template,
+   Edit Template, the Templates/Generations list labels), and unlike
+   `ProductDetail.jsx`'s "branded for" picker and the Dashboard digest
+   (`weeklySummary.js`), it had no `RETAIL_TAG` filter. Fixed at that one
+   source rather than per call site. Searched the rest of the app for a
+   similarly B2B-only-by-intent picker with the same gap (every other full
+   customers-collection read — Quotes, Shipments, Invoices, Credit Notes,
+   WhatsApp import, Woo sync, the CRM list itself — legitimately needs
+   B2C too, since retail customers have real transactions) and found
+   nothing else missing it; the `branded_for`/`ImageGallery.jsx` pattern
+   only exists in the one already-fixed spot. Verified live: the New
+   Template customer dropdown (136 entries) includes "La Salle" but not
+   "Tiffany" (the same Retail-tagged example used throughout this cycle).
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending

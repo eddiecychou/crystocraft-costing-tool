@@ -2,6 +2,7 @@ import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { RealCustomer } from "@/types/customer";
 import { customerDisplayName } from "@/types/customer";
+import { RETAIL_TAG } from "@/domain/customer";
 
 /**
  * Read-only access to costing-tool's own `customers` collection (same
@@ -16,7 +17,17 @@ export async function listRealCustomers(): Promise<RealCustomer[]> {
   // guaranteed to carry every field a display name could fall back to, and
   // Firestore's orderBy silently drops docs missing the ordered field.
   const snap = await getDocs(collection(db, COLLECTION));
-  const customers = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RealCustomer);
+  const customers = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as RealCustomer)
+    // Retail/B2C customers excluded (Eddie, 2026-09-19) — Product Design
+    // concepts only ever lead to a B2B corp-gift quotation, so a B2C name
+    // in this picker is always noise, same reasoning already applied to
+    // ProductDetail.jsx's "branded for" picker and the Dashboard digest
+    // (weeklySummary.js). This is the ONE shared source every Product
+    // Design customer picker/lookup reads from (New Template, Edit
+    // Template, Templates/Generations list labels), so filtering here
+    // fixes all of them at once rather than per call site.
+    .filter((c) => !(c.tags || []).includes(RETAIL_TAG));
   return customers.sort((a, b) => customerDisplayName(a).localeCompare(customerDisplayName(b)));
 }
 
