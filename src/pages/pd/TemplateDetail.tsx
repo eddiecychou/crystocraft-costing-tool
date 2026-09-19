@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useParams, useNavigate } from "react-router-dom";
-import { getTemplate, deleteTemplate } from "@/lib/firestore/promptTemplates";
+import { getTemplate, deleteTemplate, duplicateTemplate } from "@/lib/firestore/promptTemplates";
 import { getProduct } from "@/lib/firestore/products";
 import { getRealCustomer } from "@/lib/firestore/realCustomers";
 import {
@@ -38,6 +38,7 @@ export default function TemplateDetailPage() {
   const [customer, setCustomer] = useState<RealCustomer | null>(null);
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingGenId, setDeletingGenId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -100,6 +101,12 @@ export default function TemplateDetailPage() {
     navigate(product ? `/design/products/${product.id}` : "/design/templates");
   }
 
+  async function handleDuplicate() {
+    setDuplicating(true);
+    const newId = await duplicateTemplate(id);
+    navigate(`/design/templates/${newId}/edit`);
+  }
+
   if (template === "loading") return <main className="p-10 text-ink-60">Loading…</main>;
   if (!template) return <main className="p-10 text-ink-60">Template not found.</main>;
 
@@ -120,6 +127,15 @@ export default function TemplateDetailPage() {
         </div>
         <div className="flex gap-2">
           <Link to={`/design/templates/${id}/edit`} className="btn btn-secondary">Edit</Link>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleDuplicate}
+            disabled={duplicating}
+            title="Copy this template's JSON and locked fields into a new draft version"
+          >
+            {duplicating ? "Duplicating…" : "Duplicate as new version"}
+          </button>
           <button
             type="button"
             className="btn btn-secondary text-red-700"

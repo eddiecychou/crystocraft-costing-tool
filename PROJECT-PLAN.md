@@ -222,8 +222,23 @@ verified against real data before pushing:
    afterward: the same `mt-10` now computes `40px`, and a full section-gap
    audit of `ProductDetail.tsx` (Images → Templates → Spec Sheets) showed
    correct 16–40px gaps throughout.
+7. **Duplicate-with-locks for template versioning** (Eddie: "When I have a
+   success one, I want to duplicate to a new version while keeping the
+   locks... Right now I have to copy the json to a new one but the lock is
+   gone") — `PromptTemplate` already had unused `type: "base"|"variant"` and
+   `parentTemplateId` fields (set nowhere until now — looks like this was
+   designed for and never built). Added `duplicateTemplate()` in
+   `promptTemplates.ts`: deep-copies `promptJson` **and** `lockedPaths`
+   together into a new `draft`, auto-incrementing the name
+   (`"...— v2"` → `"...— v3"`, or appending `"— v2"` to an un-versioned
+   name), and records the lineage via those two existing fields. Wired to a
+   **"Duplicate as new version"** button on both `TemplateDetail.tsx` and
+   `TemplateEdit.tsx` — the Edit page's version passes the *current
+   in-editor state* (including unsaved changes) rather than re-fetching the
+   last save, since the point is branching off the version you're looking
+   at right now.
 
-All six verified live (QA admin, dev server) before pushing: exact
+All seven verified live (QA admin, dev server) before pushing: exact
 screenshots of the reported bug, then of the fix.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { authHeader } from "@/firebase";
-import { getTemplate, updateTemplate } from "@/lib/firestore/promptTemplates";
+import { getTemplate, updateTemplate, duplicateTemplate } from "@/lib/firestore/promptTemplates";
 import { listRealCustomers } from "@/lib/firestore/realCustomers";
 import { customerDisplayName, type RealCustomer } from "@/types/customer";
 import type { PromptTemplate } from "@/types/promptTemplate";
@@ -40,6 +40,7 @@ export default function EditTemplatePage() {
   const [promptJson, setPromptJson] = useState<Record<string, unknown>>({});
   const [lockedPaths, setLockedPaths] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   const [rawText, setRawText] = useState("");
   const [rawMode, setRawMode] = useState(false);
@@ -198,6 +199,15 @@ export default function EditTemplatePage() {
       lockedPaths: Array.from(lockedPaths),
     });
     navigate(`/design/templates/${id}`);
+  }
+
+  // Branches off the version currently open in the editor — including
+  // whatever's unsaved — into a new draft, keeping lockedPaths intact.
+  async function handleDuplicate() {
+    if (rawMode) applyRawText();
+    setDuplicating(true);
+    const newId = await duplicateTemplate(id, { promptJson, lockedPaths: Array.from(lockedPaths) });
+    navigate(`/design/templates/${newId}/edit`);
   }
 
   async function handleTweak() {
@@ -574,6 +584,15 @@ export default function EditTemplatePage() {
         <div className="flex gap-3">
           <button type="submit" className="btn btn-primary" disabled={busy || !name || !customerId}>
             {busy ? "Saving…" : "Save Changes"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleDuplicate}
+            disabled={duplicating}
+            title="Copy this version (including unsaved changes and locked fields) into a new draft"
+          >
+            {duplicating ? "Duplicating…" : "Duplicate as new version"}
           </button>
           <Link to={`/design/templates/${id}`} className="btn btn-secondary">Cancel</Link>
         </div>
