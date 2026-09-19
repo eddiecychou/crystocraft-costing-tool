@@ -400,24 +400,30 @@ function ProductDesignConceptsCard({ customerId }) {
     return () => { alive = false }
   }, [customerId])
 
-  // Loading or genuinely nothing approved yet — don't clutter the page with
-  // an empty section for what's a supplementary, pre-sales view.
-  if (!items || items.length === 0) return null
-
   return (
     <div className="card p-4 mb-4">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-sm text-ink-80">Product Design Concepts</h2>
-        <span className="text-xs text-ink-60">{items.length} approved</span>
+        {items && items.length > 0 && <span className="text-xs text-ink-60">{items.length} approved</span>}
       </div>
       <p className="text-xs text-ink-60 mb-3">
         Design concepts approved for this customer — not yet real products.
         A concept only becomes an actual costed product once it&rsquo;s
         picked for a quotation.
       </p>
-      <div className="grid grid-cols-3 gap-3">
-        {items.map(item => <ProductDesignConceptCard key={item.template.id} item={item} />)}
-      </div>
+      {items === undefined ? (
+        <p className="text-xs text-ink-60">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="text-xs text-ink-60">
+          No approved concepts yet. Mark a template &ldquo;Approved&rdquo;
+          in <Link to="/design/products" className="text-brand-600 hover:underline">Product Design</Link> to
+          have it show up here.
+        </p>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          {items.map(item => <ProductDesignConceptCard key={item.template.id} item={item} />)}
+        </div>
+      )}
     </div>
   )
 }
