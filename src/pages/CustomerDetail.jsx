@@ -7,6 +7,9 @@ import {
 import { db, storage, authHeader } from '../firebase'
 import { useCan } from '../access'
 import BrandQuickView from '../components/BrandQuickView'
+import { listTemplatesForCustomer } from '../lib/firestore/promptTemplates'
+import { getProduct as getPdProduct } from '../lib/firestore/products'
+import { listGenerationsForTemplate } from '../lib/firestore/generations'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -343,6 +346,78 @@ function BrandProposalCard({ customerId, showDesignProfile }) {
           <BrandQuickView customerId={customerId} />
         </div>
       )}
+    </div>
+  )
+}
+
+// Product Design "concepts" approved for this customer (V8.16). Deliberately
+// separate from the customer's real Quotes/Sales History above: a concept is
+// a Product Design pd_prompt_templates doc — a picked-but-not-yet-costed
+// idea, with no SKU, supplier quote, or specification of its own. It only
+// becomes an actual product (with real costing) once someone builds that in
+// the ordinary Products/Components flow — this card never links to or
+// implies that step, only to the concept's own page in /design/*, so the two
+// stay visibly distinct (Eddie, 2026-09-19: "do not mix this product design
+// concept with actual product").
+function ProductDesignConceptCard({ item }) {
+  const { template, product, thumbUrl } = item
+  return (
+    <Link to={`/design/templates/${template.id}`} className="card overflow-hidden hover:border-brand-300 transition-colors">
+      <div className="h-24 bg-ivory-dark flex items-center justify-center overflow-hidden">
+        {thumbUrl
+          ? <img src={thumbUrl} alt="" className="w-full h-full object-cover" />
+          : <span className="text-2xs text-ink-60">No image</span>}
+      </div>
+      <div className="p-2">
+        <p className="text-xs font-medium truncate">{template.name}</p>
+        <p className="text-2xs text-ink-60 truncate">{product?.name || '—'}</p>
+      </div>
+    </Link>
+  )
+}
+
+function ProductDesignConceptsCard({ customerId }) {
+  const [items, setItems] = useState(undefined) // undefined = loading
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const templates = await listTemplatesForCustomer(customerId)
+      const approved = templates.filter(t => t.status === 'approved')
+      const withDetails = await Promise.all(approved.map(async (t) => {
+        const [product, gens] = await Promise.all([
+          getPdProduct(t.productId),
+          listGenerationsForTemplate(t.id),
+        ])
+        const bestGen = gens.find(g => g.status === 'approved') || gens[0] || null
+        const thumbUrl = bestGen?.resultImageUrl
+          || product?.images.find(i => i.id === t.sourceImageId)?.url
+          || product?.images[0]?.url
+        return { template: t, product, thumbUrl }
+      }))
+      if (alive) setItems(withDetails)
+    })()
+    return () => { alive = false }
+  }, [customerId])
+
+  // Loading or genuinely nothing approved yet — don't clutter the page with
+  // an empty section for what's a supplementary, pre-sales view.
+  if (!items || items.length === 0) return null
+
+  return (
+    <div className="card p-4 mb-4">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-sm text-ink-80">Product Design Concepts</h2>
+        <span className="text-xs text-ink-60">{items.length} approved</span>
+      </div>
+      <p className="text-xs text-ink-60 mb-3">
+        Design concepts approved for this customer — not yet real products.
+        A concept only becomes an actual costed product once it&rsquo;s
+        picked for a quotation.
+      </p>
+      <div className="grid grid-cols-3 gap-3">
+        {items.map(item => <ProductDesignConceptCard key={item.template.id} item={item} />)}
+      </div>
     </div>
   )
 }
@@ -1560,6 +1635,8 @@ export default function CustomerDetail() {
           (/customers/:id/brand) — this is the summary + entry point. Product
           Design's own brand profile is nested inside when the module is on. */}
       <BrandProposalCard customerId={id} showDesignProfile={can('product_design')} />
+
+      {can('product_design') && <ProductDesignConceptsCard customerId={id} />}
 
       {/* Portal Enquiries (from the storefront) */}
       <Collapsible storageKey={`${id}:portal-enquiries`} title={`Portal Enquiries (${portalEnquiries.length})`} bodyClassName=""

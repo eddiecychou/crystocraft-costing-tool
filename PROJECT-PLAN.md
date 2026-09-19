@@ -241,6 +241,49 @@ verified against real data before pushing:
 All seven verified live (QA admin, dev server) before pushing: exact
 screenshots of the reported bug, then of the fix.
 
+### V8.16 further features (2026-09-19)
+
+Three more requests, same day:
+
+1. **Downloadable generated images** — each generation card on
+   `TemplateDetail.tsx` gained a "Download" link, routed through
+   `/api/image-proxy` (same as the PNG export and the earlier CORS fix) so
+   the browser's `download` attribute actually forces a save instead of
+   navigating to the cross-origin Storage URL directly (`download` is
+   ignored cross-origin unless the response opts in, which Storage doesn't).
+2. **"Add to Product Gallery" on a generation** (Eddie, mid-turn follow-up:
+   "more convenience") — copies the generated image's actual bytes (fetched
+   through the same proxy) into the product's own `pd_products/{id}/`
+   Storage folder via the existing `addProductImage()`, captioned with the
+   template name. Deliberately a real copy, not just re-pointing the
+   product at the generation's existing Storage file — that file lives
+   under `pd_generations/{templateId}/` and gets deleted by
+   `deleteGeneration`, which would silently break the product's photo the
+   moment that generation is later removed.
+3. **"Product Design Concepts" on the customer page** (Eddie: "show the
+   approved product in the customer section... since they are not yet
+   product, they will be under product design concept... do not mix this
+   product design concept with actual product") — a new card on
+   `CustomerDetail.jsx`, gated on `product_design`, listing that customer's
+   `approved`-status templates (thumbnail from the best generation, else
+   the product's own source image) with an explicit caption that a concept
+   isn't a real product until it's picked for a quotation. Deliberately its
+   own card, not folded into the existing "Brand & Proposal" card like the
+   Brand Profile section was — a design concept isn't brand data, and
+   mixing it in would blur exactly the line Eddie asked to keep clear.
+   `PromptTemplate` already had unused `type`/`parentTemplateId` fields
+   (used by V8.16 fix #7 above) but nothing for "approved and customer-
+   facing" — this reads the existing `status` field instead, no schema
+   change needed.
+
+All three verified live (QA admin, dev server): Download link produced a
+real `/api/image-proxy` URL; Add to Product Gallery took a product from 3
+images to 4 (caption matching the template name), confirmed then reverted
+(deleted the test image, no genuine gallery addition was intended this
+session); Product Design Concepts correctly showed one card after setting a
+template to `approved`, and correctly disappeared again after reverting it
+to `draft` — confirming both the populated and empty states.
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending

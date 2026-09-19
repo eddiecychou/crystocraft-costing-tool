@@ -144,6 +144,13 @@ Product Design reads the live `customers`/`suppliers` collections read-only
 (`realCustomers.ts`/`realSuppliers.ts`) — there is deliberately no
 `pd_customers`/`pd_suppliers`.
 
+The reverse pointer also exists now (V8.16): `CustomerDetail.jsx`'s
+"Product Design Concepts" card reads `pd_prompt_templates` filtered to
+`customerId == this customer` and `status == 'approved'`, cross-repo from
+`src/pages/CustomerDetail.jsx` into `src/lib/firestore/promptTemplates.ts` —
+the one place a `.jsx` page reads a Product Design `.ts` collection directly
+rather than through the `/design/*` pages.
+
 ## Keeping this current
 
 When adding a new collection: add its `match` block to `firestore.rules`,

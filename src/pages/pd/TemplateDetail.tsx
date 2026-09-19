@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { getTemplate, deleteTemplate, duplicateTemplate } from "@/lib/firestore/promptTemplates";
-import { getProduct } from "@/lib/firestore/products";
+import { getProduct, addProductImage } from "@/lib/firestore/products";
 import { getRealCustomer } from "@/lib/firestore/realCustomers";
 import {
   listGenerationsForTemplate,
@@ -41,6 +41,8 @@ export default function TemplateDetailPage() {
   const [duplicating, setDuplicating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingGenId, setDeletingGenId] = useState<string | null>(null);
+  const [galleryAddingId, setGalleryAddingId] = useState<string | null>(null);
+  const [galleryAddedIds, setGalleryAddedIds] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +81,29 @@ export default function TemplateDetailPage() {
     await deleteGeneration(g.id, g.resultImageUrl);
     await refreshGenerations();
     setDeletingGenId(null);
+  }
+
+  // Copies the generated image's actual bytes into the product's own
+  // pd_products/{id}/ Storage folder as a real ProductImage (via the same
+  // addProductImage() an ordinary upload uses) — not just re-pointing at the
+  // generation's existing Storage file, which would break the product's
+  // photo the moment that generation is later deleted (deleteGeneration
+  // removes its Storage object). Fetched through /api/image-proxy for the
+  // same cross-origin reason as the PNG export and Download link above.
+  async function handleAddToGallery(g: Generation) {
+    if (!product) return;
+    setGalleryAddingId(g.id);
+    try {
+      const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(g.resultImageUrl)}`);
+      const blob = await res.blob();
+      const file = new File([blob], `generation-${g.id}.jpg`, { type: blob.type || "image/jpeg" });
+      await addProductImage(product.id, file, {
+        caption: template !== "loading" && template ? template.name : undefined,
+      });
+      setGalleryAddedIds((prev) => new Set(prev).add(g.id));
+    } finally {
+      setGalleryAddingId(null);
+    }
   }
 
   async function handleCopy() {
@@ -223,6 +248,18 @@ export default function TemplateDetailPage() {
               <div className="p-2 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className={`badge ${GEN_STATUS_BADGE[g.status]}`}>{g.status}</span>
+                  {/* Same image-proxy trick as SpecSheetLayout's PNG export —
+                      routed through our own origin so `download` actually
+                      forces a save instead of the browser just navigating to
+                      a cross-origin Storage URL (download is ignored
+                      cross-origin unless the response opts in). */}
+                  <a
+                    href={`/api/image-proxy?url=${encodeURIComponent(g.resultImageUrl)}`}
+                    download={`${(template !== "loading" && template?.name) || "generation"}-${g.id}.jpg`}
+                    className="text-2xs text-brand-600 uppercase tracking-wide hover:underline"
+                  >
+                    Download
+                  </a>
                   {(g.status === "success" || g.status === "rejected") && (
                     <button
                       className="text-2xs text-emerald-700 uppercase tracking-wide hover:underline"
@@ -246,6 +283,17 @@ export default function TemplateDetailPage() {
                     </button>
                   )}
                 </div>
+                {product && (
+                  <button
+                    type="button"
+                    className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline disabled:text-ink-30 disabled:cursor-not-allowed"
+                    disabled={galleryAddingId === g.id || galleryAddedIds.has(g.id)}
+                    onClick={() => handleAddToGallery(g)}
+                    title={`Copy this image into ${product.name}'s own photo gallery`}
+                  >
+                    {galleryAddingId === g.id ? "Adding…" : galleryAddedIds.has(g.id) ? "Added to gallery ✓" : "+ Add to Product Gallery"}
+                  </button>
+                )}
                 <select
                   className="input text-2xs py-1"
                   value={g.rating ?? ""}
