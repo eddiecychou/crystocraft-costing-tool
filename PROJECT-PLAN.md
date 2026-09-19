@@ -206,8 +206,24 @@ verified against real data before pushing:
    every leaf blanked (`blankLeaves`), so it arrives with real editable
    sub-fields rather than an empty `{}` that would render nothing
    (`flattenLeaves` skips empty containers entirely).
+6. **Systemic missing-spacing bug across every ported page** (Eddie: the
+   "Generations" section on `TemplateDetail.tsx` stuck directly to the JSON
+   block above it) — root cause was `tailwind.config.js`'s `content` glob:
+   `'./src/**/*.{js,jsx}'` never scanned `.ts`/`.tsx` files, so ANY utility
+   class used only inside a ported Product Design file (all `.tsx`/`.ts`)
+   was silently missing from the compiled CSS — confirmed live,
+   `mt-10`'s computed `margin-top` was `0px`. Fixed at the config level
+   (`'./src/**/*.{js,jsx,ts,tsx}'`) rather than patching the one spot, since
+   this affected potentially any class across all 10 ported pages, not just
+   this heading. Verified no ported file builds a class name dynamically at
+   runtime (the one thing a content-glob fix can't catch) — every
+   interpolated `className` uses a complete literal string from a lookup
+   object or constant, so this is a full, one-shot fix. Re-verified live
+   afterward: the same `mt-10` now computes `40px`, and a full section-gap
+   audit of `ProductDetail.tsx` (Images → Templates → Spec Sheets) showed
+   correct 16–40px gaps throughout.
 
-All five verified live (QA admin, dev server) before pushing: exact
+All six verified live (QA admin, dev server) before pushing: exact
 screenshots of the reported bug, then of the fix.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)

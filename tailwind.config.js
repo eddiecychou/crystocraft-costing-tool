@@ -1,6 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  // .ts/.tsx added V8.16 for the ported Product Design pages (src/pages/pd/,
+  // src/lib/, src/types/) — without them, Tailwind's JIT scanner never saw
+  // classes used ONLY in those files (any .jsx page happening to already use
+  // the same class masked the gap), so they were silently missing from the
+  // compiled CSS. Found live: TemplateDetail.tsx's `mt-10` computed to 0px
+  // (Eddie: "Generations" section stuck directly to the JSON block above it).
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   theme: {
     extend: {
       colors: {
