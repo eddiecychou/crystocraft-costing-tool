@@ -185,9 +185,9 @@ export default function TemplateDetailPage() {
         <div>
           <h2 className="eyebrow mb-2">Source Image</h2>
           {sourceImage ? (
-            <div className="card overflow-hidden">
+            <div className="card overflow-hidden aspect-square bg-ivory-dark flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={sourceImage.url} alt="" className="w-full h-40 object-cover" />
+              <img src={sourceImage.url} alt="" className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
             <p className="text-xs text-ink-60">None linked.</p>
@@ -243,16 +243,21 @@ export default function TemplateDetailPage() {
         <div className="grid grid-cols-3 gap-3">
           {generations.map((g) => (
             <div key={g.id} className="card overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={g.resultImageUrl} alt="" className="w-full h-32 object-cover" />
+              <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={g.resultImageUrl} alt="" className="max-w-full max-h-full object-contain" />
+              </div>
               <div className="p-2 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
                   <span className={`badge ${GEN_STATUS_BADGE[g.status]}`}>{g.status}</span>
                   {/* Same image-proxy trick as SpecSheetLayout's PNG export —
                       routed through our own origin so `download` actually
                       forces a save instead of the browser just navigating to
                       a cross-origin Storage URL (download is ignored
-                      cross-origin unless the response opts in). */}
+                      cross-origin unless the response opts in). flex-wrap +
+                      gap above (was justify-between, no gap) so these 4
+                      items don't run together edge-to-edge on a narrow card
+                      — they now wrap onto a second line instead. */}
                   <a
                     href={`/api/image-proxy?url=${encodeURIComponent(g.resultImageUrl)}`}
                     download={`${(template !== "loading" && template?.name) || "generation"}-${g.id}.jpg`}

@@ -309,6 +309,60 @@ to `draft` — confirming both the populated and empty states.
    Template customer dropdown (136 entries) includes "La Salle" but not
    "Tiffany" (the same Retail-tagged example used throughout this cycle).
 
+### V8.16 more fixes (2026-09-20)
+
+1. **Generation action row squeezed** — the badge/Download/Approve/Reject
+   row on a generation card (`TemplateDetail.tsx`) used `justify-between`
+   with no gap and no wrap, so on a narrow grid-cols-3 card the four items
+   ran together edge-to-edge and "Reject" got cut off. Switched to
+   `flex-wrap gap-x-2 gap-y-1` — wraps onto a second line instead.
+2. **Raw `res.json()` leaked browser parser exceptions to the UI** (Eddie:
+   a Tweak call failed with `Unexpected token 'h', "the edge fu"... is not
+   valid JSON` — a literal fragment of the response body, not a real error
+   message) — every one of the 8 `/api/pd-*` call sites across
+   `TemplateNew.tsx`/`TemplateEdit.tsx`/`CustomerBrand.tsx` did
+   `const data = await res.json()` directly, so any response that wasn't
+   valid JSON (a platform-level error page instead of the edge function's
+   own JSON error body, a cold-start hiccup — anything upstream of its own
+   try/catch) surfaced a raw `SyntaxError` straight into the error text.
+   Added a shared `pdApiFetch()` helper (`src/lib/pdApi.ts`) that reads the
+   body as text first and parses it defensively, turning any failure mode
+   into one clear message; replaced all 8 call sites. Verified against a
+   real Gemini call reproducing the exact reported instruction, both on
+   production (confirming the original failure mode) and again locally
+   against the refactored code with an even longer instruction — succeeded
+   cleanly both times.
+3. **Image cropping across every Product Design image grid** (Eddie: "the
+   image is cropped, it should be square") — `ProductDetail.jsx`'s own
+   Images gallery used `w-full h-32 object-cover` (product photos, brand
+   reference images, generation thumbnails, template source-image panels
+   all shared the same short, wide box that chopped the top/bottom off
+   anything not already that exact ratio). Found and fixed the same pattern
+   in five places: `ProductDetail.tsx`, `CustomerBrand.tsx`'s reference
+   images, `Generations.tsx`, and both image spots in `TemplateDetail.tsx`
+   — all switched to `aspect-square` + `object-contain` on an `ivory-dark`
+   plate, so the whole photo is always visible, never cropped.
+4. **Product Design home page redesigned** (Eddie: "see the product based
+   on supplier catalog and also the product design gallery that shows all
+   the approved designs of each customer") — `Products.tsx` now has two
+   sections: **Product Design Gallery**, every `approved`-status template
+   across every customer grouped by customer name (the global overview —
+   distinct from `CustomerDetail.jsx`'s own card, which is the same data
+   scoped to one customer), and **Products**, now grouped by supplier
+   (a catalogue, not a flat list) instead of one undifferentiated list.
+   Extracted the concept-resolution logic (template → product → best
+   generation/source-photo thumbnail) that was duplicated between this new
+   gallery and `CustomerDetail.jsx`'s card into one shared
+   `src/lib/pdConcepts.ts`, and refactored `CustomerDetail.jsx` to use it
+   too — one source of truth instead of two copies to keep in sync.
+5. **Downloadable approved-concept images** (Eddie, mid-turn follow-up)
+   — every thumbnail in both the new gallery and the Customer page's card
+   got the same image-proxy Download link already used for generations and
+   the spec-sheet PNG export.
+
+All five verified live (QA admin, local dev + one real Gemini call against
+production to reproduce #2) before this commit.
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending

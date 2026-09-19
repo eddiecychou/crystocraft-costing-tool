@@ -153,8 +153,16 @@ export default function ProductDetailPage() {
         <div className="grid grid-cols-3 gap-3 mb-8">
           {product.images.map((img) => (
             <div key={img.id} className="card overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={img.caption || ""} className="w-full h-32 object-cover" />
+              {/* Square, full photo visible (was a short w-full h-32 box with
+                  object-cover — a wide letterbox crop that chopped the top/
+                  bottom off product photos, reported live 2026-09-20).
+                  object-contain on a square plate shows the whole reference
+                  photo, same treatment as the Source Image panel elsewhere
+                  in Product Design. */}
+              <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.url} alt={img.caption || ""} className="max-w-full max-h-full object-contain" />
+              </div>
               <div className="p-2 flex flex-col gap-1.5">
                 {img.isBaseReference ? (
                   <span className="badge badge-active self-start">base reference</span>

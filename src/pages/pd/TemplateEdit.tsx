@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { authHeader } from "@/firebase";
+import { pdApiFetch } from "@/lib/pdApi";
 import { getTemplate, updateTemplate, duplicateTemplate } from "@/lib/firestore/promptTemplates";
 import { listRealCustomers } from "@/lib/firestore/realCustomers";
 import { customerDisplayName, type RealCustomer } from "@/types/customer";
@@ -216,17 +216,11 @@ export default function EditTemplatePage() {
     setTweakError("");
     setTweakNote("");
     try {
-      const res = await fetch("/api/pd-tweak-json", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({
-          currentJson: promptJson,
-          instruction: tweakInstruction.trim(),
-          lockedPaths: Array.from(lockedPaths),
-        }),
+      const data = await pdApiFetch("/api/pd-tweak-json", {
+        currentJson: promptJson,
+        instruction: tweakInstruction.trim(),
+        lockedPaths: Array.from(lockedPaths),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Tweak failed");
       setPreviousJson(promptJson);
       setPromptJson(data.resultJson);
       setRawText(JSON.stringify(data.resultJson, null, 2));
@@ -268,13 +262,7 @@ export default function EditTemplatePage() {
       const scratchRef = ref(storage, `pd_extraction_scratch/${id}/${crypto.randomUUID()}-${file.name}`);
       await uploadBytes(scratchRef, file);
       const imageUrl = await getDownloadURL(scratchRef);
-      const res = await fetch("/api/pd-extract-elements", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ imageUrl, currentJson: promptJson }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Extraction failed");
+      const data = await pdApiFetch("/api/pd-extract-elements", { imageUrl, currentJson: promptJson });
       setCandidates(data.candidates);
     } catch (e) {
       setExtractError(e instanceof Error ? e.message : "Extraction failed");

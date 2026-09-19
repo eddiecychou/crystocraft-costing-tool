@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { authHeader } from "@/firebase";
+import { pdApiFetch } from "@/lib/pdApi";
 import { getRealCustomer } from "@/lib/firestore/realCustomers";
 import {
   getCustomerBrand,
@@ -194,13 +194,7 @@ export default function CustomerBrandPage() {
     setAnalyzeError("");
     setExtracted(null);
     try {
-      const res = await fetch("/api/pd-analyze-brand-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ imageUrl: img.url }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      const data = await pdApiFetch("/api/pd-analyze-brand-image", { imageUrl: img.url });
       startReview(data.extracted);
     } catch (e) {
       setAnalyzeError(e instanceof Error ? e.message : "Analysis failed");
@@ -214,13 +208,7 @@ export default function CustomerBrandPage() {
     setAnalyzeError("");
     setExtracted(null);
     try {
-      const res = await fetch("/api/pd-analyze-brand-website", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ url: site.url }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      const data = await pdApiFetch("/api/pd-analyze-brand-website", { url: site.url });
       startReview(data.extracted);
     } catch (e) {
       setAnalyzeError(e instanceof Error ? e.message : "Analysis failed");
@@ -255,13 +243,7 @@ export default function CustomerBrandPage() {
     setMergeError("");
     setMergeReview(null);
     try {
-      const res = await fetch("/api/pd-merge-elements", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ items, itemType }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Merge failed");
+      const data = await pdApiFetch("/api/pd-merge-elements", { items, itemType });
       const groups: MergeGroup[] = (data.groups || []).map((g: { keep: string; merge_indices: number[] }) => ({
         ...g,
         accepted: true,
@@ -460,8 +442,10 @@ export default function CustomerBrandPage() {
               <div className="grid grid-cols-2 gap-2">
                 {sourceImages.map((img) => (
                   <div key={img.id} className="card overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.url} alt="" className="w-full h-24 object-cover" />
+                    <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt="" className="max-w-full max-h-full object-contain" />
+                    </div>
                     <div className="p-1.5 flex flex-col gap-1">
                       <button
                         type="button"

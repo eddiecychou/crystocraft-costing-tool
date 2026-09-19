@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, Suspense } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { authHeader } from "@/firebase";
+import { pdApiFetch } from "@/lib/pdApi";
 import { getProduct, saveImageAnalysis } from "@/lib/firestore/products";
 import { createTemplate } from "@/lib/firestore/promptTemplates";
 import { listRealCustomers } from "@/lib/firestore/realCustomers";
@@ -76,13 +76,7 @@ function NewTemplateForm() {
     setAnalyzing(true);
     setAnalyzeError("");
     try {
-      const res = await fetch("/api/pd-analyze-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ imageUrl: sourceImage.url }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      const data = await pdApiFetch("/api/pd-analyze-image", { imageUrl: sourceImage.url });
       await saveImageAnalysis(productId, sourceImage.id, data.analysisJson);
       await refreshProduct();
     } catch (e) {
@@ -99,13 +93,10 @@ function NewTemplateForm() {
     try {
       const brand = await getCustomerBrand(customerId);
       if (!brand) throw new Error("No brand profile for this customer yet.");
-      const res = await fetch("/api/pd-apply-brand", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ baseJson: sourceImage.analysisJson, brandJson: brand.brandJson }),
+      const data = await pdApiFetch("/api/pd-apply-brand", {
+        baseJson: sourceImage.analysisJson,
+        brandJson: brand.brandJson,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Apply Brand failed");
       setPromptJsonText(JSON.stringify(data.resultJson, null, 2));
     } catch (e) {
       setApplyError(e instanceof Error ? e.message : "Apply Brand failed");
@@ -136,13 +127,10 @@ function NewTemplateForm() {
     setTweaking(true);
     setTweakError("");
     try {
-      const res = await fetch("/api/pd-tweak-json", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ currentJson, instruction: tweakInstruction.trim() }),
+      const data = await pdApiFetch("/api/pd-tweak-json", {
+        currentJson,
+        instruction: tweakInstruction.trim(),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Tweak failed");
       setPreviousJsonText(promptJsonText);
       setPromptJsonText(JSON.stringify(data.resultJson, null, 2));
       setTweakInstruction("");

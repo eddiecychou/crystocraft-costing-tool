@@ -51,8 +51,10 @@ export default function GenerationsPage() {
         <div className="grid grid-cols-3 gap-3">
           {generations.map((g) => (
             <Link key={g.id} to={`/design/templates/${g.templateId}`} className="card overflow-hidden hover:border-brand-300">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={g.resultImageUrl} alt="" className="w-full h-32 object-cover" />
+              <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={g.resultImageUrl} alt="" className="max-w-full max-h-full object-contain" />
+              </div>
               <div className="p-2">
                 <div className="flex items-center justify-between mb-1">
                   <span className={`badge ${STATUS_BADGE[g.status]}`}>{g.status}</span>

@@ -7,9 +7,7 @@ import {
 import { db, storage, authHeader } from '../firebase'
 import { useCan } from '../access'
 import BrandQuickView from '../components/BrandQuickView'
-import { listTemplatesForCustomer } from '../lib/firestore/promptTemplates'
-import { getProduct as getPdProduct } from '../lib/firestore/products'
-import { listGenerationsForTemplate } from '../lib/firestore/generations'
+import { listApprovedConcepts } from '../lib/pdConcepts'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -362,17 +360,31 @@ function BrandProposalCard({ customerId, showDesignProfile }) {
 function ProductDesignConceptCard({ item }) {
   const { template, product, thumbUrl } = item
   return (
-    <Link to={`/design/templates/${template.id}`} className="card overflow-hidden hover:border-brand-300 transition-colors">
-      <div className="h-24 bg-ivory-dark flex items-center justify-center overflow-hidden">
-        {thumbUrl
-          ? <img src={thumbUrl} alt="" className="w-full h-full object-cover" />
-          : <span className="text-2xs text-ink-60">No image</span>}
-      </div>
+    <div className="card overflow-hidden">
+      <Link to={`/design/templates/${template.id}`} className="block hover:border-brand-300 transition-colors">
+        {/* Square + object-contain (was h-24 object-cover, a short crop that
+            chopped photos — reported live 2026-09-20). Same treatment as
+            every other Product Design image grid. */}
+        <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden">
+          {thumbUrl
+            ? <img src={thumbUrl} alt="" className="max-w-full max-h-full object-contain" />
+            : <span className="text-2xs text-ink-60">No image</span>}
+        </div>
+      </Link>
       <div className="p-2">
         <p className="text-xs font-medium truncate">{template.name}</p>
-        <p className="text-2xs text-ink-60 truncate">{product?.name || '—'}</p>
+        <p className="text-2xs text-ink-60 truncate mb-1">{product?.name || '—'}</p>
+        {thumbUrl && (
+          <a
+            href={`/api/image-proxy?url=${encodeURIComponent(thumbUrl)}`}
+            download={`${template.name}.jpg`}
+            className="text-2xs text-brand-600 uppercase tracking-wide hover:underline"
+          >
+            Download
+          </a>
+        )}
       </div>
-    </Link>
+    </div>
   )
 }
 
@@ -381,22 +393,7 @@ function ProductDesignConceptsCard({ customerId }) {
 
   useEffect(() => {
     let alive = true
-    ;(async () => {
-      const templates = await listTemplatesForCustomer(customerId)
-      const approved = templates.filter(t => t.status === 'approved')
-      const withDetails = await Promise.all(approved.map(async (t) => {
-        const [product, gens] = await Promise.all([
-          getPdProduct(t.productId),
-          listGenerationsForTemplate(t.id),
-        ])
-        const bestGen = gens.find(g => g.status === 'approved') || gens[0] || null
-        const thumbUrl = bestGen?.resultImageUrl
-          || product?.images.find(i => i.id === t.sourceImageId)?.url
-          || product?.images[0]?.url
-        return { template: t, product, thumbUrl }
-      }))
-      if (alive) setItems(withDetails)
-    })()
+    listApprovedConcepts(customerId).then(withDetails => { if (alive) setItems(withDetails) })
     return () => { alive = false }
   }, [customerId])
 
