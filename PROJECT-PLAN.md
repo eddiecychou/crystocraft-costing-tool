@@ -565,6 +565,26 @@ production to reproduce #2) before this commit.
     `/products/{id}` and the three buttons were gone, clicked Unlink and
     confirmed the buttons came back, then cleaned up the actual test image
     left on that product.
+16. **Backfill for pre-existing links** — Eddie, right after #15 shipped:
+    "I made 3 changes before in the product design, but it is not linked,"
+    then "it was the pencil case created before and 2 more pencil case
+    images link to the same product" — `linkedProduct` didn't exist until
+    #15, so three real generations he'd already pushed onto his "Pencil
+    Stationery Case" corp gift product (before that field existed to record
+    it) showed as unlinked. Both write paths name the uploaded file
+    deterministically (`generation-${id}.jpg` for corp gift images,
+    `...-generation-${id}.jpg` inside the range gallery URL), so the
+    original generation id is recoverable from the file name/URL alone —
+    wrote `scripts/backfill-generation-links.mjs` (dry-run by default,
+    `--apply` to write) to scan both catalogues for that pattern and set
+    `linkedProduct` on any matching `pd_generations` doc that doesn't
+    already have one. Dry run found exactly 3 matches, all pointing at the
+    same "Pencil Stationery Case" product id — matched Eddie's own
+    description exactly before anything was written. Ran with `--apply`;
+    verified live that the v1 template (the one already open from earlier
+    testing) now shows "✓ Linked to Pencil Stationery Case." Kept the
+    script in the repo (safe to re-run — skips anything already linked) in
+    case more pre-#15 links turn up.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
