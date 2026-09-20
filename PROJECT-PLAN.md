@@ -385,6 +385,23 @@ production to reproduce #2) before this commit.
    `getBoundingClientRect().top` stays pinned at the `top-6` offset as the
    container scrolls, rather than assuming from CSS alone.
 
+8. **Tweak occasionally 500s with no JSON body — added a silent auto-retry**
+   (Eddie hit `Request failed (500) — please try again...` on a real Tweak
+   instruction) — reproduced live on production with the exact same
+   instruction and confirmed: the 500 had a non-JSON body (the platform-
+   error shape `pdApiFetch` was built to catch cleanly, per fix #2 above,
+   rather than leak a raw parser exception), and retrying the identical
+   request immediately succeeded — a Netlify edge-function execution-time
+   cutoff tripped by Gemini being slow that particular call, not a fault
+   with the request itself. Added one silent automatic retry inside
+   `pdApiFetch` for exactly this shape (non-JSON body + non-ok status) —
+   a real 4xx/5xx with a proper JSON error body (bad input, access denied,
+   Gemini genuinely rejecting the request) is a real answer and does NOT
+   get retried, so this doesn't waste a second Gemini call on a failure
+   that would just recur. Verified live afterward that the ordinary
+   success path (a normal Tweak call, no failure involved) still returns
+   correctly on the first attempt.
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending
