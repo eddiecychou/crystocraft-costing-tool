@@ -313,8 +313,11 @@ the fast path from a request to the exact code.
   one specific change at a time, locked paths restored if the model drifts).
 - Collections: `pd_products`, `pd_customer_brands` (keyed by the **real**
   `customers/{id}`), `pd_prompt_templates` (`status: draft|approved|archived`;
-  `type`/`parentTemplateId` record lineage from "Duplicate as new version" —
-  see `../reference/FIRESTORE-COLLECTIONS.md`'s Product Design section for
+  `type`/`parentTemplateId` record lineage from "Duplicate as new version";
+  `referenceImages[]` — photos uploaded on Edit for Extract/Replace, now
+  persisted here (V8.16, corrected after Eddie: "the image is gone after it
+  is saved" — it lived in local component state only until then) — see
+  `../reference/FIRESTORE-COLLECTIONS.md`'s Product Design section for
   the full table), `pd_generations`, `pd_spec_sheet_templates` — all
   `pd_`-prefixed to avoid colliding with this repo's own `products`/
   `customers`/`templates`. Reads the real `customers`/`suppliers`

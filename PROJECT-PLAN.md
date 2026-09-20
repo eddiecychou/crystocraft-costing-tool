@@ -456,6 +456,25 @@ production to reproduce #2) before this commit.
     original pencil case); **Undo** correctly restored the original JSON
     including its locked fields; **Remove** cleared the thumbnail from the
     list.
+12. **Reference images weren't actually saved anywhere** (Eddie: "The image
+    is gone after it is saved. I think it should remain there") — item #11
+    above kept `uploadedRefs` in local component state only; `handleSubmit`
+    (Save Changes) navigates straight to the read-only `TemplateDetail.tsx`,
+    which had no reference-image UI at all, so the images looked deleted the
+    moment Save actually worked correctly. Added `referenceImages` to the
+    `PromptTemplate` type and persist it on save (`updateTemplate`), load it
+    back into `uploadedRefs` when the Edit page fetches the template, and
+    carry it through `duplicateTemplate` too (from the current in-editor
+    state when duplicating from Edit, from the saved value when duplicating
+    from Detail) — same "branches off the version you're looking at" pattern
+    already used for `promptJson`/`lockedPaths`. Added a read-only Reference
+    Images section to `TemplateDetail.tsx` (thumbnails + Download, a
+    "Manage →" link back to Edit) so they're visible immediately after Save
+    navigates there, not just the next time Edit is reopened. Verified live
+    end-to-end: uploaded a test image on Edit, clicked Save Changes for
+    real, confirmed "Reference Images (1)" appeared on the Detail page
+    immediately, confirmed it was still there on a fresh page load of Edit,
+    then removed it and saved again to leave no test data behind.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 

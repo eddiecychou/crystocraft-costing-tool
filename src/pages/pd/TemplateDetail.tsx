@@ -224,6 +224,37 @@ export default function TemplateDetailPage() {
         </div>
       </div>
 
+      {/* Read-only view of the Reference Images uploaded on the Edit page
+          (V8.16) — persisted on the template doc now (not just in-editor
+          state), so they're still visible here right after Save Changes
+          navigates to this page, not just the next time Edit is opened.
+          Upload/Extract/Replace/Remove only make sense in edit mode. */}
+      {template.referenceImages && template.referenceImages.length > 0 && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="eyebrow">Reference Images ({template.referenceImages.length})</h2>
+            <Link to={`/design/templates/${id}/edit`} className="text-xs text-brand-600 hover:underline">Manage →</Link>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            {template.referenceImages.map((r) => (
+              <div key={r.id} className="card overflow-hidden">
+                <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={r.url} alt="" className="max-w-full max-h-full object-contain" />
+                </div>
+                <a
+                  href={`/api/image-proxy?url=${encodeURIComponent(r.url)}`}
+                  download={r.name}
+                  className="block p-1.5 text-2xs text-brand-600 uppercase tracking-wide hover:underline"
+                >
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <input
         ref={fileInputRef}
         type="file"

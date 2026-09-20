@@ -6,7 +6,7 @@ import { getProduct } from "@/lib/firestore/products";
 import { Paperclip, FolderOpen } from "lucide-react";
 import { listRealCustomers } from "@/lib/firestore/realCustomers";
 import { customerDisplayName, type RealCustomer } from "@/types/customer";
-import type { PromptTemplate } from "@/types/promptTemplate";
+import type { PromptTemplate, TemplateReferenceImage } from "@/types/promptTemplate";
 import type { Product } from "@/types/product";
 import { flattenLeaves, getPath, setPath, deletePath, deepEqual, type LeafRow } from "@/lib/jsonPaths";
 import { storage } from "@/lib/firebase";
@@ -46,7 +46,7 @@ export default function EditTemplatePage() {
   const [busy, setBusy] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [uploadDragOver, setUploadDragOver] = useState(false);
-  const [uploadedRefs, setUploadedRefs] = useState<{ id: string; url: string; name: string; storagePath: string }[]>([]);
+  const [uploadedRefs, setUploadedRefs] = useState<TemplateReferenceImage[]>([]);
 
   const [rawText, setRawText] = useState("");
   const [rawMode, setRawMode] = useState(false);
@@ -86,6 +86,7 @@ export default function EditTemplatePage() {
         setPromptJson(t.promptJson);
         setRawText(JSON.stringify(t.promptJson, null, 2));
         setLockedPaths(new Set(t.lockedPaths || []));
+        setUploadedRefs(t.referenceImages || []);
         getProduct(t.productId).then(setProduct);
       }
     });
@@ -215,6 +216,7 @@ export default function EditTemplatePage() {
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
       promptJson,
       lockedPaths: Array.from(lockedPaths),
+      referenceImages: uploadedRefs,
     });
     navigate(`/design/templates/${id}`);
   }
@@ -224,7 +226,7 @@ export default function EditTemplatePage() {
   async function handleDuplicate() {
     if (rawMode) applyRawText();
     setDuplicating(true);
-    const newId = await duplicateTemplate(id, { promptJson, lockedPaths: Array.from(lockedPaths) });
+    const newId = await duplicateTemplate(id, { promptJson, lockedPaths: Array.from(lockedPaths), referenceImages: uploadedRefs });
     navigate(`/design/templates/${newId}/edit`);
   }
 

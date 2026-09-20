@@ -79,7 +79,7 @@ function nextVersionName(name: string): string {
 // right now.
 export async function duplicateTemplate(
   id: string,
-  overrides?: { promptJson?: Record<string, unknown>; lockedPaths?: string[] },
+  overrides?: { promptJson?: Record<string, unknown>; lockedPaths?: string[]; referenceImages?: PromptTemplate["referenceImages"] },
 ): Promise<string> {
   const original = await getTemplate(id);
   if (!original) throw new Error("Template not found");
@@ -93,6 +93,7 @@ export async function duplicateTemplate(
     sourceImageId: original.sourceImageId,
     promptJson: overrides?.promptJson ?? JSON.parse(JSON.stringify(original.promptJson)),
     lockedPaths: overrides?.lockedPaths ?? (original.lockedPaths ? [...original.lockedPaths] : []),
+    referenceImages: overrides?.referenceImages ?? (original.referenceImages ? [...original.referenceImages] : []),
     extractionNote: original.extractionNote,
     tags: [...original.tags],
     status: "draft",
