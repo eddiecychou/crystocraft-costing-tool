@@ -363,6 +363,14 @@ to `draft` — confirming both the populated and empty states.
 All five verified live (QA admin, local dev + one real Gemini call against
 production to reproduce #2) before this commit.
 
+6. **Source Image not downloadable** (Eddie: "I will copy the json and use
+   this image as reference for Gemini in my Gemini Plus app" — the template
+   detail page's Source Image panel had no way to save the photo itself,
+   only "Copy JSON" for the prompt). Added the same image-proxy Download
+   link already used for generations, right under the photo next to
+   Copy JSON — the two together are exactly what that external workflow
+   needs. Verified live: link renders with the correct proxied Storage URL.
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending

@@ -185,10 +185,24 @@ export default function TemplateDetailPage() {
         <div>
           <h2 className="eyebrow mb-2">Source Image</h2>
           {sourceImage ? (
-            <div className="card overflow-hidden aspect-square bg-ivory-dark flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={sourceImage.url} alt="" className="max-w-full max-h-full object-contain" />
-            </div>
+            <>
+              <div className="card overflow-hidden aspect-square bg-ivory-dark flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={sourceImage.url} alt="" className="max-w-full max-h-full object-contain" />
+              </div>
+              {/* Same image-proxy trick as the generation Download link below
+                  — routed through our own origin so `download` actually
+                  forces a save instead of navigating to the cross-origin
+                  Storage URL. Eddie, 2026-09-20: needs this alongside the
+                  copied JSON to feed both into Gemini as reference. */}
+              <a
+                href={`/api/image-proxy?url=${encodeURIComponent(sourceImage.url)}`}
+                download={`${(template !== "loading" && template?.name) || "source-image"}.jpg`}
+                className="block mt-1.5 text-2xs text-brand-600 uppercase tracking-wide hover:underline"
+              >
+                Download
+              </a>
+            </>
           ) : (
             <p className="text-xs text-ink-60">None linked.</p>
           )}
