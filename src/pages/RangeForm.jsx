@@ -448,7 +448,7 @@ export default function RangeForm() {
   const isNew = routeId === 'new'
   const can = useCan()   // the figurine catalogue is `figurine`; its costing is `pricing`
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Stable doc id (needed for storage paths) — generated up-front for new docs
   const docIdRef = useRef(isNew ? doc(collection(db, 'range_products')).id : routeId)
@@ -636,6 +636,25 @@ export default function RangeForm() {
         const d = snap.data()
         const fallbackBrand = brandLetter(d.design_code) || 'D'
         const vs = variantsFromDoc(d, fallbackBrand)
+        // "+ Add to Existing" from Product Design's TemplateDetail.tsx lands
+        // here with addGalleryUrl/addGalleryCaption instead of writing
+        // gallery[] directly — this form is the ONLY thing allowed to write
+        // it (see the "Add to Gallery" comment further down: unlike
+        // colour_images, nothing else touches gallery[] from outside this
+        // form, specifically so a stale open tab can't clobber an external
+        // write on its next Save). Appended into local state here, same as
+        // every other gallery edit, so it only actually persists once Eddie
+        // reviews it and clicks Save Changes like anything else on this page.
+        const baseGallery = normGallery(d.gallery)
+        const addUrl = searchParams.get('addGalleryUrl')
+        const gallery = addUrl && !baseGallery.some(g => g.url === addUrl)
+          ? [...baseGallery, { url: addUrl, caption: searchParams.get('addGalleryCaption') || '' }]
+          : baseGallery
+        if (addUrl) {
+          const next = new URLSearchParams(searchParams)
+          next.delete('addGalleryUrl'); next.delete('addGalleryCaption')
+          setSearchParams(next, { replace: true })
+        }
         setForm({
           design_no: d.design_no || designNumber(d.design_code),
           body_code: d.body_code || bodyLetter(d.design_code),
@@ -659,7 +678,7 @@ export default function RangeForm() {
             ? d.critical_components.map(r => ({ _uid: refUid(), id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1, plating_code: (r.plating_code || '').toUpperCase(), all_variants: !!r.all_variants }))
             : [],
           packing: { ...emptyPacking(), ...(d.packing || {}) },
-          gallery: normGallery(d.gallery),
+          gallery,
           variants: vs,
           crystal_components: normaliseCrystalBom(d.crystal_components),
           // Plating pool: stored map wins; else seed from legacy per-variant stock.

@@ -334,6 +334,17 @@ the fast path from a request to the exact code.
   (category, price, components, plating/crystal); a human still finishes
   the product from there, same as the ordinary Products/Components flow —
   this just seeds the name + hero photo instead of starting from nothing.
+  A third button, **"+ Add to Existing"** (V8.16), covers the same image
+  going onto a product that already exists — `src/components/
+  ExistingProductPicker.tsx` searches both catalogues at once (modelled on
+  `FrontPageProductPicker.jsx`). Corp gift writes straight into the picked
+  product's `images` subcollection. Figurine does **not** write
+  `range_products.gallery[]` directly — `RangeForm.jsx` is the only thing
+  allowed to write that field (a stale open tab's Save would silently
+  clobber an external write otherwise, see **L-27**), so this hands off via
+  an `addGalleryUrl`/`addGalleryCaption` query param the edit-mode fetch
+  reads once and folds into local form state — it only persists once a
+  human clicks Save Changes there.
   "Duplicate as new version" (both
   `TemplateDetail.tsx` and `TemplateEdit.tsx`) copies `promptJson` **and**
   `lockedPaths` together — the whole point of locking a field is to protect

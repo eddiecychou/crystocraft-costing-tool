@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useParams, useNavigate } from "react-router-dom";
-import { collection, addDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, doc, getDocs, updateDoc, serverTimestamp } from "firebase/firestore";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { getTemplate, deleteTemplate, duplicateTemplate } from "@/lib/firestore/promptTemplates";
 import { getProduct } from "@/lib/firestore/products";
 import { getRealCustomer } from "@/lib/firestore/realCustomers";
+import ExistingProductPicker, { type ExistingProductOption } from "@/components/ExistingProductPicker";
 import {
   listGenerationsForTemplate,
   createGeneration,
@@ -46,6 +47,9 @@ export default function TemplateDetailPage() {
   const [deletingGenId, setDeletingGenId] = useState<string | null>(null);
   const [creatingProductGenId, setCreatingProductGenId] = useState<string | null>(null);
   const [createProductError, setCreateProductError] = useState("");
+  const [pickerGen, setPickerGen] = useState<Generation | null>(null);
+  const [addingExistingId, setAddingExistingId] = useState<string | null>(null);
+  const [addExistingError, setAddExistingError] = useState("");
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,6 +155,71 @@ export default function TemplateDetailPage() {
     if (template === "loading" || !template) return;
     const params = new URLSearchParams({ description: template.name });
     navigate(`/range/new?${params.toString()}`);
+  }
+
+  // Eddie, 2026-09-21: "Please also added a button to add the product design
+  // image to an existing product in either figurine or corporate gift" —
+  // the New Corp Gift/New Figurine actions above only cover starting a
+  // brand-new catalogue entry; this covers dropping the same approved image
+  // onto a product that already exists. Shares ExistingProductPicker.tsx
+  // (modelled on FrontPageProductPicker.jsx's dual-collection search) so
+  // one button searches both catalogues at once instead of asking which
+  // catalogue first.
+  //
+  // Corp gift: same images-subcollection write as handleCreateCorpGift,
+  // just against the picked product's existing id, and only sets heroImage
+  // if it didn't already have one (an existing product's chosen hero photo
+  // shouldn't be silently replaced by whatever gets added to its gallery).
+  //
+  // Figurine: range_products has no images subcollection — photos live in
+  // the plain gallery[] array on the doc itself, and RangeForm.jsx is
+  // explicit that IT is the only thing allowed to write that field (see its
+  // "Add to Gallery" comment: unlike colour_images, nothing else touches
+  // gallery[] from outside the form, specifically so a stale open tab's
+  // Save can't silently clobber an external write). So this only uploads
+  // the image to Storage, then hands off to RangeForm's own edit page via
+  // addGalleryUrl/addGalleryCaption query params (added to RangeForm.jsx
+  // alongside its existing new-product prefill params) — it lands in local
+  // form state exactly like every other gallery edit there, and only
+  // actually persists once Eddie reviews it and clicks Save Changes.
+  async function handleAddToExisting(product: ExistingProductOption) {
+    if (!pickerGen || template === "loading" || !template) return;
+    setAddingExistingId(product.id);
+    setAddExistingError("");
+    try {
+      const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(pickerGen.resultImageUrl)}`);
+      const blob = await res.blob();
+
+      if (product.type === "corp_gift") {
+        const imagesRef = collection(db, "products", product.id, "images");
+        const existingSnap = await getDocs(imagesRef);
+        const path = `products/${product.id}/images/${Date.now()}_${pickerGen.id}.jpg`;
+        const sRef = storageRef(storage, path);
+        await uploadBytes(sRef, blob, { contentType: blob.type || "image/jpeg" });
+        const url = await getDownloadURL(sRef);
+        await addDoc(imagesRef, {
+          file_url: url, storage_path: path, file_name: `generation-${pickerGen.id}.jpg`,
+          type: "hero", orientation: "square", caption: template.name,
+          visibility: "internal", sort_order: existingSnap.size, uploaded_at: serverTimestamp(),
+        });
+        if (existingSnap.empty) {
+          await updateDoc(doc(db, "products", product.id), { heroImage: url });
+        }
+        setPickerGen(null);
+      } else {
+        const path = `range_products/${product.id}/${Date.now()}-generation-${pickerGen.id}.jpg`;
+        const sRef = storageRef(storage, path);
+        await uploadBytes(sRef, blob, { contentType: blob.type || "image/jpeg" });
+        const url = await getDownloadURL(sRef);
+        const params = new URLSearchParams({ addGalleryUrl: url, addGalleryCaption: template.name });
+        setPickerGen(null);
+        navigate(`/range/${product.id}?${params.toString()}`);
+      }
+    } catch (err) {
+      setAddExistingError(err instanceof Error ? err.message : "Could not add the image — please try again.");
+    } finally {
+      setAddingExistingId(null);
+    }
   }
 
   async function handleCopy() {
@@ -405,6 +474,14 @@ export default function TemplateDetailPage() {
                     >
                       + New Figurine
                     </button>
+                    <button
+                      type="button"
+                      className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline"
+                      onClick={() => setPickerGen(g)}
+                      title="Add this image to a product that already exists"
+                    >
+                      + Add to Existing
+                    </button>
                   </div>
                 )}
                 <select
@@ -443,6 +520,15 @@ export default function TemplateDetailPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {pickerGen && (
+        <ExistingProductPicker
+          onClose={() => (addingExistingId ? null : setPickerGen(null))}
+          onSelect={handleAddToExisting}
+          busyId={addingExistingId}
+          error={addExistingError}
+        />
       )}
     </main>
   );

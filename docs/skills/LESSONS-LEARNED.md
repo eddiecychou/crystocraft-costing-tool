@@ -493,6 +493,38 @@
   function over the individual picker. Grep `RETAIL_TAG` first — it's not
   applied automatically anywhere.
 
+## L-27 · A form-owned array field can have an explicit "only this form writes it" rule — grep for it before adding a second writer
+
+- **Symptom.** None visible in the UI — caught only during live verification
+  of a new "+ Add to Existing Product" feature (`TemplateDetail.tsx`) by
+  inspecting a figurine product's actual `<img>` list after the fact, not by
+  trusting the button's own "success." The first implementation wrote a new
+  photo straight onto a `range_products` doc's `gallery[]` via
+  `updateDoc(..., { gallery: arrayUnion(...) })`.
+- **Root cause.** `RangeForm.jsx` already has an explicit comment next to
+  its own `onAddToGallery`: "unlike `colour_images`, nothing else writes to
+  `gallery[]` from outside this form" — because the form loads the whole
+  doc into local state on open and its Save button writes `gallery`
+  wholesale back. A direct external write is invisible to an already-open
+  tab; if a human has the form open and clicks Save afterward, their stale
+  local `gallery` silently overwrites (loses) the external write. Missed
+  this on the first pass because the write itself succeeded and looked
+  correct — the race only shows up if someone has the form open at the
+  wrong moment, which a same-session live test won't naturally hit.
+- **Permanent fix.** Route the write through the form instead: extended
+  `RangeForm.jsx`'s existing new-product query-param prefill
+  (`design_no`/`description`/…) with `addGalleryUrl`/`addGalleryCaption`,
+  read once in the edit-mode fetch effect and appended into local form
+  state (stripped from the URL after), so it only actually persists when
+  Eddie clicks Save Changes himself — same as every other gallery edit on
+  that page. **MUST**, before writing to a field a form owns from outside
+  that form: grep the form for an existing comment/pattern establishing who
+  is allowed to write it (`colour_images` vs `gallery` in `RangeForm.jsx` is
+  the precedent — one has a direct-write path *because* it was deliberately
+  designed for it, the other explicitly does not). If no such comment
+  exists but the field is loaded into `useState` on mount and only written
+  back on Save, assume the same rule applies unless proven otherwise.
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
@@ -532,3 +564,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-09-10 | Editable reserved quantity (XiangXia ask #2) — a reserved line's qty is now editable inline on the Component/Crystal/Packaging order-stock panels via `adjustReservedLine` (`orderStock.js`) + `EditableQty.jsx`. Movement key carries a per-line `adj_seq` so re-entering an earlier value can't collide with its earlier movement and get deduped by `postMovement`. Design record + landmines: `../plans/RESERVE-QTY-EDIT-AUDIT.md`. |
 | 2026-09-11 | Added L-20 — `graphify-out/merged-graph.html`'s hand-rolled vis-network view never disabled physics after the layout settled (graphify's own `graph.html` does), so the barnesHut solver ran on ~5,000 nodes every frame indefinitely while that tab was open. Fixed in `scripts/build-merged-html.py`. Also fixed: Corp Gift product save (`ProductForm.jsx`) had a bare `finally` with no `catch` — a failed write reset the button with nothing on screen; now shows the real error. |
 | 2026-09-20 | Added L-21 through L-26 from the V8.16 Product Design port + its post-launch fixes: Tailwind `content` glob missing `.ts`/`.tsx` silently dropped classes app-wide (L-21); a bare `res.json()` leaks a raw browser parser exception on a non-JSON response (L-22); a section that returns `null` when empty is an invisible, undiscoverable feature (L-23); `object-cover` on a short fixed-height box crops reference photos — use `object-contain` (L-24); a non-JSON 5xx from an edge function usually means the platform gave up, not that the request was wrong — confirmed live before adding a silent one-shot retry (L-25); a new B2B-only customer picker doesn't automatically inherit the `RETAIL_TAG` exclusion — it has to be added explicitly, ideally at the shared list source (L-26). |
+| 2026-09-21 | Added L-27 — a first pass at "add a Product Design image to an existing figurine product" wrote straight to `range_products.gallery[]` via `arrayUnion`, missing `RangeForm.jsx`'s existing "only this form writes gallery[]" rule (a stale open tab's Save would silently clobber it); caught during live verification by inspecting the actual `<img>` list, not by trusting the UI. Fixed by routing through the form via a new `addGalleryUrl`/`addGalleryCaption` query-param prefill instead of a direct write. |

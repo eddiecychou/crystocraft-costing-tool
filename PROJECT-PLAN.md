@@ -504,6 +504,43 @@ production to reproduce #2) before this commit.
     image-proxy fetch) and the product doc got `heroImage` set, then deleted
     the test product; separately confirmed `/range/new?description=...`
     prefills correctly with no console errors.
+14. **"Add to Existing Product"** (Eddie: "Please also added a button to add
+    the product design image to an existing product in either figurine or
+    corporate gift") — item #13's two actions only cover starting a
+    brand-new catalogue entry; this adds a third, **"+ Add to Existing"**,
+    for dropping the same approved image onto a product that already
+    exists. New `ExistingProductPicker.tsx` (modelled on
+    `FrontPageProductPicker.jsx`'s dual-collection search) is a one-step
+    modal searching both `products` and `range_products` at once, so the
+    button doesn't need to ask which catalogue first. Corp gift: same
+    images-subcollection write as "+ New Corp Gift", just against the
+    picked product's existing id, and only sets `heroImage` if the product
+    didn't already have one (an existing chosen hero photo shouldn't be
+    silently replaced by whatever gets added to the gallery). Figurine
+    needed real care: `range_products`' `gallery[]` has no subcollection —
+    it's a plain array on the doc — and `RangeForm.jsx` has an explicit
+    existing comment that IT is the only thing allowed to write that field
+    ("unlike colour_images, nothing else writes to gallery[] from outside
+    this form"), specifically so a stale open tab's Save can't silently
+    clobber an external write. First implementation missed this and wrote
+    `arrayUnion` directly — caught it during verification (an old test
+    write from that first pass really did end up orphaned in a live
+    figurine product's gallery, only found by inspecting the doc's actual
+    image list rather than trusting the picker's "success"). Fixed by
+    extending `RangeForm.jsx`'s existing query-param prefill (used for
+    `/range/new`) with `addGalleryUrl`/`addGalleryCaption`, read once in the
+    edit-mode fetch effect, appended into local form state exactly like any
+    other gallery edit, and stripped from the URL — so it only actually
+    persists once Eddie reviews it and clicks Save Changes himself, same as
+    everything else on that page. Verified live end-to-end: corp gift path
+    added the pouch photo onto "Bracelet for Private Event" alongside its
+    existing photo without touching its hero, then deleted it; figurine
+    path landed on "Sacred Angel(Lyre)"'s edit page as an unsaved gallery
+    entry, confirmed by inspecting the live `<img>` list (not just the UI)
+    that a leftover entry from the first buggy pass had also made it into
+    Storage/Firestore, removed both test entries in the form, and saved —
+    confirmed the figurine's gallery was back to just its original photo
+    afterward.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
