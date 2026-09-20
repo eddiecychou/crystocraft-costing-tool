@@ -133,6 +133,7 @@ export default function TemplateDetailPage() {
         visibility: "internal", sort_order: 0, uploaded_at: serverTimestamp(),
       });
       await updateDoc(doc(db, "products", productRef.id), { heroImage: url });
+      await updateGeneration(g.id, { linkedProduct: { type: "corp_gift", id: productRef.id, name: name.trim() } });
 
       navigate(`/products/${productRef.id}`);
     } catch (err) {
@@ -205,6 +206,8 @@ export default function TemplateDetailPage() {
         if (existingSnap.empty) {
           await updateDoc(doc(db, "products", product.id), { heroImage: url });
         }
+        await updateGeneration(pickerGen.id, { linkedProduct: { type: "corp_gift", id: product.id, name: product.name } });
+        await refreshGenerations();
         setPickerGen(null);
       } else {
         const path = `range_products/${product.id}/${Date.now()}-generation-${pickerGen.id}.jpg`;
@@ -212,6 +215,13 @@ export default function TemplateDetailPage() {
         await uploadBytes(sRef, blob, { contentType: blob.type || "image/jpeg" });
         const url = await getDownloadURL(sRef);
         const params = new URLSearchParams({ addGalleryUrl: url, addGalleryCaption: template.name });
+        // Marked "linked" the moment it's handed off, even though it only
+        // actually lands in Storage/gallery[] once Eddie clicks Save on
+        // RangeForm (see the comment above) — the card's label says "Sent
+        // to…" rather than "Linked" for this case specifically because of
+        // that gap, but it still blocks re-adding this same image elsewhere
+        // (Eddie: "each image will only link to 1 product").
+        await updateGeneration(pickerGen.id, { linkedProduct: { type: "range", id: product.id, name: product.name } });
         setPickerGen(null);
         navigate(`/range/${product.id}?${params.toString()}`);
       }
@@ -220,6 +230,11 @@ export default function TemplateDetailPage() {
     } finally {
       setAddingExistingId(null);
     }
+  }
+
+  async function handleUnlinkProduct(g: Generation) {
+    await updateGeneration(g.id, { linkedProduct: undefined });
+    await refreshGenerations();
   }
 
   async function handleCopy() {
@@ -456,33 +471,67 @@ export default function TemplateDetailPage() {
                   )}
                 </div>
                 {(g.status === "success" || g.status === "approved") && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline disabled:text-ink-30 disabled:cursor-not-allowed"
-                      disabled={creatingProductGenId === g.id}
-                      onClick={() => handleCreateCorpGift(g)}
-                      title="Create a new Corp Gift catalogue product seeded with this image"
-                    >
-                      {creatingProductGenId === g.id ? "Creating…" : "+ New Corp Gift"}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline"
-                      onClick={handleCreateFigurine}
-                      title="Start a new Figurine Gift product — you'll attach the photo there once plating/crystal are picked"
-                    >
-                      + New Figurine
-                    </button>
-                    <button
-                      type="button"
-                      className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline"
-                      onClick={() => setPickerGen(g)}
-                      title="Add this image to a product that already exists"
-                    >
-                      + Add to Existing
-                    </button>
-                  </div>
+                  g.linkedProduct ? (
+                    // Eddie, 2026-09-21: "can you show that this product
+                    // design image is linked to the product? Without this I
+                    // don't know whether I have linked yet or not... each
+                    // image will only link to 1 product" — once a
+                    // generation carries a linkedProduct, show that instead
+                    // of the link actions (not alongside them), so a
+                    // glance at the card answers the question, and it can't
+                    // be pushed to a second product by mistake. "Unlink"
+                    // only clears this pointer, it doesn't touch the actual
+                    // image already sitting on that product — for
+                    // correcting a mistaken link, not for undoing the copy.
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-2xs text-emerald-700 uppercase tracking-wide">
+                        {g.linkedProduct.type === "range" ? "Sent to" : "✓ Linked to"}
+                      </span>
+                      <Link
+                        to={g.linkedProduct.type === "range" ? `/range/${g.linkedProduct.id}` : `/products/${g.linkedProduct.id}`}
+                        className="text-2xs text-brand-600 hover:underline truncate max-w-[9rem]"
+                        title={g.linkedProduct.name}
+                      >
+                        {g.linkedProduct.name}
+                      </Link>
+                      <button
+                        type="button"
+                        className="text-2xs text-ink-60 uppercase tracking-wide hover:text-ink hover:underline"
+                        onClick={() => handleUnlinkProduct(g)}
+                        title="Clear this link (doesn't remove the image already added to that product)"
+                      >
+                        Unlink
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline disabled:text-ink-30 disabled:cursor-not-allowed"
+                        disabled={creatingProductGenId === g.id}
+                        onClick={() => handleCreateCorpGift(g)}
+                        title="Create a new Corp Gift catalogue product seeded with this image"
+                      >
+                        {creatingProductGenId === g.id ? "Creating…" : "+ New Corp Gift"}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline"
+                        onClick={handleCreateFigurine}
+                        title="Start a new Figurine Gift product — you'll attach the photo there once plating/crystal are picked"
+                      >
+                        + New Figurine
+                      </button>
+                      <button
+                        type="button"
+                        className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline"
+                        onClick={() => setPickerGen(g)}
+                        title="Add this image to a product that already exists"
+                      >
+                        + Add to Existing
+                      </button>
+                    </div>
+                  )
                 )}
                 <select
                   className="input text-2xs py-1"

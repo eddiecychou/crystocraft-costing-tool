@@ -541,6 +541,30 @@ production to reproduce #2) before this commit.
     Storage/Firestore, removed both test entries in the form, and saved —
     confirmed the figurine's gallery was back to just its original photo
     afterward.
+15. **Show whether a generation is already linked** (Eddie: "can you show
+    that this product design image is linked to the product? Without this I
+    don't know whether I have linked yet or not. Also each image will only
+    link to 1 product so this should be the right way to do") — items #13/14
+    performed the link but gave no lasting feedback: once the modal closed
+    or the page navigated away, nothing on the generation card said whether
+    it had actually been pushed anywhere. Added `linkedProduct?: { type,
+    id, name }` to the `Generation` type (`src/types/generation.ts`), set by
+    `handleCreateCorpGift` and both branches of `handleAddToExisting` right
+    when each image actually gets copied. The card now shows either the
+    three link actions OR — once linked — a single "✓ Linked to `<name>`"
+    (corp gift) / "Sent to `<name>`" (figurine, since that one isn't
+    guaranteed persisted until Eddie saves `RangeForm` — see #14) line with
+    a link straight to the product and a small "Unlink" to clear a mistaken
+    link (clears only the pointer, not the image already copied onto that
+    product — for correcting the record, not undoing the copy). Enforces
+    Eddie's "each image only links to 1 product" rule by hiding the link
+    actions entirely once `linkedProduct` is set, rather than just leaving
+    them there to be clicked again. Verified live: added the pouch image to
+    "Bracelet for Private Event" via "+ Add to Existing," confirmed the card
+    immediately showed "✓ Linked to Bracelet for Private Event" linking to
+    `/products/{id}` and the three buttons were gone, clicked Unlink and
+    confirmed the buttons came back, then cleaned up the actual test image
+    left on that product.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 

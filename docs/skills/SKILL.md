@@ -344,7 +344,12 @@ the fast path from a request to the exact code.
   clobber an external write otherwise, see **L-27**), so this hands off via
   an `addGalleryUrl`/`addGalleryCaption` query param the edit-mode fetch
   reads once and folds into local form state — it only persists once a
-  human clicks Save Changes there.
+  human clicks Save Changes there. A `pd_generations` doc records which
+  product it was pushed to as `linkedProduct?: {type, id, name}`
+  (`src/types/generation.ts`), set the moment the image is actually copied;
+  `TemplateDetail.tsx` shows this on the card instead of the three link
+  actions once set, and hides the actions entirely — one generation links
+  to at most one product at a time, by design.
   "Duplicate as new version" (both
   `TemplateDetail.tsx` and `TemplateEdit.tsx`) copies `promptJson` **and**
   `lockedPaths` together — the whole point of locking a field is to protect
