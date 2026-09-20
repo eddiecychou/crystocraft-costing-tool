@@ -402,6 +402,31 @@ production to reproduce #2) before this commit.
    success path (a normal Tweak call, no failure involved) still returns
    correctly on the first attempt.
 
+9. **Skill-system documentation pass** (Eddie: "document everything and
+   skills and lesson learned... recheck the skills description and make
+   sure it reflects the actual content") — audited every `docs/skills/*.md`
+   file's own description against its real content. Found a genuinely
+   misleading stale claim: `SKILL.md` and `ATELIER-ART-ENGINE.md` both said
+   the Product Design workflow "now lives in its own separate repo" — true
+   as of 2026-09-12, false since the V8.16 fold-in on 2026-09-18. Fixed
+   both precisely (the historical worked-example docs/JSON genuinely still
+   live in `~/Developer/Product Design` — confirmed the folder still exists
+   — but the running app and its data do not). Added a full §5 "Product
+   Design" entry to `SKILL.md` (nothing existed there for it at all), added
+   the `ATELIER-ART-ENGINE.md` row §3's own table was missing, corrected
+   `ARCHITECTURE-RULES.md`'s module-key count (17→18), corrected
+   `API-REFERENCE.md`'s stale "callers use `authHeader()`" note, and added
+   six new lessons (L-21 through L-26) to `LESSONS-LEARNED.md` covering the
+   generalizable rules from this whole V8.16 arc.
+10. **Extract Elements — drag-and-drop** (Eddie: "this will save me some
+    time trying to extract elements") — the file input was a bare
+    `<input type="file">`, click-only. Replaced with the same drag-and-drop
+    dropzone pattern already established in `ImageGallery.jsx` (a `<label>`
+    wrapping a hidden file input, `onDragOver`/`onDragLeave`/`onDrop`,
+    drag-over visual state) rather than inventing a new one. Verified live:
+    dispatching a real `dragover` event flips the zone to its
+    `border-brand-400 bg-brand-50 scale-[1.01]` highlighted state.
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending

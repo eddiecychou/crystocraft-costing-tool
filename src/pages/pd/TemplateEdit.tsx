@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type DragEvent } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { pdApiFetch } from "@/lib/pdApi";
 import { getTemplate, updateTemplate, duplicateTemplate } from "@/lib/firestore/promptTemplates";
 import { getProduct } from "@/lib/firestore/products";
+import { Paperclip, FolderOpen } from "lucide-react";
 import { listRealCustomers } from "@/lib/firestore/realCustomers";
 import { customerDisplayName, type RealCustomer } from "@/types/customer";
 import type { PromptTemplate } from "@/types/promptTemplate";
@@ -44,6 +45,7 @@ export default function EditTemplatePage() {
   const [lockedPaths, setLockedPaths] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [extractDragOver, setExtractDragOver] = useState(false);
 
   const [rawText, setRawText] = useState("");
   const [rawMode, setRawMode] = useState(false);
@@ -273,6 +275,12 @@ export default function EditTemplatePage() {
     } finally {
       setExtracting(false);
     }
+  }
+
+  function handleExtractDrop(e: DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    setExtractDragOver(false);
+    handleExtractFile(e.dataTransfer.files?.[0] || null);
   }
 
   function applyCandidate(c: Candidate, idx: number) {
@@ -533,14 +541,30 @@ export default function EditTemplatePage() {
             text never come back as drawable content — only as a suggested
             reserved area.
           </p>
-          <input
-            type="file"
-            accept="image/*"
-            className="text-xs"
-            onChange={(e) => handleExtractFile(e.target.files?.[0] || null)}
-            disabled={extracting}
-          />
-          {extracting && <p className="text-xs text-ink-60 mt-2">Analyzing…</p>}
+          {/* Same drag-and-drop dropzone pattern as ImageGallery.jsx's own
+              upload label — a <label> wrapping a hidden file input, so
+              dropping or clicking both work through the one element. */}
+          <label
+            className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-none p-4 cursor-pointer transition-colors
+              ${extracting ? "border-brand-300 bg-brand-50 cursor-wait"
+                : extractDragOver ? "border-brand-400 bg-brand-50 scale-[1.01]"
+                : "border-warm-grey hover:border-brand-300 hover:bg-brand-50"}`}
+            onDragOver={(e) => { e.preventDefault(); setExtractDragOver(true); }}
+            onDragLeave={() => setExtractDragOver(false)}
+            onDrop={handleExtractDrop}
+          >
+            <span className="text-ink-60">{extractDragOver ? <FolderOpen size={20} /> : <Paperclip size={20} />}</span>
+            <span className="text-sm text-ink-70">
+              {extracting ? "Analyzing…" : extractDragOver ? "Drop to analyze" : "Upload a photo, or drag & drop"}
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleExtractFile(e.target.files?.[0] || null)}
+              disabled={extracting}
+            />
+          </label>
           {extractError && <p className="text-xs text-red-700 mt-2">{extractError}</p>}
           {candidates && candidates.length > 0 && (
             <div className="flex flex-col gap-1.5 mt-3">
