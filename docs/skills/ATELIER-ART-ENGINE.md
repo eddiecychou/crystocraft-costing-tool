@@ -144,15 +144,20 @@ than one existing example to analyze** — the prose §1 structure above still
 describes *what* information the brief needs, but assembling it as JSON
 rather than paragraphs is what actually held up under a real image model.
 
-**This whole workflow (and the La Salle project itself) has since moved to
-its own repo, `Product Design` (`~/Developer/Product Design`), separate
-from this one** — it started as this repo's own `Product Development/`
-folder, then merged with a related `gemini-image-prompts` effort once it
-became clear they were the same project at two stages of maturity. This
-section stays here because the underlying protocol is this repo's own
-(§1–§6 above), but the worked example and the actual tooling now live in
-that other repo — see its `04-Gemini-Image-Prompts.md` and
-`tools/parameter-visualizer.html`.
+**This whole workflow (and the La Salle project itself) moved to its own
+repo, `Product Design` (`~/Developer/Product Design`), on 2026-09-12** — it
+started as this repo's own `Product Development/` folder, then merged with
+a related `gemini-image-prompts` effort once it became clear they were the
+same project at two stages of maturity. **The actual tooling has since
+moved again — folded back into THIS repo under `/design/*` (V8.16,
+2026-09-18)**; see this doc's own §5 "Product Design" entry in `SKILL.md`
+for the pages/edge-fns/collections. `~/Developer/Product Design` still
+exists on disk and is where the **historical worked-example docs and JSON**
+from the original build live (`04-Gemini-Image-Prompts.md`,
+`projects/2026-09-lasalle-music-box/`, `tools/parameter-visualizer.html`)
+— it is no longer where the running app or its data live, only where that
+history is kept. This section stays here because the underlying protocol
+is this repo's own (§1–§6 above).
 
 This is a named, documented industry technique, not a house invention —
 worth knowing the real names if researching further: **Controlled
@@ -220,7 +225,8 @@ layout maps.
   the actual result rather than trusting the instruction held (see §5's
   corollary above on self-reported compliance).
 
-See the `Product Design` repo's
+See `~/Developer/Product Design`'s (history-only now, not the running app —
+see the note above)
 `projects/2026-09-lasalle-music-box/99-outcome.md` for the full worked
 account, `wuhan-design-analysis.json` +
 `nanjing-chongqing-xiamen-design-analysis.json` for the analysis step, and

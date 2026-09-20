@@ -94,8 +94,13 @@ Seven text/vision Gemini calls behind the `/design/*` pages (folded in from a
 standalone Next.js app). All on `gemini-3.8-flash`, all gated on the
 `product_design` module, all hold `GEMINI_API_KEY` server-side. Shared helpers
 in `netlify/edge-functions/lib/pdGemini.js` (base64, image fetch, generateContent
-wrapper). Callers are the ported pages in `src/pages/pd/` (fetch with
-`authHeader()`), not a `*Api.js` wrapper.
+wrapper). Callers are the ported pages in `src/pages/pd/`, all through
+`src/lib/pdApi.ts`'s `pdApiFetch()` — not a `*Api.js` wrapper, and not a bare
+`fetch()` + `res.json()` either: it reads the body as text and parses
+defensively (a raw `res.json()` on a non-JSON error response used to leak a
+browser `SyntaxError` straight into the UI — `LESSONS-LEARNED.md` L-22), and
+retries once, silently, on a non-JSON 5xx specifically (a platform-timeout
+signature, not a real error — L-25).
 
 - `pd-analyze-image.js` (`/api/pd-analyze-image`) — reverse-engineer a product photo into structured JSON (physical facts / graphic surface / text+logo bboxes). Caller: `TemplateNew.tsx`.
 - `pd-analyze-brand-image.js` (`/api/pd-analyze-brand-image`) — extract a brand's visual identity (palette/motifs/tone) from a reference image. Caller: `CustomerBrand.tsx`.

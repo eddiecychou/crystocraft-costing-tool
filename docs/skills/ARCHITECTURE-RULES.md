@@ -77,8 +77,10 @@ URL. But **the UI is not the security boundary — `firestore.rules` +
 | `staff` | Exactly the module keys in `users/{uid}.modules[]` |
 | `customer` | Storefront/portal only; own orders + published proposal |
 
-**The 17 module keys** (grouped in `MODULE_GROUPS`), `†` = sensitive:
-Catalogue — `products`, `figurine`, `swatch`, `catalogues`, `pricing†`;
+**The 18 module keys** (grouped in `MODULE_GROUPS`), `†` = sensitive:
+Catalogue — `products`, `figurine`, `swatch`, `catalogues`, `product_design`
+(V8.16 — Product Design's `/design/*`, not sensitive: it holds brand
+concepts, not costing), `pricing†`;
 Front office — `customers†`, `quotes`, `marketing`, `portal`;
 Fulfilment & finance — `shipping`, `invoices†`, `credit_notes†`, `uc†`;
 Supply — `supply` (one key = Components + Suppliers + POs + Inventory);

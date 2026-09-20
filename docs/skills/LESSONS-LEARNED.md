@@ -370,6 +370,129 @@
   stabilized — copy graphify's own pattern, don't assume the library does it
   by default (it doesn't). (`scripts/build-merged-html.py`.)
 
+## L-21 · Tailwind's `content` glob missing an extension silently drops those classes
+
+- **Symptom.** After porting Product Design's `.tsx` pages into this app
+  (V8.16), a heading's `mt-10` computed `margin-top: 0px` live — the
+  "Generations" section on `TemplateDetail.tsx` sat stuck directly against
+  the JSON block above it, with no visible error anywhere.
+- **Root cause.** `tailwind.config.js`'s `content: ['./index.html',
+  './src/**/*.{js,jsx}']` never scanned `.ts`/`.tsx` files. Any utility class
+  used **only** inside a ported `.tsx` file — never elsewhere in a `.jsx`
+  file that happened to already use the same class — was invisible to
+  Tailwind's JIT scanner and silently missing from the compiled CSS. This
+  wasn't one broken class; it was every class across all 10 ported pages
+  that no `.jsx` file happened to already use.
+- **Permanent fix.** `content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}']`.
+  **MUST**, when adding source files in a new extension to this repo (or any
+  Tailwind v3 project): check the `content` glob covers it **before**
+  debugging individual "missing style" reports one at a time — a systemic
+  glob gap looks exactly like N unrelated CSS bugs. (`tailwind.config.js`.)
+
+## L-22 · A bare `res.json()` leaks a raw browser parser exception to the user
+
+- **Symptom.** A Product Design "Tweak with AI" call failed with the error
+  text `Unexpected token 'h', "the edge fu"... is not valid JSON` — a
+  literal fragment of the actual HTTP response body, not a real error
+  message.
+- **Root cause.** All 8 `/api/pd-*` client call sites did
+  `const data = await res.json()` directly. That's fine when the server
+  returns the JSON it's supposed to — but the moment it doesn't (a
+  platform-level error page instead of the edge function's own JSON error
+  body, a cold-start hiccup, anything upstream of the function's own
+  try/catch), `res.json()` throws a native `SyntaxError` built from
+  whatever text actually came back, and that exception's `.message`
+  propagated straight into the UI unmodified.
+- **Permanent fix.** Added `pdApiFetch()` (`src/lib/pdApi.ts`): reads the
+  body as **text** first, parses it defensively, and collapses every
+  failure shape into one clear, actionable message. **MUST NOT** call
+  `res.json()` directly on a fetch whose failure path isn't fully
+  controlled by your own code — read as text and parse defensively instead,
+  for any endpoint that isn't guaranteed to always return your own JSON.
+  Related: **L-25** below, on what that specific failure shape turned out
+  to mean and how it's now handled automatically.
+
+## L-23 · A card that returns `null` when empty is an invisible feature
+
+- **Symptom.** Eddie: "I can't find that in customer, where did you put
+  it?" — a newly-shipped "Product Design Concepts" section on
+  `CustomerDetail.jsx` was nowhere to be found on any customer's page.
+- **Root cause.** The component returned `null` entirely whenever a
+  customer had zero *approved* concepts — which was every customer right
+  after shipping (the one template used to verify it live had been reverted
+  to `draft` afterward). A feature that renders nothing when empty is
+  indistinguishable from a feature that doesn't exist.
+- **Permanent fix.** Always render the section — loading / empty / populated
+  states — matching every other section on that page (Purchase Orders,
+  Portal Enquiries, etc.), with the empty state explaining how to populate
+  it and linking to where. **MUST NOT** early-return `null` from a
+  page-level section purely because it currently has no data; that's what
+  an empty-state message is for. (`src/pages/CustomerDetail.jsx`.)
+
+## L-24 · `object-cover` on a short fixed-height box crops reference photos
+
+- **Symptom.** Eddie: "the image is cropped, it should be square" — a
+  product's uploaded reference photos visibly lost their top and bottom
+  edges in the Images gallery.
+- **Root cause.** `w-full h-32 object-cover` on a photo whose real aspect
+  ratio isn't that exact wide/short ratio center-crops away whatever
+  doesn't fit — invisible until someone compares the thumbnail against the
+  original. The same pattern (`w-full h-*` + `object-cover`) had been
+  copy-pasted across five separate image grids in Product Design (product
+  photos, brand reference images, generation thumbnails, template
+  source-image panels).
+- **Permanent fix.** `aspect-square` + `object-contain` on an `ivory-dark`
+  plate — the whole photo is always visible, never cropped, at the cost of
+  some empty margin on a non-square source. **MUST** use `object-contain`
+  (never `object-cover`) for any reference/product photo where fidelity to
+  the original matters — a generated or decorative image can tolerate a
+  crop; a photo someone is using to judge a real physical product cannot.
+  Found and fixed in all five spots at once, not just the one reported.
+
+## L-25 · A non-JSON 5xx from an edge function usually means "the platform gave up," not "the request was wrong" — safe to retry once, silently
+
+- **Symptom.** A Tweak instruction failed with `Request failed (500)`.
+  Retrying the **exact same** instruction immediately succeeded.
+- **Root cause.** The edge function's own error paths always return valid
+  JSON (`jsonRes()`); a non-JSON body on a failed response means something
+  upstream of that code killed the request — in this case, almost
+  certainly a Netlify edge-function execution-time cutoff tripped by
+  Gemini responding slowly that particular call, not a fault with the
+  request itself. Reproduced live against production with the identical
+  instruction to confirm this before treating it as a real fix rather than
+  a guess.
+- **Permanent fix.** `pdApiFetch()` (see **L-22**) now retries **once**,
+  silently, but only for that exact failure shape (non-JSON body + failed
+  status). A real 4xx/5xx with a proper JSON error body (bad input, access
+  denied, Gemini genuinely rejecting the request) is a real answer and is
+  **NOT** retried — retrying that would just waste a second Gemini call on
+  a failure that will recur. **MUST**, before adding a retry to any
+  failure path: confirm live that a bare retry of the *same* input actually
+  fixes it — a retry that papers over a deterministic bug just hides it
+  one layer deeper. (`src/lib/pdApi.ts`.)
+
+## L-26 · A new customer picker doesn't automatically inherit the `RETAIL_TAG` exclusion
+
+- **Symptom.** Eddie: "please ignore all the B2C customers for this" —
+  Product Design's "New Template" customer dropdown listed Retail/B2C
+  customers, even though the same exclusion already existed elsewhere
+  (`ProductDetail.jsx`'s "branded for" picker, the Dashboard digest).
+- **Root cause.** `RETAIL_TAG` (`src/domain/customer.js`) is a free-typed
+  tag, not a schema field or a query filter — every place that lists
+  customers for a B2B-only workflow has to remember to filter it out
+  itself. `realCustomers.ts`'s `listRealCustomers()` (Product Design's one
+  shared customer-list source) was written without it, because nothing
+  connects it to the two places that already had the exclusion.
+- **Permanent fix.** Filtered at that one shared source
+  (`listRealCustomers()`) rather than per call site, so every picker built
+  on it inherits the fix. **MUST**, when adding a new customer list/picker
+  for a workflow that is B2B-only by *intent* (a concept, a brand profile,
+  a corp-gift quote — not a transactional page like Invoices/Shipments,
+  where a real B2C customer legitimately belongs): check whether
+  `RETAIL_TAG` needs excluding, and prefer filtering at the shared list
+  function over the individual picker. Grep `RETAIL_TAG` first — it's not
+  applied automatically anywhere.
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
@@ -408,3 +531,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-09-10 | Added L-19 — loose component lines on an order (item code = a `range_components` code, not a figurine SKU) reserved no stock; `computeRequirements` only exploded through a matched Range BOM. Fix: direct component-code match → 1:1 requirement in `src/mrp.js`. Also: PU line `description` is now a growing `<textarea>` and prints with `white-space:pre-line` (line breaks preserved — reported by XiangXia). |
 | 2026-09-10 | Editable reserved quantity (XiangXia ask #2) — a reserved line's qty is now editable inline on the Component/Crystal/Packaging order-stock panels via `adjustReservedLine` (`orderStock.js`) + `EditableQty.jsx`. Movement key carries a per-line `adj_seq` so re-entering an earlier value can't collide with its earlier movement and get deduped by `postMovement`. Design record + landmines: `../plans/RESERVE-QTY-EDIT-AUDIT.md`. |
 | 2026-09-11 | Added L-20 — `graphify-out/merged-graph.html`'s hand-rolled vis-network view never disabled physics after the layout settled (graphify's own `graph.html` does), so the barnesHut solver ran on ~5,000 nodes every frame indefinitely while that tab was open. Fixed in `scripts/build-merged-html.py`. Also fixed: Corp Gift product save (`ProductForm.jsx`) had a bare `finally` with no `catch` — a failed write reset the button with nothing on screen; now shows the real error. |
+| 2026-09-20 | Added L-21 through L-26 from the V8.16 Product Design port + its post-launch fixes: Tailwind `content` glob missing `.ts`/`.tsx` silently dropped classes app-wide (L-21); a bare `res.json()` leaks a raw browser parser exception on a non-JSON response (L-22); a section that returns `null` when empty is an invisible, undiscoverable feature (L-23); `object-cover` on a short fixed-height box crops reference photos — use `object-contain` (L-24); a non-JSON 5xx from an edge function usually means the platform gave up, not that the request was wrong — confirmed live before adding a silent one-shot retry (L-25); a new B2B-only customer picker doesn't automatically inherit the `RETAIL_TAG` exclusion — it has to be added explicitly, ideally at the shared list source (L-26). |

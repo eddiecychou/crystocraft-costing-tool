@@ -74,6 +74,7 @@ wins on *facts*; skill wins on *rules and lessons*.
 | **`DESIGN-SYSTEM.md`** | The written spec of what's shipped (V2.5): token layer, component inventory + state matrix, WCAG contrast, the OpsCenter drift baseline, the V3 open-decision list | Changing tokens / component classes, or any V2.5→V3 work |
 | **`LESSONS-LEARNED.md`** | Every significant failure + permanent fix | "Fixing" anything familiar — and after any new incident |
 | **`SEO-CONTROL-PLANE.md`** | OC ⟷ DeepSeek Workbench contract: state store (`seo_state`/`seo_state_history`), the planned batch-review + `safeWrite` + reconciliation steps | Any work on the WordPress SEO / multilingual pipeline, or the `/seo-state` page |
+| **`ATELIER-ART-ENGINE.md`** | The Claude-as-Art-Director protocol for theming a real product around a client's brand — Technical Brief, Brand Deconstruction Framework, Atelier Style Library, Coordinate Correction feedback | Product Design tweak/apply-brand work — see §5 "Product Design" for where this is actually wired in |
 
 **Reference layer — repo root (authoritative on facts):**
 
@@ -276,10 +277,59 @@ the fast path from a request to the exact code.
   `enhance-image.js`.
 - **The step-by-step WORKFLOW that applies `ATELIER-ART-ENGINE.md`** to one
   concept at a time (customer branding elements → supplier product
-  specification → product concept spec → Gemini image prompt) **now lives
-  in its own separate repo, `Product Design`** (`~/Developer/Product Design`
-  — started life as this repo's own `Product Development/` folder, moved
-  out 2026-09-12). Start at that repo's own `README.md`.
+  specification → product concept spec → Gemini image prompt) is
+  **Product Design, below** — see that entry for where it actually lives now.
+
+### Product Design — brand-aware image-prompt workbench (V8.16)
+- **History:** started as this repo's own `Product Development/` folder, was
+  split out to a standalone Next.js repo (`~/Developer/Product Design`,
+  2026-09-12), then **folded back into this repo** under `/design/*`
+  (2026-09-18) rather than run as a second deployment/login. If a document
+  or a memory says "separate repo," it predates the fold-in — the code and
+  data are here now.
+- Pages: `src/pages/pd/*.tsx` (the one place `.tsx` exists in this
+  otherwise-`.jsx` app — Vite/SWC transpiles it, no type-check step) —
+  `Products.tsx` (home: Product Design Gallery + supplier-grouped catalogue),
+  `ProductDetail.tsx`, `ProductNew.tsx`/`ProductEdit.tsx`, `Templates.tsx`,
+  `TemplateDetail.tsx`, `TemplateNew.tsx`, `TemplateEdit.tsx` (sticky source-
+  image side-by-side with the field editor), `Generations.tsx`,
+  `CustomerBrand.tsx` (`/design/customers/:id/brand`), `SpecSheetNew.tsx`/
+  `SpecSheetDetail.tsx`. Mounted under `/design/*` specifically because this
+  app already owns `/products`, `/customers`, `/suppliers`, `/templates`.
+- Logic: `src/lib/firestore/*.ts` (not `src/domain/` — separate data layer,
+  see `../reference/DOMAIN-MODULES.md`'s own scope note), `src/lib/pdApi.ts`
+  (`pdApiFetch` — every `/api/pd-*` call goes through this; defensive JSON
+  parsing + one silent retry on a non-JSON 5xx, see **L-22**/**L-25**),
+  `src/lib/pdConcepts.ts` (`listApprovedConcepts` — shared by the global
+  gallery and `CustomerDetail.jsx`'s per-customer card), `src/lib/jsonPaths.ts`
+  (dot/bracket path get/set/delete for the structured field editor),
+  `src/lib/jsonHighlight.tsx` (the JSON syntax-colour tokenizer, shared by
+  the read-only and editable views).
+- Edge fns (all Gemini, all gated `product_design`, shared helper
+  `netlify/edge-functions/lib/pdGemini.js`): `pd-analyze-image`,
+  `pd-analyze-brand-image`, `pd-analyze-brand-website` (Gemini `url_context`,
+  no screenshot needed), `pd-apply-brand`, `pd-extract-elements`,
+  `pd-merge-elements`, `pd-tweak-json` (the Coordinate Correction method —
+  one specific change at a time, locked paths restored if the model drifts).
+- Collections: `pd_products`, `pd_customer_brands` (keyed by the **real**
+  `customers/{id}`), `pd_prompt_templates` (`status: draft|approved|archived`;
+  `type`/`parentTemplateId` record lineage from "Duplicate as new version" —
+  see `../reference/FIRESTORE-COLLECTIONS.md`'s Product Design section for
+  the full table), `pd_generations`, `pd_spec_sheet_templates` — all
+  `pd_`-prefixed to avoid colliding with this repo's own `products`/
+  `customers`/`templates`. Reads the real `customers`/`suppliers`
+  read-only (`realCustomers.ts`/`realSuppliers.ts`) — no `pd_customers`/
+  `pd_suppliers` exist. `realCustomers.ts` excludes `RETAIL_TAG` customers
+  (**L-21**) — every picker/lookup built on it inherits that for free.
+- Notes: a **concept** (`pd_prompt_templates`) is deliberately never mixed
+  with a real, costed `products/{id}` — no schema or UI link between them;
+  a concept becomes a real product only through the ordinary
+  Products/Components flow, by a human. "Duplicate as new version" (both
+  `TemplateDetail.tsx` and `TemplateEdit.tsx`) copies `promptJson` **and**
+  `lockedPaths` together — the whole point of locking a field is to protect
+  it across versions. Generated images and the source photo are downloadable
+  via `/api/image-proxy` (Storage sends no CORS header, so a raw `<a
+  download>` to it is silently ignored by the browser).
 
 ### ERP lookup (legacy JES, read-only)
 - Pages: `ErpLookup.jsx`, `SchemaAudit.jsx`, `ComponentCodeAudit.jsx`, `BankDetailsAudit.jsx` · Components: `ErpDocModal.jsx`, `ErpProductImport.jsx`
@@ -321,3 +371,4 @@ authoritative detail stays in the doc it points to. Update the Change Log below.
 | 2026-09-03 | V8.14 — **RBAC** entry rewritten for the flat `admin \| staff \| customer` + `modules[]` model (shim removed); new **i18n** entry (partial Simplified-Chinese supply/inventory UI: `src/i18n/`, `users/{uid}.ui_lang`, `scripts/i18n-translate.mjs`, per-print PO language toggle). See `PROJECT-PLAN.md` V8.14. |
 | 2026-09-03 | V8.14 code-review follow-up — edge-fn module keys corrected (AI/OCR-assist fns were mis-keyed to `quotes`; `erp.js`/`bank.js` per-entity tiers removed); `requireModule` now string-or-array. `../reference/API-REFERENCE.md` auth column + `ARCHITECTURE-RULES.md` §2 / `TECH-DEBT.md` updated. |
 | 2026-09-04 | **V8.14 CLOSED.** §5 CRM: new `CustomerBrand.jsx` page (`/customers/:id/brand`) — Brand Gallery + Proposal moved off `CustomerDetail`, which shows `BrandProposalCard`. §5 ERP: new `item_history` entity / `erp_item_sales_history` view + `PriceSummary`. `MARKETING-WORKFLOW.md` §4a: `enhance-image` `PROMPT_VERSION` + `ai_enhance` provenance + two prompt-writing rules. `LESSONS-LEARNED.md` L-15/16/17. `PROJECT-PLAN.md` "Current Status — V8.14 CLOSED" + "Where V8.15 starts". |
+| 2026-09-20 | **V8.16 — Product Design folded back into this repo** (was a standalone Next.js repo since 2026-09-12; the Customizer §5 entry's "moved out to its own repo" note was now stale and is corrected). Added full §5 **Product Design** entry (pages, `src/lib/{pdApi,pdConcepts,jsonPaths,jsonHighlight}`, the 7 `pd-*` edge fns, the `pd_*` collections). §3 table: added the `ATELIER-ART-ENGINE.md` row it was missing. `ARCHITECTURE-RULES.md` §2: module-key count 17→18 (`product_design`). `LESSONS-LEARNED.md` L-21 through L-26 (Tailwind `content` glob per-extension gap, leaked `res.json()` exceptions, invisible-when-empty sections, `object-cover` cropping reference photos, the platform-gave-up-not-a-real-error 5xx retry pattern, `RETAIL_TAG` not auto-inheriting into a new picker). Full session narrative in `PROJECT-PLAN.md`'s V8.16 entries. |
