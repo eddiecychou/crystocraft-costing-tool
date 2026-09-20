@@ -370,6 +370,20 @@ production to reproduce #2) before this commit.
    link already used for generations, right under the photo next to
    Copy JSON — the two together are exactly what that external workflow
    needs. Verified live: link renders with the correct proxied Storage URL.
+7. **Edit Template had no source photo at all** (Eddie: "when I edit the
+   parameter, I need to be able to see the image side by side... so I know
+   which parameter relates to which") — `TemplateEdit.tsx` never fetched
+   the product or showed its source image; only `TemplateDetail.tsx` (the
+   read-only view) did. Added the product fetch and restructured the page
+   into a two-column layout (widened `max-w-3xl`→`max-w-6xl`): the source
+   photo + Download link pinned in a `sticky top-6` left column, the
+   existing field editor unchanged on the right. `sticky` (not a fixed
+   split-screen) so the image stays in view while the field list — often
+   dozens of rows across several sections — scrolls past beside it.
+   Verified live: confirmed against the real scroll container (`#main-scroll`,
+   not `window` — this app's own dvh-driven scroll shell) that the image's
+   `getBoundingClientRect().top` stays pinned at the `top-6` offset as the
+   container scrolls, rather than assuming from CSS alone.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 

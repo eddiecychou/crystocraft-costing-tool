@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { pdApiFetch } from "@/lib/pdApi";
 import { getTemplate, updateTemplate, duplicateTemplate } from "@/lib/firestore/promptTemplates";
+import { getProduct } from "@/lib/firestore/products";
 import { listRealCustomers } from "@/lib/firestore/realCustomers";
 import { customerDisplayName, type RealCustomer } from "@/types/customer";
 import type { PromptTemplate } from "@/types/promptTemplate";
+import type { Product } from "@/types/product";
 import { flattenLeaves, getPath, setPath, deletePath, type LeafRow } from "@/lib/jsonPaths";
 import { storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -32,6 +34,7 @@ export default function EditTemplatePage() {
   const navigate = useNavigate();
 
   const [template, setTemplate] = useState<PromptTemplate | null | "loading">("loading");
+  const [product, setProduct] = useState<Product | null>(null);
   const [customers, setCustomers] = useState<RealCustomer[]>([]);
   const [name, setName] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -69,6 +72,7 @@ export default function EditTemplatePage() {
         setPromptJson(t.promptJson);
         setRawText(JSON.stringify(t.promptJson, null, 2));
         setLockedPaths(new Set(t.lockedPaths || []));
+        getProduct(t.productId).then(setProduct);
       }
     });
     listRealCustomers().then(setCustomers);
@@ -303,9 +307,43 @@ export default function EditTemplatePage() {
   if (template === "loading") return <main className="p-10 text-ink-60">Loading…</main>;
   if (!template) return <main className="p-10 text-ink-60">Template not found.</main>;
 
+  const sourceImage = product?.images.find((img) => img.id === template.sourceImageId);
+
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <h1 className="text-2xl mb-6">Edit Template</h1>
+      {/* Source photo pinned alongside the field editor (Eddie, 2026-09-20:
+          "I need to be able to see the image side by side... so I know
+          which parameter relates to which"). `sticky` keeps it in view
+          while the field list — often dozens of rows across several
+          sections — scrolls past on the right; `self-start` stops the grid
+          item stretching to the (much taller) form's height, which would
+          otherwise cancel the sticky effect. */}
+      <div className="grid grid-cols-[280px_1fr] gap-6 items-start">
+        <div className="sticky top-6 self-start">
+          {sourceImage ? (
+            <>
+              <div className="card overflow-hidden aspect-square bg-ivory-dark flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={sourceImage.url} alt="" className="max-w-full max-h-full object-contain" />
+              </div>
+              <a
+                href={`/api/image-proxy?url=${encodeURIComponent(sourceImage.url)}`}
+                download={`${template.name}.jpg`}
+                className="block mt-1.5 text-2xs text-brand-600 uppercase tracking-wide hover:underline"
+              >
+                Download
+              </a>
+            </>
+          ) : (
+            <div className="card p-4 text-center">
+              <p className="text-xs text-ink-60">No source image linked.</p>
+            </div>
+          )}
+          {product && (
+            <p className="text-2xs text-ink-60 mt-2 truncate" title={product.name}>{product.name}</p>
+          )}
+        </div>
       <form onSubmit={handleSubmit} className="card p-6 flex flex-col gap-4">
         <div>
           <label className="label" htmlFor="name">Name</label>
@@ -585,6 +623,7 @@ export default function EditTemplatePage() {
           <Link to={`/design/templates/${id}`} className="btn btn-secondary">Cancel</Link>
         </div>
       </form>
+      </div>
     </main>
   );
 }
