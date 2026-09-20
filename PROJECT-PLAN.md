@@ -426,6 +426,36 @@ production to reproduce #2) before this commit.
     drag-over visual state) rather than inventing a new one. Verified live:
     dispatching a real `dragover` event flips the zone to its
     `border-brand-400 bg-brand-50 scale-[1.01]` highlighted state.
+11. **"Replace Whole JSON" + persistent, removable reference-image gallery**
+    (Eddie's real workflow: start from the supplier's photo → JSON, take
+    that + the JSON into Gemini Plus externally, iterate there over several
+    loops, then bring the *latest* generated image back — "instead of
+    adding the field to the JSON... can I replace the whole JSON with it?
+    So there are two options" — then, mid-turn: "the uploaded images also
+    needs to stay on the screen, and they can be removed as well") —
+    reshaped `TemplateEdit.tsx`'s single-purpose "Extract Elements" upload
+    into a **Reference Images** gallery: upload once (drag-and-drop, and
+    now `multiple`), each image stays visible as a persistent thumbnail
+    with three actions — **Extract Elements** (existing, additive
+    candidates), **Replace Whole JSON** (new — re-analyzes the image from
+    scratch via `pd-analyze-image` and replaces `promptJson` entirely,
+    restoring any locked field to its prior value the same way `Tweak`
+    already does, confirmed with a destructive-action prompt), and
+    **Remove** (drops it from the list; best-effort deletes the
+    `pd_extraction_scratch` Storage object, swallowing the error since it's
+    genuinely scratch space). Reuses the existing `previousJson`/`Undo`
+    mechanism for both Tweak and Replace, rather than building a second
+    undo path. Also widened `TemplateDetail.tsx` (the read-only view) to
+    `max-w-6xl` and made its Source Image panel sticky too, matching the
+    fix already shipped for the Edit page, since Eddie's "I find it very
+    difficult to relate the parameters to the image" complaint applies to
+    both. Verified live end-to-end: uploaded a synthetic test image,
+    confirmed it persists as a thumbnail with all three buttons; **Replace
+    Whole JSON** genuinely replaced every field (`materials`, `shape`,
+    `color_palette[0]` etc. all changed to describe the new image, not the
+    original pencil case); **Undo** correctly restored the original JSON
+    including its locked fields; **Remove** cleared the thumbnail from the
+    list.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 

@@ -8,9 +8,9 @@ import { listRealCustomers } from "@/lib/firestore/realCustomers";
 import { customerDisplayName, type RealCustomer } from "@/types/customer";
 import type { PromptTemplate } from "@/types/promptTemplate";
 import type { Product } from "@/types/product";
-import { flattenLeaves, getPath, setPath, deletePath, type LeafRow } from "@/lib/jsonPaths";
+import { flattenLeaves, getPath, setPath, deletePath, deepEqual, type LeafRow } from "@/lib/jsonPaths";
 import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import BrandQuickView from "@/components/BrandQuickView";
 import JsonHighlightedTextarea from "@/components/JsonHighlightedTextarea";
 
@@ -45,7 +45,8 @@ export default function EditTemplatePage() {
   const [lockedPaths, setLockedPaths] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
-  const [extractDragOver, setExtractDragOver] = useState(false);
+  const [uploadDragOver, setUploadDragOver] = useState(false);
+  const [uploadedRefs, setUploadedRefs] = useState<{ id: string; url: string; name: string; storagePath: string }[]>([]);
 
   const [rawText, setRawText] = useState("");
   const [rawMode, setRawMode] = useState(false);
@@ -62,6 +63,17 @@ export default function EditTemplatePage() {
   const [extractError, setExtractError] = useState("");
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const [appliedIdx, setAppliedIdx] = useState<Set<number>>(new Set());
+
+  // "Replace whole JSON" — the second route alongside Extract Elements
+  // (Eddie, 2026-09-20): after several iteration loops in Gemini Plus
+  // outside this app, the LATEST generated image is often a more precise
+  // reference than the current JSON describes. Re-analyzing it from
+  // scratch and replacing the whole promptJson is a different move from
+  // Extract's per-field candidates — this is "start over from this image,"
+  // not "suggest a few fields."
+  const [replacing, setReplacing] = useState(false);
+  const [replaceError, setReplaceError] = useState("");
+  const [replaceNote, setReplaceNote] = useState("");
 
   useEffect(() => {
     getTemplate(id).then((t) => {
@@ -258,16 +270,47 @@ export default function EditTemplatePage() {
     }
   }
 
-  async function handleExtractFile(file: File | null) {
-    if (!file) return;
+  // Uploaded reference images stay visible as a small gallery (Eddie,
+  // 2026-09-20: "the uploaded images also needs to stay on the screen, and
+  // they can be removed as well") instead of vanishing the moment an action
+  // runs — the point is uploading ONE iterated image once, then choosing
+  // Extract Elements or Replace Whole JSON on it (maybe both, maybe again
+  // later), not re-uploading per action. Storage path is still the
+  // pre-existing pd_extraction_scratch/{id}/ — genuinely scratch (not part
+  // of any saved record), so Remove also best-effort deletes the Storage
+  // object rather than just hiding it from the list.
+  async function uploadReferenceFiles(files: FileList | File[] | null) {
+    if (!files || files.length === 0) return;
+    for (const file of Array.from(files)) {
+      const refId = crypto.randomUUID();
+      const storagePath = `pd_extraction_scratch/${id}/${refId}-${file.name}`;
+      const scratchRef = ref(storage, storagePath);
+      await uploadBytes(scratchRef, file);
+      const url = await getDownloadURL(scratchRef);
+      setUploadedRefs((prev) => [...prev, { id: refId, url, name: file.name, storagePath }]);
+    }
+  }
+
+  function removeUploadedRef(refId: string) {
+    setUploadedRefs((prev) => {
+      const target = prev.find((r) => r.id === refId);
+      if (target) deleteObject(ref(storage, target.storagePath)).catch(() => {});
+      return prev.filter((r) => r.id !== refId);
+    });
+  }
+
+  function handleUploadDrop(e: DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    setUploadDragOver(false);
+    uploadReferenceFiles(e.dataTransfer.files);
+  }
+
+  async function runExtract(imageUrl: string) {
     setExtracting(true);
     setExtractError("");
     setCandidates(null);
     setAppliedIdx(new Set());
     try {
-      const scratchRef = ref(storage, `pd_extraction_scratch/${id}/${crypto.randomUUID()}-${file.name}`);
-      await uploadBytes(scratchRef, file);
-      const imageUrl = await getDownloadURL(scratchRef);
       const data = await pdApiFetch("/api/pd-extract-elements", { imageUrl, currentJson: promptJson });
       setCandidates(data.candidates);
     } catch (e) {
@@ -277,10 +320,39 @@ export default function EditTemplatePage() {
     }
   }
 
-  function handleExtractDrop(e: DragEvent<HTMLLabelElement>) {
-    e.preventDefault();
-    setExtractDragOver(false);
-    handleExtractFile(e.dataTransfer.files?.[0] || null);
+  async function runReplace(imageUrl: string) {
+    const ok = window.confirm(
+      "Replace the ENTIRE Prompt JSON with a fresh analysis of this image? " +
+        "Locked fields will be restored to their current values afterward. This can be undone with the Undo button that appears next.",
+    );
+    if (!ok) return;
+    setReplacing(true);
+    setReplaceError("");
+    setReplaceNote("");
+    try {
+      const data = await pdApiFetch("/api/pd-analyze-image", { imageUrl });
+      let next = data.analysisJson as Record<string, unknown>;
+      // Same restore-drifted-locks pattern as the Tweak call — a full
+      // re-analysis has no idea which fields the owner locked, so lock
+      // enforcement happens here on the client, not the model.
+      let restoredCount = 0;
+      for (const path of lockedPaths) {
+        const before = getPath(promptJson, path);
+        if (before === undefined) continue;
+        if (!deepEqual(getPath(next, path), before)) {
+          next = setPath(next, path, before);
+          restoredCount++;
+        }
+      }
+      setPreviousJson(promptJson);
+      setPromptJson(next);
+      setRawText(JSON.stringify(next, null, 2));
+      setReplaceNote(restoredCount > 0 ? `Replaced. ${restoredCount} locked field${restoredCount === 1 ? "" : "s"} restored.` : "Replaced.");
+    } catch (e) {
+      setReplaceError(e instanceof Error ? e.message : "Analysis failed");
+    } finally {
+      setReplacing(false);
+    }
   }
 
   function applyCandidate(c: Candidate, idx: number) {
@@ -531,41 +603,87 @@ export default function EditTemplatePage() {
           )}
         </div>
 
-        {/* iii) Extract elements from an image, click to apply into open fields */}
+        {/* iii) Reference images — upload once, stay visible, act on them
+            with either of two routes. Eddie, 2026-09-20: after iterating on
+            an image externally in Gemini Plus, the latest version is often a
+            more precise reference than the current JSON describes — either
+            pull a few candidate fields from it (Extract), or start the whole
+            JSON over from it (Replace), locked fields protected either way. */}
         <div className="card p-4 bg-ivory-mid">
-          <label className="label">Extract Elements From Image</label>
+          <label className="label">Reference Images</label>
           <p className="text-xs text-ink-60 mb-2">
-            Upload a reference photo — Gemini pulls out colors, motifs, style
-            and material candidates and suggests where each fits in the JSON
-            above. Nothing is applied until you click one. Logos/on-object
-            text never come back as drawable content — only as a suggested
-            reserved area.
+            Upload a photo — the original from the supplier, or a later
+            iteration you generated in Gemini. Choose <strong>Extract
+            Elements</strong> to pull a few candidate fields into the JSON
+            above (nothing applied until you click one), or <strong>Replace
+            Whole JSON</strong> to re-analyze it from scratch and start over
+            (locked fields are restored afterward either way).
           </p>
           {/* Same drag-and-drop dropzone pattern as ImageGallery.jsx's own
               upload label — a <label> wrapping a hidden file input, so
               dropping or clicking both work through the one element. */}
           <label
             className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-none p-4 cursor-pointer transition-colors
-              ${extracting ? "border-brand-300 bg-brand-50 cursor-wait"
-                : extractDragOver ? "border-brand-400 bg-brand-50 scale-[1.01]"
+              ${uploadDragOver ? "border-brand-400 bg-brand-50 scale-[1.01]"
                 : "border-warm-grey hover:border-brand-300 hover:bg-brand-50"}`}
-            onDragOver={(e) => { e.preventDefault(); setExtractDragOver(true); }}
-            onDragLeave={() => setExtractDragOver(false)}
-            onDrop={handleExtractDrop}
+            onDragOver={(e) => { e.preventDefault(); setUploadDragOver(true); }}
+            onDragLeave={() => setUploadDragOver(false)}
+            onDrop={handleUploadDrop}
           >
-            <span className="text-ink-60">{extractDragOver ? <FolderOpen size={20} /> : <Paperclip size={20} />}</span>
+            <span className="text-ink-60">{uploadDragOver ? <FolderOpen size={20} /> : <Paperclip size={20} />}</span>
             <span className="text-sm text-ink-70">
-              {extracting ? "Analyzing…" : extractDragOver ? "Drop to analyze" : "Upload a photo, or drag & drop"}
+              {uploadDragOver ? "Drop to add" : "Upload a photo, or drag & drop"}
             </span>
             <input
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
-              onChange={(e) => handleExtractFile(e.target.files?.[0] || null)}
-              disabled={extracting}
+              onChange={(e) => { uploadReferenceFiles(e.target.files); e.target.value = ""; }}
             />
           </label>
+
+          {uploadedRefs.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+              {uploadedRefs.map((r) => (
+                <div key={r.id} className="card overflow-hidden">
+                  <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={r.url} alt="" className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <div className="p-1.5 flex flex-col gap-1">
+                    <button
+                      type="button"
+                      className="text-2xs text-ink-60 uppercase tracking-wide hover:text-ink text-left disabled:text-ink-30"
+                      onClick={() => runExtract(r.url)}
+                      disabled={extracting || replacing}
+                    >
+                      {extracting ? "Analyzing…" : "Extract Elements"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-2xs text-ink-60 uppercase tracking-wide hover:text-ink text-left disabled:text-ink-30"
+                      onClick={() => runReplace(r.url)}
+                      disabled={extracting || replacing}
+                    >
+                      {replacing ? "Analyzing…" : "Replace Whole JSON"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-2xs text-red-700 uppercase tracking-wide hover:underline text-left"
+                      onClick={() => removeUploadedRef(r.id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {extractError && <p className="text-xs text-red-700 mt-2">{extractError}</p>}
+          {replaceError && <p className="text-xs text-red-700 mt-2">{replaceError}</p>}
+          {replaceNote && <p className="text-xs text-emerald-700 mt-2">{replaceNote}</p>}
           {candidates && candidates.length > 0 && (
             <div className="flex flex-col gap-1.5 mt-3">
               {candidates.map((c, idx) => {

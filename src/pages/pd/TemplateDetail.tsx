@@ -138,7 +138,7 @@ export default function TemplateDetailPage() {
   const sourceImage = product?.images.find((img) => img.id === template.sourceImageId);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <p className="text-xs text-ink-60 mb-2">
         <Link to="/design/templates" className="hover:underline">Templates</Link> /{" "}
         {product && (
@@ -181,8 +181,13 @@ export default function TemplateDetailPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-[160px_1fr] gap-6">
-        <div>
+      {/* Widened (was max-w-3xl / a 160px image column) and the image column
+          made sticky (Eddie, 2026-09-20: "I need to see the image side by
+          side... I find it very difficult to relate the parameters to the
+          image") — same fix already shipped for TemplateEdit.tsx, applied
+          here too since this read-only JSON view can be just as long. */}
+      <div className="grid grid-cols-[280px_1fr] gap-6 items-start">
+        <div className="sticky top-6 self-start">
           <h2 className="eyebrow mb-2">Source Image</h2>
           {sourceImage ? (
             <>
