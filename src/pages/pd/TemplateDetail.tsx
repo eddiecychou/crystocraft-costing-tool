@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useParams, useNavigate } from "react-router-dom";
+import { collection, addDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/lib/firebase";
 import { getTemplate, deleteTemplate, duplicateTemplate } from "@/lib/firestore/promptTemplates";
-import { getProduct, addProductImage } from "@/lib/firestore/products";
+import { getProduct } from "@/lib/firestore/products";
 import { getRealCustomer } from "@/lib/firestore/realCustomers";
 import {
   listGenerationsForTemplate,
@@ -41,8 +44,8 @@ export default function TemplateDetailPage() {
   const [duplicating, setDuplicating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingGenId, setDeletingGenId] = useState<string | null>(null);
-  const [galleryAddingId, setGalleryAddingId] = useState<string | null>(null);
-  const [galleryAddedIds, setGalleryAddedIds] = useState<Set<string>>(new Set());
+  const [creatingProductGenId, setCreatingProductGenId] = useState<string | null>(null);
+  const [createProductError, setCreateProductError] = useState("");
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,27 +86,71 @@ export default function TemplateDetailPage() {
     setDeletingGenId(null);
   }
 
-  // Copies the generated image's actual bytes into the product's own
-  // pd_products/{id}/ Storage folder as a real ProductImage (via the same
-  // addProductImage() an ordinary upload uses) — not just re-pointing at the
-  // generation's existing Storage file, which would break the product's
-  // photo the moment that generation is later deleted (deleteGeneration
-  // removes its Storage object). Fetched through /api/image-proxy for the
-  // same cross-origin reason as the PNG export and Download link above.
-  async function handleAddToGallery(g: Generation) {
-    if (!product) return;
-    setGalleryAddingId(g.id);
+  // "+ Add to Product Gallery" used to copy the image into `product` — the
+  // pd_products design-source doc this template started from — which isn't
+  // a real sellable catalogue item, just Product Design's own working
+  // material. Eddie, 2026-09-20: "it doesn't do anything now... it needs to
+  // have a button to add new to corporate gift or figurine product." So
+  // this now creates a REAL product in the `products` (Corp Gifts) or
+  // `range_products` (Figurine Gifts) collection instead, seeded with this
+  // generation's image, then hands off to that catalogue's own edit page —
+  // ProductForm/RangeForm — for the rest (category, price, components…),
+  // which this page has no business collecting.
+  //
+  // Corp Gift: writes the image straight into products/{id}/images the same
+  // way ImageGallery's own upload does (file_url/storage_path/sort_order/
+  // visibility:'internal'), then sets heroImage — see ImageGallery.jsx's
+  // uploadFiles and ProductDetail.jsx's handleHeroChange for the shapes
+  // this mirrors.
+  async function handleCreateCorpGift(g: Generation) {
+    if (template === "loading" || !template) return;
+    const name = window.prompt("New Corp Gift product name:", template.name);
+    if (!name || !name.trim()) return;
+    setCreatingProductGenId(g.id);
+    setCreateProductError("");
     try {
       const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(g.resultImageUrl)}`);
       const blob = await res.blob();
-      const file = new File([blob], `generation-${g.id}.jpg`, { type: blob.type || "image/jpeg" });
-      await addProductImage(product.id, file, {
-        caption: template !== "loading" && template ? template.name : undefined,
+
+      const productRef = await addDoc(collection(db, "products"), {
+        name: name.trim(), product_code: "", category: "", status: "concept",
+        description: "", marketing_description: "", assembly_notes: "", videos: [],
+        is_new: false, customizer_type: "", active: true, heroImage: null,
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
-      setGalleryAddedIds((prev) => new Set(prev).add(g.id));
+
+      const path = `products/${productRef.id}/images/${Date.now()}_1.jpg`;
+      const sRef = storageRef(storage, path);
+      await uploadBytes(sRef, blob, { contentType: blob.type || "image/jpeg" });
+      const url = await getDownloadURL(sRef);
+      await addDoc(collection(db, "products", productRef.id, "images"), {
+        file_url: url, storage_path: path, file_name: `generation-${g.id}.jpg`,
+        type: "hero", orientation: "square", caption: template.name,
+        visibility: "internal", sort_order: 0, uploaded_at: serverTimestamp(),
+      });
+      await updateDoc(doc(db, "products", productRef.id), { heroImage: url });
+
+      navigate(`/products/${productRef.id}`);
+    } catch (err) {
+      setCreateProductError(err instanceof Error ? err.message : "Could not create the product — please try again.");
     } finally {
-      setGalleryAddingId(null);
+      setCreatingProductGenId(null);
     }
+  }
+
+  // Figurine Gifts (range_products) are a much deeper shape than a corp
+  // gift — per-variant crystal/plating fields, packing, a plating stock
+  // pool — that this page has no context to fill in correctly, and a
+  // generic Product Design photo doesn't map onto any single one of those
+  // per-variant image slots anyway. So this hands off to RangeForm's own
+  // "new" flow with the name/description prefilled via the query params it
+  // already reads (see RangeForm.jsx's blankForm/searchParams) rather than
+  // hand-writing a range_products doc here; Eddie attaches the photo to the
+  // right variant himself once he's picked plating/crystal for it.
+  function handleCreateFigurine() {
+    if (template === "loading" || !template) return;
+    const params = new URLSearchParams({ description: template.name });
+    navigate(`/range/new?${params.toString()}`);
   }
 
   async function handleCopy() {
@@ -281,6 +328,7 @@ export default function TemplateDetailPage() {
         the result here to keep it with this template&rsquo;s brand and
         customer context.
       </p>
+      {createProductError && <p className="text-xs text-red-700 mb-4">{createProductError}</p>}
 
       {generations.length === 0 ? (
         <div className="card p-8 text-center">
@@ -338,16 +386,26 @@ export default function TemplateDetailPage() {
                     </button>
                   )}
                 </div>
-                {product && (
-                  <button
-                    type="button"
-                    className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline disabled:text-ink-30 disabled:cursor-not-allowed"
-                    disabled={galleryAddingId === g.id || galleryAddedIds.has(g.id)}
-                    onClick={() => handleAddToGallery(g)}
-                    title={`Copy this image into ${product.name}'s own photo gallery`}
-                  >
-                    {galleryAddingId === g.id ? "Adding…" : galleryAddedIds.has(g.id) ? "Added to gallery ✓" : "+ Add to Product Gallery"}
-                  </button>
+                {(g.status === "success" || g.status === "approved") && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline disabled:text-ink-30 disabled:cursor-not-allowed"
+                      disabled={creatingProductGenId === g.id}
+                      onClick={() => handleCreateCorpGift(g)}
+                      title="Create a new Corp Gift catalogue product seeded with this image"
+                    >
+                      {creatingProductGenId === g.id ? "Creating…" : "+ New Corp Gift"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-2xs text-ink-60 uppercase tracking-wide self-start hover:text-ink hover:underline"
+                      onClick={handleCreateFigurine}
+                      title="Start a new Figurine Gift product — you'll attach the photo there once plating/crystal are picked"
+                    >
+                      + New Figurine
+                    </button>
+                  </div>
                 )}
                 <select
                   className="input text-2xs py-1"

@@ -325,9 +325,16 @@ the fast path from a request to the exact code.
   `pd_suppliers` exist. `realCustomers.ts` excludes `RETAIL_TAG` customers
   (**L-21**) — every picker/lookup built on it inherits that for free.
 - Notes: a **concept** (`pd_prompt_templates`) is deliberately never mixed
-  with a real, costed `products/{id}` — no schema or UI link between them;
-  a concept becomes a real product only through the ordinary
-  Products/Components flow, by a human. "Duplicate as new version" (both
+  with a real, costed `products/{id}` — no schema or UI link between them.
+  `TemplateDetail.tsx`'s **"+ New Corp Gift"** / **"+ New Figurine"** buttons
+  (V8.16, replacing a dead "+ Add to Product Gallery" that only copied into
+  the design-source `pd_products` doc — Eddie: "it doesn't do anything now")
+  create the real catalogue doc and hand off to `ProductForm`/`RangeForm`'s
+  own edit page for everything this page has no business collecting
+  (category, price, components, plating/crystal); a human still finishes
+  the product from there, same as the ordinary Products/Components flow —
+  this just seeds the name + hero photo instead of starting from nothing.
+  "Duplicate as new version" (both
   `TemplateDetail.tsx` and `TemplateEdit.tsx`) copies `promptJson` **and**
   `lockedPaths` together — the whole point of locking a field is to protect
   it across versions. Generated images and the source photo are downloadable

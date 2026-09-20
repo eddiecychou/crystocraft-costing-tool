@@ -475,6 +475,35 @@ production to reproduce #2) before this commit.
     real, confirmed "Reference Images (1)" appeared on the Detail page
     immediately, confirmed it was still there on a fresh page load of Edit,
     then removed it and saved again to leave no test data behind.
+13. **"Add to Product Gallery" was a dead end** (Eddie: "I think it is wrong
+    and it doesn't do anything now. For this approved product design, it
+    needs to have a button to add new to corporate gift or figurine
+    product.") — the per-generation button on `TemplateDetail.tsx` copied
+    the image into `product` — the `pd_products` design-source doc this
+    template was created from — which is Product Design's own working
+    material, not a real sellable catalogue item, so nothing downstream
+    (Corp Gifts, Figurine Gifts) ever saw it. Replaced with two real
+    actions: **"+ New Corp Gift"** creates an actual `products` doc
+    (`status: 'concept'`, the same shape `ProductForm.jsx`'s "New Product"
+    writes), uploads the generation's image into its `images` subcollection
+    exactly the way `ImageGallery.jsx`'s own upload does (`file_url` /
+    `storage_path` / `visibility: 'internal'` / `sort_order`), sets it as
+    `heroImage`, and navigates straight to that product's real edit page —
+    prompts for a name (defaulting to the template name) since that's the
+    one required field `ProductForm` has. **"+ New Figurine"** hands off to
+    `RangeForm`'s own `/range/new` flow instead of hand-writing a
+    `range_products` doc — that collection's shape (per-variant
+    crystal/plating fields, packing, a plating-stock pool) is much deeper
+    than a corp gift and a generic design photo doesn't map onto any single
+    one of its per-variant image slots, so this only prefills the
+    `description` query param `RangeForm` already reads and lets Eddie
+    attach the photo to the right variant himself once plating/crystal are
+    picked. Verified live: created a real Corp Gift product from the
+    approved "Pencil Stationery Case" pouch generation shown in Eddie's
+    screenshot, confirmed the image actually landed in Storage (200 on the
+    image-proxy fetch) and the product doc got `heroImage` set, then deleted
+    the test product; separately confirmed `/range/new?description=...`
+    prefills correctly with no console errors.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
