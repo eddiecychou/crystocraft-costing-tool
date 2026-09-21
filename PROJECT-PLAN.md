@@ -585,6 +585,25 @@ production to reproduce #2) before this commit.
     testing) now shows "✓ Linked to Pencil Stationery Case." Kept the
     script in the repo (safe to re-run — skips anything already linked) in
     case more pre-#15 links turn up.
+17. **Figurine gallery images (Bug report from a screenshot: "I can't
+    download the images from the figurine range product")** — Chrome showed
+    "無法在網站上擷取檔案" (couldn't retrieve the file from the site) for two
+    images on "Guardian Angel with Crystal Bible." Root cause:
+    `netlify/edge-functions/download-image.js`'s SSRF-hardening allowlist
+    (bug-fix pack A-02) only ever allowed Firebase Storage hosts, but that
+    figurine's gallery photos are `crystocraft.com/wp-content/…` URLs —
+    pasted via `RangeForm.jsx`'s existing "+ URL" button, imported from the
+    WordPress catalogue blog. `image-proxy.js` (used to *display* these same
+    photos) already carries an explicit `crystocraft.com`/`*.crystocraft.com`
+    carve-out for exactly this reason; `download-image.js`'s own SSRF fix
+    was never extended to match, so every such photo 403'd the moment
+    someone tried to actually download it, even though it displayed fine.
+    Added the identical carve-out to `download-image.js` — it's a fixed,
+    known first-party host, not user-controlled, so it doesn't reopen the
+    SSRF hole the bucket-scoping closed for everything else. Verified live:
+    fetched `/api/download-image` directly for the exact failing URL — 200,
+    real JPEG bytes, correct `Content-Disposition: attachment` — and
+    confirmed an arbitrary non-crystocraft host is still 403'd.
 
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 

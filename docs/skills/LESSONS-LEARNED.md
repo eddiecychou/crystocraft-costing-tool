@@ -525,6 +525,31 @@
   exists but the field is loaded into `useState` on mount and only written
   back on Save, assume the same rule applies unless proven otherwise.
 
+## L-28 · Two edge functions that proxy the same URLs need the same host allowlist — a security fix in one can silently break the other
+
+- **Symptom.** Eddie, from a screenshot of Chrome's download tray: "I can't
+  download the images from the figurine range product" — Chrome showed
+  "無法在網站上擷取檔案" (couldn't retrieve the file from the site) for
+  gallery photos on a figurine product, even though the same photos
+  displayed fine on the page.
+- **Root cause.** `netlify/edge-functions/download-image.js` and
+  `image-proxy.js` both exist to fetch the *same* class of URLs server-side
+  (one to force a download, one to sidestep CORS for display/canvas use) —
+  but only `image-proxy.js` was ever given the `crystocraft.com`/
+  `*.crystocraft.com` carve-out for WordPress-hosted figurine gallery
+  photos (`RangeForm.jsx`'s "+ URL" button pastes exactly these). When
+  `download-image.js` was SSRF-hardened (bug-fix pack A-02) to an
+  allowlist of Firebase Storage hosts only, nobody re-checked its sibling
+  proxy's allowlist for parity, so a URL that displays fine now 403s the
+  moment the same image is downloaded.
+- **Permanent fix.** Added the identical `crystocraft.com` carve-out to
+  `download-image.js` — same host, same reasoning as `image-proxy.js`,
+  still 403ing every other arbitrary host. **MUST**, when hardening or
+  changing the host allowlist on one of a pair of URL-fetching edge
+  functions serving the same data (a display proxy and a download-forcing
+  proxy are the recurring pair here): grep for the other one and check its
+  allowlist actually matches, rather than assuming they're already in sync.
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
@@ -565,3 +590,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-09-11 | Added L-20 — `graphify-out/merged-graph.html`'s hand-rolled vis-network view never disabled physics after the layout settled (graphify's own `graph.html` does), so the barnesHut solver ran on ~5,000 nodes every frame indefinitely while that tab was open. Fixed in `scripts/build-merged-html.py`. Also fixed: Corp Gift product save (`ProductForm.jsx`) had a bare `finally` with no `catch` — a failed write reset the button with nothing on screen; now shows the real error. |
 | 2026-09-20 | Added L-21 through L-26 from the V8.16 Product Design port + its post-launch fixes: Tailwind `content` glob missing `.ts`/`.tsx` silently dropped classes app-wide (L-21); a bare `res.json()` leaks a raw browser parser exception on a non-JSON response (L-22); a section that returns `null` when empty is an invisible, undiscoverable feature (L-23); `object-cover` on a short fixed-height box crops reference photos — use `object-contain` (L-24); a non-JSON 5xx from an edge function usually means the platform gave up, not that the request was wrong — confirmed live before adding a silent one-shot retry (L-25); a new B2B-only customer picker doesn't automatically inherit the `RETAIL_TAG` exclusion — it has to be added explicitly, ideally at the shared list source (L-26). |
 | 2026-09-21 | Added L-27 — a first pass at "add a Product Design image to an existing figurine product" wrote straight to `range_products.gallery[]` via `arrayUnion`, missing `RangeForm.jsx`'s existing "only this form writes gallery[]" rule (a stale open tab's Save would silently clobber it); caught during live verification by inspecting the actual `<img>` list, not by trusting the UI. Fixed by routing through the form via a new `addGalleryUrl`/`addGalleryCaption` query-param prefill instead of a direct write. |
+| 2026-09-21 | Added L-28 — `download-image.js`'s SSRF-hardened allowlist (Storage hosts only) was never given the `crystocraft.com` carve-out its sibling `image-proxy.js` already has for WordPress-hosted figurine gallery photos, so those photos displayed fine but 403'd on download. Added the matching carve-out. |

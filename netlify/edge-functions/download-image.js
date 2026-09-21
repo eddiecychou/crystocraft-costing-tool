@@ -17,14 +17,26 @@
 // allowed host+bucket closes the hole without breaking any of them. No
 // Content-Type allowlist: brand-gallery assets are deliberately non-image
 // too (.ai/.eps/.pdf/.pptx — see customerAssets.js's cannotRenderAsImage).
+//
+// FIXED (2026-09-21): that allowlist missed a real, existing caller —
+// RangeForm.jsx's "+ URL" lets a figurine gallery photo point at our own
+// WordPress site (crystocraft.com/wp-content/…, imported from the
+// catalogue blog), which image-proxy.js has allowed for the same reason
+// since before this file's own SSRF fix. Eddie: "I can't download the
+// images from the figurine range product" — every such photo 403'd here
+// even though it displays fine, because this file's allowlist was never
+// extended to match. Added the same crystocraft.com carve-out image-proxy.js
+// already uses; it's a fixed, known first-party host, not user-controlled,
+// so it doesn't reopen the SSRF hole the bucket-scoping closed.
 
-const ALLOWED_HOSTS = new Set(['firebasestorage.googleapis.com', 'storage.googleapis.com'])
+const ALLOWED_STORAGE_HOSTS = new Set(['firebasestorage.googleapis.com', 'storage.googleapis.com'])
 const MAX_BYTES = 50 * 1024 * 1024   // 50MB — comfortably above any real asset here
 const FETCH_TIMEOUT_MS = 20000
 
 function isAllowedStorageUrl(u, bucket) {
   if (u.protocol !== 'https:') return false
-  if (!ALLOWED_HOSTS.has(u.hostname)) return false
+  if (u.hostname === 'crystocraft.com' || u.hostname.endsWith('.crystocraft.com')) return true
+  if (!ALLOWED_STORAGE_HOSTS.has(u.hostname)) return false
   if (!bucket) return true   // bucket env var not set — host allowlist alone still blocks SSRF
   // firebasestorage.googleapis.com/v0/b/<bucket>/o/...  or  storage.googleapis.com/<bucket>/...
   return u.pathname.includes(`/b/${bucket}/`) || u.pathname.startsWith(`/${bucket}/`)
@@ -42,7 +54,7 @@ export default async function handler(req) {
 
   const bucket = Deno.env.get('VITE_FIREBASE_STORAGE_BUCKET') || Deno.env.get('FIREBASE_STORAGE_BUCKET') || ''
   if (!isAllowedStorageUrl(target, bucket)) {
-    return new Response('URL not allowed — only this app\'s own Storage bucket may be downloaded through this endpoint', { status: 403 })
+    return new Response('URL not allowed — only this app\'s own Storage bucket or crystocraft.com may be downloaded through this endpoint', { status: 403 })
   }
 
   const controller = new AbortController()
