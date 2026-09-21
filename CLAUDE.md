@@ -90,6 +90,32 @@ verified and what was not.
 **The SQL Server is LAN-only** — `192.168.10.251`, office Mac only. Check before
 planning work that needs it.
 
+**`graphify` — a code-dependency graph, for one narrow question: "what does
+file X import / who imports it."** Verified 2026-09-21: `graphify explain
+"TemplateDetail.tsx"` returns its full import list with exact line numbers
+and who imports it back, in one call — genuinely faster than 2-3 greps for
+that specific question. Use it for that.
+
+**MUST `graphify update .` first if anything's changed since the last
+build** — it's a static snapshot (`graphify-out/graph.json`), not live like
+grep. Cheap to re-run (~465 files, a few seconds, no LLM needed). Checked
+live: before updating, a brand-new file from two days prior didn't exist in
+the graph and its neighbor's connection count was stale (32 vs the true 39);
+after `graphify update .`, both were correct.
+
+**Does NOT capture runtime/route-based connections** — only static
+imports/calls. `graphify path "TemplateDetail.tsx" "RangeForm.jsx"` finds
+nothing (directed) or only "both import react" (`--undirected`), even
+though the real connection — `navigate('/range/'+id)` — is right there in
+the code; a string-built route isn't an edge graphify can see, freshness
+doesn't fix this. So it's no help for: tracing a `navigate()`/route
+relationship, finding the same pattern duplicated across two unrelated
+files (a text/convention match, not an import edge — e.g. two edge
+functions that should share a host-allowlist), or anything outside this
+repo's own source (Firestore data, the live WordPress site). For those,
+grep/Explore stays the default — graphify is a supplement for the specific
+"map this file's dependencies" case, not a replacement.
+
 ## Data facts worth not rediscovering
 
 - **The ERP mirror is all `text`.** Every one of 7,510 columns. Casting happens

@@ -1,125 +1,126 @@
-# Graph Report - costing-tool  (2026-09-19)
+# Graph Report - costing-tool  (2026-09-21)
 
 ## Corpus Check
-- cluster-only mode — file stats not available
+- 592 files · ~995,490 words
+- Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5114 nodes · 11273 edges · 317 communities (249 shown, 46 thin omitted)
+- 5145 nodes · 11371 edges · 309 communities (250 shown, 37 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 147 edges (avg confidence: 0.78)
-- Token cost: 16,136 input · 3,765 output
+- Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `51466018`
+- Built from commit: `0447d399`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- Core UI React Components
-- Portal UI Preview Mockups
-- Customer CRM Management
-- Order Inventory Stock Issues
-- Translation Key Automation
+- react
+- react-router-dom
+- useCustomers
+- OrderStockIssue.jsx
+- PurchaseOrderForm.jsx
 - Carton Packing List Tools
 - Component Design System Cards
-- Customer Portal Access Control
+- App.jsx
 - Crystal Fabric Render Prototype
 - Email Archive Ingestion Pipeline
-- Bank Account Logistics Management
-- Crystal Costing and References
-- Freight Vendor Logistics Quotes
-- Inventory Status and Reorders
+- Shipping.jsx
+- RangeCosting.jsx
+- logistics.js
+- InventoryStatus.jsx
 - Automated SEO Operations Control
 - ERP Database Schema Discovery
-- Shipment Verification and Stock
-- Product and Supplier Media
-- ERP Crystal BOM Derivation
-- Customer Brand Asset Gallery
-- Product Spec Sheet Editor
+- ShipmentForm.jsx
+- constants.js
+- derive_crystal_bom.py
+- customerAssets.js
+- SpecSheetDetail.tsx
 - Admin Server Backend API
-- Range Form Sku Builder
-- WooCommerce Order Sync Integration
-- Bulk Category and Range Export
-- Critical Component Stock Management
+- RangeForm.jsx
+- WooCommerceSync.jsx
+- Range.jsx
+- criticalComponents.js
 - Crystal Swatch Digital Library
 - Swatch Viewer HTML Builder
-- Alibaba Chat Transcripts Integration
+- CustomerDetail.jsx
 - Catalogue Collection Management
-- Domain Interactions and Tags
-- Data Validation and Schema Audit
-- SEO State Change Logs
-- Customer Data Export Controls
-- Marketing Outreach Campaigns
-- Product Color Variation Previews
+- MarketingContacts.jsx
+- SchemaAudit.jsx
+- SeoState.jsx
+- UcRegistry.jsx
+- Campaigns.jsx
+- ProformaInvoicePrint.jsx
 - Marketing Tagging Content Pipeline
 - Firebase Client Stub Utilities
-- ERP Entity Lookup Sync
-- Project Roadmap Documentation
-- CSV Data Parsing
-- WooCommerce Multilingual Product Catalogue
-- Marketing Contact Details Sync
-- AI Blog Content Generator
-- Image Lightbox Gallery Handler
+- ErpLookup.jsx
+- PROJECT-PLAN
+- PurchaseOrders.jsx
+- WooCatalogue.jsx
+- marketingContact.js
+- BlogGenerator.jsx
+- ImageGallery.jsx
 - ERP Supabase Sync Views
-- PO Receiving Flow
-- Crystal Swatch Card Library
+- poReceive.js
+- SwatchLibraryPage.jsx
 - Brand Proposal PDF Export
-- Customer Brand Styling Details
+- CustomerBrand.tsx
 - Swatch Gallery Builder
-- Credit Note Financial Management
-- Sales Outreach Draft Records
+- CreditNoteForm.jsx
+- DailyDrafts.jsx
 - Project Dependencies and Configuration
 - Crystal Color Palette Registry
-- Crystal BOM Requirement Editor
+- crystalBom.js
 - Product Costing Quote Spec
 - Brand Proposal Document Styling
 - Customizer Technical Architecture Specification
-- Customer Proposal Section Editor
-- Storefront Home Page Highlights
+- customerProposal.js
+- CustomerAccounts.jsx
 - Range Color Preview Spec
-- WhatsApp Lead Import Pipeline
-- Inventory Stock Edit Table
+- whatsappImport.js
+- useT
 - Email Thread Ingestion Tool
 - Inventory Missing Image Manifest
-- Quotes Management List
+- EnquiryForm.jsx
 - Crystal Fabric Online Customizer
 - Product Variant Pricing Plan
-- Google Authentication Claim Flow
+- portalInviteApi.js
 - Texture Rendering Engine Tests
-- Crystal MRP Stock Matching
+- mrp.js
 - Template Zone Render Service
-- PDF Quote Document Generation
+- QuoteExport.jsx
 - Expense Organiser Technical Specs
-- Supplier Contact Data Merge
-- CRM Outreach Generation
-- Storefront Carousel and Currency
+- supplierMerge.js
+- firebase.js
+- FigurineShop.jsx
 - Crystal BOM Migration
 - Crystal Rescue Migration
-- Supplier Details and Video
-- WooCommerce Stock Reconciliation Tool
+- SupplierDetail.jsx
+- WooStockReconcile.jsx
 - Supplier Catalog Viewer
 - WhatsApp Transcript Summarizer Tool
-- Engineering System Lessons Learned
-- Brand Design System Guidelines
+- docs/skills/LESSONS-LEARNED.md
+- Crystocraft Design System — Reference Exports README
 - Crystal Color Migration
 - Packing Reference Migration
 - Serverless Document AI Processing
 - Mailing List Subscription
 - Frontend Project Dependencies
 - Quote PDF Generation
-- Image Crop Adjustments
-- Spec Template JSON Structure
-- Proposal Editor Interface
+- orderStock.js
+- TemplateEdit.tsx
+- ProposalEditor
 - Legacy ERP Cutover Plan
 - Customer Email Summary Facets
 - Supplier Quote Processing
 - Gemini AI Brand Analysis
-- Firestore Schema Architecture
+- Firestore Collections Map
 - Messaging AI Summaries
 - Invoice Pagination Generator
 - Design Canvas Zones
-- Daily Outreach Message Drafts
-- Customer Contacts Form
-- Operations Task Log Dashboard
+- DailyDrafts
+- CustomerForm.jsx
+- Dashboard.jsx
 - Quote Item Editor
 - Order Line Exporter
 - Automated Outreach Draft Generation
@@ -127,30 +128,30 @@
 - PBIS Data Import Specs
 - ERP Inventory Audit Documentation
 - Crystocraft ERP Coding Standards
-- Featured Product Configuration
-- WooCommerce Data Cache
+- FrontPageConfig.jsx
+- wooCache.js
 - Custom Client Proposal Spec
 - Core Design System
 - Marketing Contacts Migration
 - WordPress Content Publisher
 - Supplier Merge Testing
 - Crystal Fabric Studio Specs
-- Customer Contact Deduplication
+- customer.js
 - Outreach Memory Rule Engine
 - Reserved Quantity Audit Plan
 - Email Sending Handler
 - Gift Selector Specification
-- Enquiry Spreadsheet Export
+- LoadingBar.jsx
 - Domain Module Reference
 - Catalog Product Importer
 - Customer Brand Gallery
 - Finance PO Sync
-- Development Infrastructure Docs
+- Local tooling already available
 - Brand Portal Mocking
-- Image Optimization Picker
+- BankAccounts.jsx
 - WooCommerce Sync Architecture
-- Customer Product Generation Templates
-- Product Copy Rewriter
+- i18n-translate.mjs
+- wooImport.js
 - Legacy Design System
 - ERP Image Synchronization
 - ERP Sync Configuration
@@ -159,19 +160,19 @@
 - Mailing Unsubscribe Handler
 - Crystal Swatch Shell
 - Bank Account Validation
-- Component Category Settings
-- Range Quote Ingestion
-- Customer Product Media Catalog
-- Customer Portal Analytics
-- RBAC Module Permission System
+- componentCategories.js
+- lucide-react
+- Suppliers.jsx
+- authedUser
+- src/access.js (MODULE_GROUPS + canAccess)
 - Credit Note Schema
 - Bank Accounts Schema
 - ERP Database Inspection
 - Packing Reconciliation Scripts
 - Legacy Range Migration
 - Crystal Data Fetching
-- Supplier Product Catalog Forms
-- B2C Stock Inventory
+- products.ts
+- b2cStock.js
 - WooCommerce Webhook Processing
 - Corporate Details Mocking
 - Swatch Preview Seed
@@ -185,14 +186,14 @@
 - Bank Account Endpoints
 - WhatsApp Audio Transcription
 - Universal Code Endpoints
-- Security Architecture and RBAC
+- docs/skills/ARCHITECTURE-RULES.md
 - Build Tooling Configuration
-- Design Generation Spec Templates
+- db
 - Stock Ledger Management
 - Outreach Templates Manager
 - Catalogue Layout Preview
-- Sales Order Sync
-- Customer Tag Management
+- ErpDocModal.jsx
+- loadCustomers
 - Packing Database Lookup
 - AI Email Responder
 - Customer Email Discussion Assistant
@@ -202,10 +203,10 @@
 - Image Scraping Utility
 - SEO State Metadata Handler
 - Tag Merge Suggestions
-- ERP Bill of Materials Import
-- Blog Media Curation
-- Customer Merge Management
-- Crystal Components Library
+- V8.2 Cycle Close-out
+- UC Registry and Invoice Numbering
+- alibabaSummaryApi.js
+- Components.jsx
 - Marketing Contacts Subscription
 - Email Thread Ingestion Pipeline
 - ERP Partner Sync Schema
@@ -221,27 +222,27 @@
 - Enquiry Preview Seed Data
 - Favorites Preview Seed Data
 - Figurine Detail Preview Seeds
-- Quote Branding Configuration
-- Customer Profile Inline
+- wooCustomerSync.js
+- AccountEdit.jsx
 - ERP Purchase Order Schema
 - ERP Stock and Warehouse
 - Order Seed Verification
 - Missing Inventory Images Sync
 - SKU Image Asset Mapping
 - Invoice Archive Loader
-- Image Download Proxy
-- SEO Snapshot Reconciliation
+- download-image.js
+- PurchaseOrderDetail.jsx
 - Orders Preview Seed Data
 - Portal Invite Template Seeder
 - React Error Boundary Component
 - Sales Credit Note Specification
 - Catalogue Form Management
-- SKU Image Scraping
-- Crystal Inventory Class Storage
-- v2.5 Trust Seal Display
+- Settings.jsx
+- docs/skills/SKILL.md
+- SeoReview.jsx
 - ERP Component Alternatives View
 - Product Asset Variants
-- Weekly CRM Summary
+- components-csv.mjs
 - API Reference Documentation
 - Office File Server
 - Atelier Art Guidelines
@@ -250,12 +251,12 @@
 - Figurine Seed Data Preview
 - Home Page Preview Seeds
 - Marketing Voice Guide
-- Brand Template Generator
-- Quote Margin Calculation
+- V7.21 Cycle Close-out
+- QuoteDetail.jsx
 - JSON Editor Components
-- Data Import Logs Handler
-- Supplier Selection Combobox
-- Uploaded Quote Document Detail
+- ImportData.jsx
+- crystal-bom.jsx
+- puNumber.js
 - Local Engine Test Runner
 - Product Variant Assets C05
 - Product Variant Assets CM2
@@ -293,34 +294,26 @@
 - Graph Localization Shell Script
 - Customer Invoice History
 - JSON Prompt Tweaker
-- ERP Document Modal
-- Supplier Form Links
-- App Route Guarding
-- Customer Enquiry Form
+- backfill-generation-links.mjs
+- SupplierForm.jsx
 - Weekly Digest Generator
-- Quote Form Management
+- QuoteForm.jsx
 - Quote File Upload Modal
-- Product Picker Data Loader
-- Catalogue Product List Manager
-- v2 Trust Seal Display
-- Product Component Information Form
-- v2 Select Form Types
-- v2.5 Select Form Types
-- Product Image Picker Upload
+- CatalogueDetail.jsx
 - Merged Graph HTML Builder
 - Graph Merge Shell Automation
 
 ## God Nodes (most connected - your core abstractions)
-1. `react` - 217 edges
-2. `db` - 152 edges
-3. `lucide-react` - 120 edges
+1. `react` - 218 edges
+2. `db` - 155 edges
+3. `lucide-react` - 122 edges
 4. `react-router-dom` - 107 edges
 5. `useT()` - 72 edges
 6. `authedUser()` - 61 edges
 7. `LoadingBar()` - 54 edges
 8. `DailyDrafts()` - 52 edges
 9. `requireModule()` - 42 edges
-10. `authHeader()` - 41 edges
+10. `RangeForm()` - 41 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `L-06 — normLine silently drops un-whitelisted line fields` --references--> `normLine()`  [EXTRACTED]
@@ -329,10 +322,10 @@
   docs/skills/DESIGN-SYSTEM.md → design-system/v2.5/uploads/Crystocraft-Brand-Identity-for-Design-SystemV2.md
 - `ERP → Supabase Sync V1.0 (as-built)` --conceptually_related_to--> `JES ERP retirement`  [EXTRACTED]
   erp-sync/ERP-SYNC-V1.0.md → docs/skills/SKILL.md
-- `useItems()` --indirect_call--> `fromDoc()`  [INFERRED]
-  src/inventoryClass.js → src/criticalComponents.js
 - `build()` --calls--> `toCsv()`  [EXTRACTED]
   qa/pi-csv.mjs → src/exportCsv.js
+- `PROJECT-PLAN` --references--> `ERP → Supabase Sync V1.0 (as-built)`  [EXTRACTED]
+  PROJECT-PLAN.md → erp-sync/ERP-SYNC-V1.0.md
 
 ## Import Cycles
 - None detected.
@@ -367,27 +360,27 @@
 - **Customer portal privacy and brand-gallery workstream** — project_plan_v7_21, project_plan_v7_22, project_plan_brand_gallery, project_plan_contacts_rebuild, project_plan_sensitive_image_screening, project_plan_customer_portal [INFERRED 0.75]
 - **Manifest schema: filename + match-count + SKU list** — erp_sync_inventory_images_missing_manifest, erp_sync_inventory_images_missing_image_filename, erp_sync_inventory_images_missing_sku_code, erp_sync_inventory_images_missing_missing_images [INFERRED 0.90]
 
-## Communities (317 total, 46 thin omitted)
+## Communities (309 total, 37 thin omitted)
 
-### Community 0 - "Core UI React Components"
-Cohesion: 0.03
-Nodes (51): BadgeProps, ButtonProps, DividerProps, TagProps, CardProps, TrustSealProps, InputProps, BadgeProps (+43 more)
+### Community 0 - "react"
+Cohesion: 0.02
+Nodes (26): BadgeProps, ButtonProps, DividerProps, TagProps, CardProps, TrustSealProps, SEAL_CENTER, SEAL_TEXT (+18 more)
 
-### Community 1 - "Portal UI Preview Mockups"
+### Community 1 - "react-router-dom"
+Cohesion: 0.07
+Nodes (44): profile, profile, profile, profile, profile, profile, profile, profile (+36 more)
+
+### Community 2 - "useCustomers"
 Cohesion: 0.15
-Nodes (20): profile, profile, profile, profile, profile, profile, profile, profile (+12 more)
+Nodes (16): Customers, CHANNELS, COL(), RETAIL_TAG, useCustomers(), CATEGORY_TABS, CRM_STATUS_STYLES, Customers() (+8 more)
 
-### Community 2 - "Customer CRM Management"
-Cohesion: 0.19
-Nodes (15): CustomerForm, AI_CONTEXT_SUMMARY_MAX_WORDS, CHANNELS, CRM_CATEGORIES, CRM_STATUSES, CUSTOMER_COUNTRIES, CUSTOMER_SOURCES, loadAllTagNames() (+7 more)
+### Community 3 - "OrderStockIssue.jsx"
+Cohesion: 0.16
+Nodes (13): EditableQty(), fmt(), AddComponentRow(), fmt(), LinesTable(), OrderStockIssue(), doExport(), PreviewTable() (+5 more)
 
-### Community 3 - "Order Inventory Stock Issues"
-Cohesion: 0.15
-Nodes (27): EditableQty(), fmt(), fmt(), ICONS, newLine(), OrderInventoryIssue(), AddComponentRow(), fmt() (+19 more)
-
-### Community 4 - "Translation Key Automation"
-Cohesion: 0.06
-Nodes (46): allKeys, body, esc(), existing, EXTRA, keys, merged, OUT (+38 more)
+### Community 4 - "PurchaseOrderForm.jsx"
+Cohesion: 0.13
+Nodes (27): PurchaseOrderForm, PurchaseOrderPrint, PO_UNITS, useUiLang(), PO_TERM_VALUES, PurchaseOrderForm(), handleDrop(), handleSubmit() (+19 more)
 
 ### Community 5 - "Carton Packing List Tools"
 Cohesion: 0.07
@@ -397,9 +390,9 @@ Nodes (59): PackingListPrint, buildFullCartonPlan(), calcCbm(), calcPackedVsOrde
 Cohesion: 0.06
 Nodes (67): Badge Component, Button Component, Core Components Specimen Card, Divider Component, Tag Component, Card Component, Display Components Specimen Card, TrustSeal Component (+59 more)
 
-### Community 7 - "Customer Portal Access Control"
-Cohesion: 0.03
-Nodes (61): Crystocraft Customer Portal index.html, Google Analytics 4 (G-HRTV0QWTNG), AccessContext, ALL_MODULE_KEYS, canAccess(), MODULE_GROUPS, resolveModules(), SENSITIVE_MODULE_KEYS (+53 more)
+### Community 7 - "App.jsx"
+Cohesion: 0.05
+Nodes (45): Crystocraft Customer Portal index.html, Google Analytics 4 (G-HRTV0QWTNG), AccessContext, ALL_MODULE_KEYS, canAccess(), MODULE_GROUPS, resolveModules(), SENSITIVE_MODULE_KEYS (+37 more)
 
 ### Community 8 - "Crystal Fabric Render Prototype"
 Cohesion: 0.07
@@ -409,21 +402,21 @@ Nodes (59): Corp_Gift_Customizer_Spec.md §14, Crystal Fabric Customizer — Pro
 Cohesion: 0.07
 Nodes (50): load_archive_state(), main(), process_mbox(), process_pst(), pst_to_email_message(), Yields (path, pypff.message) for every message in every non-blocked folder…, V8.1 email ingestion, Phase 2 architecture step 1 — the historical archive…, save_archive_state() (+42 more)
 
-### Community 10 - "Bank Account Logistics Management"
-Cohesion: 0.05
-Nodes (71): BankAccounts, CreditNotePrint, Logistics, QuoteDetail, Shipments, Shipping, accountForCurrency(), bankAccountAudit() (+63 more)
+### Community 10 - "Shipping.jsx"
+Cohesion: 0.14
+Nodes (25): Shipments, Shipping, ComponentRequirements(), compute(), exportCsv(), DEMAND, orderLabel(), toCsv() (+17 more)
 
-### Community 11 - "Crystal Costing and References"
+### Community 11 - "RangeCosting.jsx"
 Cohesion: 0.08
-Nodes (47): Components.jsx (supply hub / crystal costs / price list), RangeCosting, resolveRef(), crystalBrandsForSize(), crystalSizesOf(), DEFAULT_CRYSTAL_UNIT_COSTS, DOC_REF(), loadCrystalUnitCosts() (+39 more)
+Nodes (52): Components.jsx (supply hub / crystal costs / price list), PricingTiers, RangeCosting, componentById(), componentMap(), resolveRef(), crystalBrandsForSize(), crystalSizesOf() (+44 more)
 
-### Community 12 - "Freight Vendor Logistics Quotes"
+### Community 12 - "logistics.js"
+Cohesion: 0.08
+Nodes (47): Logistics, LogisticsVendorForm, COVERAGE_STRENGTH, deleteFreightQuote(), deleteVendor(), FREIGHT_INCOTERMS, FREIGHT_MODES, getVendor() (+39 more)
+
+### Community 13 - "InventoryStatus.jsx"
 Cohesion: 0.09
-Nodes (41): LogisticsVendorForm, COVERAGE_STRENGTH, deleteFreightQuote(), deleteVendor(), FREIGHT_INCOTERMS, getVendor(), loadAllQuotes(), loadOrderQuotes() (+33 more)
-
-### Community 13 - "Inventory Status and Reorders"
-Cohesion: 0.15
-Nodes (19): InventoryStatus, ProductionDashboard, useB2cStock, useCrystals, usePackaging, CLASSES, COL_OF, fmt() (+11 more)
+Nodes (31): InventoryStatus, ProductionDashboard, useB2cStock, ComponentLinkPicker(), loadCorpComponents(), useComponents(), api, deleteCrystal (+23 more)
 
 ### Community 14 - "Automated SEO Operations Control"
 Cohesion: 0.09
@@ -433,45 +426,45 @@ Nodes (35): seo_batches — DSH-prepared, human-approved change batches, seo_sta
 Cohesion: 0.07
 Nodes (43): discover_firebird(), discover_mssql(), main(), On-site schema discovery — READ-ONLY. Run this once you can connect, to see the…, check(), main(), probe(), Does LastUpdate actually move when a row is EDITED? Incremental sync pulls rows… (+35 more)
 
-### Community 16 - "Shipment Verification and Stock"
+### Community 16 - "ShipmentForm.jsx"
 Cohesion: 0.07
-Nodes (57): ShipmentForm, numOrNull(), orderStockStatus(), stageOf(), STOCK_STATUS_LABEL, STOCK_STATUS_STYLE, stockStatusDetail(), setNoInvoice() (+49 more)
+Nodes (58): ShipmentForm, crystalInventory, orderStockStatus(), stageOf(), STOCK_STATUS_LABEL, STOCK_STATUS_STYLE, stockStatusDetail(), blankHeader (+50 more)
 
-### Community 17 - "Product and Supplier Media"
-Cohesion: 0.05
-Nodes (52): ProductForm, Products, PurchaseOrderDetail, SupplierForm, Suppliers, ImageLightbox(), isLikelyShort(), THUMB_SIZES (+44 more)
+### Community 17 - "constants.js"
+Cohesion: 0.08
+Nodes (41): ProductForm, Products, BulkCategoryEditor(), BulkVideoEditor(), apply(), exportForMapping(), isLikelyShort(), THUMB_SIZES (+33 more)
 
-### Community 18 - "ERP Crystal BOM Derivation"
-Cohesion: 0.05
-Nodes (45): holes(), pattern_from_name(), position(), ('BDC-8232', '0014') -> ('octagon', '14'). Bohemia 8232/14, Swarovski 8016/14…, BDC-8232-0014-002 -> ('BDC-8232', '0014', '002'). A few codes carry a space…, Derive a crystal BOM for the app's Range from the ERP. The app offers 4,664…, One-hole and two-hole stones of the same shape are not interchangeable.…, shape_from_name() (+37 more)
+### Community 18 - "derive_crystal_bom.py"
+Cohesion: 0.19
+Nodes (12): holes(), pattern_from_name(), position(), ('BDC-8232', '0014') -> ('octagon', '14'). Bohemia 8232/14, Swarovski 8016/14…, BDC-8232-0014-002 -> ('BDC-8232', '0014', '002'). A few codes carry a space…, Derive a crystal BOM for the app's Range from the ERP. The app offers 4,664…, One-hole and two-hole stones of the same shape are not interchangeable.…, shape_from_name() (+4 more)
 
-### Community 19 - "Customer Brand Asset Gallery"
+### Community 19 - "customerAssets.js"
+Cohesion: 0.12
+Nodes (28): AssetThumb(), CustomerBrandGallery(), onFiles(), downloadUrl(), extOf(), VIS_BADGE, imageVisibility(), ASSET_TYPES (+20 more)
+
+### Community 20 - "SpecSheetDetail.tsx"
 Cohesion: 0.10
-Nodes (37): AssetDrawer(), del(), save(), setCategory(), AssetThumb(), CustomerBrandGallery(), onFiles(), switchCategory() (+29 more)
-
-### Community 20 - "Product Spec Sheet Editor"
-Cohesion: 0.10
-Nodes (25): PdSpecSheetDetail, PdSpecSheetNew, defaultFieldsFor(), defaultSpecSheetValue(), SpecSheetEditorForm(), SpecSheetFormValue, displayUrl(), SpecSheetLayout() (+17 more)
+Nodes (24): PdSpecSheetDetail, PdSpecSheetNew, defaultFieldsFor(), defaultSpecSheetValue(), SpecSheetEditorForm(), SpecSheetFormValue, displayUrl(), SpecSheetLayout() (+16 more)
 
 ### Community 21 - "Admin Server Backend API"
 Cohesion: 0.11
 Nodes (35): BaseModel, delete, get, admin_login_page(), admin_login_submit(), admin_logout(), admin_page(), _crystal_out() (+27 more)
 
-### Community 22 - "Range Form Sku Builder"
-Cohesion: 0.11
-Nodes (31): RangeForm, RANGE_BODY_TYPES, RANGE_CRYSTAL_COLORS, emptyCrystalBom(), autoVariantDesc(), blankForm(), BODY_NAME, BRAND_NAME (+23 more)
-
-### Community 23 - "WooCommerce Order Sync Integration"
-Cohesion: 0.08
-Nodes (44): idFromEmail(), defaultRange(), fmtDate(), fmtMoney(), WooCommerceSync(), confirmCustomerSync(), confirmLink(), doImport() (+36 more)
-
-### Community 24 - "Bulk Category and Range Export"
+### Community 22 - "RangeForm.jsx"
 Cohesion: 0.07
-Nodes (46): Range, Settings, BulkCategoryEditor(), BulkVideoEditor(), apply(), ambiguousProducts(), BRAND_NAME, brandsOf() (+38 more)
+Nodes (56): RangeForm, deletePreview(), generateColourPreview(), markUsable(), pickGalleryColourPreview(), previewId(), promoteColourImage(), recolorInstructions() (+48 more)
 
-### Community 25 - "Critical Component Stock Management"
-Cohesion: 0.10
-Nodes (39): availableOf(), buildableFromComponents(), bulkCreateComponents(), COL(), componentById(), componentMap(), deleteComponent(), deleteComponentQuote() (+31 more)
+### Community 23 - "WooCommerceSync.jsx"
+Cohesion: 0.14
+Nodes (25): WooCommerceSync, defaultRange(), fmtDate(), fmtMoney(), WooCommerceSync(), confirmLink(), fetchOrders(), inspectMeta() (+17 more)
+
+### Community 24 - "Range.jsx"
+Cohesion: 0.14
+Nodes (22): Range, RANGE_CRYSTAL_BRANDS, RANGE_STATUSES, colorMap(), DOC_REF(), ensureColors(), loadCrystalColors(), norm() (+14 more)
+
+### Community 25 - "criticalComponents.js"
+Cohesion: 0.17
+Nodes (28): availableOf(), buildableFromComponents(), bulkCreateComponents(), COL(), deleteComponentQuote(), denormFrom(), descriptorOf(), finishedStockOf() (+20 more)
 
 ### Community 26 - "Crystal Swatch Digital Library"
 Cohesion: 0.11
@@ -481,37 +474,37 @@ Nodes (35): Crystal Swatch Library, Swatch Viewer, DATA (embedded swatch array),
 Cohesion: 0.10
 Nodes (40): numpy, build_items(), data_uri(), hex_of(), material_chip(), Builds a single self-contained HTML page (swatch_viewer.html) embedding every…, test_glyph(), apply_facet_relief() (+32 more)
 
-### Community 28 - "Alibaba Chat Transcripts Integration"
-Cohesion: 0.06
-Nodes (36): WhatsApp Import and Transcription, authedPost(), generateAndSaveAlibabaSummary(), pasteDateLabel(), refreshAlibabaSummary(), renderThreadsText(), savePastedAlibabaThread(), totalCharCount() (+28 more)
+### Community 28 - "CustomerDetail.jsx"
+Cohesion: 0.08
+Nodes (21): CustomerDetail, BrandProposalCard(), CHANNEL_BADGE, Collapsible(), CRM_STATUS_STYLES, CustomerDetail(), handleInviteContact(), handleRefreshWhatsappSummary() (+13 more)
 
 ### Community 29 - "Catalogue Collection Management"
 Cohesion: 0.14
 Nodes (30): CatalogueBand, accentOf(), ACCENTS, bandDoc(), CATS, collectionProducts(), DEFAULT_SECTION, deleteCollection() (+22 more)
 
-### Community 30 - "Domain Interactions and Tags"
-Cohesion: 0.09
-Nodes (29): addInteraction(), deleteInteraction(), listInteractions(), deleteContacts(), deleteTagEverywhere(), isCategoryTag(), renameTagEverywhere(), sortTags() (+21 more)
+### Community 30 - "MarketingContacts.jsx"
+Cohesion: 0.08
+Nodes (33): WhatsApp Import and Transcription, WhatsAppAttachment(), addInteraction(), deleteInteraction(), listInteractions(), contactName, deleteContacts(), deleteTagEverywhere() (+25 more)
 
-### Community 31 - "Data Validation and Schema Audit"
+### Community 31 - "SchemaAudit.jsx"
 Cohesion: 0.13
-Nodes (26): SchemaAudit, validateComponent(), validateCriticalRef(), validateCriticalRefs(), validateProcurementLine(), validateSupplierPO(), validateCustomer(), addError() (+18 more)
+Nodes (25): validateComponent(), validateCriticalRef(), validateCriticalRefs(), validateProcurementLine(), validateSupplierPO(), validateCustomer(), addError(), addInfo() (+17 more)
 
-### Community 32 - "SEO State Change Logs"
-Cohesion: 0.21
-Nodes (14): SeoState, fmtDate(), fmtTs(), fmtWhen(), SeoState(), exportCsv(), STATUS_BADGE, saveDoc() (+6 more)
+### Community 32 - "SeoState.jsx"
+Cohesion: 0.14
+Nodes (26): SeoReconcile, SeoState, fmtTs(), fmtWhen(), key(), SeoReconcile(), SNAP_FIELDS, fmtDate() (+18 more)
 
-### Community 33 - "Customer Data Export Controls"
-Cohesion: 0.06
-Nodes (63): CreditNoteForm, CustomerAccounts, UcRegistry, ExportFilterBar(), LoadingBar(), CN_DISPOSITIONS, CN_REASONS, CN_STATUSES (+55 more)
+### Community 33 - "UcRegistry.jsx"
+Cohesion: 0.12
+Nodes (29): UcRegistry, resync(), BLANK, duplicateSiWarning(), ErpInvoiceModal(), LOCATION_LABEL, LOCATION_TITLE, money() (+21 more)
 
-### Community 34 - "Marketing Outreach Campaigns"
-Cohesion: 0.11
-Nodes (32): useRole(), Marketing, sendCampaignBatch(), COL(), createCampaign(), deleteTemplate(), eligibleContacts(), eligibleRetailCustomers() (+24 more)
-
-### Community 35 - "Product Color Variation Previews"
+### Community 34 - "Campaigns.jsx"
 Cohesion: 0.17
-Nodes (25): Range variation colour preview pipeline, deletePreview(), generateColourPreview(), markUsable(), pickGalleryColourPreview(), previewId(), promoteColourImage(), recolorInstructions() (+17 more)
+Nodes (24): COL(), createCampaign(), deleteTemplate(), eligibleContacts(), eligibleRetailCustomers(), listCampaigns(), listTemplates(), matchesSegment() (+16 more)
+
+### Community 35 - "ProformaInvoicePrint.jsx"
+Cohesion: 0.16
+Nodes (22): CreditNotePrint, ProformaInvoicePrint, SalesInvoicePrint, formatBankDetails(), amountInWords(), CustomerInvoicePrint(), downloadExcel(), CustomerInvoicePrint (+14 more)
 
 ### Community 36 - "Marketing Tagging Content Pipeline"
 Cohesion: 0.06
@@ -521,65 +514,65 @@ Nodes (75): RFC-4648, Marketing Workflow — the Content Engine, Artgen pipeline
 Cohesion: 0.07
 Nodes (25): addDoc, arrayRemove, arrayUnion, auth, collection, db, deleteDoc, deleteField (+17 more)
 
-### Community 38 - "ERP Entity Lookup Sync"
-Cohesion: 0.10
-Nodes (19): ErpLookup, erpItemImages(), erpSyncStatus(), ACTIVE_FILTER, BomModal(), cellValue(), DETAIL_GROUPS, ENTITIES (+11 more)
+### Community 38 - "ErpLookup.jsx"
+Cohesion: 0.08
+Nodes (36): ErpLookup, ErpProductImport(), choose(), doImport(), saveComponent(), erpBom(), erpItemImages(), erpLookup() (+28 more)
 
-### Community 39 - "Project Roadmap Documentation"
-Cohesion: 0.15
-Nodes (13): Sun Life Brand Portal proposal, Draft Memory Layer for Daily Drafts, Partial Simplified-Chinese UI (supply/inventory only), Incremental ERP Sync, Three Inventory Classes (metal / crystals / packaging), Merchant Center Autofeed ghost offers, PROJECT-PLAN, Reserve → Produce-in → Release Lifecycle (+5 more)
-
-### Community 40 - "CSV Data Parsing"
-Cohesion: 0.13
-Nodes (12): evil, items, lines, nameByCode, requiredCsv, reservedCsv, build(), chargeLines (+4 more)
-
-### Community 41 - "WooCommerce Multilingual Product Catalogue"
+### Community 39 - "PROJECT-PLAN"
 Cohesion: 0.12
-Nodes (21): WooCatalogue, classifyLang(), fmtDate(), fmtWhen(), LANG_GLYPH, LANG_LABEL, LANG_ORDER, langLabel() (+13 more)
+Nodes (16): Sun Life Brand Portal proposal, Crystocraft Operation Center — orientation, Range variation colour preview pipeline, Draft Memory Layer for Daily Drafts, Partial Simplified-Chinese UI (supply/inventory only), Incremental ERP Sync, Three Inventory Classes (metal / crystals / packaging), Merchant Center Autofeed ghost offers (+8 more)
 
-### Community 42 - "Marketing Contact Details Sync"
-Cohesion: 0.12
-Nodes (30): Alibaba Messages manual-paste enrichment, MarketingContactDetail, customerName(), AI_CONTEXT_SUMMARY_MAX_WORDS, arr(), CATEGORY_SET, COL(), contactName (+22 more)
+### Community 40 - "PurchaseOrders.jsx"
+Cohesion: 0.07
+Nodes (38): build(), chargeLines, priced, productLines, unpriced, CreditNotes, PurchaseOrders, SalesInvoices (+30 more)
 
-### Community 43 - "AI Blog Content Generator"
+### Community 41 - "WooCatalogue.jsx"
 Cohesion: 0.13
-Nodes (14): BlogGenerator, alignRoundupItems(), bufToBase64(), buildRoundupPreviewHTML(), buildSpotlightPreviewHTML(), compressForWP(), EditableMeta(), escapeHtml() (+6 more)
+Nodes (20): WooCatalogue, loadB2cStock, classifyLang(), fmtDate(), fmtWhen(), LANG_GLYPH, LANG_LABEL, LANG_ORDER (+12 more)
 
-### Community 44 - "Image Lightbox Gallery Handler"
-Cohesion: 0.10
-Nodes (17): detectColorLoss(), detectOrientation(), downloadImage(), ImageGallery(), closeEditor(), goLightbox(), handleDrop(), handleFiles() (+9 more)
+### Community 42 - "marketingContact.js"
+Cohesion: 0.12
+Nodes (28): Alibaba Messages manual-paste enrichment, MarketingContactDetail, customerName(), AI_CONTEXT_SUMMARY_MAX_WORDS, arr(), CATEGORY_SET, COL(), deleteContact() (+20 more)
+
+### Community 43 - "BlogGenerator.jsx"
+Cohesion: 0.09
+Nodes (28): BlogGenerator, isPublicVisible(), authHeader(), ensureProductImages(), alignRoundupItems(), bufToBase64(), buildRoundupPreviewHTML(), buildSpotlightPreviewHTML() (+20 more)
+
+### Community 44 - "ImageGallery.jsx"
+Cohesion: 0.06
+Nodes (39): @dnd-kit/utilities, react-easy-crop, detectColorLoss(), detectOrientation(), downloadImage(), ImageGallery(), closeEditor(), goLightbox() (+31 more)
 
 ### Community 45 - "ERP Supabase Sync Views"
 Cohesion: 0.10
 Nodes (22): erp_item (materialized view, latest revision per code), explode_bom(code) recursive BOM walk, public.erp_component_usage, public.erp_purchase_surcharge, public.erp_sales_invoice_surcharge, public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge (+14 more)
 
-### Community 46 - "PO Receiving Flow"
-Cohesion: 0.24
-Nodes (12): fmt(), PoReceiveStock(), doReceive(), doReverse(), loadCrystals, loadPackaging, computePoReceive(), loadInventoryIndex() (+4 more)
+### Community 46 - "poReceive.js"
+Cohesion: 0.25
+Nodes (13): CLASS_BADGE, fmt(), PoReceiveStock(), doReceive(), doReverse(), loadCrystals, loadPackaging, computePoReceive() (+5 more)
 
-### Community 47 - "Crystal Swatch Card Library"
-Cohesion: 0.16
-Nodes (21): SwatchLibrary, SwatchLibraryPage, photosOf(), STYLE_LABEL, SwatchCardCarousel(), SwatchDetail(), SwatchLibraryPage(), SwatchThumb() (+13 more)
+### Community 47 - "SwatchLibraryPage.jsx"
+Cohesion: 0.17
+Nodes (20): SwatchLibrary, photosOf(), STYLE_LABEL, SwatchCardCarousel(), SwatchDetail(), SwatchLibraryPage(), SwatchThumb(), useInViewOnce() (+12 more)
 
 ### Community 48 - "Brand Proposal PDF Export"
 Cohesion: 0.25
 Nodes (18): buildBrandProposalPdf(), imageToDataURL(), isPremiumRef(), FacetDivider(), isStorefrontVisible(), BrandPortalPage(), handleDownloadPdf(), downloadUrl() (+10 more)
 
-### Community 49 - "Customer Brand Styling Details"
-Cohesion: 0.11
-Nodes (30): addBrandSourceImage(), addBrandSourceWebsite(), removeBrandSourceImage(), removeBrandSourceWebsite(), saveCustomerBrand(), CustomerBrandPage(), acceptSelected(), addColor() (+22 more)
+### Community 49 - "CustomerBrand.tsx"
+Cohesion: 0.07
+Nodes (50): PdCustomerBrand, PdTemplateNew, BrandQuickView(), addBrandSourceImage(), addBrandSourceWebsite(), getCustomerBrand(), removeBrandSourceImage(), removeBrandSourceWebsite() (+42 more)
 
 ### Community 50 - "Swatch Gallery Builder"
 Cohesion: 0.32
 Nodes (10): build_section_a(), build_section_c(), hstack(), labeled(), material_chip(), Swatch library — every material-type x colour combination, rendered from real…, A flat tile of one real colour photo, scaled to `material`'s stone size, using…, section_header() (+2 more)
 
-### Community 51 - "Credit Note Financial Management"
-Cohesion: 0.26
-Nodes (16): cleanLines(), cnTotals(), creditNoteApi(), emptyLine(), lineAmount(), listCreditNotes(), overCreditWarnings(), postCreditNote() (+8 more)
+### Community 51 - "CreditNoteForm.jsx"
+Cohesion: 0.21
+Nodes (20): CreditNoteForm, CN_DISPOSITIONS, CN_REASONS, CN_STATUSES, cleanLines(), cnTotals(), creditNoteApi(), emptyLine() (+12 more)
 
-### Community 52 - "Sales Outreach Draft Records"
-Cohesion: 0.11
-Nodes (32): markContactOutreach(), appendMemoryConclusion(), COL(), createDrafts(), deleteAllPending(), listDraftsForTopic(), listPendingDrafts(), listRecentDecisions() (+24 more)
+### Community 52 - "DailyDrafts.jsx"
+Cohesion: 0.12
+Nodes (29): blockContactOutreach(), appendMemoryConclusion(), COL(), createDrafts(), deleteAllPending(), listDraftsForTopic(), listPendingDrafts(), listRecentDecisions() (+21 more)
 
 ### Community 53 - "Project Dependencies and Configuration"
 Cohesion: 0.10
@@ -589,9 +582,9 @@ Nodes (19): name, overrides, jose, private, type, version, autoprefixer, firebas
 Cohesion: 0.14
 Nodes (17): color_rgb(), _crystal_entry(), list_backfilms(), _migrate(), Crystal colours and types. Schema rewritten 2026-07-30 (second pass) per the…, Reloaded whenever registry.json changes on disk (checked by mtime, not re-read…, Crystal colour's nominal approximate RGB (swatch-dot display, Mode A's ink…, Backfilm names actually captured for this colour at this crystal_type's style —… (+9 more)
 
-### Community 55 - "Crystal BOM Requirement Editor"
-Cohesion: 0.18
-Nodes (16): CRYSTALS, el, INITIAL, MIX_CODES, CrystalBomEditor(), crystalRequirement(), holesFromName(), indexCrystals() (+8 more)
+### Community 55 - "crystalBom.js"
+Cohesion: 0.29
+Nodes (12): CrystalBomEditor(), crystalRequirement(), holesFromName(), indexCrystals(), isMixCode(), normaliseCrystalBom(), parseCrystalCode(), SHAPE_BY_PATTERN (+4 more)
 
 ### Community 56 - "Product Costing Quote Spec"
 Cohesion: 0.05
@@ -605,25 +598,25 @@ Nodes (12): HERO, P(), sections, solidPng(), BrandProposalPDF(), DIVISION_ACCENT
 Cohesion: 0.06
 Nodes (34): 0. Guiding principle (read this first), 10. Phasing roadmap, 11. Honest risks & mitigations, 12. Open questions, 13. Rough build estimate (engineering, not authoring), 14.10 Stone-size consistency (owner correction — edge MUST match stone size), 14.11 Crystal material fidelity — open tuning notes (owner domain input), 14.12 Portal render-request config layer (reconciled with an external draft, 2026-08-01) (+26 more)
 
-### Community 59 - "Customer Proposal Section Editor"
-Cohesion: 0.18
-Nodes (17): ImportProposalModal(), apply(), ProductPhotoPicker(), save(), togglePublish(), CAPTION_MAX_LEN, clampCaption(), emptyProposal (+9 more)
+### Community 59 - "customerProposal.js"
+Cohesion: 0.17
+Nodes (18): AssetThumb(), ImportProposalModal(), apply(), ProductPhotoPicker(), save(), togglePublish(), CAPTION_MAX_LEN, clampCaption() (+10 more)
 
-### Community 60 - "Storefront Home Page Highlights"
-Cohesion: 0.13
-Nodes (14): HomePage(), ICONS, PILLAR_IMAGE, useFeaturedProductsMeta(), heroContent, pillars, pillarsSection, quickAccessSection (+6 more)
+### Community 60 - "CustomerAccounts.jsx"
+Cohesion: 0.12
+Nodes (16): useRole(), CustomerAccounts, Marketing, Portal, BlogGenerator(), Catalogues(), accountTypeOf(), CustomerAccounts() (+8 more)
 
 ### Community 61 - "Range Color Preview Spec"
 Cohesion: 0.06
 Nodes (33): 0. Why this exists, 1. What already exists (so this builds on it, not beside it), 2. What Phase 1 actually does, 3. Implementation notes (built 2026-08-22 — two deviations from §4/§3 above), 3a. Data model, 4. Client module and UI wiring, 5. UI states, 5a. Follow-up additions (2026-08-22, same cycle) (+25 more)
 
-### Community 62 - "WhatsApp Lead Import Pipeline"
-Cohesion: 0.17
-Nodes (22): findOrCreateLeadByPhone(), idFromPhone(), buildThreadDoc(), findExistingThread(), guessContactName(), importWhatsAppZip(), isEncryptionNotice(), looksLikePhoneNumber() (+14 more)
+### Community 62 - "whatsappImport.js"
+Cohesion: 0.25
+Nodes (16): findOrCreateLeadByPhone(), idFromPhone(), buildThreadDoc(), findExistingThread(), guessContactName(), importWhatsAppZip(), isEncryptionNotice(), looksLikePhoneNumber() (+8 more)
 
-### Community 63 - "Inventory Stock Edit Table"
-Cohesion: 0.08
-Nodes (27): el, Harness(), ITEMS, makeFakeInv(), ComponentLinkPicker(), loadCorpComponents(), AddRow(), save() (+19 more)
+### Community 63 - "useT"
+Cohesion: 0.12
+Nodes (20): el, Harness(), ITEMS, makeFakeInv(), ExportFilterBar(), AddRow(), save(), EditRow() (+12 more)
 
 ### Community 64 - "Email Thread Ingestion Tool"
 Cohesion: 0.18
@@ -633,9 +626,9 @@ Nodes (14): addr_list(), decode(), _decode_part(), fetch_all_messages(), get_bod
 Cohesion: 0.13
 Nodes (18): Inventory Images Missing Manifest, FM-U0403BY00-04G, FM-U0463BY00-01S, FM-U0475BY00.01-01C, FM-UC012-C07-C, FM-Z0001MBU01-06B, H0037-226-CC1206, L4002-177-CPU2AB17 (+10 more)
 
-### Community 66 - "Quotes Management List"
-Cohesion: 0.39
-Nodes (7): Quotes, fmtAmount(), formatDate(), quoteDate(), Quotes(), STATUS_STYLES, quoteIsConfirmed()
+### Community 66 - "EnquiryForm.jsx"
+Cohesion: 0.15
+Nodes (15): Quotes, NO_API_CHANNELS, EnquiryForm(), handleSubmit(), uploadOneFile(), STATUS_SELECTED, STATUSES, todayStr() (+7 more)
 
 ### Community 67 - "Crystal Fabric Online Customizer"
 Cohesion: 0.21
@@ -645,41 +638,41 @@ Nodes (14): CrystalFabricCustomizer(), addToEnquiry(), onLogo(), updatePreview()
 Cohesion: 0.06
 Nodes (32): 1. How a corp product works today, 2.1 Pricing model — **cost delta, not a typed sell price**, 2.2 `customer_prices` shape, 2. Data shape, 3. Module-by-module impact, 4.10 🟠 The admin Products grid has no rule for a variant price, 4.11 🐛 PRE-EXISTING BUG — corp-gift quote lines are labelled as figurine products on Convert-to-PI, 4.1 🔴 A typed variant price would make the quote's margin column lie (+24 more)
 
-### Community 69 - "Google Authentication Claim Flow"
-Cohesion: 0.10
-Nodes (30): InvitationClaim, GoogleDetailsStep(), handleSubmit(), googleProvider, InvitationClaim(), handleGoogleClaim(), handleSubmit(), STATE_MESSAGES (+22 more)
+### Community 69 - "portalInviteApi.js"
+Cohesion: 0.07
+Nodes (33): InvitationClaim, PendingScreen, CUSTOMER_CURRENCIES, GoogleDetailsStep(), handleSubmit(), googleProvider, InvitationClaim(), handleGoogleClaim() (+25 more)
 
 ### Community 70 - "Texture Rendering Engine Tests"
 Cohesion: 0.18
 Nodes (18): Image, post, admin_render_test(), _crop(), _decode_upload(), Runs the SAME engine.render() the live customer flow calls, straight from the…, Crop + tile at the given pitch, exactly like a real render would, so the owner…, Adds/replaces one (style, backfilm) photo for a colour — a colour can have any… (+10 more)
 
-### Community 71 - "Crystal MRP Stock Matching"
-Cohesion: 0.13
-Nodes (24): CRYSTALS, PRODUCT, buildProductIndex(), importStockList(), matchProductCode(), refApplies(), refScopePlating(), stripBrandLetters() (+16 more)
+### Community 71 - "mrp.js"
+Cohesion: 0.21
+Nodes (14): CRYSTALS, PRODUCT, refApplies(), refScopePlating(), VALID_PLATINGS, colourFromItemCode(), computeRequirements(), lineProduct() (+6 more)
 
 ### Community 72 - "Template Zone Render Service"
 Cohesion: 0.16
 Nodes (18): Manual SVG-over-photo registration — a plain uniform scale + mm offset the…, Renders the template's saved zones as real crystal texture — the first thing…, templates_align(), templates_delete(), templates_render_zones(), delete_template(), get_template(), _load() (+10 more)
 
-### Community 73 - "PDF Quote Document Generation"
+### Community 73 - "QuoteExport.jsx"
 Cohesion: 0.17
-Nodes (13): B, baseFont(), COL, exportErrorMessage(), imageToDataURL(), isStaleChunkError(), LOGO_H, QuoteExport() (+5 more)
+Nodes (14): exceljs, B, baseFont(), COL, exportErrorMessage(), imageToDataURL(), isStaleChunkError(), LOGO_H (+6 more)
 
 ### Community 74 - "Expense Organiser Technical Specs"
 Cohesion: 0.06
 Nodes (31): Architecture, Authentication, Authorized Domains, Backend (Netlify environment variables — server only), Color Theming, Confirmation Dialogs, Data Migration, Deployment (+23 more)
 
-### Community 75 - "Supplier Contact Data Merge"
-Cohesion: 0.16
-Nodes (21): cleanSupplierContacts(), flatFieldsFromContacts(), genContactId(), normalizeSupplierContact(), primarySupplierContact(), supplierContactsOf(), fieldsToFillFrom(), MERGE_ARRAY_FIELDS (+13 more)
+### Community 75 - "supplierMerge.js"
+Cohesion: 0.20
+Nodes (17): cleanSupplierContacts(), genContactId(), normalizeSupplierContact(), supplierContactsOf(), fieldsToFillFrom(), MERGE_ARRAY_FIELDS, MERGE_SCALAR_FIELDS, mergeContacts() (+9 more)
 
-### Community 76 - "CRM Outreach Generation"
-Cohesion: 0.19
-Nodes (14): blockContactOutreach(), skipDraft(), erpCodeAlternatives(), erpCodesExist(), authedUser(), handleBlockOutreach(), handleDraftTopic(), handleSendTest() (+6 more)
+### Community 76 - "firebase.js"
+Cohesion: 0.18
+Nodes (16): stampLogin(), RANGE_FORMAT_CODES, EnquiryPage(), submit(), FORMAT_LABEL, designGroupKey(), designNumberOf(), formatCodeOf() (+8 more)
 
-### Community 77 - "Storefront Carousel and Currency"
-Cohesion: 0.05
-Nodes (59): Storefront, CardImageCarousel(), RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER, colorMap(), convertFromHKD(), convertFromUSD(), CUSTOMER_CURRENCIES (+51 more)
+### Community 77 - "FigurineShop.jsx"
+Cohesion: 0.11
+Nodes (33): CardImageCarousel(), ambiguousProducts(), BRAND_NAME, brandsOf(), codeOf(), dedupe(), imageToDataURL(), mapLimit() (+25 more)
 
 ### Community 78 - "Crystal BOM Migration"
 Cohesion: 0.12
@@ -689,13 +682,13 @@ Nodes (14): APPLY, byProduct, db, derived, fs, { getFirestore, FieldValue }, { i
 Cohesion: 0.12
 Nodes (15): APPLY, byKey, db, derived, fs, { getFirestore, FieldValue }, { initializeApp, cert }, key (+7 more)
 
-### Community 80 - "Supplier Details and Video"
-Cohesion: 0.09
-Nodes (25): Customers, SupplierDetail, fmtBytes(), SupplierVideos, activeSupplierContacts(), inactiveSupplierContacts(), store, useScrollMemory() (+17 more)
+### Community 80 - "SupplierDetail.jsx"
+Cohesion: 0.13
+Nodes (15): SupplierDetail, SupplierAddQuoteModal(), activeSupplierContacts(), inactiveSupplierContacts(), listProductsBySupplier(), fmtDate(), isHttpUrl(), linkLabel() (+7 more)
 
-### Community 81 - "WooCommerce Stock Reconciliation Tool"
-Cohesion: 0.20
-Nodes (16): WooStockReconcile, setWooLink(), attrText(), fmt(), fmtWhen(), LinkPicker(), norm(), RowView() (+8 more)
+### Community 81 - "WooStockReconcile.jsx"
+Cohesion: 0.23
+Nodes (14): WooStockReconcile, setWooLink(), attrText(), fmt(), fmtWhen(), LinkPicker(), norm(), RowView() (+6 more)
 
 ### Community 82 - "Supplier Catalog Viewer"
 Cohesion: 0.21
@@ -705,13 +698,13 @@ Nodes (13): canPreview(), CONTENT_TYPE_BY_EXT, EXT_ICONS, extOf(), FILE_ICONS, f
 Cohesion: 0.21
 Nodes (18): WhatsAppImport, ContactSummaryScanSection(), handleGenerateAll(), handleScan(), FileRow(), fmtDate(), SummaryScanSection(), handleGenerateAll() (+10 more)
 
-### Community 84 - "Engineering System Lessons Learned"
-Cohesion: 0.12
-Nodes (16): Crystocraft Operation Center — orientation, L-01 — Admin account silently demoted to pending, L-02 — send-email.js was a real open relay, L-04 — Resend 422: tags must be ASCII and reversible, L-05 — A shared helper with no default export broke the deploy, L-06 — normLine silently drops un-whitelisted line fields, L-14 — react-pdf blank pages and stranded headings, L-15 — Mechanical auth migration mis-keyed edge functions (+8 more)
+### Community 84 - "docs/skills/LESSONS-LEARNED.md"
+Cohesion: 0.18
+Nodes (10): L-01 — Admin account silently demoted to pending, L-02 — send-email.js was a real open relay, L-04 — Resend 422: tags must be ASCII and reversible, L-05 — A shared helper with no default export broke the deploy, L-06 — normLine silently drops un-whitelisted line fields, L-14 — react-pdf blank pages and stranded headings, L-15 — Mechanical auth migration mis-keyed edge functions, L-18 — Portal login stamps failed silently for most customers (+2 more)
 
-### Community 85 - "Brand Design System Guidelines"
-Cohesion: 0.13
-Nodes (19): docs/skills/DESIGN-SYSTEM.md (V3 target), Crystocraft Design System — Reference Exports README, src/index.css, docs/skills/UI-POLISH.md, v2-2026 Design System Export, v2.5 Design System Export, Crystocraft Brand Identity Guidelines (V2), Three divisions, one master brand (+11 more)
+### Community 85 - "Crystocraft Design System — Reference Exports README"
+Cohesion: 0.18
+Nodes (13): docs/skills/DESIGN-SYSTEM.md (V3 target), Crystocraft Design System — Reference Exports README, src/index.css, docs/skills/UI-POLISH.md, v2-2026 Design System Export, v2.5 Design System Export, Crystocraft Brand Identity Guidelines (V2), Three divisions, one master brand (+5 more)
 
 ### Community 86 - "Crystal Color Migration"
 Cohesion: 0.13
@@ -737,17 +730,17 @@ Nodes (16): dependencies, @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities, 
 Cohesion: 0.20
 Nodes (12): items, quote, @react-pdf/renderer, C, contentFont(), firstTier(), fmtDate(), fmtMoney() (+4 more)
 
-### Community 92 - "Image Crop Adjustments"
-Cohesion: 0.24
-Nodes (12): react-easy-crop, applySharpen(), applyWarmth(), clamp255(), isNeutral(), ManualAdjust(), applyCrop(), NEUTRAL (+4 more)
+### Community 92 - "orderStock.js"
+Cohesion: 0.32
+Nodes (14): fmt(), ICONS, newLine(), OrderInventoryIssue(), addReservedLine(), adjustReservedLine(), genField(), produceForOrder() (+6 more)
 
-### Community 93 - "Spec Template JSON Structure"
-Cohesion: 0.12
-Nodes (25): PdTemplateEdit, updateTemplate(), cloneToParent(), deletePath(), flattenLeaves(), walk(), getPath(), isPlainObject() (+17 more)
+### Community 93 - "TemplateEdit.tsx"
+Cohesion: 0.10
+Nodes (31): PdTemplateEdit, updateTemplate(), cloneToParent(), deepEqual(), deletePath(), flattenLeaves(), walk(), getPath() (+23 more)
 
-### Community 94 - "Proposal Editor Interface"
-Cohesion: 0.15
-Nodes (10): FrontPageProductPicker(), openProduct(), ProposalEditor(), addSection(), exportForMapping(), handleDownloadPdfPreview(), reloadProposal(), withKey() (+2 more)
+### Community 94 - "ProposalEditor"
+Cohesion: 0.13
+Nodes (14): AssetDrawer(), del(), save(), setCategory(), switchCategory(), ProposalEditor(), addSection(), handleDownloadPdfPreview() (+6 more)
 
 ### Community 95 - "Legacy ERP Cutover Plan"
 Cohesion: 0.07
@@ -765,8 +758,8 @@ Nodes (10): preprocessForGemini(), resizeToJpeg(), SupplierQuoteForm(), addFiles
 Cohesion: 0.20
 Nodes (22): bytesToBase64(), callGemini(), fetchImageB64(), firstText(), jsonRes(), PD_MODEL, config, handler() (+14 more)
 
-### Community 99 - "Firestore Schema Architecture"
-Cohesion: 0.17
+### Community 99 - "Firestore Collections Map"
+Cohesion: 0.18
 Nodes (11): Core auth & catalogue, Costing & catalogue documents, Customers & CRM, ERP / financial registry (admin only), Firestore Collections Map, Inventory (staff since V8.12, same doc + append-only `movements/{movementId}` ledger shape throughout), Keeping this current, Product Design (`pd_*`, V8.16) (+3 more)
 
 ### Community 100 - "Messaging AI Summaries"
@@ -781,17 +774,17 @@ Nodes (12): AMOUNTS, css, DESCS, htmlPath, OUT, pdfPath, pngs, ROOT (+4 more)
 Cohesion: 0.15
 Nodes (6): dcAddBackgroundZone(), dcDrawCanvas(), dcLoadGraphic(), dcRenderZoneList(), designCanvasShell(), loadTemplateList()
 
-### Community 103 - "Daily Outreach Message Drafts"
-Cohesion: 0.16
-Nodes (17): appendNote(), DailyDrafts(), applyDraftLink(), contactSummaryFor(), fieldsFor(), handleBulkRewrite(), handleChatSend(), handleDraftUpload() (+9 more)
+### Community 103 - "DailyDrafts"
+Cohesion: 0.12
+Nodes (24): markContactOutreach(), appendNote(), DailyDrafts(), applyDraftLink(), contactSummaryFor(), fieldsFor(), handleBulkRewrite(), handleChatSend() (+16 more)
 
-### Community 104 - "Customer Contacts Form"
-Cohesion: 0.15
-Nodes (6): blankContact(), ContactsEditor(), add(), CustomerForm(), addTag(), handleTagKeyDown()
+### Community 104 - "CustomerForm.jsx"
+Cohesion: 0.11
+Nodes (14): CustomerForm, AI_CONTEXT_SUMMARY_MAX_WORDS, CRM_CATEGORIES, CRM_STATUSES, loadAllTagNames(), updateCustomerAiSummary(), blankContact(), CATEGORY_ICON (+6 more)
 
-### Community 105 - "Operations Task Log Dashboard"
-Cohesion: 0.13
-Nodes (10): Dashboard, CHANNEL_BADGE, Dashboard(), fmtDate(), IN_PRODUCTION_ORDER_STATUSES, isDateStrLast30Days(), isOverdue(), isToday() (+2 more)
+### Community 105 - "Dashboard.jsx"
+Cohesion: 0.09
+Nodes (23): Dashboard, NOT_CUSTOMER_TAG, activityFromEmailThreads(), activityFromEnquiries(), authedPost(), CACHE_DOC, customerIdOf(), EXCLUDED_SENDER_PATTERNS (+15 more)
 
 ### Community 107 - "Order Line Exporter"
 Cohesion: 0.19
@@ -817,13 +810,13 @@ Nodes (26): 10. Where stock actually lives, for the 31 March valuation (owner, 2
 Cohesion: 0.08
 Nodes (25): 1. Overview, 2.1 Crystocraft Finished Goods, 2.2 UB Business Series (商務系列), 2. Finished Product Codes (成品編號), 3.1 Crystocraft Main Body (主體) Codes, 3.2 Main Accessories (主體附件) Codes, 3.3 Assembly Style Codes (裝配款式), 3.4 Scattered / Transition Parts (零散配件) (+17 more)
 
-### Community 113 - "Featured Product Configuration"
-Cohesion: 0.31
-Nodes (12): cfgDoc(), getFrontPageFeaturedOnce(), newId(), normConfig(), normItem(), saveFrontPageFeatured(), useFrontPageFeatured(), FrontPageConfig() (+4 more)
+### Community 113 - "FrontPageConfig.jsx"
+Cohesion: 0.22
+Nodes (16): FrontPageProductPicker(), openProduct(), galleryCaption(), normGallery(), cfgDoc(), getFrontPageFeaturedOnce(), newId(), normConfig() (+8 more)
 
-### Community 114 - "WooCommerce Data Cache"
-Cohesion: 0.32
-Nodes (11): load(), loadWooCatalogueCache(), loadWooCatalogueOverviewCache(), loadWooCustomerScanCache(), loadWooOrdersCache(), ref(), save(), saveWooCatalogueOverviewCache() (+3 more)
+### Community 114 - "wooCache.js"
+Cohesion: 0.35
+Nodes (10): load(), loadWooCatalogueCache(), loadWooCatalogueOverviewCache(), loadWooCustomerScanCache(), loadWooOrdersCache(), ref(), save(), saveWooCatalogueCache() (+2 more)
 
 ### Community 115 - "Custom Client Proposal Spec"
 Cohesion: 0.08
@@ -849,9 +842,9 @@ Nodes (9): db, eq(), mergeSrc, ok(), po1, rc1, SRC, surv (+1 more)
 Cohesion: 0.11
 Nodes (18): 0. Why this exists, 1. What already exists (so we build on it, not beside it), 2. Where the draft's technical design should be discarded, 3. Scope, 4. What the draft missed, and what changes the plan, 5. Rollout, 5a. Phase 2a — corrected implementation plan (2026-08-11), 5b. Phase 2b — portal-facing (2026-08-11) (+10 more)
 
-### Community 121 - "Customer Contact Deduplication"
-Cohesion: 0.24
-Nodes (16): arrFrom(), channelsOf(), contactsOf(), dedupeContactIds(), fieldsToFillFrom(), genContactId(), mergeContactLists(), normalizeContact() (+8 more)
+### Community 121 - "customer.js"
+Cohesion: 0.19
+Nodes (25): arrFrom(), brandedImageDocs(), channelsOf(), contactsOf(), copySubcollection(), dedupeContactIds(), fieldsToFillFrom(), fromDoc() (+17 more)
 
 ### Community 122 - "Outreach Memory Rule Engine"
 Cohesion: 0.15
@@ -869,9 +862,9 @@ Nodes (9): btn(), esc(), fetchUserRecord(), handler(), isAdmin(), itemsTable(), 
 Cohesion: 0.12
 Nodes (16): 10. Future Phases (Outline), 1. Purpose, 2. Primary Goals (V1), 3. Target Users, 4.1 Entry Points, 4.2 Question Flow (V1), 4.3 Results View, 4. High‑Level Experience (+8 more)
 
-### Community 126 - "Enquiry Spreadsheet Export"
-Cohesion: 0.29
-Nodes (8): exceljs, B, exportEnquiryExcel(), fetchImage(), platingCode(), variantCode(), Card(), handleExport()
+### Community 126 - "LoadingBar.jsx"
+Cohesion: 0.10
+Nodes (25): Enquiries, ImageLightbox(), LoadingBar(), RANGE_PLATINGS, fmtMoney(), CorporateDetail(), downloadUrl(), CustomizerPage() (+17 more)
 
 ### Community 127 - "Domain Module Reference"
 Cohesion: 0.12
@@ -889,29 +882,29 @@ Nodes (14): 0. Why this exists, 1. What already exists (so we build on it, not b
 Cohesion: 0.33
 Nodes (10): adjustmentValue(), config, fsDoc(), fsValue(), handler(), isFrontOffice(), json(), JWKS (+2 more)
 
-### Community 131 - "Development Infrastructure Docs"
-Cohesion: 0.17
-Nodes (12): Firebase CLI, Fly.io CLI, GitHub, Google Analytics 4 (read access), Google Merchant Center (Merchant API, read + write), Graphify (codebase knowledge graph), Local tooling already available, Logging into the app itself for real browser testing (+4 more)
+### Community 131 - "Local tooling already available"
+Cohesion: 0.13
+Nodes (14): Firebase CLI, Fly.io CLI, GitHub, Google Analytics 4 (read access), Google Merchant Center (Merchant API, read + write), Graphify (codebase knowledge graph), Local tooling already available, Logging into the app itself for real browser testing (+6 more)
 
 ### Community 132 - "Brand Portal Mocking"
 Cohesion: 0.18
 Nodes (9): BRAND_ASSETS, BRANDED_IMAGES, GALLERY_ASSETS, HERO, map, SECTION_IMAGES, SECTION_PRODUCTS, stubPlugin (+1 more)
 
-### Community 133 - "Image Optimization Picker"
-Cohesion: 0.24
-Nodes (8): LineImagePicker(), handleUpload(), enhanceProductImage(), detectOrientation(), resizeToJpeg(), urlToResizedBase64(), detectColorLoss(), runEnhance()
+### Community 133 - "BankAccounts.jsx"
+Cohesion: 0.23
+Nodes (12): BankAccounts, bankAccountAudit(), call(), createBankAccount(), listBankAccounts(), updateBankAccount(), BankAccounts(), load() (+4 more)
 
 ### Community 134 - "WooCommerce Sync Architecture"
 Cohesion: 0.14
 Nodes (13): 0. Bottom line, 1. What already exists (so this is built on it, not beside it), 2.1 Invoice numbering collides with the "use Woo's order number" rule, 2.2 No WooCommerce connection exists at all, 2.3 No idempotency key exists anywhere in the write path today, 2.4 Where does an imported-but-not-yet-invoiced WooCommerce order live?, 2.5 Discount / shipping / tax as separate lines, 2. Real gaps — need a design decision before code (+5 more)
 
-### Community 135 - "Customer Product Generation Templates"
-Cohesion: 0.15
-Nodes (19): PdCustomerBrand, PdGenerations, PdTemplateNew, PdTemplates, getRealCustomer(), listCustomersInUse(), listRealCustomers(), KNOWN_KEYS (+11 more)
+### Community 135 - "i18n-translate.mjs"
+Cohesion: 0.14
+Nodes (12): allKeys, body, esc(), existing, EXTRA, keys, merged, OUT (+4 more)
 
-### Community 136 - "Product Copy Rewriter"
+### Community 136 - "wooImport.js"
 Cohesion: 0.24
-Nodes (10): authHeader(), RewritePanel(), handleRewrite(), WPPublishButton(), handlePublish(), ProductForm(), handleGenerateCopy(), handleRewrite() (+2 more)
+Nodes (13): doImport(), doImportRefund(), ORDER_CURRENCIES, estimatedShipDate(), importWooOrder(), KNOWN_UC_BY_WOO_ORDER_NO, mapWooOrderToOrder(), wooCurrencySupported() (+5 more)
 
 ### Community 137 - "Legacy Design System"
 Cohesion: 0.33
@@ -945,25 +938,25 @@ Nodes (9): crystalShell(), loadSwatches(), postSwatchSave(), removePhoto(), rend
 Cohesion: 0.31
 Nodes (9): BankDetailsAudit, BankDetailsAudit(), digitsOf(), editDistance(), extract(), ibanValid(), LABELLED, SOURCES (+1 more)
 
-### Community 145 - "Component Category Settings"
-Cohesion: 0.38
-Nodes (9): clean(), DEFAULT_COMPONENT_CATEGORIES, DOC_REF(), loadComponentCategories(), saveComponentCategories(), useComponentCategories(), RANGE_COMPONENT_CATEGORIES, ComponentCategories() (+1 more)
+### Community 145 - "componentCategories.js"
+Cohesion: 0.18
+Nodes (15): clean(), DEFAULT_COMPONENT_CATEGORIES, DOC_REF(), loadComponentCategories(), saveComponentCategories(), useComponentCategories(), RANGE_COMPONENT_CATEGORIES, deleteComponent() (+7 more)
 
-### Community 146 - "Range Quote Ingestion"
-Cohesion: 0.28
-Nodes (8): preprocessForGemini(), RangeQuoteForm(), addFiles(), extractFromFile(), handleDrop(), handleSubmit(), resizeToJpeg(), toBase64()
+### Community 146 - "lucide-react"
+Cohesion: 0.05
+Nodes (38): lucide-react, Catalogues, ComponentDetail, ProductDetail, RangeComponentForm, RangeQuoteForm, SupplierQuoteForm, ConfirmDialog() (+30 more)
 
-### Community 147 - "Customer Product Media Catalog"
-Cohesion: 0.19
-Nodes (18): PdProductDetail, addProductImage(), deleteProduct(), getProduct(), removeProductImage(), replaceImages(), saveImageAnalysis(), setBaseReferenceImage() (+10 more)
+### Community 147 - "Suppliers.jsx"
+Cohesion: 0.21
+Nodes (11): Suppliers, isChinaCountry(), SUPPLIER_CATEGORIES, SUPPLIER_PROVINCES, BackfillProvincesModal(), CAT_STYLES, loadViewState(), Suppliers() (+3 more)
 
-### Community 148 - "Customer Portal Analytics"
-Cohesion: 0.24
-Nodes (11): Portal, fetchPortalTraffic(), Enquiries(), TABS, daysSince(), fmtAgo(), fmtExact(), PortalLogins() (+3 more)
+### Community 148 - "authedUser"
+Cohesion: 0.18
+Nodes (16): sendCampaignBatch(), authedUser(), fetchPortalTraffic(), handleDraftTopic(), handleSendTest(), handleSkip(), draftTopic(), generateDrafts() (+8 more)
 
-### Community 149 - "RBAC Module Permission System"
-Cohesion: 0.11
-Nodes (17): src/access.js (MODULE_GROUPS + canAccess), App.jsx (router + gates), docs/skills/ARCHITECTURE-RULES.md, 1. The model, 2. Module catalogue (17 keys — LOCKED), 3. The five surfaces, 4. Rules mapping — every current call site → new check  *(sign-off needed)*, 4b. Edge functions (+9 more)
+### Community 149 - "src/access.js (MODULE_GROUPS + canAccess)"
+Cohesion: 0.12
+Nodes (16): src/access.js (MODULE_GROUPS + canAccess), App.jsx (router + gates), docs/skills/ARCHITECTURE-RULES.md, 1. The model, 2. Module catalogue (17 keys — LOCKED), 3. The five surfaces, 4. Rules mapping — every current call site → new check  *(sign-off needed)*, 4b. Edge functions (+8 more)
 
 ### Community 150 - "Credit Note Schema"
 Cohesion: 0.22
@@ -985,13 +978,13 @@ Nodes (7): boxkey(), num(), Diff XiangXia's packing spreadsheet against the app'
 Cohesion: 0.22
 Nodes (7): fs, { getFirestore }, { initializeApp, cert }, KEY, OUT, path, ROOT
 
-### Community 156 - "Supplier Product Catalog Forms"
-Cohesion: 0.22
-Nodes (16): PdProductEdit, PdProductNew, PdProducts, createProduct(), listProducts(), updateProduct(), getRealSupplier(), listRealSuppliers() (+8 more)
+### Community 156 - "products.ts"
+Cohesion: 0.11
+Nodes (41): PdProductEdit, PdProductNew, addProductImage(), createProduct(), deleteProduct(), getProduct(), listProducts(), removeProductImage() (+33 more)
 
-### Community 157 - "B2C Stock Inventory"
-Cohesion: 0.21
-Nodes (10): cleanCategory(), HEADERS, num(), parseFinishedGoodsPaste(), api, b2cInventory, deleteB2cStock, importB2cStock (+2 more)
+### Community 157 - "b2cStock.js"
+Cohesion: 0.13
+Nodes (15): cleanCategory(), HEADERS, num(), parseFinishedGoodsPaste(), api, b2cInventory, deleteB2cStock, importB2cStock (+7 more)
 
 ### Community 158 - "WooCommerce Webhook Processing"
 Cohesion: 0.44
@@ -1045,17 +1038,17 @@ Nodes (7): ALLOWED_LANGUAGES, callDeepgram(), config, handler(), isFrontOffice()
 Cohesion: 0.43
 Nodes (7): clean(), handler(), isFrontOffice(), json(), JWKS, num(), WRITABLE
 
-### Community 171 - "Security Architecture and RBAC"
-Cohesion: 0.12
-Nodes (19): Customer data isolation (B2B confidentiality), Data lifecycles (lead→contact→customer; Woo→SI/UC), Deterministic boundaries — AI reports observables, code decides, RBAC — roles and the multi-file contract, L-11 — Rules don't deploy via git push, Sourcing Hub — the Supply Chain, Per-channel communication capture, Supplier record + contacts[] with denormalised mirror (+11 more)
+### Community 171 - "docs/skills/ARCHITECTURE-RULES.md"
+Cohesion: 0.11
+Nodes (20): Customer data isolation (B2B confidentiality), Data lifecycles (lead→contact→customer; Woo→SI/UC), Deterministic boundaries — AI reports observables, code decides, RBAC — roles and the multi-file contract, L-11 — Rules don't deploy via git push, Sourcing Hub — the Supply Chain, Per-channel communication capture, Supplier record + contacts[] with denormalised mirror (+12 more)
 
 ### Community 172 - "Build Tooling Configuration"
 Cohesion: 0.25
 Nodes (8): devDependencies, autoprefixer, postcss, tailwindcss, @types/react, @types/react-dom, vite, @vitejs/plugin-react-swc
 
-### Community 173 - "Design Generation Spec Templates"
-Cohesion: 0.17
-Nodes (16): PdTemplateDetail, createGeneration(), deleteGeneration(), listGenerationsForTemplate(), updateGeneration(), deleteTemplate(), getTemplate(), GEN_STATUS_BADGE (+8 more)
+### Community 173 - "db"
+Cohesion: 0.11
+Nodes (28): ExistingProductOption, ExistingProductPicker(), db, storage, createGeneration(), deleteGeneration(), listGenerationsForTemplate(), updateGeneration() (+20 more)
 
 ### Community 174 - "Stock Ledger Management"
 Cohesion: 0.20
@@ -1069,13 +1062,13 @@ Nodes (7): COL(), deleteTopicTemplate(), listTopicTemplates(), saveTopicTemplate
 Cohesion: 0.22
 Nodes (4): CataloguePreview, CataloguePreview(), getLayout(), HalfPage()
 
-### Community 177 - "Sales Order Sync"
-Cohesion: 0.46
-Nodes (7): diffLines(), fetchErpSoLines(), lineFromErp(), near(), normCode(), num(), checkAgainstErp()
+### Community 177 - "ErpDocModal.jsx"
+Cohesion: 0.25
+Nodes (11): ErpDocModal(), fmtDate(), fmtMoney(), fmtQty(), erpLines(), diffLines(), fetchErpSoLines(), lineFromErp() (+3 more)
 
-### Community 178 - "Customer Tag Management"
-Cohesion: 0.23
-Nodes (12): COL(), deleteTagEverywhere(), importErpCustomers(), loadCustomers(), loadTagStats(), renameTagEverywhere(), TagManager(), applyGroup() (+4 more)
+### Community 178 - "loadCustomers"
+Cohesion: 0.24
+Nodes (12): deleteTagEverywhere(), importErpCustomers(), loadCustomers(), loadTagStats(), renameTagEverywhere(), TagManager(), applyGroup(), commitDelete() (+4 more)
 
 ### Community 179 - "Packing Database Lookup"
 Cohesion: 0.38
@@ -1113,21 +1106,21 @@ Nodes (6): config, FALLBACK_LANGS, handler(), hash32(), json(), metaVal()
 Cohesion: 0.52
 Nodes (6): callDeepSeek(), config, handler(), isFrontOffice(), json(), JWKS
 
-### Community 188 - "ERP Bill of Materials Import"
-Cohesion: 0.22
-Nodes (15): ErpProductImport(), choose(), doImport(), erpBom(), erpLookup(), checkBomCoverage(), isPackaging(), norm() (+7 more)
+### Community 188 - "V8.2 Cycle Close-out"
+Cohesion: 0.18
+Nodes (13): netlify/edge-functions/_auth.js, Credit Note Feature (Phase C), Daily Drafts Re-engagement Engine, Email Archive / Ingestion Pipeline, marketing_contacts Collection, resend-webhook.js Engagement Tracking, App.jsx Self-Heal Effect, SU-08 Marketing-Lead Interaction-History Audit + Two-Phase Fix (+5 more)
 
-### Community 189 - "Blog Media Curation"
-Cohesion: 0.24
-Nodes (7): isPublicVisible(), ensureProductImages(), RoundupTab(), toggleProduct(), SpotlightTab(), handleGenerate(), loadBlogImages()
+### Community 189 - "UC Registry and Invoice Numbering"
+Cohesion: 0.18
+Nodes (13): Crystal Bill of Materials, Crystal Fabric Studio, Portal Order / Invoice History, ERP Incremental Sync, JES Retirement Plan, Mailchimp Retirement, 31 March Stock Valuation, UC Registry and Invoice Numbering (+5 more)
 
-### Community 190 - "Customer Merge Management"
-Cohesion: 0.48
-Nodes (7): brandedImageDocs(), copySubcollection(), mergeCustomers(), previewCustomerMerge(), relatedDocs(), MergeCustomerModal(), confirm()
+### Community 190 - "alibabaSummaryApi.js"
+Cohesion: 0.23
+Nodes (12): authedPost(), generateAndSaveAlibabaSummary(), pasteDateLabel(), refreshAlibabaSummary(), renderThreadsText(), savePastedAlibabaThread(), totalCharCount(), handleRefreshAlibabaSummary() (+4 more)
 
-### Community 191 - "Crystal Components Library"
-Cohesion: 0.21
-Nodes (14): ComponentsLib, DOC_REF(), ensureColors(), loadCrystalColors(), norm(), saveCrystalColors(), CrystalColours(), handleSave() (+6 more)
+### Community 191 - "Components.jsx"
+Cohesion: 0.13
+Nodes (19): ComponentsLib, buildProductIndex(), importStockList(), matchProductCode(), stripBrandLetters(), ComponentPriceList(), CrystalErpPrice(), runSearch() (+11 more)
 
 ### Community 192 - "Marketing Contacts Subscription"
 Cohesion: 0.53
@@ -1189,9 +1182,13 @@ Nodes (4): FAVS, map, stubPlugin, STUBS
 Cohesion: 0.33
 Nodes (4): map, PRODUCT, stubPlugin, STUBS
 
-### Community 208 - "Customer Profile Inline"
-Cohesion: 0.28
-Nodes (9): fromDoc(), getCustomer(), mirrorToLinkedAccounts(), saveCustomer(), handleAddAsContact(), quickAddContact(), handleSubmit(), NewCustomerInline() (+1 more)
+### Community 207 - "wooCustomerSync.js"
+Cohesion: 0.24
+Nodes (11): linkContactToCustomer(), handleAddAsContact(), confirmCustomerSync(), scanCustomers(), saveWooCustomerScanCache(), buildRetailCustomerDoc(), classifyWooCustomers(), createWooRetailCustomers() (+3 more)
+
+### Community 208 - "AccountEdit.jsx"
+Cohesion: 0.15
+Nodes (19): AccountEdit, ContactPicker(), CUSTOMER_COUNTRIES, CUSTOMER_SOURCES, getCustomer(), mirrorToLinkedAccounts(), saveCustomer(), AccountEdit() (+11 more)
 
 ### Community 209 - "ERP Purchase Order Schema"
 Cohesion: 0.40
@@ -1213,13 +1210,13 @@ Nodes (5): ERP Sync, Image Filename, images_missing.txt — Missing Inventory Im
 Cohesion: 0.40
 Nodes (5): U0403-163-GTOA, u0403-163-gtoa.jpg, U0404-163-CC1A, U0404-163-CTO, U0404-163-GBLA
 
-### Community 215 - "Image Download Proxy"
+### Community 215 - "download-image.js"
 Cohesion: 0.50
-Nodes (4): ALLOWED_HOSTS, config, handler(), isAllowedStorageUrl()
+Nodes (4): ALLOWED_STORAGE_HOSTS, config, handler(), isAllowedStorageUrl()
 
-### Community 216 - "SEO Snapshot Reconciliation"
-Cohesion: 0.24
-Nodes (14): SeoReconcile, fmtTs(), fmtWhen(), key(), SeoReconcile(), exportCsv(), SNAP_FIELDS, takeSnapshot() (+6 more)
+### Community 216 - "PurchaseOrderDetail.jsx"
+Cohesion: 0.22
+Nodes (6): PurchaseOrderDetail, PO_PAYMENT_TERM_LABEL, PO_STATUSES, fmtDate(), PurchaseOrderDetail(), STATUS_META
 
 ### Community 217 - "Orders Preview Seed Data"
 Cohesion: 0.40
@@ -1237,13 +1234,17 @@ Nodes (14): 1. Context, 2. Confirmed Requirements from the Screenshots, 3. Propo
 Cohesion: 0.50
 Nodes (3): CatalogueForm(), handleCoverUpload(), setVal()
 
-### Community 222 - "SKU Image Scraping"
-Cohesion: 0.24
-Nodes (10): ImportImages, DEFAULT_PAGES, ImportImages(), handleScan(), scrapePages(), stripBrand(), variantBaseCode(), buildRangeSku() (+2 more)
+### Community 222 - "Settings.jsx"
+Cohesion: 0.08
+Nodes (19): ImportImages, erpCodeAlternatives(), erpCodesExist(), ComponentCodeAudit(), findCandidates(), DEFAULT_PAGES, ImportImages(), handleScan() (+11 more)
 
-### Community 223 - "Crystal Inventory Class Storage"
-Cohesion: 0.12
-Nodes (15): api, crystalInventory, deleteCrystal, importCrystalStock, saveCrystal, createInventoryClass(), importStock(), useItems() (+7 more)
+### Community 223 - "docs/skills/SKILL.md"
+Cohesion: 0.31
+Nodes (8): Load-Bearing Decisions (MUST NOT be undone), Design System V2.5 — shipped spec, WCAG AA contrast posture, JES ERP retirement, Crystocraft Operation Center, Storefront / Customer Portal, UI Polish — from functional to Crystocraft-grade, The Second Pass — mandatory and measurable
+
+### Community 224 - "SeoReview.jsx"
+Cohesion: 0.33
+Nodes (7): SeoReview, cell(), flatten(), fmtTs(), SeoReview(), short(), STATUS_BADGE
 
 ### Community 225 - "ERP Component Alternatives View"
 Cohesion: 0.50
@@ -1253,9 +1254,9 @@ Nodes (3): public.erp_code_alternatives(), public.erp_component_usage, public.er
 Cohesion: 0.50
 Nodes (4): U0221-021-CM1, U0221-021-CM2, U0221-021-GM1, u0221-021-gm1.jpg
 
-### Community 227 - "Weekly CRM Summary"
-Cohesion: 0.23
-Nodes (13): NOT_CUSTOMER_TAG, activityFromEmailThreads(), activityFromEnquiries(), authedPost(), CACHE_DOC, customerIdOf(), EXCLUDED_SENDER_PATTERNS, findActiveCustomers() (+5 more)
+### Community 227 - "components-csv.mjs"
+Cohesion: 0.25
+Nodes (6): evil, items, lines, nameByCode, requiredCsv, reservedCsv
 
 ### Community 228 - "API Reference Documentation"
 Cohesion: 0.18
@@ -1285,21 +1286,29 @@ Nodes (3): squareSvg, stubPlugin, STUBS
 Cohesion: 0.18
 Nodes (10): 1. Tone, 2. Sentence structure, 3. Sign-off, 4. High-frequency vocabulary & patterns, 4a. Genuine crisis / complaint / bad-news register (targeted search), 5. Anti-AI patterns — never use these in Eddie's voice, 6. Dos & Don'ts, 7. Imitation examples — AI draft → Eddie's voice (+2 more)
 
-### Community 238 - "Brand Template Generator"
-Cohesion: 0.24
-Nodes (9): BrandQuickView(), getCustomerBrand(), createTemplate(), NewTemplateForm(), handleAnalyze(), handleApplyBrand(), handleSubmit(), handleTweak() (+1 more)
-
-### Community 239 - "Quote Margin Calculation"
+### Community 238 - "V7.21 Cycle Close-out"
 Cohesion: 0.33
-Nodes (4): marginColor(), QuoteItem(), allInCost(), calcMargin()
+Nodes (7): Customer Brand Gallery, Customer Contacts Rebuild (contacts[]), Customer Portal (/shop Homepage), Physical Design Workbench, Sensitive-Customer Photo Screening, V7.21 Cycle Close-out, V7.22 Cycle Close-out
+
+### Community 239 - "QuoteDetail.jsx"
+Cohesion: 0.09
+Nodes (17): QuoteDetail, accountForCurrency(), BankDetailsPicker(), marginColor(), ProductImagePicker(), handleUpload(), ProductPicker(), QuoteItem() (+9 more)
 
 ### Community 240 - "JSON Editor Components"
 Cohesion: 0.27
 Nodes (6): JsonHierarchyView(), JsonHighlightedTextarea(), BRACKET_COLORS, KEY_COLOR, renderJsonLines(), renderValueSegment()
 
-### Community 241 - "Data Import Logs Handler"
-Cohesion: 0.67
-Nodes (4): ImportData(), addLog(), handleClearAndImport(), parseDateStr()
+### Community 241 - "ImportData.jsx"
+Cohesion: 0.38
+Nodes (6): ImportData, IMPORT_DATA, ImportData(), addLog(), handleClearAndImport(), parseDateStr()
+
+### Community 242 - "crystal-bom.jsx"
+Cohesion: 0.33
+Nodes (4): CRYSTALS, el, INITIAL, MIX_CODES
+
+### Community 243 - "puNumber.js"
+Cohesion: 0.47
+Nodes (5): doAllocatePu(), allocatePuNo(), formatPuNo(), JES_SEED_BY_YEAR, puYear()
 
 ### Community 245 - "Product Variant Assets C05"
 Cohesion: 0.67
@@ -1329,65 +1338,53 @@ Nodes (8): fmtDate(), OrderHistoryPage(), OrderHistoryPage, call(), myInvoiceDet
 Cohesion: 0.38
 Nodes (9): cloneToParent(), config, deepEqual(), getPath(), handler(), isPlainObject(), parsePath(), setPath() (+1 more)
 
-### Community 301 - "ERP Document Modal"
-Cohesion: 0.29
-Nodes (8): ErpDocModal(), fmtDate(), fmtMoney(), fmtQty(), erpLines(), openLines(), openErpInvoice(), openInvoice()
+### Community 301 - "backfill-generation-links.mjs"
+Cohesion: 0.40
+Nodes (3): APPLY, db, sa
 
-### Community 302 - "Supplier Form Links"
-Cohesion: 0.22
-Nodes (6): ExtraLinkRows(), genLinkId(), MultiInput(), remove(), SupplierForm(), toArray()
-
-### Community 303 - "App Route Guarding"
-Cohesion: 0.43
-Nodes (7): AppRoutes(), isAdmin(), isApproved(), isPending(), isStaff(), isStaffRole(), useProfile()
-
-### Community 304 - "Customer Enquiry Form"
-Cohesion: 0.29
-Nodes (5): EnquiryForm(), handleSubmit(), uploadOneFile(), todayStr(), tsToDateStr()
+### Community 302 - "SupplierForm.jsx"
+Cohesion: 0.15
+Nodes (14): SupplierForm, PO_PAYMENT_TERMS, flatFieldsFromContacts(), primarySupplierContact(), ContactRows(), ExtraLinkRows(), genLinkId(), isValidUrl() (+6 more)
 
 ### Community 305 - "Weekly Digest Generator"
 Cohesion: 0.52
 Nodes (6): callDeepSeek(), config, handler(), isFrontOffice(), json(), JWKS
 
-### Community 306 - "Quote Form Management"
-Cohesion: 0.38
-Nodes (5): contactAddress(), QuoteForm(), handleContactChange(), handleCustomerSelect(), prefillFromCustomer()
+### Community 306 - "QuoteForm.jsx"
+Cohesion: 0.27
+Nodes (7): QuoteForm, contactAddress(), DEFAULT_RATES, QuoteForm(), handleContactChange(), handleCustomerSelect(), prefillFromCustomer()
 
 ### Community 307 - "Quote File Upload Modal"
 Cohesion: 0.40
 Nodes (4): todayISO(), UploadQuoteModal(), handleSubmit(), uploadFile()
 
-### Community 308 - "Product Picker Data Loader"
-Cohesion: 0.47
-Nodes (5): ProductPicker(), loadBlogProducts(), normalizeRangeModel(), PRODUCT_SOURCES, rangeVariants()
-
-### Community 314 - "Product Image Picker Upload"
-Cohesion: 0.67
-Nodes (3): ProductImagePicker(), handleUpload(), resizeToJpeg()
+### Community 308 - "CatalogueDetail.jsx"
+Cohesion: 0.12
+Nodes (14): @dnd-kit/core, @dnd-kit/sortable, CatalogueDetail, galleryUrl(), MARKETING_DESC_MAXLEN, CatalogueDetail(), handleAddProduct(), ImageSequencer() (+6 more)
 
 ## Ambiguous Edges - Review These
 - `Customer Portal (/shop Homepage)` → `Email Archive / Ingestion Pipeline`  [AMBIGUOUS]
   PROJECT-PLAN.md · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **1187 isolated node(s):** `BadgeProps`, `ButtonProps`, `DividerProps`, `TagProps`, `CardProps` (+1182 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1803 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **46 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **1190 isolated node(s):** `start-dev.sh script`, `BadgeProps`, `ButtonProps`, `DividerProps`, `TagProps` (+1185 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1810 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **37 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `Customer Portal (/shop Homepage)` and `Email Archive / Ingestion Pipeline`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `react` connect `Core UI React Components` to `Portal UI Preview Mockups`, `Customer CRM Management`, `Order Inventory Stock Issues`, `Translation Key Automation`, `Image Optimization Picker`, `Carton Packing List Tools`, `Customer Portal Access Control`, `Customer Product Generation Templates`, `Bank Account Logistics Management`, `Crystal Costing and References`, `Freight Vendor Logistics Quotes`, `Inventory Status and Reorders`, `Bank Account Validation`, `Component Category Settings`, `Product and Supplier Media`, `Customer Brand Asset Gallery`, `Product Spec Sheet Editor`, `Customer Product Media Catalog`, `Customer Portal Analytics`, `Range Form Sku Builder`, `Bulk Category and Range Export`, `Critical Component Stock Management`, `Alibaba Chat Transcripts Integration`, `Catalogue Collection Management`, `Domain Interactions and Tags`, `Supplier Product Catalog Forms`, `Data Validation and Schema Audit`, `Customer Data Export Controls`, `Marketing Outreach Campaigns`, `Product Color Variation Previews`, `SEO State Change Logs`, `ERP Entity Lookup Sync`, `WooCommerce Multilingual Product Catalogue`, `Marketing Contact Details Sync`, `Customer Invoice History`, `AI Blog Content Generator`, `ERP Document Modal`, `Stock Ledger Management`, `Crystal Swatch Card Library`, `Brand Proposal PDF Export`, `Customer Brand Styling Details`, `App Route Guarding`, `Catalogue Layout Preview`, `Sales Outreach Draft Records`, `Project Dependencies and Configuration`, `v2 Trust Seal Display`, `Crystal BOM Requirement Editor`, `v2 Select Form Types`, `v2.5 Select Form Types`, `Customer Proposal Section Editor`, `ERP Bill of Materials Import`, `Storefront Home Page Highlights`, `Inventory Stock Edit Table`, `Crystal Components Library`, `Quotes Management List`, `Crystal Fabric Online Customizer`, `Google Authentication Claim Flow`, `PDF Quote Document Generation`, `Storefront Carousel and Currency`, `Supplier Details and Video`, `Shipment Verification and Stock`, `Supplier Catalog Viewer`, `WhatsApp Transcript Summarizer Tool`, `WooCommerce Stock Reconciliation Tool`, `SEO Snapshot Reconciliation`, `Image Crop Adjustments`, `Spec Template JSON Structure`, `SKU Image Scraping`, `Crystal Inventory Class Storage`, `v2.5 Trust Seal Display`, `Design Generation Spec Templates`, `Operations Task Log Dashboard`, `JSON Editor Components`, `Featured Product Configuration`?**
-  _High betweenness centrality (0.120) - this node is a cross-community bridge._
-- **Why does `db` connect `Core UI React Components` to `Portal UI Preview Mockups`, `Customer CRM Management`, `Order Inventory Stock Issues`, `Translation Key Automation`, `Image Optimization Picker`, `Carton Packing List Tools`, `Customer Portal Access Control`, `Customer Product Generation Templates`, `Bank Account Logistics Management`, `Crystal Costing and References`, `Freight Vendor Logistics Quotes`, `Inventory Status and Reorders`, `Bank Account Validation`, `Component Category Settings`, `Product and Supplier Media`, `Customer Brand Asset Gallery`, `Customer Product Media Catalog`, `Product Spec Sheet Editor`, `Customer Portal Analytics`, `Range Form Sku Builder`, `Bulk Category and Range Export`, `Critical Component Stock Management`, `WooCommerce Order Sync Integration`, `Alibaba Chat Transcripts Integration`, `B2C Stock Inventory`, `Catalogue Collection Management`, `Domain Interactions and Tags`, `Supplier Product Catalog Forms`, `Customer Data Export Controls`, `Marketing Outreach Campaigns`, `Product Color Variation Previews`, `Data Validation and Schema Audit`, `ERP Entity Lookup Sync`, `WooCommerce Multilingual Product Catalogue`, `Marketing Contact Details Sync`, `Customer Invoice History`, `AI Blog Content Generator`, `Design Generation Spec Templates`, `PO Receiving Flow`, `Outreach Templates Manager`, `Brand Proposal PDF Export`, `App Route Guarding`, `Customer Brand Styling Details`, `Catalogue Layout Preview`, `Sales Outreach Draft Records`, `Product Picker Data Loader`, `Stock Ledger Management`, `Crystal Swatch Card Library`, `Customer Proposal Section Editor`, `Storefront Home Page Highlights`, `ERP Bill of Materials Import`, `WhatsApp Lead Import Pipeline`, `Crystal Components Library`, `Quotes Management List`, `Crystal Fabric Online Customizer`, `Google Authentication Claim Flow`, `PDF Quote Document Generation`, `Supplier Contact Data Merge`, `Storefront Carousel and Currency`, `Supplier Details and Video`, `Shipment Verification and Stock`, `Supplier Catalog Viewer`, `WhatsApp Transcript Summarizer Tool`, `SEO Snapshot Reconciliation`, `SKU Image Scraping`, `Crystal Inventory Class Storage`, `Customer Email Summary Facets`, `Weekly CRM Summary`, `Operations Task Log Dashboard`, `Featured Product Configuration`, `WooCommerce Data Cache`, `Outreach Memory Rule Engine`?**
-  _High betweenness centrality (0.089) - this node is a cross-community bridge._
-- **Why does `Physical Design Workbench` connect `ERP Crystal BOM Derivation` to `Crystal Color Palette Registry`?**
+- **Why does `react` connect `react` to `react-router-dom`, `useCustomers`, `OrderStockIssue.jsx`, `PurchaseOrderForm.jsx`, `Carton Packing List Tools`, `App.jsx`, `Shipping.jsx`, `RangeCosting.jsx`, `logistics.js`, `InventoryStatus.jsx`, `ShipmentForm.jsx`, `constants.js`, `customerAssets.js`, `SpecSheetDetail.tsx`, `RangeForm.jsx`, `WooCommerceSync.jsx`, `Range.jsx`, `criticalComponents.js`, `CustomerDetail.jsx`, `Catalogue Collection Management`, `MarketingContacts.jsx`, `SchemaAudit.jsx`, `SeoState.jsx`, `UcRegistry.jsx`, `Campaigns.jsx`, `ProformaInvoicePrint.jsx`, `ErpLookup.jsx`, `PurchaseOrders.jsx`, `WooCatalogue.jsx`, `marketingContact.js`, `BlogGenerator.jsx`, `ImageGallery.jsx`, `poReceive.js`, `SwatchLibraryPage.jsx`, `Brand Proposal PDF Export`, `CustomerBrand.tsx`, `CreditNoteForm.jsx`, `DailyDrafts.jsx`, `Project Dependencies and Configuration`, `customerProposal.js`, `CustomerAccounts.jsx`, `useT`, `EnquiryForm.jsx`, `Crystal Fabric Online Customizer`, `portalInviteApi.js`, `QuoteExport.jsx`, `firebase.js`, `FigurineShop.jsx`, `SupplierDetail.jsx`, `WooStockReconcile.jsx`, `Supplier Catalog Viewer`, `WhatsApp Transcript Summarizer Tool`, `orderStock.js`, `TemplateEdit.tsx`, `CustomerForm.jsx`, `Dashboard.jsx`, `FrontPageConfig.jsx`, `customer.js`, `LoadingBar.jsx`, `BankAccounts.jsx`, `Bank Account Validation`, `componentCategories.js`, `lucide-react`, `Suppliers.jsx`, `authedUser`, `products.ts`, `db`, `Stock Ledger Management`, `Catalogue Layout Preview`, `ErpDocModal.jsx`, `loadCustomers`, `Components.jsx`, `AccountEdit.jsx`, `PurchaseOrderDetail.jsx`, `Settings.jsx`, `SeoReview.jsx`, `QuoteDetail.jsx`, `JSON Editor Components`, `ImportData.jsx`, `crystal-bom.jsx`, `Customer Invoice History`, `SupplierForm.jsx`, `QuoteForm.jsx`, `CatalogueDetail.jsx`?**
+  _High betweenness centrality (0.107) - this node is a cross-community bridge._
+- **Why does `db` connect `db` to `react`, `react-router-dom`, `OrderStockIssue.jsx`, `PurchaseOrderForm.jsx`, `Carton Packing List Tools`, `App.jsx`, `Shipping.jsx`, `RangeCosting.jsx`, `logistics.js`, `InventoryStatus.jsx`, `ShipmentForm.jsx`, `constants.js`, `customerAssets.js`, `SpecSheetDetail.tsx`, `RangeForm.jsx`, `Range.jsx`, `criticalComponents.js`, `CustomerDetail.jsx`, `Catalogue Collection Management`, `MarketingContacts.jsx`, `SchemaAudit.jsx`, `SeoState.jsx`, `UcRegistry.jsx`, `Campaigns.jsx`, `ProformaInvoicePrint.jsx`, `ErpLookup.jsx`, `PurchaseOrders.jsx`, `WooCatalogue.jsx`, `marketingContact.js`, `BlogGenerator.jsx`, `ImageGallery.jsx`, `poReceive.js`, `SwatchLibraryPage.jsx`, `Brand Proposal PDF Export`, `CustomerBrand.tsx`, `CreditNoteForm.jsx`, `DailyDrafts.jsx`, `customerProposal.js`, `CustomerAccounts.jsx`, `whatsappImport.js`, `useT`, `EnquiryForm.jsx`, `Crystal Fabric Online Customizer`, `portalInviteApi.js`, `QuoteExport.jsx`, `supplierMerge.js`, `firebase.js`, `FigurineShop.jsx`, `SupplierDetail.jsx`, `Supplier Catalog Viewer`, `WhatsApp Transcript Summarizer Tool`, `orderStock.js`, `Customer Email Summary Facets`, `CustomerForm.jsx`, `Dashboard.jsx`, `FrontPageConfig.jsx`, `wooCache.js`, `customer.js`, `Outreach Memory Rule Engine`, `LoadingBar.jsx`, `wooImport.js`, `Bank Account Validation`, `componentCategories.js`, `lucide-react`, `Suppliers.jsx`, `authedUser`, `products.ts`, `b2cStock.js`, `Stock Ledger Management`, `Outreach Templates Manager`, `Catalogue Layout Preview`, `alibabaSummaryApi.js`, `Components.jsx`, `wooCustomerSync.js`, `AccountEdit.jsx`, `PurchaseOrderDetail.jsx`, `Settings.jsx`, `SeoReview.jsx`, `QuoteDetail.jsx`, `ImportData.jsx`, `puNumber.js`, `Customer Invoice History`, `SupplierForm.jsx`, `QuoteForm.jsx`, `CatalogueDetail.jsx`?**
+  _High betweenness centrality (0.083) - this node is a cross-community bridge._
+- **Why does `Physical Design Workbench` connect `V7.21 Cycle Close-out` to `Crystal Color Palette Registry`?**
   _High betweenness centrality (0.076) - this node is a cross-community bridge._
-- **What connects `BadgeProps`, `ButtonProps`, `DividerProps` to the rest of the system?**
-  _1187 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Core UI React Components` be split into smaller, more focused modules?**
-  _Cohesion score 0.02959917780061665 - nodes in this community are weakly interconnected._
-- **Should `Order Inventory Stock Issues` be split into smaller, more focused modules?**
-  _Cohesion score 0.14603174603174604 - nodes in this community are weakly interconnected._
+- **What connects `start-dev.sh script`, `BadgeProps`, `ButtonProps` to the rest of the system?**
+  _1190 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `react` be split into smaller, more focused modules?**
+  _Cohesion score 0.024691358024691357 - nodes in this community are weakly interconnected._
+- **Should `react-router-dom` be split into smaller, more focused modules?**
+  _Cohesion score 0.06777493606138107 - nodes in this community are weakly interconnected._
