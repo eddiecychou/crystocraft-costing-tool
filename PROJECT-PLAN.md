@@ -605,6 +605,38 @@ production to reproduce #2) before this commit.
     real JPEG bytes, correct `Content-Disposition: attachment` — and
     confirmed an arbitrary non-crystocraft host is still 403'd.
 
+### "Learn More" links on Corp Gift / Figurine products (2026-09-22)
+
+Eddie: "I have some blogs and links that I want to include in the product
+section for both figurine and corporate gift for customers if they want to
+understand more... always public." A new `blog_links: []` field
+(`{label, url}`) added to both `products` (Corp Gift) and `range_products`
+(Figurine), following the existing `videos: []` (YouTube) field's pattern
+exactly rather than inventing a new one:
+- **Admin edit:** new `src/components/BlogLinksEditor.jsx` (sibling of
+  `VideoUrlsEditor.jsx`) dropped into `ProductForm.jsx` and `RangeForm.jsx`
+  right after the videos editor. Two inputs per row (link text + URL) since
+  a raw URL isn't friendly customer-facing copy the way a YouTube embed is.
+- **Normalisation:** `normBlogLinks()` added to `src/constants.js` next to
+  `normVideos()` — tolerates legacy plain strings, drops empty URLs,
+  de-dupes by URL.
+- **Customer-facing render:** `src/customer/CorporateDetail.jsx` and
+  `src/customer/FigurineDetail.jsx` each gained a "Learn More" block
+  (identical IIFE pattern to the existing videos block, right next to it,
+  hidden entirely when empty) — a simple divided list of links, each
+  opening in a new tab, falling back to showing the raw URL when no label
+  was set. No visibility gate (unlike images' internal/storefront/public)
+  — every link is public the moment it's saved, per Eddie's answer.
+- Verified via the existing headless preview harness (`qa/corp-detail-
+  preview-seeded.mjs` / `qa/fig-detail-preview-seeded.mjs`, `UI-POLISH.md`
+  §4a) rather than a live customer login (none available in this
+  environment) — seeded fake `blog_links` into both, rebuilt with esbuild +
+  the real Tailwind CLI, and screenshotted both actual pages: the "Learn
+  More" section renders correctly in both, with the label/URL fallback
+  behaving as designed. Also round-tripped a real link through the live
+  admin form (save → reload → confirmed persisted) before removing the
+  test data.
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending

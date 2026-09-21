@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db } from '../firebase'
-import { Gem, ArrowLeft, Check, Plus, Minus, Download } from 'lucide-react'
-import { designNumber, brandLetter, RANGE_CRYSTAL_BRANDS, normGallery, RANGE_STATUS_CUSTOMER, normVideos, youtubeEmbed } from '../constants'
+import { Gem, ArrowLeft, Check, Plus, Minus, Download, ExternalLink } from 'lucide-react'
+import { designNumber, brandLetter, RANGE_CRYSTAL_BRANDS, normGallery, RANGE_STATUS_CUSTOMER, normVideos, youtubeEmbed, normBlogLinks } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
@@ -429,6 +429,27 @@ export default function FigurineDetail({ profile }) {
             <div className="space-y-4">
               {videos.map((v, i) => <VideoEmbed key={i} url={v} title={`${name} video ${i + 1}`} />)}
             </div>
+          </div>
+        )
+      })()}
+
+      {(() => {
+        const links = normBlogLinks(p.blog_links)
+        if (!links.length) return null
+        return (
+          <div className="mt-12 md:mt-16 max-w-2xl mx-auto">
+            <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Learn More</p>
+            <ul className="divide-y divide-ivory-dark border-t border-b border-ivory-dark">
+              {links.map((l, i) => (
+                <li key={i}>
+                  <a href={l.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-between gap-3 py-3 text-sm text-ink hover:text-brand-600 transition-colors group">
+                    <span>{l.label || l.url}</span>
+                    <ExternalLink size={14} className="shrink-0 text-ink-60 group-hover:text-brand-600" />
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         )
       })()}

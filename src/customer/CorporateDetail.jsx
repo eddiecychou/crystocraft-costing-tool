@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { doc, onSnapshot, getDoc, collection, query, orderBy } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db, auth } from '../firebase'
-import { Package, ArrowLeft, Check, Plus, Sparkles, Download } from 'lucide-react'
+import { Package, ArrowLeft, Check, Plus, Sparkles, Download, ExternalLink } from 'lucide-react'
 import { useRates, convertFromHKD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
 import { useCart } from './store'
 import LoadingBar from '../components/LoadingBar'
 import VideoEmbed from '../components/VideoEmbed'
-import { isStorefrontVisible, normVideos, youtubeEmbed } from '../constants'
+import { isStorefrontVisible, normVideos, youtubeEmbed, normBlogLinks } from '../constants'
 import { engineTypeOf, engineAvailable, engineLabel } from '../customizerEngines'
 import { screenSensitiveImages } from '../sensitiveImages'
 import ImageLightbox from '../components/ImageLightbox'
@@ -165,6 +165,27 @@ export default function CorporateDetail({ profile }) {
             <div className="space-y-4">
               {videos.map((v, i) => <VideoEmbed key={i} url={v} title={`${p.name} video ${i + 1}`} />)}
             </div>
+          </div>
+        )
+      })()}
+
+      {(() => {
+        const links = normBlogLinks(p.blog_links)
+        if (!links.length) return null
+        return (
+          <div className="mt-12 md:mt-16 max-w-2xl mx-auto">
+            <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Learn More</p>
+            <ul className="divide-y divide-ivory-dark border-t border-b border-ivory-dark">
+              {links.map((l, i) => (
+                <li key={i}>
+                  <a href={l.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-between gap-3 py-3 text-sm text-ink hover:text-brand-600 transition-colors group">
+                    <span>{l.label || l.url}</span>
+                    <ExternalLink size={14} className="shrink-0 text-ink-60 group-hover:text-brand-600" />
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         )
       })()}

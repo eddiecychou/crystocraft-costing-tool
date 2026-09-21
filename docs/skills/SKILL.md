@@ -131,13 +131,13 @@ the fast path from a request to the exact code.
 - Logic: `src/domain/customer.js` (owns `products/{id}`), `src/pricing.js`, `src/useProductDefaults.js`, `src/productSource.js`, `src/formatMoq.js`
 - Edge fns: `generate-marketing-copy`, `rewrite-section`, `enhance-image`, `scrape-images`
 - Collections: `products/{id}` (+ `images`, `pricing_tiers` **admin-only**, `customer_prices`, `components/…/supplier_quotes`)
-- Notes: corp-gift pricing card is **hidden from `production`**; per-customer price = `customer_prices/{uid}`; tier markup formula = `settings/pricing_groups` (admin-only, hard wall)
+- Notes: corp-gift pricing card is **hidden from `production`**; per-customer price = `customer_prices/{uid}`; tier markup formula = `settings/pricing_groups` (admin-only, hard wall). `blog_links[]` (V8.16, 2026-09-22) — always-public "Learn More" links, same shape/pattern as `videos[]`: `BlogLinksEditor.jsx` in the admin form, rendered on `src/customer/CorporateDetail.jsx` right next to the videos block.
 
 ### Catalogue — Figurine / Range (Crystocraft's own crystal line)
 - Pages: `Range.jsx`, `RangeForm.jsx`, `RangeCosting.jsx`, `RangeComponentForm.jsx`, `CatalogueBand.jsx`
 - Logic: `src/rangeCosting.js`, `src/rangeSku.js`, `src/newArrivals.js`, `src/frontPageFeatured.js`, `src/colourPreviewApi.js`
 - Collections: `range_products/{id}` (mirrors all `products` subpaths), `range_components/{id}` (+ `supplier_quotes`, `movements`), `range_colour_previews/{id}` (**admin-only**, keeps drafts out of the portal wildcard)
-- Spec: `../specs/Range_Colour_Preview_Spec.md`. Note: `production` has **full** figurine access incl. wholesale price + costing (owner's call, V8.12)
+- Spec: `../specs/Range_Colour_Preview_Spec.md`. Note: `production` has **full** figurine access incl. wholesale price + costing (owner's call, V8.12). `blog_links[]` (V8.16, 2026-09-22) — same as Corp Gift's, rendered on `src/customer/FigurineDetail.jsx`.
 
 ### Catalogue — product images (upload + card display)
 - Upload/gallery: `src/components/ImageGallery.jsx` → `src/imageResize.js` (`resizeToJpeg`). **Downscale only** — aspect preserved, nothing cropped to square. An `orientation` field (`square` = ratio 0.85–1.18 / `landscape` / `portrait`) is auto-detected; only consumer is `BlogGenerator.jsx`. Manual crop: `ManualAdjust.jsx` / `src/imageCrop.js`.

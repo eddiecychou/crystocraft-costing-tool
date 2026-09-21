@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db, authHeader } from '../firebase'
-import { CATEGORIES, PRODUCT_STATUSES, productStatusOf, normVideos, MARKETING_DESC_MAXLEN } from '../constants'
+import { CATEGORIES, PRODUCT_STATUSES, productStatusOf, normVideos, normBlogLinks, MARKETING_DESC_MAXLEN } from '../constants'
 import { CUSTOMIZER_OPTIONS, engineTypeOf } from '../customizerEngines'
 import { Sparkles, RotateCcw } from 'lucide-react'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
+import BlogLinksEditor from '../components/BlogLinksEditor'
 
 export default function ProductForm() {
   const { id } = useParams()
@@ -13,7 +14,7 @@ export default function ProductForm() {
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState({
-    name: '', product_code: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '', videos: [],
+    name: '', product_code: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '', videos: [], blog_links: [],
     is_new: false, customizer_type: '', active: true,
   })
   const [loading, setLoading]   = useState(false)
@@ -37,7 +38,7 @@ export default function ProductForm() {
         // written back until the form is saved again (then it's canonical).
         // Seed the customizer engine from the field, folding the legacy
         // `customizable: true` boolean into the crystal_fabric engine.
-        setForm(f => ({ ...f, ...d, status: productStatusOf(d.status).value, videos: normVideos(d.videos, d.video_url), customizer_type: engineTypeOf(d) }))
+        setForm(f => ({ ...f, ...d, status: productStatusOf(d.status).value, videos: normVideos(d.videos, d.video_url), blog_links: normBlogLinks(d.blog_links), customizer_type: engineTypeOf(d) }))
       }
       setFetching(false)
     })
@@ -104,7 +105,8 @@ export default function ProductForm() {
     setSaveError('')
     try {
       const videos = normVideos(form.videos)
-      const payload = { ...form, videos, video_url: videos[0] || '' }
+      const blog_links = normBlogLinks(form.blog_links)
+      const payload = { ...form, videos, video_url: videos[0] || '', blog_links }
       if (isEdit) {
         await updateDoc(doc(db, 'products', id), { ...payload, updatedAt: serverTimestamp() })
         navigate(`/products/${id}`)
@@ -277,6 +279,8 @@ export default function ProductForm() {
         </div>
 
         <VideoUrlsEditor videos={form.videos} onChange={v => setForm(f => ({ ...f, videos: v }))} />
+
+        <BlogLinksEditor links={form.blog_links} onChange={v => setForm(f => ({ ...f, blog_links: v }))} />
 
         {saveError && <p className="text-sm text-red-600">{saveError}</p>}
         <div className="flex gap-3 pt-2">

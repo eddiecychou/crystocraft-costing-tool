@@ -26,6 +26,10 @@ const PRODUCT = {
   active: true,
   status: 'active',
   videos: [],
+  blog_links: [
+    { label: 'How it\'s made', url: 'https://crystocraft.com/blog/new-musical-boxes-2026/' },
+    { label: '', url: 'https://crystocraft.com/blog/aroma-diffuser-collection/' },
+  ],
 }
 const IMAGES = [
   { id: 'i0', file_url: mkImg(0), sort_order: 0, caption: '' },

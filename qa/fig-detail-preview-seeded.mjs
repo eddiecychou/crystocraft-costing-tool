@@ -36,6 +36,9 @@ const PRODUCT = {
   crystal_mixes: {},
   packing: { pcs_per_carton: 24 },
   videos: [],
+  blog_links: [
+    { label: 'Meet the collection', url: 'https://crystocraft.com/blog/animal-figurines-ready-to-ship/' },
+  ],
   variants: [
     { plating_name: 'Rhodium', plating_code: 'RH', brand_code: 'D', sku: 'D0002-001', ws_price_usd: 18.5, crystal_colors: [] },
     { plating_name: 'Gold', plating_code: 'GT', brand_code: 'D', sku: 'D0002-002', ws_price_usd: 21.0, crystal_colors: [] },

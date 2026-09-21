@@ -373,3 +373,21 @@ export const normVideos = (videos, legacyUrl) => {
   }
   return [...new Set(urls)]
 }
+
+// Products can carry a few "Learn More" links (blog posts, spec pages) shown
+// to every customer on their product page — Eddie, 2026-09-22: "I have some
+// blogs and links that I want to include in the product section... always
+// public." Same shape/normalisation approach as normVideos above: tolerate
+// legacy plain strings, drop empty urls, de-dupe by url (keeping the first
+// label seen for a given url).
+export const normBlogLinks = links => {
+  const arr = Array.isArray(links) ? links : []
+  const seen = new Map()
+  for (const l of arr) {
+    const url = String((typeof l === 'string' ? l : l?.url) || '').trim()
+    if (!url || seen.has(url)) continue
+    const label = String((typeof l === 'string' ? '' : l?.label) || '').trim()
+    seen.set(url, { url, label })
+  }
+  return [...seen.values()]
+}

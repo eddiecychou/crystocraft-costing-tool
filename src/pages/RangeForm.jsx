@@ -8,12 +8,13 @@ import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
   RANGE_BODY_TYPES, designNumber, brandLetter, bodyLetter,
-  normGallery, normVideos, MARKETING_DESC_MAXLEN,
+  normGallery, normVideos, normBlogLinks, MARKETING_DESC_MAXLEN,
 } from '../constants'
 import { resizeToJpeg } from '../imageResize'
 import { enhanceProductImage } from '../enhanceImage'
 import ManualAdjust from '../components/ManualAdjust'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
+import BlogLinksEditor from '../components/BlogLinksEditor'
 import CrystalBomEditor from '../components/CrystalBomEditor'
 
 const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name]))
@@ -101,7 +102,7 @@ const blankForm = (prefill = {}) => {
     size: '', crystal_type: 'Bohemia', active: true, status: 'active', is_new: false,
     moq: '', lead_time_weeks: '', delivery_note: '', critical_components: [],
     packing: emptyPacking(), gallery: [], variants: [variant], plating_stock: {},
-    crystal_components: emptyCrystalBom(), videos: [],
+    crystal_components: emptyCrystalBom(), videos: [], blog_links: [],
   }
 }
 
@@ -662,6 +663,7 @@ export default function RangeForm() {
           description: d.description || '',
           marketing_description: d.marketing_description || '',
           videos: normVideos(d.videos, d.video_url),
+          blog_links: normBlogLinks(d.blog_links),
           category: d.category || '',
           design_type: d.design_type || d.category || '',
           product_type: d.product_type || 'Figurine',
@@ -983,6 +985,7 @@ export default function RangeForm() {
       marketing_description: (form.marketing_description || '').trim(),
       videos: normVideos(form.videos),
       video_url: normVideos(form.videos)[0] || '',
+      blog_links: normBlogLinks(form.blog_links),
       category: form.category.trim(),
       design_type: form.design_type.trim(),
       product_type: form.product_type.trim(),
@@ -1220,6 +1223,8 @@ export default function RangeForm() {
           </div>
 
           <VideoUrlsEditor videos={form.videos} onChange={v => setForm(f => ({ ...f, videos: v }))} />
+
+          <BlogLinksEditor links={form.blog_links} onChange={v => setForm(f => ({ ...f, blog_links: v }))} />
 
           <label className="flex items-center gap-2 text-sm text-ink-80 cursor-pointer select-none">
             <input type="checkbox" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} />
