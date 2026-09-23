@@ -58,12 +58,21 @@ current model is a curated link hub, not an integration.
 What exists in the codebase (document reality; capture is per-channel, not one
 unified importer):
 
-- **Email — automatic.** `email-sync/` (Python): `sync.py` polls IMAP live;
-  `archive_import.py` backfills the PST/mbox archives once. Both share
-  `common.py`, which matches each message's participants to a `customers` or
-  `marketing_contacts` doc (exact email, then non-freemail domain), groups into
-  threads, and writes `email_threads/{id}`. **Unmatched messages are dropped** —
-  a message with no matching record is not stored anywhere. AI summaries via
+- **Email — automatic, hourly.** `email-sync/` (Python): `sync.py` polls the
+  **live** mailbox (IMAP, `mail.s406.sureserver.com` — what `mbox.uart.com.hk`
+  points at) incrementally; `archive_import.py` backfills the **static** PST
+  archive once (it never changes, unlike live mail, so it doesn't need to run
+  often). Both share `common.py`, which matches each message's participants to
+  a `customers` or `marketing_contacts` doc (exact email, then non-freemail
+  domain), groups into threads, and writes `email_threads/{id}`. **Unmatched
+  messages are dropped** — a message with no matching record is not stored
+  anywhere. Two `launchd` schedules (2026-09-23, see
+  `../reference/LOCAL-TOOLS.md`'s "Scheduled email sync" section): plain
+  `sync.py` **hourly** (fast, incremental — this is what keeps the Email
+  Summary "Refresh" button close to real-time) and `sync.py --rescan` +
+  `archive_import.py --rescan --all` **weekly**, Sunday 3am (slow, full — only
+  needed to catch a newly-added customer against already-scanned older mail).
+  AI summaries via
   `refresh-email-summary` / `discuss-customer-email`.
 - **WhatsApp — manual import.** No export API exists, so `WhatsAppImport.jsx` +
   `src/domain/whatsappImport.js` parse the user's exported `.zip`

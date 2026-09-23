@@ -295,6 +295,64 @@ so the merged view's only value is browsing both — or either alone via the
 viewer's Repository toggle. Rebuild: `scripts/graphify-merge.sh`
 (`EXPENSE_TOOL=<path>` env var overrides the default location).
 
+## Scheduled email sync (launchd)
+
+Two `launchd` LaunchAgents live in `~/Library/LaunchAgents/` on this Mac —
+**not** committed to the repo (OS-specific, per-machine config), but the
+scripts they run are (`email-sync/*.sh`). Check `launchctl list | grep
+crystocraft` to confirm both are loaded; PID column non-`-` means running
+right now, `-` means idle/waiting for its next scheduled fire.
+
+- **`com.crystocraft.email-hourly-sync`** (added 2026-09-23) — runs
+  `email-sync/hourly_sync.sh` every hour (`StartInterval: 3600`,
+  `RunAtLoad: true`). Plain `sync.py` (no `--rescan`) — a fast UID-
+  incremental fetch against the **live** mailbox (`mail.s406.sureserver.com`,
+  the backend `mbox.uart.com.hk` points at) of only what's new since
+  `state.json`'s last-seen UID. This is what keeps `CustomerDetail.jsx`'s
+  Email Summary "Refresh" button close to real-time. Logs:
+  `email-sync/hourly_*.log` (newest 48 kept), `email-sync/launchd-hourly.log`
+  (launchd's own stdout/stderr wrapper — usually empty, errors only).
+  First real run (2026-09-23, right after setup) picked up 52 new messages
+  since the previous Sunday's rescan, matched 12 to real customers/leads,
+  finished in ~3.5 min.
+- **`com.crystocraft.email-rescan`** (existing, Aug 12) — runs
+  `email-sync/weekly_rescan.sh` every Sunday 3am. `sync.py --rescan` +
+  `archive_import.py --rescan --all` — a **full** rescan (hours, not
+  minutes) that catches customers added to Firestore *after* their older
+  mail was first ingested, since a plain incremental run only ever looks at
+  new/unscanned mail. Does **not** need to run more often — the static PST
+  archive `archive_import.py` reads never changes, unlike the live mbox.
+  Logs: `email-sync/rescan_*.log`.
+
+**To recreate the hourly job on the other Mac:**
+```bash
+cat > ~/Library/LaunchAgents/com.crystocraft.email-hourly-sync.plist <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.crystocraft.email-hourly-sync</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/eddie/Developer/costing-tool/email-sync/hourly_sync.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/eddie/Developer/costing-tool/email-sync/launchd-hourly.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/eddie/Developer/costing-tool/email-sync/launchd-hourly.log</string>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+EOF
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.crystocraft.email-hourly-sync.plist
+```
+(Adjust the path if the repo isn't at `~/Developer/costing-tool` on that Mac.)
+
 ## Updating this file
 
 When a new tool gets set up in a session (installed, logged in, confirmed

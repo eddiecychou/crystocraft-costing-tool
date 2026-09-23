@@ -637,6 +637,40 @@ exactly rather than inventing a new one:
   admin form (save → reload → confirmed persisted) before removing the
   test data.
 
+### Email sync now hourly, not just weekly (2026-09-23)
+
+Eddie: "For customer page, the email summary if I click refresh, can it
+refresh the latest update?" Traced the architecture: `CustomerDetail.jsx`'s
+Email Summary "Refresh" always summarizes whatever's *already* in
+`customers/{id}/email_threads` (a live Firestore read) — but that
+collection is only populated by a **separate** ingestion step,
+`email-sync/sync.py`, polling the live IMAP mailbox. Checked this Mac's
+`launchd`/`crontab` and found exactly one scheduled email job,
+`com.crystocraft.email-rescan` — a **full** rescan (`sync.py --rescan` +
+`archive_import.py --rescan --all`), Sunday 3am only. So a Monday email
+wouldn't reach Firestore (and therefore Refresh) until the following
+Sunday. Eddie confirmed the live source is the `mbox.uart.com.hk` mailbox
+(IMAP backend `mail.s406.sureserver.com`) — the PST archive
+`archive_import.py` reads is static and doesn't need frequent re-runs, only
+`sync.py` does.
+
+Added a second `launchd` job, `com.crystocraft.email-hourly-sync`
+(`email-sync/hourly_sync.sh`, `StartInterval: 3600`) — plain `sync.py` (no
+`--rescan`), a fast UID-incremental fetch of only new mail since
+`state.json`'s last-seen UID. Confirmed DeepSeek cost is completely
+unaffected by this — `sync.py` never calls DeepSeek; summarization only
+happens on an admin's manual Refresh click, same as before, and `sync.py`'s
+own comment says so explicitly. Firestore write cost is trivial (single-
+digit-to-low-tens new messages/week company-wide, per the existing weekly
+logs) and IMAP load is a routine mail-check, same as any client. Loaded and
+verified live: first hourly run (right after setup) picked up 52 new
+messages since last Sunday's rescan, matched 12 to real customers/leads,
+finished in ~3.5 min. Documented both schedules — the existing weekly one
+was previously undocumented anywhere — in `docs/reference/LOCAL-TOOLS.md`'s
+new "Scheduled email sync" section (incl. the exact commands to recreate
+the hourly job on the other Mac, since `~/Library/LaunchAgents/` isn't
+git-synced) and `docs/skills/SOURCING-HUB.md`'s email capture entry.
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending
