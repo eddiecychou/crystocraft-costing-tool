@@ -126,7 +126,9 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   each mapped to a Workbench LESSONS-LEARNED entry: `json_parses` (B32),
   `widget_count` + `element_ids_preserved` (B20 stale-copy), `length_anomaly`
   (B6), `wrong_language_chars` (B33/B35 CJK leak, B6 simplified-in-zh-hant),
-  `placeholder_markers` (B12), `brand_terms_preserved` (§3c), `sku_prefix_
+  `placeholder_markers` (B12; fr/ja/zh-hant coverage added **L-29**,
+  2026-09-23 — was en/es/zh-hans only, missing half the languages this site
+  publishes in), `brand_terms_preserved` (§3c), `sku_prefix_
   preserved` (B12), image/heading count parity (§2), `no_new_scripts/tables`,
   `seo_title_no_double_brand` (L-09), `seo_desc_length` (B47),
   `translation_draft_only` (Rule 4). CJK scan runs on the **JSON-decoded**

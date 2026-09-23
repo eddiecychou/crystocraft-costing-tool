@@ -141,5 +141,44 @@ function expect(name, cond, detail = '') {
   expect('B54 still catches 这个说 in ja', v2.passed === false && chk(v2).wrong_language_chars === false)
 }
 
+// ── 2026-09-23 (Workbench handoff): fr/ja/zh-hant leaked-translator-
+// instruction coverage — 28 of 29 sitewide leaks predated this check ──────
+{
+  const leaks = [
+    ['fr', 'Veuillez fournir le texte à traduire.'],
+    ['fr', 'Veuillez fournir le texte source à traduire.'],
+    ['fr', 'Merci de traduire le paragraphe suivant.'],
+    ['ja', '翻訳するテキストを提供してください。'],
+    ['ja', '以下の文章を翻訳してください。'],
+    ['ja', 'テキストを提供してください'],
+    ['zh-hant', '請提供要翻譯的文字。'],
+    ['zh-hant', '請輸入需要翻譯的內容'],
+    ['zh-hant', '需要翻譯'],
+  ]
+  for (const [lang, title] of leaks) {
+    const v = validatePayload({ kind: 'post', lang, endpoint: `wp/v2/posts?lang=${lang}`, payload: { title, status: 'draft' } })
+    expect(`leak caught [${lang}] "${title}"`, v.passed === false && chk(v).placeholder_markers === false)
+  }
+}
+
+// ── same set: real copy that must NOT fire (the false positives v1 produced) ──
+{
+  const clean = [
+    ['fr', 'Veuillez indiquer votre adresse de livraison.'],
+    ['fr', 'Veuillez saisir votre code promotionnel.'],
+    ['fr', 'Veuillez noter que les délais peuvent varier.'],
+    ['fr', 'La traduction de nos catalogues est disponible sur demande.'],
+    ['zh-hant', '請提供您的訂單編號以便我們查詢。'],
+    ['zh-hant', '請輸入您的電郵地址。'],
+    ['zh-hant', '翻譯服務由專人負責，歡迎查詢。'],
+    ['ja', 'Crystocraftのこのユニークなワインデキャンタが心温まる贈り物になります。'],
+  ]
+  for (const [lang, title] of clean) {
+    const v = validatePayload({ kind: 'post', lang, endpoint: `wp/v2/posts?lang=${lang}`, payload: { title, status: 'draft' } })
+    expect(`real copy passes [${lang}] "${title}"`, chk(v).placeholder_markers !== false,
+      JSON.stringify(v.checks.filter(c => !c.ok)))
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

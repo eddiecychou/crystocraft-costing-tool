@@ -16,7 +16,10 @@
 //                              (B51/B53 trimmed 6 valid traditional forms),
 //                              simplified-in-ja (B54 — ja uses its own
 //                              Chinese-only list, not the zh-hant set)
-//   placeholder_markers ...... B12
+//   placeholder_markers ...... B12; fr/ja/zh-hant coverage added L-29 (this
+//                              repo's LESSONS-LEARNED.md) — was en/es/zh-hans
+//                              only, missing 3 of the 6 languages this site
+//                              actually publishes in
 //   brand_terms_preserved .... §3c, §8b.5, B53 (ignore Yoast head + JSON-LD)
 //   sku_prefix_preserved ..... B12 (SKU-preserving name translation)
 //   image_count_parity ....... §2 payload validation
@@ -53,6 +56,22 @@ const PLACEHOLDER_RX = /\b(please provide|translate this|as an ai|i cannot|i['�
 // that leaked into the output ("Por favor, proporcione la traducción…").
 // Optional punctuation is allowed between the two parts (comma fix).
 const SPANISH_INSTRUCTION_RX = /\bpor favor[\s,.;:¡!¿?—–-]*(traduc|traduzc|proporcion|complet|rellen|introduzc|escrib(?:a|e|an)\b|redact|revis|provee|añad|inserta|reempl)/i
+// L-29 (2026-09-23, Workbench handoff): PLACEHOLDER_RX had zero fr/ja
+// coverage and zh-only simplified forms — 28 of 29 leaked translator-
+// instruction excerpts sitewide could not have been caught by any check
+// that existed before this. Same co-occurrence shape as SPANISH_INSTRUCTION_RX
+// above: a request/imperative marker AND a translation stem, not either
+// alone — a bare "veuillez indiquer" (checkout copy) or "請提供您的訂單編號"
+// (a real form field) is ordinary commerce language, not a leak. A v1 draft
+// that flagged the markers unconditionally caught all leaks but false-
+// positived on exactly that kind of real copy.
+const FRENCH_INSTRUCTION_RX = /(veuillez|merci de|fournir|fournissez|envoyer|envoyez|saisir|saisissez|coller|collez|indiquer|indiquez|transmettre|transmettez)\b[^.]{0,80}(traduire|traduisez|traduction|traduit|à traduire|a traduire)/i
+const JAPANESE_INSTRUCTION_RX = /(翻訳する|翻訳の|訳す|翻訳したい)[^。]{0,20}(テキスト|文章|文)[^。]{0,10}(提供|入力|送信|貼り付け)|テキストを提供してください|翻訳してください|翻訳して(ください|下さい)/
+// zh-hant is first-class on this site (52 published posts) but PLACEHOLDER_RX's
+// 请提供/请输入/需要翻译 are simplified-only — their traditional forms
+// (請提供/請輸入/需要翻譯) never matched. Gated on a translation term for the
+// same reason as the fr/ja patterns above.
+const TRADITIONAL_ZH_INSTRUCTION_RX = /(請提供|請輸入|請貼上)[^。]{0,20}(翻譯|譯文|譯)|需要翻譯|翻譯[^。]{0,15}(文字|內容|文本|資料)/
 const CJK_RX = /[぀-ヿ㐀-鿿豈-﫿]/         // hiragana/katakana + CJK ideographs
 const SCRIPT_RX = /<script[\s>]/i
 const TABLE_RX = /<table[\s>]/i
@@ -186,6 +205,8 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   // 6. placeholder / apology / untranslated markers (B12); "por favor" only
   //    when it fronts a translator instruction (B51).
   const ph = text.match(PLACEHOLDER_RX) || text.match(SPANISH_INSTRUCTION_RX)
+    || text.match(FRENCH_INSTRUCTION_RX) || text.match(JAPANESE_INSTRUCTION_RX)
+    || text.match(TRADITIONAL_ZH_INSTRUCTION_RX)
   add('placeholder_markers', !ph, ph ? `contains "${ph[0]}"` : '')
 
   // 7. brand terms preserved (only meaningful when we have the source).

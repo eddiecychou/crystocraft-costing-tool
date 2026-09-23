@@ -550,6 +550,52 @@
   proxy are the recurring pair here): grep for the other one and check its
   allowlist actually matches, rather than assuming they're already in sync.
 
+## L-29 · `placeholder_markers` covered half the languages this site actually publishes in
+
+- **Symptom.** A Workbench (DeepSeek harness) handoff reported 29 published
+  posts serving a leaked translator instruction as their `excerpt` — e.g.
+  "Please provide the text to translate." in French, Japanese, or Spanish
+  instead of real copy. All 29 were already fixed by the time this reached
+  the OC side; this entry is about the check that let them ship, not the
+  live data.
+- **Root cause.** `seo-control-plane/validate-payload.mjs`'s
+  `placeholder_markers` check (`PLACEHOLDER_RX` + `SPANISH_INSTRUCTION_RX`)
+  only ever covered English, Spanish, and **simplified** Chinese. French and
+  Japanese had zero coverage — not a weak pattern, no pattern at all. And
+  **zh-hant is a first-class language on this site (52 published posts)**,
+  but the Chinese terms (`请提供`/`请输入`/`需要翻译`) were simplified-only;
+  their traditional forms (`請提供`/`請輸入`/`需要翻譯`) silently never
+  matched. 28 of the 29 leaks could not have been caught by any check that
+  existed before this fix, regardless of how carefully anyone reviewed a
+  batch — the gap was in what languages were enumerated, not a bug in any
+  one pattern.
+- **Permanent fix.** Added `FRENCH_INSTRUCTION_RX`, `JAPANESE_INSTRUCTION_RX`,
+  `TRADITIONAL_ZH_INSTRUCTION_RX` — same co-occurrence shape the existing
+  `SPANISH_INSTRUCTION_RX` already used: a request/imperative marker AND a
+  translation stem together, not either alone. This mattered in practice: a
+  first draft (from the handoff, caught before landing here) flagged the
+  markers unconditionally and produced real false positives — "Veuillez
+  indiquer votre adresse de livraison" (checkout copy) and "請提供您的訂單
+  編號以便我們查詢" (a real form field) both read as leaks under the naive
+  version. Verified independently before applying (not just trusted the
+  handoff's own numbers): wrote a standalone test script, ran the proposed
+  regexes against all 9 leak strings + 12 non-leak strings the handoff
+  listed (including its own false-positive catches) — 22/22 correct. Then
+  applied to the real file and ran the full `validate-payload.test.mjs`
+  suite (35 tests) — 0 regressions. **MUST**, when adding language coverage
+  to any check enumerated per-language (this file's `wrong_language_chars`
+  has the same shape): gate an instruction/placeholder pattern on
+  co-occurrence with the actual leak-indicating term, never on a polite
+  opener or a common phrase alone — and add both a positive (leak) and
+  negative (real copy in that language) test case, not just the positive.
+- **Cross-repo note.** This file (`seo-control-plane/validate-payload.mjs`)
+  is vendored verbatim by the external DeepSeek Workbench, which runs it
+  before every WordPress write — this repo owns the master, the Workbench
+  re-vendors on request (see `docs/skills/SEO-CONTROL-PLANE.md` §6.6 and
+  `MARKETING-WORKFLOW.md`'s external-governance section for the boundary).
+  New checksum after this fix: `sha256[:12] = 8f7599b1c64c` (was
+  `9fa7e66955ca`) — pass this back to the Workbench side to re-vendor.
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
@@ -591,3 +637,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-09-20 | Added L-21 through L-26 from the V8.16 Product Design port + its post-launch fixes: Tailwind `content` glob missing `.ts`/`.tsx` silently dropped classes app-wide (L-21); a bare `res.json()` leaks a raw browser parser exception on a non-JSON response (L-22); a section that returns `null` when empty is an invisible, undiscoverable feature (L-23); `object-cover` on a short fixed-height box crops reference photos — use `object-contain` (L-24); a non-JSON 5xx from an edge function usually means the platform gave up, not that the request was wrong — confirmed live before adding a silent one-shot retry (L-25); a new B2B-only customer picker doesn't automatically inherit the `RETAIL_TAG` exclusion — it has to be added explicitly, ideally at the shared list source (L-26). |
 | 2026-09-21 | Added L-27 — a first pass at "add a Product Design image to an existing figurine product" wrote straight to `range_products.gallery[]` via `arrayUnion`, missing `RangeForm.jsx`'s existing "only this form writes gallery[]" rule (a stale open tab's Save would silently clobber it); caught during live verification by inspecting the actual `<img>` list, not by trusting the UI. Fixed by routing through the form via a new `addGalleryUrl`/`addGalleryCaption` query-param prefill instead of a direct write. |
 | 2026-09-21 | Added L-28 — `download-image.js`'s SSRF-hardened allowlist (Storage hosts only) was never given the `crystocraft.com` carve-out its sibling `image-proxy.js` already has for WordPress-hosted figurine gallery photos, so those photos displayed fine but 403'd on download. Added the matching carve-out. |
+| 2026-09-23 | Added L-29 — `seo-control-plane/validate-payload.mjs`'s `placeholder_markers` check had zero French/Japanese coverage and Chinese-simplified-only terms, missing traditional Chinese (a first-class site language) entirely; 28 of 29 sitewide leaked-translator-instruction posts, reported by a Workbench handoff, predated any check that could have caught them. Added `FRENCH_INSTRUCTION_RX`/`JAPANESE_INSTRUCTION_RX`/`TRADITIONAL_ZH_INSTRUCTION_RX`, gated on co-occurrence (marker + translation stem) to avoid false-positiving on real copy, per the same shape `SPANISH_INSTRUCTION_RX` already used. Verified independently (not just trusted the handoff) with a standalone script before applying, then the full 35-test suite after. New checksum `8f7599b1c64c` to pass back for re-vendoring. |
