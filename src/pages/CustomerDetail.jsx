@@ -880,7 +880,9 @@ export default function CustomerDetail() {
         ...prev,
         [contact.email]: {
           ok: true,
-          message: res.reused ? 'Already invited — see Portal → Invitations.' : 'Invitation sent.',
+          message: res.pricingUpdated
+            ? 'Already invited — pricing updated on the existing (not yet claimed) invitation.'
+            : res.reused ? 'Already invited — see Portal → Invitations.' : 'Invitation sent.',
         },
       }))
     } catch (e) {

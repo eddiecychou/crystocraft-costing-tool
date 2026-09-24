@@ -283,7 +283,23 @@ async function createInvitation(body, adminUid) {
     .get()
   if (!existing.empty) {
     const d = existing.docs[0]
-    return json({ ok: true, id: d.id, reused: true, status: d.data().status })
+    const existingInv = d.data()
+    // Re-clicking "Invite to portal" with new pricing used to be silently
+    // dropped here — the duplicate guard returned the old record without
+    // ever looking at the new `pricing` argument, so an admin correcting a
+    // customer's WS %/currency before they'd claimed yet had no effect
+    // (found 2026-09-24: owner had invited a customer, wanted to set her
+    // pricing, and the second invite attempt did nothing). Safe to update
+    // ONLY while still 'pending' — nothing has happened yet, so there's no
+    // live account or in-flight claim to conflict with. Once 'claimed' or
+    // 'approved', pricing changes go through AccountEdit.jsx instead (the
+    // account already exists by then).
+    let pricingUpdated = false
+    if (existingInv.status === 'pending' && pricing) {
+      await d.ref.update({ pricing, audit_log: FieldValue.arrayUnion(auditEntry('pricing_updated', adminUid)) })
+      pricingUpdated = true
+    }
+    return json({ ok: true, id: d.id, reused: true, status: existingInv.status, pricingUpdated })
   }
 
   const { raw, hash } = newToken()
