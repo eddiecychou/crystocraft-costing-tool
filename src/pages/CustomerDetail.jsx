@@ -27,6 +27,7 @@ import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYear
 import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 import { savePastedAlibabaThread, generateAndSaveAlibabaSummary } from '../alibabaSummaryApi'
 import { createInvitation } from '../portalInviteApi'
+import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import { wooOrdersByCustomerId, searchWooOrders } from '../wooSyncApi'
 
 const STATUS_STYLES = {
@@ -425,6 +426,78 @@ function ProductDesignConceptsCard({ customerId }) {
   )
 }
 
+// SU-07A auto-approve follow-up (2026-09-24, owner request): admin-created
+// invitations now auto-approve at claim time (see portal-invite.js's
+// runApproval), so there's no longer a manual "Approve" click where an
+// admin was naturally in the admin UI and could set pricing before telling
+// the customer. Without this dialog, a newly-approved account would sit at
+// AccountEdit.jsx's own defaults (ws_discount_pct 0 → displayed/treated as
+// 100 = full list price, no fx override, no markup override) until an
+// admin remembered to visit AccountEdit.jsx separately — the customer could
+// see full list price immediately. So pricing is now collected HERE, before
+// the invite is even sent, using the exact same fields/semantics/defaults
+// as AccountEdit.jsx's own "Pricing" card (kept deliberately in sync — see
+// that file if these ever need to change together).
+function InvitePricingDialog({ contact, onConfirm, onCancel, busy }) {
+  const rates = useRates()
+  const [cur, setCur] = useState('USD')
+  const [fxRate, setFxRate] = useState('')
+  const [disc, setDisc] = useState(100)
+  const [override, setOverride] = useState('')
+  const liveRate = cur === 'USD' ? 1 : fromUSD(1, cur, rates)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div className="relative bg-white rounded-none shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+        <h2 className="text-sm text-ink-80 mb-1">Set pricing before inviting</h2>
+        <p className="text-xs text-ink-60 mb-4">
+          {contact.name || contact.email} will get portal access as soon as they set a password — there's no
+          separate approval step to catch this later, so set it now. Leave as default and it can still be
+          changed afterward on the account's own page.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <label className="text-xs text-ink-60">Base currency
+            <select className="input py-1.5 mt-1 w-full" value={cur} onChange={e => setCur(e.target.value)}>
+              {CUSTOMER_CURRENCIES.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </label>
+          {cur !== 'USD' && (
+            <label className="text-xs text-ink-60"
+              title={`Fixed rate: how many ${cur} per 1 USD. Locks this customer's prices regardless of daily rates. Leave blank to use the live rate (currently ≈ ${liveRate.toFixed(4)}).`}>
+              Fixed {cur}/USD rate
+              <input type="number" min="0" step="0.0001" placeholder={liveRate ? liveRate.toFixed(4) : 'live'}
+                className="input py-1.5 mt-1 w-full" value={fxRate} onChange={e => setFxRate(e.target.value)} />
+            </label>
+          )}
+          <label className="text-xs text-ink-60" title="Percentage of the list (ex-factory) price this customer pays. 100 = list price, 130 = +30% markup, 90 = 10% discount.">
+            Figurine Gift Catalogue — WS %
+            <input type="number" min="1" step="0.5" placeholder="100" className="input py-1.5 mt-1 w-full"
+              value={disc} onChange={e => setDisc(e.target.value)} />
+          </label>
+          <label className="text-xs text-ink-60" title="Sell price = product cost × this markup (e.g. 2.0 = cost doubled).">
+            Corp Gift Catalogue — Markup ×
+            <input type="number" min="0" step="0.05" placeholder="2.0" className="input py-1.5 mt-1 w-full"
+              value={override} onChange={e => setOverride(e.target.value)} />
+          </label>
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button type="button" className="btn-secondary" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={busy}
+            onClick={() => onConfirm({
+              baseCurrency: cur,
+              fxRate: cur !== 'USD' && fxRate !== '' ? Number(fxRate) : null,
+              wsDiscountPct: disc !== '' ? Number(disc) : 100,
+              corpMarkupOverride: override !== '' ? Number(override) : 0,
+            })}>
+            {busy ? 'Sending invite…' : 'Send invite'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CustomerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -435,6 +508,7 @@ export default function CustomerDetail() {
   // email since a customer can have several contacts.
   const [inviteBusy, setInviteBusy] = useState(null)
   const [inviteResult, setInviteResult] = useState({})
+  const [invitePricingContact, setInvitePricingContact] = useState(null) // contact the pricing dialog is open for
   const [quotes, setQuotes]             = useState([])
   const [orders, setOrders]             = useState([])
   const [accounts, setAccounts]         = useState([])
@@ -797,10 +871,11 @@ export default function CustomerDetail() {
     }
   }
 
-  async function handleInviteContact(contact) {
+  async function handleInviteContact(contact, pricing) {
     setInviteBusy(contact.email)
     try {
-      const res = await createInvitation(id, contact.email, contact.name || '')
+      const res = await createInvitation(id, contact.email, contact.name || '', null, pricing)
+      setInvitePricingContact(null)
       setInviteResult(prev => ({
         ...prev,
         [contact.email]: {
@@ -1336,7 +1411,7 @@ export default function CustomerDetail() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => handleInviteContact(c)}
+                        onClick={() => setInvitePricingContact(c)}
                         disabled={inviteBusy === c.email}
                         className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 inline-flex items-center gap-1"
                       >
@@ -1605,6 +1680,14 @@ export default function CustomerDetail() {
         </div>
       )}
       {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
+      {invitePricingContact && (
+        <InvitePricingDialog
+          contact={invitePricingContact}
+          busy={inviteBusy === invitePricingContact.email}
+          onCancel={() => setInvitePricingContact(null)}
+          onConfirm={pricing => handleInviteContact(invitePricingContact, pricing)}
+        />
+      )}
 
       {/* Quote history */}
       <Collapsible storageKey={`${id}:quotes`} title={`Quotes (${quotes.length})`} bodyClassName=""

@@ -24,8 +24,14 @@ async function call(action, payload, token) {
   return data
 }
 
-export const createInvitation = (customerId, contactEmail, contactName, marketingContactId) =>
-  callAdmin('create_invitation', { customerId, contactEmail, contactName, marketingContactId })
+// pricing (optional): { baseCurrency, fxRate, wsDiscountPct, corpMarkupOverride }
+// — set on the invitation and mirrored onto the account at approval time
+// (auto-approval for an admin invitation happens the moment the customer
+// claims it, so this is the only chance to set it before they're in). See
+// CustomerDetail.jsx's InvitePricingDialog and portal-invite.js's
+// runApproval.
+export const createInvitation = (customerId, contactEmail, contactName, marketingContactId, pricing) =>
+  callAdmin('create_invitation', { customerId, contactEmail, contactName, marketingContactId, pricing })
 
 export const resendInvitation = invitationId => callAdmin('resend_invitation', { invitationId })
 export const revokeInvitation = invitationId => callAdmin('revoke_invitation', { invitationId })

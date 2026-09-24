@@ -92,6 +92,27 @@ function tokensMatch(presentedRaw, storedHash) {
 
 const normEmail = e => String(e || '').trim().toLowerCase()
 
+// Same currency list as src/currency.js's CUSTOMER_CURRENCIES — duplicated
+// rather than imported (this file can't share a runtime/module graph with
+// the client bundle) and the same field semantics as AccountEdit.jsx's own
+// "Pricing" card save logic (saveForm), which this exists to pre-seed:
+// ws_discount_pct is "% of list price", non-positive/blank defaults to 100
+// (full price, no discount); corp_markup_override blank/non-numeric
+// defaults to 0 (no override); fx_rate only applies off-USD and is null
+// (use the live rate) when not set.
+const INVITE_CURRENCIES = ['USD', 'EUR', 'HKD', 'GBP', 'AUD', 'CAD', 'SGD']
+function sanitizePricing(p) {
+  if (!p || typeof p !== 'object') return null
+  const baseCurrency = INVITE_CURRENCIES.includes(p.baseCurrency) ? p.baseCurrency : 'USD'
+  const fxRateNum = Number(p.fxRate)
+  return {
+    base_currency: baseCurrency,
+    fx_rate: baseCurrency !== 'USD' && Number.isFinite(fxRateNum) && fxRateNum > 0 ? fxRateNum : null,
+    ws_discount_pct: Number(p.wsDiscountPct) > 0 ? Number(p.wsDiscountPct) : 100,
+    corp_markup_override: Number(p.corpMarkupOverride) || 0,
+  }
+}
+
 // Verifies the caller's Firebase ID token, no role check — any signed-in
 // user. Returns { uid, email } from the DECODED TOKEN, never trusting a
 // client-supplied email for anything that writes data (see
@@ -241,6 +262,7 @@ async function createInvitation(body, adminUid) {
   const contactEmail = normEmail(body?.contactEmail)
   const contactName = String(body?.contactName || '').trim()
   const marketingContactId = body?.marketingContactId ? String(body.marketingContactId).trim() : null
+  const pricing = sanitizePricing(body?.pricing)
   if (!customerId) return json({ error: 'customerId is required' }, 400)
   if (!EMAIL_RE.test(contactEmail)) return json({ error: 'A valid contact email is required' }, 400)
 
@@ -272,6 +294,12 @@ async function createInvitation(body, adminUid) {
   await ref.set({
     customer_id: customerId, contact_email: contactEmail, contact_name: contactName,
     marketing_contact_id: marketingContactId,
+    // Admin-picked pricing to apply the moment this invitation is approved
+    // (which, since auto-approve, is the moment the customer claims it —
+    // see runApproval). null when the admin didn't set any, in which case
+    // runApproval falls back to its pre-existing defaults exactly as before
+    // this field existed. See CustomerDetail.jsx's InvitePricingDialog.
+    pricing,
     // 'admin' = an admin invited a known customer contact (this function);
     // 'self' = the applicant submitted "Request account" themselves
     // (applyForAccount below) — PortalInvitations.jsx shows a badge so the
@@ -721,7 +749,7 @@ async function claimInvitation(body) {
   // ever reached for one — belt and suspenders, source check should already
   // route those around here).
   if (inv.source === 'admin') {
-    const result = await runApproval({ ref, claimedUid: uid, customerId: inv.customer_id, actorUid: 'system:auto_approve', auditAction: 'auto_approved' })
+    const result = await runApproval({ ref, claimedUid: uid, customerId: inv.customer_id, actorUid: 'system:auto_approve', auditAction: 'auto_approved', pricing: inv.pricing || null })
     if (!result.ok) {
       // Account is still created/claimed even if the setup email failed to
       // send — don't tell the customer they're approved if they have no way
@@ -795,7 +823,7 @@ async function claimInvitationGoogle(body, uid, googleEmail) {
 
   // Same auto-approve as claimInvitation's own branch — see its comment.
   if (inv.source === 'admin') {
-    const result = await runApproval({ ref, claimedUid: uid, customerId: inv.customer_id, actorUid: 'system:auto_approve', auditAction: 'auto_approved' })
+    const result = await runApproval({ ref, claimedUid: uid, customerId: inv.customer_id, actorUid: 'system:auto_approve', auditAction: 'auto_approved', pricing: inv.pricing || null })
     if (!result.ok) return json({ ok: true, status: 'claimed', autoApproveError: result.error })
     return json({ ok: true, status: 'approved' })
   }
@@ -928,7 +956,7 @@ async function requestPasswordReset(body) {
 // genuinely needs a human: a self-submitted application with no customer
 // link yet). Returns a plain { ok, error?, status? } — never a Response —
 // so both callers can shape their own client-facing reply around it.
-async function runApproval({ ref, claimedUid, customerId, actorUid, auditAction }) {
+async function runApproval({ ref, claimedUid, customerId, actorUid, auditAction, pricing }) {
   const db = getFirestore()
 
   // A self-submitted application (source:'self') starts with no
@@ -982,6 +1010,17 @@ async function runApproval({ ref, claimedUid, customerId, actorUid, auditAction 
     // Internal, no customer linked — approve as-is, safe defaults.
     userUpdate = { status: 'approved', customer_id: null, sensitive: false, erp_code: '', erp_code_shared: false }
   }
+  // Pricing the admin set at invite time (InvitePricingDialog) — see
+  // sanitizePricing. Not present on older invitations or ones created before
+  // this field existed, in which case the account keeps whatever it already
+  // had (claim time's ws_discount_pct:0/base_currency:'USD' defaults, same
+  // as before this existed) for a human to set later on AccountEdit.jsx.
+  if (pricing) {
+    userUpdate.base_currency = pricing.base_currency
+    userUpdate.fx_rate = pricing.fx_rate
+    userUpdate.ws_discount_pct = pricing.ws_discount_pct
+    userUpdate.corp_markup_override = pricing.corp_markup_override
+  }
   await claimedUserRef.update(userUpdate)
   await ref.update({
     status: 'approved', approved_at: Timestamp.now(), customer_id: customerId || null,
@@ -1017,7 +1056,7 @@ async function approveInvitation(body, adminUid) {
   if (!inv.claimed_uid) return json({ error: 'This invitation has no linked account to approve.' }, 400)
 
   const customerId = suppliedCustomerId || inv.customer_id
-  const result = await runApproval({ ref, claimedUid: inv.claimed_uid, customerId, actorUid: adminUid, auditAction: 'approved' })
+  const result = await runApproval({ ref, claimedUid: inv.claimed_uid, customerId, actorUid: adminUid, auditAction: 'approved', pricing: inv.pricing || null })
   return result.ok ? json({ ok: true }) : json({ error: result.error }, result.status || 500)
 }
 
