@@ -24,21 +24,22 @@ const COL = () => collection(db, 'customers')
 // Canonical enum vocabularies (single source — CustomerForm imports these too).
 export const CRM_STATUSES   = ['Active', 'Prospect', 'Dormant', 'Inactive']
 export const CRM_CATEGORIES = ['Distributor', 'Small B2B', 'Gift / OEM', 'Crystal Fabric']
-export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp', 'WeChat', 'WhatsApp']
+export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp', 'WeChat']
 // Channels with no API/integration behind them yet — every interaction on
 // these is manually typed in by an admin (no live sync, unlike Email). Used
 // to label channel pickers everywhere they appear so it's clear which
 // channels the app can't see into on its own. WhatsApp Business here means
 // the consumer WhatsApp Business *app*, not the Business Platform API — see
 // PROJECT-PLAN.md's "Where V8.2 starts" entry.
-//
-// Plain 'WhatsApp' (Draft Daily WhatsApp channel support, 2026-08-19) is
-// deliberately separate from 'Personal WhatsApp'/'WhatsApp Business' — it's
-// the log value for a contact's older, unclassified `whatsapp` field, where
-// there's no evidence which account it actually is. Never inferred as one
-// or the other; only used when the contact genuinely has no
-// whatsapp_personal/whatsapp_business set.
-export const NO_API_CHANNELS = ['WhatsApp Business', 'Personal WhatsApp', 'WeChat', 'WhatsApp']
+export const NO_API_CHANNELS = ['WhatsApp Business', 'Personal WhatsApp', 'WeChat']
+// Plain 'WhatsApp' (Draft Daily WhatsApp channel support, 2026-08-19) was
+// removed from the picker 2026-09-24 (owner feedback: redundant with the two
+// classified channels above) — kept here ONLY as a display-legacy value:
+// old customer docs may still carry a contact's unclassified `whatsapp`
+// field or a saved `channel: 'WhatsApp'`; EnquiryForm/CustomerDetail already
+// render an unrecognized saved channel as "(legacy)", so removing it from
+// CHANNELS doesn't orphan old data. Never add this back to the picker —
+// classify new numbers as Personal or Business instead.
 // 'WooCommerce' added 2026-08-22 for the Retail Customer segment — set only
 // by the WooCommerce sync/linking action (wooImport.js's linkCustomerToWoo),
 // never picked manually; CustomerForm.jsx should render Source as read-only

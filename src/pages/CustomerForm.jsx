@@ -11,6 +11,60 @@ const blankContact = (isPrimary = false) => ({
   whatsapp: '', whatsapp_personal: '', whatsapp_business: '', wechat: '', alibaba_id: '', address: '', is_primary: isPrimary,
 })
 
+// One WhatsApp number by default, with a way to add the second one — not
+// three always-visible fields (unclassified/Personal/Business) shown blank
+// for every contact regardless of whether they have one number or two.
+// Still backed by the same three schema fields (whatsapp/whatsapp_personal/
+// whatsapp_business in domain/customer.js's normalizeContact) — Draft Daily
+// (src/marketing/DailyDrafts.jsx) branches on Personal vs Business to pick
+// which WhatsApp action to show, so that distinction is kept, just not
+// forced on the admin up front. `whatsapp` (unclassified) is legacy: only
+// shown, still editable, when a contact already has one on file (pre-dates
+// the Personal/Business split) — never offered for a new number. Owner
+// feedback 2026-09-24: the old three-field layout was confusing clutter.
+const WA_TYPES = [
+  { field: 'whatsapp_personal', label: 'Personal' },
+  { field: 'whatsapp_business', label: 'Business' },
+]
+function WhatsAppNumbers({ contact, onUpdate }) {
+  const filled = WA_TYPES.filter(t => contact[t.field])
+  const empty = WA_TYPES.filter(t => !contact[t.field])
+  // Rows to show, filled ones first: both slots are always candidates (a
+  // brand-new contact with neither filled in still needs "Add another" to
+  // reveal the second one, not just the first).
+  const rows = [...filled, ...empty]
+  const [showSecond, setShowSecond] = useState(filled.length > 1)
+  const visibleRows = showSecond ? rows : rows.slice(0, 1)
+  const canAddMore = !showSecond
+
+  // Only label rows Personal/Business once there's a second one to tell
+  // apart — a contact with just one number shouldn't be forced to classify
+  // it as either up front.
+  const showLabels = visibleRows.length > 1
+
+  return (
+    <div className="space-y-2">
+      {contact.whatsapp && (
+        <input className="input" value={contact.whatsapp} onChange={e => onUpdate('whatsapp', e.target.value)}
+               placeholder="WhatsApp (unclassified, optional)" />
+      )}
+      {visibleRows.map(t => (
+        <div key={t.field} className="flex items-center gap-2">
+          {showLabels && <span className="text-2xs text-ink-60 uppercase tracking-wide w-16 shrink-0">{t.label}</span>}
+          <input className="input flex-1" value={contact[t.field]} onChange={e => onUpdate(t.field, e.target.value)}
+                 placeholder={showLabels ? `WhatsApp ${t.label} (optional)` : 'WhatsApp number (optional)'} />
+        </div>
+      ))}
+      {canAddMore && (
+        <button type="button" onClick={() => setShowSecond(true)}
+                className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
+          <Plus size={13} /> Add another WhatsApp number
+        </button>
+      )}
+    </div>
+  )
+}
+
 // Several real, separate people within one company (owner, 2026-08-05) — not
 // one contact_name plus a pile of un-attributed emails. Each card is one
 // person; exactly one is Primary (the quote/PI default, and what print pages
@@ -76,20 +130,12 @@ function ContactsEditor({ contacts, onChange }) {
             <input className="input" value={c.phone} onChange={e => update(i, 'phone', e.target.value)} placeholder="Phone" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input className="input" value={c.whatsapp} onChange={e => update(i, 'whatsapp', e.target.value)} placeholder="WhatsApp — unclassified (optional)" />
             <input className="input" value={c.wechat} onChange={e => update(i, 'wechat', e.target.value)} placeholder="WeChat ID (optional)" />
+            <input className="input" value={c.alibaba_id} onChange={e => update(i, 'alibaba_id', e.target.value)}
+                   placeholder="Alibaba ID / account (optional)" />
           </div>
-          <input className="input" value={c.alibaba_id} onChange={e => update(i, 'alibaba_id', e.target.value)}
-                 placeholder="Alibaba ID / account (optional)" />
 
-          {/* Only fill these in when Personal vs Business is actually known —
-              Draft Daily shows a neutral "WhatsApp" action for the field
-              above, and only shows labelled Personal/Business actions once
-              one of these is set. Leaving both blank is fine and common. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input className="input" value={c.whatsapp_personal} onChange={e => update(i, 'whatsapp_personal', e.target.value)} placeholder="WhatsApp Personal (optional)" />
-            <input className="input" value={c.whatsapp_business} onChange={e => update(i, 'whatsapp_business', e.target.value)} placeholder="WhatsApp Business (optional)" />
-          </div>
+          <WhatsAppNumbers contact={c} onUpdate={(field, value) => update(i, field, value)} />
           <input className="input" value={c.address} onChange={e => update(i, 'address', e.target.value)}
                  placeholder="Address override — leave blank to use the company address" />
         </div>
