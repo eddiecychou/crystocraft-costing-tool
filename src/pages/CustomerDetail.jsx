@@ -446,10 +446,24 @@ function InvitePricingDialog({ contact, onConfirm, onCancel, busy }) {
   const [override, setOverride] = useState('')
   const liveRate = cur === 'USD' ? 1 : fromUSD(1, cur, rates)
 
+  // Close only on a click that ORIGINATES on the backdrop itself, not one
+  // that merely bubbles up to it — relying only on the content div's
+  // stopPropagation() below closed the dialog the moment an admin touched
+  // the currency <select> (reported live, 2026-09-24: "first time I click
+  // it, when I change the exchange rate, it will quit" — the second attempt
+  // worked because the browser's already-open-once select dropdown behaves
+  // differently). A native <select>'s dropdown list is a browser popup, not
+  // a DOM descendant of our content div, so an option click's event can
+  // reach this backdrop without ever passing through — through stopPropagation
+  // to catch. e.target === e.currentTarget is the standard, robust guard.
+  function handleBackdropClick(e) {
+    if (e.target === e.currentTarget) onCancel()
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={handleBackdropClick}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white rounded-none shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white rounded-none shadow-xl max-w-md w-full p-6">
         <h2 className="text-sm text-ink-80 mb-1">Set pricing before inviting</h2>
         <p className="text-xs text-ink-60 mb-4">
           {contact.name || contact.email} will get portal access as soon as they set a password — there's no
