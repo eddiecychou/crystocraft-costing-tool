@@ -59,33 +59,17 @@
     body { background: #fff !important; }
   }
 
-  /* Product Design spec sheet printing (V8.16, ported from the standalone
-     app — this block was missed in the initial port, so "Print / Save as
-     PDF" printed the whole Operation Center page, sidebar included, instead
-     of isolating the sheet). Show only #spec-sheet-print-target, at full
-     size, one page. See SpecSheetEditorForm.tsx for the matching class names. */
-  @media print {
-    body * { visibility: hidden; }
-    #spec-sheet-print-target, #spec-sheet-print-target * { visibility: visible; }
-    /* The on-screen preview scales the sheet down via a wrapper (so its
-       layout box doesn't get clipped by the grid column) — undo that
-       wrapper's sizing/transform for print so the sheet comes out at its
-       true full resolution, not shrunk to preview size. */
-    .spec-sheet-outer {
-      width: auto !important;
-      height: auto !important;
-      overflow: visible !important;
-    }
-    .spec-sheet-scale-wrapper {
-      transform: none !important;
-    }
-    #spec-sheet-print-target {
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-    @page { size: A4 landscape; margin: 0; }
-  }
+  /* Product Design spec sheet printing (V8.16) moved OUT of this global
+     stylesheet 2026-09-24 — it was unconditionally hiding `body *` and
+     forcing `@page { size: A4 landscape; margin: 0 }` on every print job
+     in the app (an unscoped `@media print` block, with an `@page` at-rule
+     that cannot be gated by a body/selector class), which blanked or
+     misformatted every OTHER print page (SI/PU/credit note/proforma/
+     packing list/catalogue/portal invoice — none of them define
+     #spec-sheet-print-target to satisfy the visibility exception). Found
+     via a blank Save-as-PDF report on the SI portal invoice. Now injected
+     as a component-scoped <style> only while SpecSheetEditorForm is
+     mounted — see that file. */
 }
 
 @layer components {

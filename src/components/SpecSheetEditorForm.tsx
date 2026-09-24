@@ -96,6 +96,24 @@ export default function SpecSheetEditorForm({
 
   return (
     <div className="grid grid-cols-[380px_1fr] gap-6 items-start">
+      {/* Scoped to this component (previously lived in global index.css's
+          @media print, which unconditionally hid `body *` and forced
+          `@page { size: A4 landscape; margin: 0 }` on every print job in
+          the app — blanking or misformatting SI/PU/credit note/proforma/
+          packing list/catalogue/portal invoice prints, since @page can't
+          be gated by a selector. Moving it here means it only exists in
+          the DOM while this editor is mounted. Found 2026-09-24 via a
+          blank Save-as-PDF report on the SI portal invoice. */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #spec-sheet-print-target, #spec-sheet-print-target * { visibility: visible; }
+          .spec-sheet-outer { width: auto !important; height: auto !important; overflow: visible !important; }
+          .spec-sheet-scale-wrapper { transform: none !important; }
+          #spec-sheet-print-target { position: absolute; top: 0; left: 0; }
+          @page { size: A4 landscape; margin: 0; }
+        }
+      `}</style>
       <div className="card p-4 flex flex-col gap-4 print:hidden">
         <div>
           <label className="label">Sheet Name</label>
