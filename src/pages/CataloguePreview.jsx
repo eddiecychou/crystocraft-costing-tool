@@ -890,19 +890,18 @@ const catalogueCSS = `
       overflow: visible !important;
     }
 
-    /* Walk down the exact DOM path from Layout.jsx, un-flexing each shell */
-    #root                       { display: block !important; height: auto !important; overflow: visible !important; }
-    #root > div                 { display: block !important; height: auto !important; overflow: visible !important; }
-    #root > div > div           { display: block !important; height: auto !important; overflow: visible !important; }
+    /* Un-flex Layout.jsx's shell divs via a stable data-attribute hook
+       instead of positional selectors (#root > div > div etc.) — those
+       broke silently if Layout's DOM nesting ever changed. See
+       LESSONS-LEARNED for the index.css incident that prompted this. */
+    [data-print-shell]          { display: block !important; height: auto !important; overflow: visible !important; }
 
-    /* Hide every direct UI sibling: sidebar, mobile header, mobile nav, print bar */
-    #root > div > aside         { display: none !important; }
-    #root > div > div > header  { display: none !important; }
-    #root > div > div > nav     { display: none !important; }
+    /* Hide every UI chrome element: sidebar, mobile header, mobile nav */
+    [data-print-hide]           { display: none !important; }
     .no-print                   { display: none !important; }
 
     /* Unlock the scrollable main so all pages render */
-    #root > div > div > main {
+    [data-print-root] {
       display: block !important;
       overflow: visible !important;
       height: auto !important;

@@ -173,10 +173,15 @@ export default function Layout({ children, user }) {
   }, [])
 
   return (
-    <div className="flex h-screen-dynamic bg-ivory">
+    <div className="flex h-screen-dynamic bg-ivory" data-print-shell>
 
-      {/* Sidebar — desktop only */}
-      <aside className={`hidden md:flex bg-ink flex-col shrink-0 transition-[width] duration-200 ${navCollapsed ? 'w-16' : 'w-56'}`}>
+      {/* Sidebar — desktop only.
+          data-print-hide/data-print-root below: CataloguePreview.jsx's print
+          CSS used to target this shell via brittle positional selectors
+          (#root > div > aside etc.) that silently break if this nesting
+          ever changes — see LESSONS-LEARNED. These attributes are the
+          stable hook instead. */}
+      <aside data-print-hide className={`hidden md:flex bg-ink flex-col shrink-0 transition-[width] duration-200 ${navCollapsed ? 'w-16' : 'w-56'}`}>
         {navCollapsed ? (
           <div className="border-b border-white/10 px-2 py-4 flex justify-center">
             <button
@@ -268,10 +273,10 @@ export default function Layout({ children, user }) {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden" data-print-shell>
 
         {/* Mobile top bar */}
-        <header className="md:hidden bg-ink px-4 py-3 flex items-center justify-between shrink-0">
+        <header data-print-hide className="md:hidden bg-ink px-4 py-3 flex items-center justify-between shrink-0">
           <div>
             <img src={logo} alt="Crystocraft" className="h-6 w-auto brightness-0 invert" />
             <p className="text-xs font-medium text-ivory/50 mt-0.5 tracking-[0.12em] uppercase font-label">
@@ -284,12 +289,12 @@ export default function Layout({ children, user }) {
         </header>
 
         {/* Page content — add bottom padding on mobile for tab bar */}
-        <main id="main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain pb-20 md:pb-0">
+        <main id="main-scroll" data-print-root className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain pb-20 md:pb-0">
           {children}
         </main>
 
         {/* Bottom tab bar — mobile only */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-ink border-t border-white/10 flex z-40 pb-[env(safe-area-inset-bottom)]">
+        <nav data-print-hide className="md:hidden fixed bottom-0 left-0 right-0 bg-ink border-t border-white/10 flex z-40 pb-[env(safe-area-inset-bottom)]">
           {mainNav.map(({ to, short, Icon }) => (
             <NavLink
               key={to}
