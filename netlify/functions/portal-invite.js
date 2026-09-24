@@ -710,6 +710,26 @@ async function claimInvitation(body) {
     status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: uid,
     audit_log: FieldValue.arrayUnion(auditEntry('claimed', email)),
   })
+
+  // Admin-created invitations already have a customer_id the admin chose at
+  // invite time (createInvitation requires one) — there's nothing left for
+  // a human to decide at a second "Approve" click, so skip straight to
+  // approved and send the password-setup email now instead of making the
+  // customer wait on an admin. Self-serve applications (source:'self')
+  // start with no customer link at all, so they keep the manual approval
+  // step (runApproval's own customerId guard still applies if this were
+  // ever reached for one — belt and suspenders, source check should already
+  // route those around here).
+  if (inv.source === 'admin') {
+    const result = await runApproval({ ref, claimedUid: uid, customerId: inv.customer_id, actorUid: 'system:auto_approve', auditAction: 'auto_approved' })
+    if (!result.ok) {
+      // Account is still created/claimed even if the setup email failed to
+      // send — don't tell the customer they're approved if they have no way
+      // to actually set a password yet.
+      return json({ ok: true, status: 'claimed', autoApproveError: result.error })
+    }
+    return json({ ok: true, status: 'approved' })
+  }
   return json({ ok: true, status: 'pending' })
 }
 
@@ -772,6 +792,13 @@ async function claimInvitationGoogle(body, uid, googleEmail) {
     status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: uid,
     audit_log: FieldValue.arrayUnion(auditEntry('claimed_via_google', googleEmail)),
   })
+
+  // Same auto-approve as claimInvitation's own branch — see its comment.
+  if (inv.source === 'admin') {
+    const result = await runApproval({ ref, claimedUid: uid, customerId: inv.customer_id, actorUid: 'system:auto_approve', auditAction: 'auto_approved' })
+    if (!result.ok) return json({ ok: true, status: 'claimed', autoApproveError: result.error })
+    return json({ ok: true, status: 'approved' })
+  }
   return json({ ok: true, status: 'pending' })
 }
 
@@ -890,25 +917,24 @@ async function requestPasswordReset(body) {
   return json({ ok: true })
 }
 
-async function approveInvitation(body, adminUid) {
-  const id = String(body?.invitationId || '').trim()
-  const suppliedCustomerId = body?.customerId ? String(body.customerId).trim() : null
-  if (!id) return json({ error: 'invitationId is required' }, 400)
+// Core of "approve" — mirrors pricing/sensitivity onto the user doc, flips
+// both docs to approved, and sends whichever "you're in" email fits the
+// auth method. Shared by approveInvitation (the manual admin click) and the
+// auto-approve branch inside claimInvitation/claimInvitationGoogle for
+// admin-created invitations (2026-09-24, owner request: an admin invitation
+// already has a customer_id chosen at invite time, so the manual "Approve"
+// click was re-confirming a decision already made, not making a new one —
+// see the customerId guard below, which still protects the ONE case that
+// genuinely needs a human: a self-submitted application with no customer
+// link yet). Returns a plain { ok, error?, status? } — never a Response —
+// so both callers can shape their own client-facing reply around it.
+async function runApproval({ ref, claimedUid, customerId, actorUid, auditAction }) {
   const db = getFirestore()
-  const ref = db.collection('portal_invitations').doc(id)
-  const snap = await ref.get()
-  if (!snap.exists) return json({ error: 'Invitation not found' }, 404)
-  const inv = snap.data()
-  if (inv.status !== 'claimed') {
-    return json({ error: inv.status === 'pending' ? 'This invitation has not been claimed by the customer yet.' : `Invitation is ${inv.status}, not claimed.` }, 400)
-  }
-  if (!inv.claimed_uid) return json({ error: 'This invitation has no linked account to approve.' }, 400)
 
   // A self-submitted application (source:'self') starts with no
   // customer_id — the applicant typed a free-text company name, not a real
   // customers/{id}. An admin must link (or correct) it before approval can
-  // proceed; this also doubles as the original SU-07A spec's "correct the
-  // customer/contact link before approval" for admin-created invitations.
+  // proceed.
   //
   // Exception: account_type:'internal' (a staff/test login, set via
   // AccountEdit.jsx's Account Category toggle) never needs a real customer
@@ -917,19 +943,17 @@ async function approveInvitation(body, adminUid) {
   // didn't advertise (found live, 2026-08-19). Read straight off the user
   // doc rather than trusting a client-supplied flag — same "server verifies,
   // never trusts the caller's claim" posture as everything else here.
-  const claimedUserRef = db.collection('users').doc(inv.claimed_uid)
+  const claimedUserRef = db.collection('users').doc(claimedUid)
   const claimedUserSnap = await claimedUserRef.get()
   const isInternal = claimedUserSnap.data()?.account_type === 'internal'
-
-  const customerId = suppliedCustomerId || inv.customer_id
   if (!customerId && !isInternal) {
-    return json({ error: 'Link this request to a customer record before approving.' }, 400)
+    return { ok: false, error: 'Link this request to a customer record before approving.', status: 400 }
   }
 
   let userUpdate
   if (customerId) {
     const customerSnap = await db.collection('customers').doc(customerId).get()
-    if (!customerSnap.exists) return json({ error: 'That customer record no longer exists.' }, 404)
+    if (!customerSnap.exists) return { ok: false, error: 'That customer record no longer exists.', status: 404 }
 
     // Mirror sensitive/erp_code/erp_code_shared onto the user doc — same
     // fields domain/customer.js's mirrorToLinkedAccounts keeps in sync on
@@ -947,11 +971,12 @@ async function approveInvitation(body, adminUid) {
       sensitive: !!custData.sensitive,
       erp_code: custData.erp_code || '',
       erp_code_shared: !!custData.erp_code_shared,
-    }
-    if (suppliedCustomerId) {
-      // Keep the user's displayed company_name in sync with the now-linked
-      // canonical record, rather than whatever free text the applicant typed.
-      userUpdate.company_name = String(custData.company_name || '')
+      // Keep the user's displayed company_name in sync with the linked
+      // record — matters for both a corrected self-serve link and, now,
+      // the auto-approve path (the claim-time doc used whatever company
+      // name was on the invitation/customer at claim time; this is the
+      // authoritative refresh).
+      company_name: String(custData.company_name || claimedUserSnap.data()?.company_name || ''),
     }
   } else {
     // Internal, no customer linked — approve as-is, safe defaults.
@@ -960,14 +985,40 @@ async function approveInvitation(body, adminUid) {
   await claimedUserRef.update(userUpdate)
   await ref.update({
     status: 'approved', approved_at: Timestamp.now(), customer_id: customerId || null,
-    audit_log: FieldValue.arrayUnion(auditEntry('approved', adminUid)),
+    audit_log: FieldValue.arrayUnion(auditEntry(auditAction, actorUid)),
   })
 
   const freshSnap = await ref.get()
   const isGoogleAccount = claimedUserSnap.data()?.auth_provider === 'google.com'
-  return isGoogleAccount
-    ? googleApprovedNotification(ref, freshSnap.data(), adminUid)
-    : setupLinkForApprovedInvitation(ref, freshSnap.data(), adminUid)
+  const sendResp = isGoogleAccount
+    ? await googleApprovedNotification(ref, freshSnap.data(), actorUid)
+    : await setupLinkForApprovedInvitation(ref, freshSnap.data(), actorUid)
+  const sendBody = await sendResp.json()
+  // The account is fully approved either way (writes above already
+  // committed) — a failure here only means the notification/setup-link
+  // email didn't go out, same as createInvitation's own email-failure
+  // posture: the record is fine and resendInvitation/PortalInvitations.jsx
+  // can recover it, so surface the error without undoing the approval.
+  return sendBody.ok ? { ok: true } : { ok: false, error: sendBody.error, status: 502 }
+}
+
+async function approveInvitation(body, adminUid) {
+  const id = String(body?.invitationId || '').trim()
+  const suppliedCustomerId = body?.customerId ? String(body.customerId).trim() : null
+  if (!id) return json({ error: 'invitationId is required' }, 400)
+  const db = getFirestore()
+  const ref = db.collection('portal_invitations').doc(id)
+  const snap = await ref.get()
+  if (!snap.exists) return json({ error: 'Invitation not found' }, 404)
+  const inv = snap.data()
+  if (inv.status !== 'claimed') {
+    return json({ error: inv.status === 'pending' ? 'This invitation has not been claimed by the customer yet.' : `Invitation is ${inv.status}, not claimed.` }, 400)
+  }
+  if (!inv.claimed_uid) return json({ error: 'This invitation has no linked account to approve.' }, 400)
+
+  const customerId = suppliedCustomerId || inv.customer_id
+  const result = await runApproval({ ref, claimedUid: inv.claimed_uid, customerId, actorUid: adminUid, auditAction: 'approved' })
+  return result.ok ? json({ ok: true }) : json({ error: result.error }, result.status || 500)
 }
 
 // AccountEdit.jsx's "Delete account" — previously only deleted the

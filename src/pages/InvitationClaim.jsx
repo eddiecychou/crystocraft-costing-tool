@@ -51,6 +51,12 @@ export default function InvitationClaim() {
   const [submitError, setSubmitError] = useState('')
   const [claimed, setClaimed] = useState(false)
   const [claimedVia, setClaimedVia] = useState('form') // 'form' | 'google'
+  // Admin-created invitations auto-approve at claim time (2026-09-24) — the
+  // admin already picked the customer/pricing when they sent the invite, so
+  // there's no second review step. Self-serve applications still go through
+  // manual review. See portal-invite.js's claimInvitation/
+  // claimInvitationGoogle for the server-side branch this mirrors.
+  const [claimedStatus, setClaimedStatus] = useState('pending') // 'pending' | 'approved' | 'claimed' (approved but email failed)
 
   const [googleLoading, setGoogleLoading] = useState(false)
   const [googleError, setGoogleError] = useState('')
@@ -68,8 +74,9 @@ export default function InvitationClaim() {
     e.preventDefault()
     setSubmitError(''); setSubmitting(true)
     try {
-      await claimInvitation(id, token, email.trim(), contactName.trim())
+      const res = await claimInvitation(id, token, email.trim(), contactName.trim())
       setClaimedVia('form')
+      setClaimedStatus(res?.status || 'pending')
       setClaimed(true)
     } catch (err) {
       setSubmitError(err.message || 'invalid')
@@ -96,8 +103,9 @@ export default function InvitationClaim() {
         setGoogleError('email_mismatch')
         return
       }
-      await claimInvitationGoogle(id, token, result.user.displayName || '')
+      const res = await claimInvitationGoogle(id, token, result.user.displayName || '')
       setClaimedVia('google')
+      setClaimedStatus(res?.status || 'pending')
       setClaimed(true)
     } catch (err) {
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return
@@ -127,6 +135,34 @@ export default function InvitationClaim() {
   }
 
   if (claimed) {
+    if (claimedStatus === 'approved') {
+      return (
+        <Shell>
+          <h2 className="text-lg text-ink mb-2">You're in</h2>
+          <p className="text-sm text-ink-70">
+            {claimedVia === 'google'
+              ? 'Your account is approved — sign in with Google to get started, no password needed.'
+              : "Your account is approved. We've emailed you a secure link to set your password — once that's done, you're straight into the portal."}
+          </p>
+        </Shell>
+      )
+    }
+    // 'claimed' here means auto-approval ran but the notification/setup
+    // email failed to send (e.g. Resend outage) — the account IS approved
+    // server-side, just tell them plainly rather than the old generic
+    // "pending review" copy, which would be misleading (nobody needs to
+    // review anything; they just need the email resent).
+    if (claimedStatus === 'claimed') {
+      return (
+        <Shell>
+          <h2 className="text-lg text-ink mb-2">Almost there</h2>
+          <p className="text-sm text-ink-70">
+            Your account is approved, but we couldn't send the confirmation email just now. Please contact
+            Crystocraft and we'll get you a fresh link.
+          </p>
+        </Shell>
+      )
+    }
     return (
       <Shell>
         <h2 className="text-lg text-ink mb-2">Thanks — you're all set for now</h2>
@@ -152,8 +188,8 @@ export default function InvitationClaim() {
         browsing your catalogue, pricing, and order history in one place.
       </p>
       <p className="text-sm text-ink-70 mb-6">
-        You don't need to create a password yet. Confirm your details below; our team will review and approve
-        the account, then send you a secure link to set your own password.
+        You don't need to create a password yet. Confirm your details below and we'll email you a secure link
+        to set your own password right away.
       </p>
 
       {alreadySignedIn && (
