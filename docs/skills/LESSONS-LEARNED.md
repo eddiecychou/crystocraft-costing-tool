@@ -747,6 +747,98 @@
   identity under it. Belongs on the checklist next to any new "move up /
   move down" affordance.
 
+## L-35 · A currency with no rate on file was shown to the customer unconverted, wearing that currency's label
+
+- **Symptom.** Found in the 2026-09-28 whole-repo review, not by a customer
+  complaint — which is the worrying part, because it is silent by
+  construction. A portal account whose `base_currency` was GBP, AUD, CAD or
+  SGD saw HKD magnitudes labelled as their own currency: a USD 20 figurine
+  displayed as **"GBP 155.60"** instead of ~GBP 15.90. ~7.8x over, and
+  nothing about it looks broken — it is a plausible number in the right
+  format. Verified live: the real `settings/exchange_rates` doc has no rate
+  for any of those four today.
+- **Root cause.** Three things lining up. `CUSTOMER_CURRENCIES`
+  (`src/currency.js`) offers seven currencies and is used by
+  `AccountEdit.jsx`, the signup form and the invite-pricing dialog. But
+  `DEFAULT_RATES` only ever held RMB/USD/EUR/HKD, `/api/fx-rates` only
+  returned RMB/USD/EUR/GBP, and — the part that made it permanent —
+  `Settings.jsx`'s save was a **non-merge** `setDoc({RMB, USD, EUR})`, which
+  wipes any other key in the doc on every save. So even a GBP rate that had
+  been fetched could not survive. The conversion then swallowed it:
+  `fromHKD` was `Number(amountHKD) / (rates[cur] || 1)` — a missing rate
+  divided by 1 and returned the HKD figure unchanged. The whole failure is
+  one `|| 1`: the falsy-fallback pattern applied to a value where "absent"
+  and "1" mean completely different things.
+- **Permanent fix.** `fromHKD` returns **null** for a currency with no rate,
+  never the raw amount; `fmtMoney` already renders null as `—`, and the one
+  call site doing arithmetic (`EnquiryPage`'s cart total) already coerces
+  null and flags the line "indicative", so an unrated currency degrades to
+  *no price shown* rather than a wrong one. `/api/fx-rates` now returns
+  AUD/CAD/SGD too; `Settings.jsx` saves with `{merge: true}`, carries the
+  portal-only rates through, and **shows an amber warning naming any
+  customer-facing currency with no rate** — without that, a blank storefront
+  has no visible explanation. The per-account fixed `fx_rate` escape hatch
+  is unaffected and still works with no global rate. **MUST**: never use
+  `|| <fallback>` on a rate, price, quantity or discount where the fallback
+  is a *valid-looking value* — for a missing FX rate, 1 is not a safe
+  default, it is a silent wrong answer. Return null and let the UI say "—".
+  **MUST**: when a picker offers an enum (currencies, here), something has
+  to guarantee every option is actually supported end to end — offering a
+  seventh currency was free, making it work was not. Covered by
+  `qa/money-fixes.test.mjs`, which asserts every `CUSTOMER_CURRENCIES` entry
+  either converts or returns null, and fails if `|| 1` returns.
+
+## L-36 · A publish step deleted a field the reader still preferred, so every quote line came in at 0
+
+- **Symptom.** Adding any product to a client quote in HKD (the default
+  currency) produced a line priced **0.00**, with the correct figure sitting
+  unread in the same tier document.
+- **Root cause.** Two halves of the same feature disagreed about the schema
+  after a USD→HKD migration. `PricingTiers.publish()` writes
+  `price_hkd: <computed>`, `sell_currency: 'HKD'` and explicitly
+  `sell_price: deleteField()` ("clear legacy fields so stale values can't
+  resurface"). `QuoteDetail.handleAddProducts` still read
+  `td.sell_currency === quoteCurrency ? (td.sell_price || 0) :
+  toQuoteCurrency(td.price_hkd || 0)`. Because the published
+  `sell_currency` is `'HKD'` and the default quote currency is also `'HKD'`,
+  the *common* path took the first branch, read the deleted field, and
+  `undefined || 0` produced 0 — while the correct value was only reachable
+  from the branch that never ran. A deliberate cleanup on the write side
+  silently became a zero on the read side.
+- **Permanent fix.** Only take the legacy field when it actually holds a
+  value: `(td.sell_currency === quoteCurrency && td.sell_price != null)`,
+  else fall through to `price_hkd`. Note `!= null` rather than truthiness, so
+  a genuine `sell_price: 0` still wins — the test pins that distinction.
+  **MUST**: when a write path starts deleting or renaming a field, grep every
+  reader of that field in the same commit. `deleteField()` is a schema change
+  with no type system to catch it, and the failure mode is a plausible
+  default (`|| 0`), not an error.
+
+## L-37 · The customer storefront rendered a zero price as free, while the admin grid hid it
+
+- **Symptom.** A corp-gift product with no costed components published a
+  customer-visible price of **HKD 0** on the product page, and "from HKD 0"
+  as its headline price in the shop grid.
+- **Root cause.** `PricingTiers.publish()` computes
+  `Math.ceil(totalUnitCostAtQty(...) * DEFAULT_MARKUP)`, which is legitimately
+  `0` when no component has a preferred supplier quote — so a zero price is a
+  real, reachable state, not corrupt data. The two sides then filtered it
+  differently: the customer pages used `t.price_hkd != null` (0 passes, and
+  `Math.min` even elects it as the "from" price) while the admin grid used a
+  truthy filter `t.price_hkd` (0 is dropped). The asymmetry ran in the worst
+  possible direction — the customer saw "free", and the only person who could
+  have noticed saw an empty row.
+- **Permanent fix.** Customer-facing filters now use `Number(price_hkd) > 0`,
+  matching the admin side, so an uncosted product shows no price at all
+  rather than a free one. **MUST**: when the same data is filtered in an
+  internal view and a customer-facing view, the customer-facing filter must be
+  at least as strict — and when a computed price can legitimately be zero,
+  decide explicitly whether zero means "free" or "not priced yet", because
+  `!= null` and truthiness quietly pick opposite answers. **Worth revisiting:**
+  this fixes the display, not the cause — `publish()` will still write a 0
+  tier. Blocking the publish (or flagging uncosted products before publish) is
+  the deeper fix and was deliberately left out of scope here.
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
