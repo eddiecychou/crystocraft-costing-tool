@@ -22,7 +22,10 @@ const CURRENCIES = ['RMB', 'USD', 'EUR']
 // HKD figure — a GBP account saw "GBP 155.60" for a ~GBP 15.90 item. See
 // LESSONS-LEARNED L-35.
 const PORTAL_ONLY_CURRENCIES = ['GBP', 'AUD', 'CAD', 'SGD']
-const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
+const LABELS = {
+  RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD',
+  GBP: 'GBP → HKD', AUD: 'AUD → HKD', CAD: 'CAD → HKD', SGD: 'SGD → HKD',
+}
 
 const TABS = [
   { v: 'fx',       label: 'Exchange Rates' },
@@ -323,6 +326,7 @@ function ExchangeRatesPanel() {
   const [rates, setRates]           = useState({ RMB: '', USD: '', EUR: '' })
   const [portalRates, setPortalRates] = useState({})   // PORTAL_ONLY_CURRENCIES, carried through saves
   const [savedRates, setSavedRates] = useState(null)
+  const [savedPortalRates, setSavedPortalRates] = useState({})
   const [lastSaved, setLastSaved]   = useState(null)
   const [fxUpdatedAt, setFxUpdatedAt] = useState(null)
   const [fetching, setFetching]     = useState(false)
@@ -337,9 +341,11 @@ function ExchangeRatesPanel() {
         const loaded = { RMB: d.RMB ?? '', USD: d.USD ?? '', EUR: d.EUR ?? '' }
         setRates(loaded)
         setSavedRates(loaded)
-        setPortalRates(Object.fromEntries(
+        const loadedPortal = Object.fromEntries(
           PORTAL_ONLY_CURRENCIES.filter(c => typeof d[c] === 'number').map(c => [c, d[c]]),
-        ))
+        )
+        setPortalRates(loadedPortal)
+        setSavedPortalRates(loadedPortal)
         setLastSaved(d.updatedAt?.toDate?.() || null)
       }
     })
@@ -373,12 +379,21 @@ function ExchangeRatesPanel() {
     try {
       // merge:true — this card edits the three quote currencies, but the doc
       // also carries the portal-only rates above; a plain setDoc wipes them.
+      // Portal rates are written as real numbers; a blank one is written as
+      // null so useRates()'s `typeof v === 'number'` filter drops it and the
+      // currency reads as "no rate on file" (prices show "—") rather than
+      // silently keeping a stale value.
+      const portalPayload = Object.fromEntries(PORTAL_ONLY_CURRENCIES.map(c => {
+        const n = Number(portalRates[c])
+        return [c, String(portalRates[c] ?? '').trim() !== '' && Number.isFinite(n) && n > 0 ? n : null]
+      }))
       await setDoc(doc(db, 'settings', 'exchange_rates'), {
         RMB: Number(rates.RMB), USD: Number(rates.USD), EUR: Number(rates.EUR),
-        ...portalRates,
+        ...portalPayload,
         updatedAt: serverTimestamp(),
       }, { merge: true })
       setSavedRates({ ...rates })
+      setSavedPortalRates({ ...portalRates })
       setLastSaved(new Date())
       setSaveMsg('Rates saved successfully.')
       setTimeout(() => setSaveMsg(null), 3000)
@@ -389,7 +404,9 @@ function ExchangeRatesPanel() {
     }
   }
 
-  const isDirty = !savedRates || CURRENCIES.some(c => String(rates[c]) !== String(savedRates[c]))
+  const isDirty = !savedRates
+    || CURRENCIES.some(c => String(rates[c]) !== String(savedRates[c]))
+    || PORTAL_ONLY_CURRENCIES.some(c => String(portalRates[c] ?? '') !== String(savedPortalRates[c] ?? ''))
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
@@ -419,17 +436,42 @@ function ExchangeRatesPanel() {
             </div>
           ))}
         </div>
-        {/* Portal accounts can be set to these, and without a rate their prices
-            show as "—" rather than a wrong number (LESSONS-LEARNED L-35). Say so
-            here — otherwise a blank storefront has no visible explanation. */}
-        {PORTAL_ONLY_CURRENCIES.some(c => typeof portalRates[c] !== 'number') && (
-          <p className="text-xs text-amber-600 mt-3">
-            No live rate on file for{' '}
-            {PORTAL_ONLY_CURRENCIES.filter(c => typeof portalRates[c] !== 'number').join(', ')}.
-            A portal account set to one of these sees no prices at all until you hit
-            “Fetch Live Rates” and save (or give that account a fixed rate on its own page).
+        {/* Shown, not hidden: these drive what portal customers on those
+            currencies actually see, and a rate you can't inspect is a price you
+            can't check. Without one, their prices render "—" rather than a wrong
+            number (LESSONS-LEARNED L-35). */}
+        <div className="mt-5 pt-4 border-t border-warm-grey">
+          <p className="text-xs text-ink-70 font-medium">Customer portal currencies</p>
+          <p className="text-xs text-ink-60 mb-3">
+            Not used for quotes — these convert catalogue prices for portal accounts set to
+            that currency. “Fetch Live Rates” fills them in; clear one to show “—” instead.
           </p>
-        )}
+          <div className="space-y-3">
+            {PORTAL_ONLY_CURRENCIES.map(cur => (
+              <div key={cur} className="flex items-center gap-3">
+                <label className="w-28 text-sm text-ink-70 shrink-0">{LABELS[cur]}</label>
+                <div className="relative flex-1">
+                  <input type="number" step="0.0001" min="0" placeholder="no rate — prices show “—”"
+                    className="input pr-16 text-right tabular-nums"
+                    value={portalRates[cur] ?? ''}
+                    onChange={e => setPortalRates(p => ({ ...p, [cur]: e.target.value }))} />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-60 pointer-events-none">HKD</span>
+                </div>
+                {String(portalRates[cur] ?? '') !== String(savedPortalRates[cur] ?? '') && (
+                  <span className="text-xs text-amber-500 shrink-0">unsaved</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {PORTAL_ONLY_CURRENCIES.some(c => typeof savedPortalRates[c] !== 'number') && (
+            <p className="text-xs text-amber-600 mt-3">
+              No rate saved for{' '}
+              {PORTAL_ONLY_CURRENCIES.filter(c => typeof savedPortalRates[c] !== 'number').join(', ')}.
+              A portal account on one of those sees no prices until you save one here
+              (or give that account a fixed rate on its own page).
+            </p>
+          )}
+        </div>
         <div className="mt-5 flex items-center gap-3 flex-wrap">
           <button onClick={handleSave} disabled={saving || !isDirty} className="btn-primary text-sm">
             {saving ? 'Saving…' : 'Save Rates'}
