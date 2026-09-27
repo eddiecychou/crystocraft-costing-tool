@@ -27,20 +27,38 @@ const WA_TYPES = [
   { field: 'whatsapp_business', label: 'Business' },
 ]
 function WhatsAppNumbers({ contact, onUpdate }) {
-  const filled = WA_TYPES.filter(t => contact[t.field])
-  const empty = WA_TYPES.filter(t => !contact[t.field])
-  // Rows to show, filled ones first: both slots are always candidates (a
-  // brand-new contact with neither filled in still needs "Add another" to
-  // reveal the second one, not just the first).
-  const rows = [...filled, ...empty]
-  const [showSecond, setShowSecond] = useState(filled.length > 1)
-  const visibleRows = showSecond ? rows : rows.slice(0, 1)
-  const canAddMore = !showSecond
+  // Which slots to render, held as field names. Seeded from whatever the
+  // contact already has on file, else just the first slot.
+  //
+  // Deliberately NOT re-derived from the current values on every render: an
+  // earlier version ordered the rows filled-first, which meant clearing the
+  // only number silently re-pointed that same input at the OTHER schema
+  // field — the input remounted (losing focus) and the next keystroke landed
+  // in Personal when the admin was editing Business, or vice versa. That
+  // distinction is what DailyDrafts.jsx branches on to pick the outreach
+  // channel, so it has to be stable. Rendering always follows the canonical
+  // WA_TYPES order and a slot is never dropped, so an input's field binding
+  // is fixed for the life of the card.
+  const [slots, setSlots] = useState(() => {
+    const filled = WA_TYPES.filter(t => contact[t.field]).map(t => t.field)
+    return filled.length ? filled : [WA_TYPES[0].field]
+  })
+  // Union with anything currently filled, so a number that exists is always
+  // visible and editable even if this card was handed a different contact
+  // without remounting (ContactsEditor keys by contact id, but a brand-new
+  // unsaved contact has none and falls back to its index).
+  const visible = WA_TYPES.filter(t => slots.includes(t.field) || contact[t.field])
+  const canAddMore = visible.length < WA_TYPES.length
 
   // Only label rows Personal/Business once there's a second one to tell
   // apart — a contact with just one number shouldn't be forced to classify
   // it as either up front.
-  const showLabels = visibleRows.length > 1
+  const showLabels = visible.length > 1
+
+  function addNext() {
+    const next = WA_TYPES.find(t => !visible.includes(t))
+    if (next) setSlots(s => [...s, next.field])
+  }
 
   return (
     <div className="space-y-2">
@@ -48,7 +66,7 @@ function WhatsAppNumbers({ contact, onUpdate }) {
         <input className="input" value={contact.whatsapp} onChange={e => onUpdate('whatsapp', e.target.value)}
                placeholder="WhatsApp (unclassified, optional)" />
       )}
-      {visibleRows.map(t => (
+      {visible.map(t => (
         <div key={t.field} className="flex items-center gap-2">
           {showLabels && <span className="text-2xs text-ink-60 uppercase tracking-wide w-16 shrink-0">{t.label}</span>}
           <input className="input flex-1" value={contact[t.field]} onChange={e => onUpdate(t.field, e.target.value)}
@@ -56,7 +74,7 @@ function WhatsAppNumbers({ contact, onUpdate }) {
         </div>
       ))}
       {canAddMore && (
-        <button type="button" onClick={() => setShowSecond(true)}
+        <button type="button" onClick={addNext}
                 className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
           <Plus size={13} /> Add another WhatsApp number
         </button>
@@ -93,8 +111,12 @@ function ContactsEditor({ contacts, onChange }) {
 
   return (
     <div className="space-y-3">
+      {/* Keyed by contact id, not index — move()/remove() reorder this array,
+          and an index key would hand a card's component state (WhatsAppNumbers'
+          visible slots) to a DIFFERENT contact instead of moving with it. A
+          brand-new unsaved contact has no id yet and falls back to its index. */}
       {contacts.map((c, i) => (
-        <div key={i} className="rounded-none border border-warm-grey p-3 space-y-2">
+        <div key={c.id || i} className="rounded-none border border-warm-grey p-3 space-y-2">
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-1.5 text-xs text-ink-70 cursor-pointer select-none">
               <input type="radio" name="primary-contact" checked={c.is_primary} onChange={() => setPrimary(i)}
