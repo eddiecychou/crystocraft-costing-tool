@@ -332,6 +332,7 @@ function ExchangeRatesPanel() {
   const [fetching, setFetching]     = useState(false)
   const [saving, setSaving]         = useState(false)
   const [fetchError, setFetchError] = useState(null)
+  const [fetchMsg, setFetchMsg]     = useState(null)
   const [saveMsg, setSaveMsg]       = useState(null)
 
   useEffect(() => {
@@ -354,24 +355,39 @@ function ExchangeRatesPanel() {
   const fetchLiveRates = useCallback(async () => {
     setFetching(true)
     setFetchError(null)
+    setFetchMsg(null)
     try {
       const res = await fetch('/api/fx-rates')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      setRates(r => ({ RMB: data.RMB ?? r.RMB, USD: data.USD ?? r.USD, EUR: data.EUR ?? r.EUR }))
-      setPortalRates(p => {
-        const next = { ...p }
-        for (const c of PORTAL_ONLY_CURRENCIES) if (typeof data[c] === 'number') next[c] = data[c]
-        return next
-      })
+
+      const nextRates = { RMB: data.RMB ?? rates.RMB, USD: data.USD ?? rates.USD, EUR: data.EUR ?? rates.EUR }
+      const nextPortal = { ...portalRates }
+      for (const c of PORTAL_ONLY_CURRENCIES) if (typeof data[c] === 'number') nextPortal[c] = data[c]
+
+      const changed = [
+        ...CURRENCIES.filter(c => String(nextRates[c] ?? '') !== String(rates[c] ?? '')),
+        ...PORTAL_ONLY_CURRENCIES.filter(c => String(nextPortal[c] ?? '') !== String(portalRates[c] ?? '')),
+      ]
+      setRates(nextRates)
+      setPortalRates(nextPortal)
       setFxUpdatedAt(data.updatedAt || null)
+      // Say what happened. The free upstream (open.er-api.com) refreshes once a
+      // day, so a second click on the same day legitimately changes nothing —
+      // and with no changes there are no "unsaved" badges and Save stays
+      // disabled, which reads as a broken button. Reported as exactly that:
+      // "the fetch live is not working" (owner, 2026-09-28) when it had in fact
+      // fetched fine, twice, 200 OK.
+      setFetchMsg(changed.length
+        ? `Updated ${changed.length} rate${changed.length > 1 ? 's' : ''} (${changed.join(', ')}) — review, then Save.`
+        : 'Already up to date — the live rates match what you have saved.')
     } catch (e) {
       setFetchError('Could not fetch live rates: ' + e.message)
     } finally {
       setFetching(false)
     }
-  }, [])
+  }, [rates, portalRates])
 
   async function handleSave() {
     setSaving(true)
@@ -421,6 +437,7 @@ function ExchangeRatesPanel() {
         <p className="text-xs text-ink-60 mb-4">Used when creating new client quotes. Fetch live rates or enter manually.</p>
         {fxUpdatedAt && <p className="text-xs text-blue-500 mb-3">Live rate as of: {fxUpdatedAt}</p>}
         {fetchError  && <p className="text-xs text-red-500 mb-3">{fetchError}</p>}
+        {fetchMsg    && <p className="text-xs text-ink-60 mb-3">{fetchMsg}</p>}
         <div className="space-y-3">
           {CURRENCIES.map(cur => (
             <div key={cur} className="flex items-center gap-3">
