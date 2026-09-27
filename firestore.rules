@@ -64,7 +64,10 @@ service cloud.firestore {
       allow create: if request.auth.uid == uid
         && request.resource.data.role == 'customer'
         && request.resource.data.status == 'pending'
-        && request.resource.data.ws_discount_pct == 0;
+        && request.resource.data.ws_discount_pct == 0
+        // Same gap as the update rule below (see its comment) — a self-
+        // created doc must not be able to set its own customer_id either.
+        && request.resource.data.get('customer_id', '') == '';
       // sensitive/erp_code/erp_code_shared are ADMIN-MIRRORED fields — a
       // customer must never set these on their own doc (they gate branded-photo
       // screening and the portal order-history data leak).
@@ -85,7 +88,16 @@ service cloud.firestore {
             && request.resource.data.get('corp_markup_override', 0) == resource.data.get('corp_markup_override', 0)
             && request.resource.data.get('sensitive', false) == resource.data.get('sensitive', false)
             && request.resource.data.get('erp_code', '') == resource.data.get('erp_code', '')
-            && request.resource.data.get('erp_code_shared', false) == resource.data.get('erp_code_shared', false));
+            && request.resource.data.get('erp_code_shared', false) == resource.data.get('erp_code_shared', false)
+            // FIXED 2026-09-28 (whole-repo review): customer_id was missing
+            // from this pinned list — every portal read (orders, brand
+            // assets, proposals, viewerIsSensitive()) scopes on THIS field,
+            // so a customer could re-point their own customer_id to another
+            // customer's doc ID and read that customer's order history,
+            // pricing and brand gallery. The comment above this block always
+            // claimed the linking fields were admin-only; this was the one
+            // that wasn't. See LESSONS-LEARNED.
+            && request.resource.data.get('customer_id', '') == resource.data.get('customer_id', ''));
       allow delete: if isAdmin();
     }
 

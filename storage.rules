@@ -65,12 +65,17 @@ service firebase.storage {
     }
 
     // Customizer — customer-owned folders, keyed by uid.
+    // FIXED 2026-09-28 (whole-repo review): read was `if isAuth()` — ANY
+    // signed-in account, including another pending/approved customer, could
+    // read (Storage's read rule also covers list) every other customer's
+    // uploaded logo and customised render. Scoped to the owner or an admin,
+    // matching how the write rule was already scoped. See LESSONS-LEARNED.
     match /customer_uploads/{uid}/{allPaths=**} {
-      allow read: if isAuth();
+      allow read: if request.auth.uid == uid || isAdmin();
       allow write: if request.auth.uid == uid;
     }
     match /renders/{uid}/{allPaths=**} {
-      allow read: if isAuth();
+      allow read: if request.auth.uid == uid || isAdmin();
       allow write: if request.auth.uid == uid;
     }
 

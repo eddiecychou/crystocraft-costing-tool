@@ -36,6 +36,12 @@ const IMAGE_MODELS = ['gemini-3.1-flash-lite-image', 'gemini-3.1-flash-image']
 // change" if that question ever matters.
 const PROMPT_VERSION = 'v1-2026-09-04'
 
+import { fetchGuarded } from './lib/fetchGuard.js'
+// Same hosts image-proxy.js/download-image.js allow for gallery photos:
+// this app's own Storage bucket + the WordPress site figurine photos are
+// imported from.
+const ALLOWED_IMAGE_HOSTS = ['firebasestorage.googleapis.com', 'firebaseapp.com', 'crystocraft.com']
+
 function bytesToBase64(bytes) {
   let binary = ''
   const CHUNK = 0x8000
@@ -157,17 +163,23 @@ export default async function handler(req) {
   const { imageUrl, image, mimeType, mode = 'clean', colorHint = '', recolorInstructions = '' } = payload || {}
 
   // Resolve the source image to base64 (accept a Storage URL or inline base64).
+  // This function has no auth check at all (TECH-DEBT.md, owner decision:
+  // "not important, no need to guard" — accepted as quota/CPU abuse, not
+  // secret theft). But an unguarded `fetch(imageUrl)` on top of that is a
+  // DIFFERENT risk: an anonymous caller could point it at any internal/
+  // private host and use the status/error-message difference as a blind
+  // port/host scanner through this app's own egress, or reach a redirect
+  // target that isn't allowlisted at all. Fixed 2026-09-28 (security review)
+  // with the same host-allowlist/https/no-redirect/timeout/size-cap guard
+  // download-image.js and image-proxy.js use — see lib/fetchGuard.js. Auth
+  // is deliberately left as-is; this only closes the SSRF hole.
   let dataB64 = image
   let mime = mimeType || 'image/jpeg'
   if (!dataB64 && imageUrl) {
-    try {
-      const r = await fetch(imageUrl)
-      if (!r.ok) return json({ error: `Could not fetch source image (${r.status})` }, 502)
-      mime = r.headers.get('content-type') || mime
-      dataB64 = bytesToBase64(new Uint8Array(await r.arrayBuffer()))
-    } catch (e) {
-      return json({ error: 'Source image fetch failed: ' + (e?.message || 'unknown') }, 502)
-    }
+    const result = await fetchGuarded(imageUrl, { allowedBases: ALLOWED_IMAGE_HOSTS, maxBytes: 20 * 1024 * 1024 })
+    if (!result.ok) return json({ error: 'Could not fetch source image: ' + result.message }, result.status >= 400 && result.status < 600 ? result.status : 502)
+    mime = result.res.headers.get('content-type') || mime
+    dataB64 = bytesToBase64(new Uint8Array(result.blob))
   }
   if (!dataB64) return json({ error: 'No image provided (imageUrl or image required)' }, 400)
 
