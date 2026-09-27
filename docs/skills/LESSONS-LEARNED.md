@@ -678,6 +678,75 @@
   wrapper — `ConfirmDialog.jsx` uses the older pattern too and doesn't
   contain a `<select>` today, but check it again before adding one.
 
+## L-33 · A form input whose target field is derived from the current values re-points itself when you clear it
+
+- **Symptom.** Caught in code review, not in production — no one had hit it
+  live yet, but it was already on `main` and shipped. In `CustomerForm.jsx`'s
+  new `WhatsAppNumbers` (the collapsed one-field-by-default WhatsApp editor,
+  L-30's cycle): a contact whose only number was `whatsapp_business` shows a
+  single unlabelled input bound to that field. Select-all + delete to retype
+  it, and the input silently re-bound to `whatsapp_personal` — the DOM node
+  remounted (focus lost mid-edit) and every character typed afterwards went
+  into the wrong field. Net effect: the business number erased, the new one
+  filed as Personal.
+- **Root cause.** The visible rows were computed fresh on every render and
+  **ordered filled-first**: `const rows = [...filled, ...empty]`, then
+  `rows.slice(0, 1)` for the collapsed view. That makes the identity of "the
+  first row" a function of the current values, so emptying a field reorders
+  the array underneath the input the user is typing in. The `key={t.field}`
+  then correctly told React these were different elements, which is exactly
+  why it remounted. This mattered beyond cosmetics because
+  `DailyDrafts.jsx` branches on Personal vs Business to choose which
+  WhatsApp account to send outreach from — a mis-filed number silently
+  mis-routes future messages, with nothing to alert anyone.
+- **Permanent fix.** Which slots are visible is now **state, seeded once**
+  (`useState(() => …)` from the contact's filled fields, else the first
+  slot), rendered in canonical `WA_TYPES` order, and unioned with anything
+  currently filled so a row is never dropped. A slot only ever gets added
+  (via "Add another"), never removed, so an input's field binding is fixed
+  for the life of the card. **MUST**: when a collapsed/progressive-disclosure
+  form maps one visible control onto one of several underlying fields, derive
+  *which* field from stable state, never from the current values — a control
+  whose binding can change as the user edits will silently write to the wrong
+  field. Reordering a list by "non-empty first" is the usual way this sneaks
+  in. Verified with a logic test asserting the old derivation reproduces the
+  re-point and the new one doesn't (11 assertions, incl. the mirror
+  personal-only case).
+
+## L-34 · `key={i}` hands a card's component state to a different record when the list is reordered
+
+- **Symptom.** Also caught in the same review. `ContactsEditor` renders
+  `contacts.map((c, i) => <div key={i}>)` and has Move-up/Move-down buttons.
+  `WhatsAppNumbers` kept its "is the second slot revealed?" flag in
+  `useState(filled.length > 1)` — evaluated on mount only. Move a contact
+  with **both** WhatsApp numbers into a position previously held by a
+  one-number contact, and the component instance at that index is reused
+  rather than remounted: the flag stays `false`, the collapsed view renders
+  one row, and that contact's Business number sits in form state **rendered
+  in no input at all**. It still saved correctly (no data loss), but an admin
+  could neither see nor edit it, and the single unlabelled field read as if
+  it were their only number.
+- **Root cause.** Two things that are each individually defensible and only
+  bite together: (a) an index key, so React's reconciliation treats position
+  as identity and reorders mutate *which record a live component instance is
+  showing*; (b) state initialised from props on mount with no path to
+  re-derive when those props later describe a completely different record.
+  `useState(initialValue)` re-running is a thing people assume; it isn't.
+- **Permanent fix.** Two layers, deliberately. `ContactsEditor` now keys by
+  `c.id || i` (contacts get a real `genContactId()` id from
+  `normalizeContact`; a brand-new unsaved one falls back to its index), so
+  card state follows the contact it belongs to. *And* `WhatsAppNumbers`'
+  visible set is unioned with whatever is currently filled (L-33's fix), so
+  even a stale slot flag can no longer hide a real value — belt and braces,
+  because the key fix alone would still leave a wrong-but-invisible state
+  reachable via the unsaved-contact index fallback. **MUST**: any list whose
+  rows carry their own component state (an expander, a draft, a toggle, a
+  focus trap) must be keyed by a stable record id, not the array index, the
+  moment that list can be reordered, inserted into, or removed from — and
+  **MUST NOT** rely on `useState(fromProps)` to track a prop that can change
+  identity under it. Belongs on the checklist next to any new "move up /
+  move down" affordance.
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
