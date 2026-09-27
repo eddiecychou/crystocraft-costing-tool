@@ -209,10 +209,25 @@ the fast path from a request to the exact code.
 - Edge fns: `refresh-email-summary`, `refresh-whatsapp-summary`, `refresh-alibaba-summary`, `transcribe-whatsapp-audio`
 
 ### Customer Portal, invitations, auth → see `ARCHITECTURE-RULES.md` §RBAC
-- Pages: `Portal.jsx`, `PortalInvitations.jsx`, `PortalLogins.jsx`, `InvitationClaim.jsx`, `Login.jsx`, `SetPassword.jsx`
+- Pages: `Portal.jsx`, `PortalInvitations.jsx`, `PortalLogins.jsx`, `InvitationClaim.jsx`, `Login.jsx`, `SetPassword.jsx`, `AccountEdit.jsx` (per-account pricing/role editor)
 - Logic: `src/portalInviteApi.js`, `src/authActivity.js`, `src/gaPortalActivityApi.js`, `src/hooks/useAuthState.js`, `src/hooks/useProfile.js`
 - Edge/Node fns: `netlify/functions/portal-invite.js` (Node, Admin SDK, `jose` 5.9.6 — actions incl. public `request_password_reset`, `claim_invitation`), `swatch-library`, `ga-portal-activity`
 - Collections: `users/{uid}`, `portal_invitations/{id}` (browser read-only), `favourites/{uid}`. GA4 per-account traffic via `app_uid` (details in `MARKETING-WORKFLOW.md`/`LESSONS-LEARNED.md`).
+- **Admin-created invitations auto-approve at claim time** (2026-09-24, owner
+  request) — `CustomerDetail.jsx`'s "Invite to portal" opens
+  `InvitePricingDialog` first (base currency, fixed fx rate, WS %, corp
+  markup override — same fields/defaults as `AccountEdit.jsx`'s "Pricing"
+  card) so pricing is set *before* the invite goes out, since there's no
+  longer a manual "Approve" click for an admin invitation to catch it at.
+  `createInvitation` stores that as `pricing` on the `portal_invitations`
+  doc; `portal-invite.js`'s shared `runApproval()` helper (used by
+  `approveInvitation`, and now also by `claimInvitation`/
+  `claimInvitationGoogle` for `source:'admin'` invitations) mirrors it onto
+  `users/{uid}` at approval — auto-approval happens the instant the
+  customer claims. Self-serve applications (`source:'self'`, no customer
+  link yet) are untouched and still need a human's manual Approve.
+  Re-inviting an already-`pending` contact updates that invitation's
+  pricing instead of silently no-op'ing (see L-30/L-31).
 - **Login activity** (`PortalLogins.jsx`): `authActivity.js` `stampLogin()` writes `users/{uid}.last_login_at`/`login_count` from `useAuthState`'s `onAuthStateChanged`. V8.15 (L-18) — it now `await`s `getIdToken()` + retries once, and `firestore.rules` has a `affectedKeys().hasOnly([...])` self-update clause for it, after 26/43 customer stamps had been failing silently.
 - **Dead setup/reset link** (`SetPassword.jsx`): the "This link isn't available" screen carries an inline **"Send me a new link"** (fires `request_password_reset`) — Firebase caps these oobCodes at ~1h and admin `resend_invitation` is blocked once claimed, so a dead link must self-recover.
 
@@ -398,3 +413,4 @@ authoritative detail stays in the doc it points to. Update the Change Log below.
 | 2026-09-03 | V8.14 code-review follow-up — edge-fn module keys corrected (AI/OCR-assist fns were mis-keyed to `quotes`; `erp.js`/`bank.js` per-entity tiers removed); `requireModule` now string-or-array. `../reference/API-REFERENCE.md` auth column + `ARCHITECTURE-RULES.md` §2 / `TECH-DEBT.md` updated. |
 | 2026-09-04 | **V8.14 CLOSED.** §5 CRM: new `CustomerBrand.jsx` page (`/customers/:id/brand`) — Brand Gallery + Proposal moved off `CustomerDetail`, which shows `BrandProposalCard`. §5 ERP: new `item_history` entity / `erp_item_sales_history` view + `PriceSummary`. `MARKETING-WORKFLOW.md` §4a: `enhance-image` `PROMPT_VERSION` + `ai_enhance` provenance + two prompt-writing rules. `LESSONS-LEARNED.md` L-15/16/17. `PROJECT-PLAN.md` "Current Status — V8.14 CLOSED" + "Where V8.15 starts". |
 | 2026-09-20 | **V8.16 — Product Design folded back into this repo** (was a standalone Next.js repo since 2026-09-12; the Customizer §5 entry's "moved out to its own repo" note was now stale and is corrected). Added full §5 **Product Design** entry (pages, `src/lib/{pdApi,pdConcepts,jsonPaths,jsonHighlight}`, the 7 `pd-*` edge fns, the `pd_*` collections). §3 table: added the `ATELIER-ART-ENGINE.md` row it was missing. `ARCHITECTURE-RULES.md` §2: module-key count 17→18 (`product_design`). `LESSONS-LEARNED.md` L-21 through L-26 (Tailwind `content` glob per-extension gap, leaked `res.json()` exceptions, invisible-when-empty sections, `object-cover` cropping reference photos, the platform-gave-up-not-a-real-error 5xx retry pattern, `RETAIL_TAG` not auto-inheriting into a new picker). Full session narrative in `PROJECT-PLAN.md`'s V8.16 entries. |
+| 2026-09-24 | §5 **Customer Portal**: admin-created invitations now auto-approve at claim time (pricing set via `InvitePricingDialog` at invite time, mirrored by `portal-invite.js`'s shared `runApproval()`); self-serve applications unchanged. `LESSONS-LEARNED.md` L-30 (an unscoped global `@media print` rule in `index.css` blanked every other print page in the app — SI/PU/credit note/proforma/packing list/catalogue/portal invoices — plus the companion fix replacing `CataloguePreview.jsx`'s brittle `#root > div > div` print selectors with `data-print-*` attributes), L-31 (re-inviting an already-pending contact silently dropped new pricing), L-32 (a modal's backdrop-click-to-close broke on a native `<select>` — fixed with the `e.target === e.currentTarget` guard). |

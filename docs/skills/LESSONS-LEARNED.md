@@ -596,6 +596,88 @@
   New checksum after this fix: `sha256[:12] = 8f7599b1c64c` (was
   `9fa7e66955ca`) — pass this back to the Workbench side to re-vendor.
 
+## L-30 · An unscoped global `@media print` rule blanked every OTHER print page in the app
+
+- **Symptom.** "Print / Save as PDF" produced a completely blank page/PDF on
+  the customer portal's SI invoice — reported live via a screenshot of an
+  empty print preview. Confirmed the same blank-page symptom hit the PU
+  print route too ("Bugs: something wrong with the print function of the
+  App... Both PU and SI").
+- **Root cause.** `src/index.css` had a `@media print { body * {
+  visibility: hidden; } #spec-sheet-print-target, ... { visibility: visible;
+  } ... @page { size: A4 landscape; margin: 0 } }` block, added for the
+  Product Design spec-sheet print feature (V8.16) — but written into the
+  **global** stylesheet, imported once app-wide from `src/main.jsx`, with no
+  gating. `body * { visibility: hidden }` applies to literally every print
+  job in the app; only the spec-sheet component ever defines
+  `#spec-sheet-print-target` to satisfy the visibility exception. Every
+  OTHER print page (SI/PU invoices, credit notes, proforma, packing list,
+  catalogue, portal invoices) hid every element on the page with nothing to
+  un-hide it. A sweep confirmed this was the ONLY instance of the pattern —
+  every other print-CSS block in the app already lives inside its own
+  page/component (self-contained while mounted), not the global file.
+- **Permanent fix.** Moved the rule out of `index.css` entirely into a
+  component-scoped `<style>` tag inside `SpecSheetEditorForm.tsx`, so it
+  only exists in the DOM while that one editor is mounted. `@page` can't be
+  gated by a selector/class (it's a page-level at-rule, not conditional on
+  an element), so a body-class toggle would NOT have been enough — full
+  removal from global scope was the only correct fix. **MUST**: any
+  `@media print` rule using a broad selector (`body *`, `*`, `#root *`) or
+  an unconditional `@page` belongs in a component-scoped `<style>`, never in
+  a file imported app-wide — grep `src/index.css` for `@media print` before
+  adding a new print feature and confirm each existing block is either
+  genuinely app-wide by design (documented) or self-contained.
+- **Companion fix (same sweep): brittle positional print selectors.**
+  `CataloguePreview.jsx`'s own (correctly-scoped) print CSS targeted
+  `Layout.jsx`'s chrome via DOM position (`#root > div > aside`, `#root >
+  div > div > main`, etc.) — this would silently break (wrong elements
+  hidden/shown, no error) if `Layout.jsx`'s nesting ever changed. Replaced
+  with explicit `data-print-shell`/`data-print-hide`/`data-print-root`
+  attributes added directly on the Layout elements the print CSS needs,
+  so a future Layout refactor breaks loudly (attribute missing → catalogue
+  print visibly wrong) instead of silently.
+
+## L-31 · Re-inviting an already-invited contact silently dropped new pricing
+
+- **Symptom.** Owner set a customer's WS discount/currency on the "Invite to
+  portal" pricing dialog, but a second attempt to correct it had no visible
+  effect at all — no error, no confirmation it changed.
+- **Root cause.** `createInvitation`'s duplicate-invitation guard (an
+  existing non-terminal invitation for the same customer+email reuses the
+  record rather than creating a second one) returned the existing doc
+  immediately, without ever looking at the new `pricing` argument the
+  second call carried.
+- **Permanent fix.** When the existing invitation is still `pending` (not
+  yet claimed — nothing live to conflict with), the new pricing is now
+  written onto it; once `claimed`/`approved` it's left alone, since the
+  account already exists by then and pricing changes belong on
+  `AccountEdit.jsx` instead. The client message now says "pricing updated"
+  distinctly from the generic "already invited," so the admin can tell the
+  second click actually did something.
+
+## L-32 · A modal's backdrop-click-to-close broke on a native `<select>` dropdown, first click only
+
+- **Symptom.** "The first time I click it, when I change the exchange rate,
+  it will quit [closes the dialog]. But I go in the second time it is
+  okay." — the invite-pricing dialog closed itself the moment the admin
+  interacted with the currency `<select>`, but only intermittently.
+- **Root cause.** The dialog's backdrop `<div onClick={onCancel}>` relied on
+  the CONTENT div's `onClick={e => e.stopPropagation()}` to avoid closing
+  for clicks genuinely inside the dialog. A native `<select>`'s dropdown
+  list is rendered by the browser as a popup, not as a DOM descendant of
+  that content div — so an option-click's resulting event could reach the
+  backdrop without ever passing through the stopPropagation guard.
+- **Permanent fix.** Replaced the stopPropagation pattern with the standard,
+  more robust one: the backdrop only closes on a click whose `e.target ===
+  e.currentTarget` (i.e. the click genuinely originated on the backdrop
+  itself), which is correct regardless of where the triggering interaction
+  actually came from. **MUST**: any dismissible overlay containing a native
+  `<select>` (or anything else that renders outside the normal DOM
+  subtree — a browser-native popup, a portal) needs the `e.target ===
+  e.currentTarget` guard, not bare `stopPropagation()` on the content
+  wrapper — `ConfirmDialog.jsx` uses the older pattern too and doesn't
+  contain a `<select>` today, but check it again before adding one.
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected

@@ -671,6 +671,96 @@ new "Scheduled email sync" section (incl. the exact commands to recreate
 the hourly job on the other Mac, since `~/Library/LaunchAgents/` isn't
 git-synced) and `docs/skills/SOURCING-HUB.md`'s email capture entry.
 
+### Blank Save-as-PDF on SI/PU invoices — a global print-CSS leak (2026-09-24)
+
+Eddie reported: "something wrong with the print function of the App. Shows
+nothing when print, even in PDF" — a screenshot of the SI portal invoice's
+print dialog showing a completely blank page. Traced it to `src/index.css`:
+a `@media print { body * { visibility: hidden; } #spec-sheet-print-target
+{ visibility: visible; } ... @page { size: A4 landscape; margin: 0 } }`
+block added for the Product Design spec-sheet print feature (V8.16), but
+written into the **global** stylesheet with no gating — it hid every
+element on every print job app-wide, and only the spec-sheet component
+ever defines the one id that would un-hide anything. Confirmed the same
+would blank PU/credit-note/proforma/packing-list/catalogue/portal-invoice
+prints too, since none of them define that id either.
+
+Moved the whole block out of `index.css` into a `<style>` scoped inside
+`SpecSheetEditorForm.tsx` itself, so it only exists in the DOM while that
+one editor is mounted — `@page` can't be gated by a class/selector, so a
+body-class toggle wouldn't have been enough; full removal from global
+scope was the only correct fix. A follow-up sweep for the same bug class
+(a feature-specific rule left unscoped in shared code) found the app's
+other print-CSS blocks were all already correctly self-contained, except
+one **fragile-but-not-leaking** one: `CataloguePreview.jsx` targeted
+`Layout.jsx`'s chrome via brittle DOM-position selectors (`#root > div >
+div > main`, etc.) that would silently break if Layout's nesting ever
+changed. Replaced with explicit `data-print-shell`/`data-print-hide`/
+`data-print-root` attributes on the Layout elements themselves. See
+`LESSONS-LEARNED.md` L-30. Verified live in the browser dev server
+(customer contact form's WhatsApp fields were also simplified same
+session — see below — unrelated fix, same conversation).
+
+### Portal invitations: admin-created ones now auto-approve at claim time (2026-09-24)
+
+Eddie: "I wonder if invite a customer to portal can already set the markup
+and pricing so that there is no need for another access approval, just
+enter set password and can go in?" Traced the existing SU-07A flow: an
+admin invitation already carries a `customer_id` chosen at invite time
+(`createInvitation` requires one) — the separate "Approve" click in
+`PortalInvitations.jsx` was re-confirming a decision already made, not
+making a new one. The one genuine reason a review gate exists at all
+(self-serve applications, `source:'self'`, which start with NO customer
+link — an admin must pick one before approval can mean anything) doesn't
+apply to the admin-invite path.
+
+Extracted `approveInvitation`'s core (mirror `sensitive`/`erp_code`/
+`erp_code_shared`/`company_name` onto the user doc, flip both docs to
+`approved`, send the password-setup/Google-approved email) into a shared
+`runApproval()` helper in `portal-invite.js`, now called from THREE places:
+`approveInvitation` (manual path, unchanged), and a new branch inside
+`claimInvitation`/`claimInvitationGoogle` for `source:'admin'` invitations
+— which is every real caller of those two functions, since self-serve
+applications write `status:'claimed'` directly in their own
+`applyForAccount`/`applyForAccountGoogle` and never reach them.
+`InvitationClaim.jsx` now shows "You're in" instead of "pending review" for
+the normal case.
+
+This surfaced a real gap: with no manual approval step left, a newly-
+approved account had no source for `ws_discount_pct`/`base_currency`/
+`fx_rate`/`corp_markup_override` except `AccountEdit.jsx`'s own defaults
+(100% list price, USD, no override) until an admin remembered to set it
+separately — the customer could see full list price immediately. Fixed by
+letting the admin set pricing **at invite time**: `CustomerDetail.jsx`'s
+"Invite to portal" now opens `InvitePricingDialog` first (same fields/
+defaults as `AccountEdit.jsx`'s own "Pricing" card), `createInvitation`
+stores it on the invitation doc, `runApproval()` mirrors it onto the
+account when present. Two real bugs found and fixed along the way — see
+`LESSONS-LEARNED.md` L-31 (re-inviting an already-pending contact silently
+dropped the new pricing) and L-32 (the pricing dialog closed itself on the
+first click into the currency `<select>`, fixed with the standard
+`e.target === e.currentTarget` backdrop guard). Confirmed working live by
+the owner: "The invitation is working, my customer can login without my
+authorization."
+
+### Contact form: WhatsApp fields simplified; redundant channel pill removed (2026-09-24)
+
+Eddie, from a screenshot of the customer contact form: "There is a repeat
+of whatsapp (unclassified) / Personal / business — I think just need to
+keep one whatsapp number and add more if the contact has more. Also in the
+channel there is a whatsapp manual which is redundant." Confirmed
+`whatsapp_personal`/`whatsapp_business` genuinely drive Draft Daily's
+outreach-channel choice (real logic, not just display) — so the fix was UI
+progressive-disclosure, not a schema merge: `CustomerForm.jsx`'s new
+`WhatsAppNumbers` component shows one number field by default, with an
+"Add another WhatsApp number" link revealing the second (now labelled
+Personal/Business) once there's a reason to tell them apart; the legacy
+unclassified `whatsapp` field only shows when a contact already has one.
+`domain/customer.js`'s `CHANNELS`/`NO_API_CHANNELS` lost the redundant
+plain `'WhatsApp'` entry — confirmed safe since `EnquiryForm.jsx`/
+`CustomerDetail.jsx` already render an unrecognized saved channel value as
+"(legacy)".
+
 ## V8.15 — Crystal costing: PU-price lookup (2026-09-06)
 
 `APP_VERSION` bumped to `V8.15` (cycle start). Also folded in the pending
