@@ -471,7 +471,11 @@ export default function AccountEdit() {
 
             {cur !== 'USD' && (
               <label className="text-xs text-ink-60"
-                title={`Fixed rate: how many ${cur} per 1 USD. Locks this customer's prices regardless of daily rates. Leave blank to use the live rate (currently ≈ ${liveRate.toFixed(4)}).`}>
+                title={`Fixed rate: how many ${cur} per 1 USD. Locks this customer's prices regardless of daily rates. ${
+                  liveRate
+                    ? `Leave blank to use the live rate (currently ≈ ${liveRate.toFixed(4)}).`
+                    : `There is no live ${cur} rate on file — set one here, or this account sees no prices at all. Fetch live rates in Settings to populate it.`
+                }`}>
                 Fixed {cur}/USD rate
                 <input type="number" min="0" step="0.0001" placeholder={liveRate ? liveRate.toFixed(4) : 'live'}
                   className="input py-1.5 mt-1 w-full" value={fxRate} onChange={e => setFxRate(e.target.value)} />

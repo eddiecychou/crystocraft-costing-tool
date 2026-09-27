@@ -25,9 +25,22 @@ export function useRates() {
   return rates
 }
 
-// Convert a HKD amount into the target currency.
-export const fromHKD = (amountHKD, cur, rates) =>
-  cur === 'HKD' ? Number(amountHKD) : Number(amountHKD) / (rates[cur] || 1)
+// Convert a HKD amount into the target currency. A currency with no rate on
+// file returns NULL — never the unconverted amount.
+//
+// This used to be `Number(amountHKD) / (rates[cur] || 1)`, which silently
+// divided by 1 for any currency missing from the rates doc and handed the raw
+// HKD figure back wearing the target currency's label. CUSTOMER_CURRENCIES
+// offers GBP/AUD/CAD/SGD but settings/exchange_rates only ever held RMB/USD/
+// EUR, so a GBP account saw "GBP 155.60" for what should have been ~GBP 15.90
+// — a plausible-looking number that is ~7.8x wrong, which is far worse than no
+// number at all. fmtMoney() renders null as "—". See LESSONS-LEARNED L-35.
+export const fromHKD = (amountHKD, cur, rates) => {
+  if (cur === 'HKD') return Number(amountHKD)
+  const rate = Number(rates?.[cur])
+  if (!Number.isFinite(rate) || rate <= 0) return null
+  return Number(amountHKD) / rate
+}
 
 // Convert a USD amount into the target currency (USD -> HKD -> target).
 export const fromUSD = (amountUSD, cur, rates) => {

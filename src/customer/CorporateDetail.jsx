@@ -51,7 +51,12 @@ export default function CorporateDetail({ profile }) {
     getDoc(doc(db, 'products', id, 'customer_prices', uid))
       .then(s => {
         const list = s.exists() ? (s.data().tiers || []) : []
-        setTiers(list.filter(t => t.price_hkd != null).sort((a, b) => (a.quantity || 0) - (b.quantity || 0)))
+        // `> 0`, not `!= null`: an uncosted product publishes price_hkd 0
+        // (Math.ceil(0 * markup)), and 0 passed the null check and rendered to
+        // the customer as "HKD 0" — i.e. free. The admin grid filters truthily
+        // so it showed nothing, meaning the one person who could spot it
+        // couldn't. See LESSONS-LEARNED L-37.
+        setTiers(list.filter(t => Number(t.price_hkd) > 0).sort((a, b) => (a.quantity || 0) - (b.quantity || 0)))
       })
       .catch(() => setTiers([]))
   }, [id, profile?.id])

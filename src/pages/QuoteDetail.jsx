@@ -292,8 +292,14 @@ export default function QuoteDetail() {
       const tiers = tierSnap.docs.length > 0
         ? tierSnap.docs.map(d => {
             const td = d.data()
-            const price = td.sell_currency === quoteCurrency
-              ? (td.sell_price || 0)
+            // `sell_price` is the OLD USD-era schema and PricingTiers.publish()
+            // now deletes it outright while writing sell_currency:'HKD'. With a
+            // default-HKD quote the first branch therefore matched, read the
+            // deleted field, and every added product landed at 0.00 — with the
+            // real figure sitting unread in price_hkd. Only take the legacy
+            // field when it actually has a value. See LESSONS-LEARNED L-36.
+            const price = (td.sell_currency === quoteCurrency && td.sell_price != null)
+              ? td.sell_price
               : toQuoteCurrency(td.price_hkd || 0)
             return { quantity: td.quantity || 200, price, currency: quoteCurrency }
           })

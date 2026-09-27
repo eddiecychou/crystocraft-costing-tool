@@ -13,6 +13,15 @@ import BankAccounts from './BankAccounts'
 import ComponentCodeAudit from './ComponentCodeAudit'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
+// The remaining CUSTOMER_CURRENCIES (src/currency.js) a portal account can be
+// set to. Not hand-edited here — this card is the quote-rate editor — but they
+// live in the SAME settings/exchange_rates doc that the customer-facing
+// conversion reads, so they must be fetched and persisted alongside. Until
+// 2026-09-28 this page's save wrote only RMB/USD/EUR with no merge, wiping any
+// of these on every save, and `fromHKD` then silently returned the unconverted
+// HKD figure — a GBP account saw "GBP 155.60" for a ~GBP 15.90 item. See
+// LESSONS-LEARNED L-35.
+const PORTAL_ONLY_CURRENCIES = ['GBP', 'AUD', 'CAD', 'SGD']
 const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
 
 const TABS = [
@@ -312,6 +321,7 @@ function QuoteBrandingPanel() {
 
 function ExchangeRatesPanel() {
   const [rates, setRates]           = useState({ RMB: '', USD: '', EUR: '' })
+  const [portalRates, setPortalRates] = useState({})   // PORTAL_ONLY_CURRENCIES, carried through saves
   const [savedRates, setSavedRates] = useState(null)
   const [lastSaved, setLastSaved]   = useState(null)
   const [fxUpdatedAt, setFxUpdatedAt] = useState(null)
@@ -327,6 +337,9 @@ function ExchangeRatesPanel() {
         const loaded = { RMB: d.RMB ?? '', USD: d.USD ?? '', EUR: d.EUR ?? '' }
         setRates(loaded)
         setSavedRates(loaded)
+        setPortalRates(Object.fromEntries(
+          PORTAL_ONLY_CURRENCIES.filter(c => typeof d[c] === 'number').map(c => [c, d[c]]),
+        ))
         setLastSaved(d.updatedAt?.toDate?.() || null)
       }
     })
@@ -341,6 +354,11 @@ function ExchangeRatesPanel() {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setRates(r => ({ RMB: data.RMB ?? r.RMB, USD: data.USD ?? r.USD, EUR: data.EUR ?? r.EUR }))
+      setPortalRates(p => {
+        const next = { ...p }
+        for (const c of PORTAL_ONLY_CURRENCIES) if (typeof data[c] === 'number') next[c] = data[c]
+        return next
+      })
       setFxUpdatedAt(data.updatedAt || null)
     } catch (e) {
       setFetchError('Could not fetch live rates: ' + e.message)
@@ -353,10 +371,13 @@ function ExchangeRatesPanel() {
     setSaving(true)
     setSaveMsg(null)
     try {
+      // merge:true — this card edits the three quote currencies, but the doc
+      // also carries the portal-only rates above; a plain setDoc wipes them.
       await setDoc(doc(db, 'settings', 'exchange_rates'), {
         RMB: Number(rates.RMB), USD: Number(rates.USD), EUR: Number(rates.EUR),
+        ...portalRates,
         updatedAt: serverTimestamp(),
-      })
+      }, { merge: true })
       setSavedRates({ ...rates })
       setLastSaved(new Date())
       setSaveMsg('Rates saved successfully.')
@@ -398,6 +419,17 @@ function ExchangeRatesPanel() {
             </div>
           ))}
         </div>
+        {/* Portal accounts can be set to these, and without a rate their prices
+            show as "—" rather than a wrong number (LESSONS-LEARNED L-35). Say so
+            here — otherwise a blank storefront has no visible explanation. */}
+        {PORTAL_ONLY_CURRENCIES.some(c => typeof portalRates[c] !== 'number') && (
+          <p className="text-xs text-amber-600 mt-3">
+            No live rate on file for{' '}
+            {PORTAL_ONLY_CURRENCIES.filter(c => typeof portalRates[c] !== 'number').join(', ')}.
+            A portal account set to one of these sees no prices at all until you hit
+            “Fetch Live Rates” and save (or give that account a fixed rate on its own page).
+          </p>
+        )}
         <div className="mt-5 flex items-center gap-3 flex-wrap">
           <button onClick={handleSave} disabled={saving || !isDirty} className="btn-primary text-sm">
             {saving ? 'Saving…' : 'Save Rates'}

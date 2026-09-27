@@ -225,7 +225,9 @@ function CorpCard({ p, cur, rates, profile, images }) {
     if (!uid) { setFromPrice(null); return }
     getDoc(doc(db, 'products', p.id, 'customer_prices', uid))
       .then(s => {
-        const hkds = (s.exists() ? (s.data().tiers || []) : []).map(t => t.price_hkd).filter(v => v != null).map(Number)
+        // `> 0`, not `!= null` — an uncosted tier publishes 0 and Math.min()
+        // would make "from HKD 0" the headline price. See LESSONS-LEARNED L-37.
+        const hkds = (s.exists() ? (s.data().tiers || []) : []).map(t => Number(t.price_hkd)).filter(v => v > 0)
         setFromPrice(hkds.length ? convertFromHKD(Math.min(...hkds), profile, rates) : null)
       })
       .catch(() => setFromPrice(null))

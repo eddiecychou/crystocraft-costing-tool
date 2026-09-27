@@ -19,6 +19,15 @@ export default async function handler(req, context) {
       // conversion (owner, 2026-08-22) — orders come in GBP, which nothing
       // else in the app previously needed a live rate for.
       GBP: r.GBP ? +(1 / r.GBP).toFixed(4) : null,
+      // The rest of CUSTOMER_CURRENCIES (src/currency.js). A customer account
+      // can be set to any of these, but settings/exchange_rates only ever held
+      // RMB/USD/EUR, so their prices silently came out unconverted — see
+      // LESSONS-LEARNED L-35. fromHKD() now returns null rather than a wrong
+      // number, so without these a GBP/AUD/CAD/SGD account sees no prices at
+      // all; these are what make it show the right ones.
+      AUD: r.AUD ? +(1 / r.AUD).toFixed(4) : null,
+      CAD: r.CAD ? +(1 / r.CAD).toFixed(4) : null,
+      SGD: r.SGD ? +(1 / r.SGD).toFixed(4) : null,
       updatedAt: data.time_last_update_utc || new Date().toUTCString(),
     }
 
