@@ -209,6 +209,18 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
     || text.match(TRADITIONAL_ZH_INSTRUCTION_RX)
   add('placeholder_markers', !ph, ph ? `contains "${ph[0]}"` : '')
 
+  // 6b. Encoding damage. Scan the parsed Elementor value too: its raw JSON
+  // may spell U+FFFD as "\\ufffd", which does not contain the character we
+  // need to catch. Both halves of the surrogate-pair check matter: a malformed
+  // string may contain an unpaired low surrogate as well as an unpaired high.
+  const parsedElementor = edRaw != null && ed !== undefined ? JSON.stringify(ed) : ''
+  const enc = [text, parsedElementor].join('\n')
+  const damaged = /[\uFFFD]/.test(enc)
+    || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(enc)
+    || /Ã[\u0080-\u00BF]|â€|ï¿½/.test(enc)
+  add('no_encoding_damage', !damaged,
+    damaged ? 'U+FFFD / lone surrogate / legacy mojibake in the payload' : '')
+
   // 7. brand terms preserved (only meaningful when we have the source).
   //    Compare on markup-free text: <script>/<style> bodies (JSON-LD in
   //    particular embeds "Crystocraft") and tags would otherwise make a brand
@@ -245,11 +257,18 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   if (!source || !SCRIPT_RX.test(srcBodyStr)) add('no_new_scripts', !SCRIPT_RX.test(bodyStr), SCRIPT_RX.test(bodyStr) ? '<script> introduced' : '')
   if (!source || !TABLE_RX.test(srcBodyStr)) add('no_new_tables', !TABLE_RX.test(bodyStr), TABLE_RX.test(bodyStr) ? '<table> introduced' : '')
 
-  // 12. Yoast title double-branding (L-09)
+  // 12. Yoast title double-branding (L-09). A custom Yoast title is emitted
+  // verbatim; only the post-title path receives Yoast's site-name template.
+  // Still reject a literal duplicate in either field.
   const yt = payload?.meta?._yoast_wpseo_title
-  if (typeof yt === 'string' && yt) {
-    const doubled = /\|\s*crystocraft\s*$/i.test(yt) || /crystocraft\s*\|\s*crystocraft/i.test(yt)
-    add('seo_title_no_double_brand', !doubled, doubled ? `title ends with "| Crystocraft" — Yoast appends the site name (L-09): "${yt}"` : '')
+  const pt = typeof payload?.title === 'string' ? payload.title : ''
+  const DBL_RX = /crystocraft\s*[|\-–—]\s*crystocraft/i
+  const branded = (s) => /crystocraft\s*$/i.test(String(s).trim())
+  const doubled = DBL_RX.test(yt || '') || DBL_RX.test(pt)
+    || ((!yt || !yt.trim()) && branded(pt))
+  if (yt || pt) {
+    add('seo_title_no_double_brand', !doubled,
+      doubled ? `site name would be doubled (L-09): custom title ${JSON.stringify(yt || '')}, post title ${JSON.stringify(pt)}` : '')
   }
 
   // 13. meta description length

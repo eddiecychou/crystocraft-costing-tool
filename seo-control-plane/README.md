@@ -13,7 +13,7 @@ commit — then the Workbench re-vendors.
 |---|---|---|
 | `validate-payload.mjs` | The validation gate. `validatePayload({kind, lang, endpoint, payload, source})` → `{passed, checks:[{name, ok, detail}]}`. Every check maps to a Workbench LESSONS-LEARNED entry (B6, B12, B20, B33/B35, L-09, Rule 4…). | Workbench, before any write; result attached as the `validation` field on each `seo_batches` item. |
 | `safe-write.mjs` | The write wrapper. `safeWrite({get, put, id, endpoint, payload, expectedFields})` → snapshots the entity, writes, re-reads, **returns `ok:false` + `drift` if any field outside `expectedFields` moved** (B52 variation-wipe guard). Returns a `result` object shaped for `seo_batches`. | Workbench; `get`/`put` are its own `wp-api.mjs` helpers, injected. |
-| `validate-payload.test.mjs` | `node seo-control-plane/validate-payload.test.mjs` — 11 cases covering the known incidents. | Here (CI / pre-commit). |
+| `validate-payload.test.mjs` | `node seo-control-plane/validate-payload.test.mjs` — incident cases covering the known failure modes. | Here (CI / pre-commit). |
 
 ## How the Workbench uses them (the Step 2/3 flow)
 

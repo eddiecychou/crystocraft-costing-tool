@@ -73,10 +73,40 @@ function expect(name, cond, detail = '') {
   expect('B51 still catches "por favor traduzca"', v2.passed === false && chk(v2).placeholder_markers === false)
 }
 
-// ── L-09: double-branded Yoast title ───────────────────────────────────
+// ── L-09: double-branding lives on the post-title template path ─────────
 {
-  const v = validatePayload({ kind: 'post', lang: 'en', payload: { meta: { _yoast_wpseo_title: 'Best Corporate Gifts | Crystocraft' } } })
-  expect('L-09 double-brand caught', v.passed === false && chk(v).seo_title_no_double_brand === false)
+  const v = validatePayload({ kind: 'post', lang: 'en', payload: { title: 'Best Corporate Gifts | Crystocraft' } })
+  expect('L-09 post title with brand caught', v.passed === false && chk(v).seo_title_no_double_brand === false)
+}
+{
+  const v = validatePayload({ kind: 'post', lang: 'fr', payload: {
+    title: 'Horoscope Capricorne 2026 : Prédictions et Conseils',
+    meta: { _yoast_wpseo_title: 'Horoscope Capricorne 2026 : Prédictions et Conseils | Crystocraft' },
+  } })
+  expect('L-09 custom title with brand accepted', v.passed === true && chk(v).seo_title_no_double_brand === true)
+}
+{
+  const v = validatePayload({ kind: 'post', lang: 'en', payload: {
+    title: 'Corporate Gifts', meta: { _yoast_wpseo_title: 'Crystocraft | Crystocraft' },
+  } })
+  expect('L-09 literal duplicate custom title caught', v.passed === false && chk(v).seo_title_no_double_brand === false)
+}
+
+// ── Encoding damage: inspect decoded Elementor content, not raw JSON ────
+{
+  const payload = { meta: { _elementor_data: JSON.stringify([
+    { id: 'e1', elType: 'widget', widgetType: 'text-editor', settings: { editor: 'Damaged replacement: \uFFFD' } },
+  ]) } }
+  const v = validatePayload({ kind: 'post', lang: 'ja', payload })
+  expect('encoding replacement character in Elementor caught', v.passed === false && chk(v).no_encoding_damage === false)
+}
+{
+  const v = validatePayload({ kind: 'post', lang: 'en', payload: { title: `broken ${'\uDC00'}` } })
+  expect('encoding lone low surrogate caught', v.passed === false && chk(v).no_encoding_damage === false)
+}
+{
+  const v = validatePayload({ kind: 'post', lang: 'fr', payload: { title: 'Élégance française pour célébrer Noël' } })
+  expect('ordinary accented copy has no encoding damage', chk(v).no_encoding_damage === true)
 }
 
 // ── Rule 4: publishing an unlinked translation ─────────────────────────

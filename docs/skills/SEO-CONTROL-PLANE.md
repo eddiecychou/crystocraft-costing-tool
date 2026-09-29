@@ -122,7 +122,7 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
 **vendors them verbatim**. See `seo-control-plane/README.md`.
 
 - **`validate-payload.mjs`** — `validatePayload({ kind, lang, endpoint,
-  payload, source })` → `{ passed, checks: [{ name, ok, detail }] }`. 15 checks,
+  payload, source })` → `{ passed, checks: [{ name, ok, detail }] }`. 16 checks,
   each mapped to a Workbench LESSONS-LEARNED entry: `json_parses` (B32),
   `widget_count` + `element_ids_preserved` (B20 stale-copy), `length_anomaly`
   (B6), `wrong_language_chars` (B33/B35 CJK leak, B6 simplified-in-zh-hant),
@@ -131,10 +131,11 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   publishes in), `brand_terms_preserved` (§3c), `sku_prefix_
   preserved` (B12), image/heading count parity (§2), `no_new_scripts/tables`,
   `seo_title_no_double_brand` (L-09), `seo_desc_length` (B47),
-  `translation_draft_only` (Rule 4). CJK scan runs on the **JSON-decoded**
-  `_elementor_data` (B35e). The Workbench attaches the result as each
+  `translation_draft_only` (Rule 4), and `no_encoding_damage` (U+FFFD, lone
+  surrogates, legacy mojibake). CJK and encoding scans run on the
+  **JSON-decoded** `_elementor_data` (B35e). The Workbench attaches the result as each
   `seo_batches` item's `validation` field. `node
-  seo-control-plane/validate-payload.test.mjs` = 11 incident cases.
+  seo-control-plane/validate-payload.test.mjs` covers the known incident cases.
 - **`safe-write.mjs`** — `safeWrite({ get, put, id, endpoint, payload,
   expectedFields })`. Snapshots the entity → writes → re-reads → returns
   `{ ok:false, drift:[…] }` if any watched field outside `expectedFields`
