@@ -2,13 +2,13 @@ import { collectionGroup, collection, doc, getDoc, getDocs, query, where, orderB
 import { db, authedUser } from '../firebase'
 import { NOT_CUSTOMER_TAG, RETAIL_TAG } from './customer'
 
-// Dashboard "This Month" section (V8.15, extended 2026-09-17) — a per-customer
-// AI digest of what happened in the last 30 days, built from the two channels
-// that are actually kept current day-to-day: the CRM Interaction Log
-// (`enquiries`, hand-logged) and ingested email (`email_threads`, synced
-// daily by email-sync/sync.py). WhatsApp/Alibaba are deliberately excluded
-// for now (Eddie: "not the most updated communication channels") — see
-// PROJECT-PLAN.md's V8.15 entry if that changes.
+// Dashboard "This Month" section (V8.15, extended 2026-09-17, 2026-10-03) — a
+// per-customer AI digest of what happened in the last 30 days, built from the
+// channels that are kept current day-to-day: the CRM Interaction Log
+// (`enquiries`, hand-logged), ingested email (`email_threads`, synced daily by
+// email-sync/sync.py), and WhatsApp (`whatsapp_threads`, auto-imported hourly
+// by scripts/whatsapp-sync.sh since 2026-10-03). Alibaba is still excluded
+// (manually pasted, not kept current).
 //
 // Originally a 7-day window; widened to 30 (Eddie: "not all issues are
 // resolved in a week") — function/doc names below still say "weekly" to
@@ -125,7 +125,37 @@ async function activityFromEmailThreads(cutoffDate) {
   return byCustomer
 }
 
-function renderCustomerText(enquiries = [], threads = []) {
+// WhatsApp has no `synced_at` and no collection-group rule (unlike email), so
+// this is a per-customer read of whatsapp_threads — a few hundred customers,
+// fine for the on-demand digest. Skips tombstoned (migrated_to) threads, which
+// are re-keyed sources that no longer represent live history.
+async function activityFromWhatsappThreads(cutoffDate) {
+  const cutoffIso = cutoffDate.toISOString()
+  const byCustomer = new Map()
+  const customers = await getDocs(collection(db, 'customers'))
+  for (const c of customers.docs) {
+    const snap = await getDocs(collection(db, 'customers', c.id, 'whatsapp_threads'))
+    for (const d of snap.docs) {
+      const r = d.data()
+      if (r.migrated_to) continue
+      const recentMessages = (r.messages || []).filter(m => m.date && m.date >= cutoffIso)
+      if (recentMessages.length === 0) continue
+      if (!byCustomer.has(c.id)) byCustomer.set(c.id, [])
+      byCustomer.get(c.id).push({
+        subject: r.subject || '(no subject)',
+        channel: r.channel || 'WhatsApp',
+        messages: recentMessages.map(m => ({
+          date: m.date,
+          from: m.from || '',
+          snippet: String(m.body_text || '').slice(0, 300),
+        })),
+      })
+    }
+  }
+  return byCustomer
+}
+
+function renderCustomerText(enquiries = [], threads = [], whatsappThreads = []) {
   const parts = []
   if (enquiries.length > 0) {
     parts.push('=== CRM Interaction Log ===')
@@ -143,7 +173,16 @@ function renderCustomerText(enquiries = [], threads = []) {
       }
     }
   }
-  return parts.join('\n').slice(0, 6000) // per-customer cap — a month's worth, not a full history (bumped from 4000 alongside the 7d->30d window)
+  if (whatsappThreads.length > 0) {
+    parts.push('=== WhatsApp ===')
+    for (const t of whatsappThreads) {
+      parts.push(`Chat: ${t.subject} (${t.channel || 'WhatsApp'})`)
+      for (const m of t.messages) {
+        parts.push(`  [${m.date.slice(0, 10)}] ${m.from}: ${m.snippet}`)
+      }
+    }
+  }
+  return parts.join('\n').slice(0, 8000) // per-customer cap — a month's worth, not a full history (4000→6000 for 7d→30d, then →8000 for WhatsApp)
 }
 
 // Step 1 — gather the trailing month's raw activity, grouped per customer, with no
@@ -152,11 +191,12 @@ function renderCustomerText(enquiries = [], threads = []) {
 // the (slower) digest call resolves.
 export async function findActiveCustomers() {
   const cutoff = new Date(Date.now() - LOOKBACK_MS)
-  const [enquiriesByCustomer, threadsByCustomer] = await Promise.all([
+  const [enquiriesByCustomer, threadsByCustomer, whatsappByCustomer] = await Promise.all([
     activityFromEnquiries(cutoff),
     activityFromEmailThreads(cutoff),
+    activityFromWhatsappThreads(cutoff),
   ])
-  const ids = new Set([...enquiriesByCustomer.keys(), ...threadsByCustomer.keys()])
+  const ids = new Set([...enquiriesByCustomer.keys(), ...threadsByCustomer.keys(), ...whatsappByCustomer.keys()])
   const entries = await Promise.all([...ids].map(async (id) => {
     const custSnap = await getDoc(doc(db, 'customers', id))
     // Not every `customers` doc is a real relationship — a personal/company
@@ -178,18 +218,21 @@ export async function findActiveCustomers() {
     const name = custSnap.exists() ? (custSnap.data().company_name || custSnap.data().name || 'Unnamed customer') : 'Unknown customer'
     const enquiries = enquiriesByCustomer.get(id) || []
     const threads = threadsByCustomer.get(id) || []
+    const whatsappThreads = whatsappByCustomer.get(id) || []
     const channels = new Set(enquiries.map(e => e.channel))
     if (threads.length > 0) channels.add('Email')
+    for (const t of whatsappThreads) channels.add(t.channel || 'WhatsApp')
     const lastActivity = [
       ...enquiries.map(e => e.date),
       ...threads.flatMap(t => t.messages.map(m => new Date(m.date))),
+      ...whatsappThreads.flatMap(t => t.messages.map(m => new Date(m.date))),
     ].filter(Boolean).sort((a, b) => b - a)[0] || null
     return {
       customerId: id,
       customerName: name,
       channels: [...channels],
       lastActivity,
-      text: renderCustomerText(enquiries, threads),
+      text: renderCustomerText(enquiries, threads, whatsappThreads),
     }
   }))
   return entries.filter(Boolean).sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))
