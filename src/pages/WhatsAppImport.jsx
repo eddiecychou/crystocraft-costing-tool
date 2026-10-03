@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { usePersistentState } from '../lib/usePersistentState'
 import { Link } from 'react-router-dom'
 import { Upload, Check, AlertCircle, Loader2, Mic, Plus, X, RefreshCw, Sparkles } from 'lucide-react'
 import { useCustomers, CHANNELS, CRM_CATEGORIES, CUSTOMER_COUNTRIES, saveCustomer } from '../domain/customer'
@@ -136,7 +137,7 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
   // §5.2 dry-run review — analyzeWhatsappImport parses + runs the overlap
   // analysis (no writes). Import is gated on the verdict: 'new'/'safe-update'
   // proceed; 'overlap-review' blocks with counts for a human to resolve.
-  const [review, setReview] = useState(null) // { status:'reviewing'|'done'|'error', result?, error? }
+  const [review, setReview] = usePersistentState('wa-review-' + entry.key, null) // { status:'reviewing'|'done'|'error', result?, error? }
   useEffect(() => { setReview(null) }, [entry.customerId, entry.contactId, entry.leadPhone, entry.channel, entry.matchMode])
 
   async function handleReview() {
@@ -558,12 +559,12 @@ function ContactSummaryScanSection() {
 // explicit pick (never auto-selected). Run this BEFORE importing new chats so
 // a re-import updates the migrated thread instead of duplicating it.
 function LegacyThreadsSection({ customers }) {
-  const [rows, setRows] = useState(null) // null = not scanned yet
+  const [rows, setRows] = usePersistentState('wa-legacy-rows', null) // null = not scanned yet
   const [scanning, setScanning] = useState(false)
   const [progress, setProgress] = useState(null) // { done, total }
   const [scanError, setScanError] = useState('')
-  const [selections, setSelections] = useState({}) // key -> { channel, contactId }
-  const [states, setStates] = useState({}) // key -> { status, newId?, error? }
+  const [selections, setSelections] = usePersistentState('wa-legacy-selections', {}) // key -> { channel, contactId }
+  const [states, setStates] = usePersistentState('wa-legacy-states', {}) // key -> { status, newId?, error? }
 
   const rowKey = r => `${r.kind}:${r.parentId}:${r.legacyId}`
 
@@ -700,7 +701,7 @@ function LegacyThreadsSection({ customers }) {
 
 export default function WhatsAppImport() {
   const { customers } = useCustomers()
-  const [entries, setEntries] = useState([]) // { key, file, status, preview, matchMode, customerId, leadPhone, channel, error, progress }
+  const [entries, setEntries] = usePersistentState('wa-entries', []) // { key, file, status, preview, matchMode, customerId, leadPhone, channel, error, progress }
 
   async function handleFiles(fileList) {
     const files = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.zip'))
