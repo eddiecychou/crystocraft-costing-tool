@@ -164,7 +164,10 @@ function payloadText(payload) {
     // deliberately excludes — which made `brand_terms_preserved` unsatisfiable
     // (L-48). `normalizeEntity` folds these keys away before we get here; this
     // is the belt-and-braces guard so the leak cannot come back.
-    if (k === 'meta' || k.startsWith('meta.') || k === 'yoast_head' || k === 'yoast_head_json') continue
+    // `meta_data` is WooCommerce's shape for the same data — the Elementor tree
+    // and the Yoast meta are read selectively from it below, so the raw list must
+    // not be pushed as text either.
+    if (k === 'meta' || k.startsWith('meta.') || k === 'meta_data' || k === 'yoast_head' || k === 'yoast_head_json') continue
     if (typeof v === 'string') parts.push(v)
     // An object field is a REST `{ rendered, raw }` (a live entity's content /
     // excerpt / title). It MUST go through contentString so it contributes its
@@ -206,6 +209,15 @@ function contentString(c) {
   return String(c)
 }
 
+// Body-markup fields a WordPress write can carry. A body-level check compares a
+// field only when BOTH sides carry it:
+//   - absent from the payload -> this write does not touch it, so demanding its
+//     count match would fail a meta-only write as an image wipe;
+//   - absent from the source  -> there is no baseline, and comparing against an
+//     empty one reports the payload's long-standing content as newly added.
+// A source that is present but incomplete is worse than none (L-50).
+const BODY_FIELDS = ['content', 'description', 'short_description']
+
 // ── the gate ──────────────────────────────────────────────────────────────
 // A control-plane item can carry an entity in TWO shapes:
 //   nested  { content, meta: { _elementor_data, _yoast_wpseo_title } }   ← the write payload / a real REST entity
@@ -223,13 +235,28 @@ function contentString(c) {
 // Folding the dotted keys into `meta` makes every check below shape-agnostic.
 // Done here, in the validator, rather than in `seo-batch.js`'s `revalidate()`,
 // so it also protects the Workbench's vendored copy and any future caller.
+//
+// There is a THIRD shape, and it is the one WooCommerce uses: a product carries
+// its meta as a LIST, `meta_data: [{ key, value }]` — a write body included.
+// Reading only `payload.meta._elementor_data` made a product payload look like it
+// had no text at all: `brand_terms_preserved` reported every brand term as
+// dropped, `json_parses` never ran, and `widget_count` /
+// `element_ids_preserved` / `length_anomaly` were absent for exactly the writes
+// that most need them (2026-10-03). So fold the list in too. Precedence, lowest
+// first: `meta_data[]` (a plain carrier) → a nested `meta` object (the deliberate
+// shape) → dotted `meta.*` keys (an explicit snapshot).
+//
+// `meta_data` is left on the copy as well — nothing here writes, and a reader
+// inspecting the normalised entity should still see what the caller sent.
 function normalizeEntity(obj) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj
   const dotted = Object.keys(obj).filter(k => k.startsWith('meta.'))
-  if (!dotted.length) return obj
+  const list = Array.isArray(obj.meta_data) ? obj.meta_data : null
+  if (!dotted.length && !list) return obj
   const out = { ...obj }
-  const nested = obj.meta && typeof obj.meta === 'object' && !Array.isArray(obj.meta) ? obj.meta : {}
-  const meta = { ...nested }
+  const meta = {}
+  if (list) for (const m of list) if (m && typeof m.key === 'string') meta[m.key] = m.value
+  if (obj.meta && typeof obj.meta === 'object' && !Array.isArray(obj.meta)) Object.assign(meta, obj.meta)
   for (const k of dotted) { meta[k.slice('meta.'.length)] = obj[k]; delete out[k] }
   out.meta = meta
   return out
@@ -260,12 +287,22 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   const srcText = source ? payloadText(source) : ''
 
   // A source fetched without `context=edit` has `content.rendered` but no
-  // `content.raw` — no authored body to compare against (L-47). The body-level
-  // checks below then SKIP with a reason rather than comparing against the
-  // built page.
+  // `content.raw` — no authored body to compare against (L-47).
   const srcContent = source?.content
   const sourceBodyMissing = !!srcContent && typeof srcContent === 'object' && typeof srcContent.raw !== 'string'
   const NO_SOURCE = 'did not run — no source supplied; nothing to compare the payload against'
+
+  // Which body fields can actually be compared (see BODY_FIELDS). A source that
+  // is PRESENT BUT INCOMPLETE is worse than no source at all: the check runs
+  // against an empty baseline and lies. DSH hit exactly that — a `before` carrying
+  // only `_elementor_data` made `no_new_tables` report a page's existing <table>
+  // as newly introduced (2026-10-03).
+  const sharedBody = source && !sourceBodyMissing
+    ? BODY_FIELDS.filter(f => payload[f] !== undefined && source[f] !== undefined)
+    : []
+  const bodySkipReason = sourceBodyMissing
+    ? 'did not run — source body has no .raw; fetch the entity with context=edit (L-47)'
+    : 'did not run — source carries none of the payload\'s body fields, so there is no baseline to compare against (an incomplete source runs the check and lies — L-50)'
 
   // 1. Elementor JSON parses
   const edRaw = payload?.meta?._elementor_data
@@ -387,19 +424,18 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   if (!source) {
     skip('image_count_parity', NO_SOURCE)
     skip('heading_count_parity', NO_SOURCE)
-  } else if (sourceBodyMissing) {
-    const why = 'did not run — source body has no .raw; fetch the entity with context=edit (L-47)'
-    skip('image_count_parity', why)
-    skip('heading_count_parity', why)
+  } else if (!sharedBody.length) {
+    skip('image_count_parity', bodySkipReason)
+    skip('heading_count_parity', bodySkipReason)
   } else {
-    const pBody = contentString(payload.content) + contentString(payload.description) + contentString(payload.short_description)
-    const sBody = contentString(source.content) + contentString(source.description) + contentString(source.short_description)
+    const pBody = sharedBody.map(f => contentString(payload[f])).join('')
+    const sBody = sharedBody.map(f => contentString(source[f])).join('')
     const pImg = countMatches(pBody, /<img[\s>]/gi)
     const sImg = countMatches(sBody, /<img[\s>]/gi)
     if (sImg > 0) add('image_count_parity', pImg === sImg, pImg === sImg ? '' : `${pImg} <img> vs source ${sImg}`)
 
-    const pHEad = contentString(payload.content) + contentString(payload.description)
-    const sHead = contentString(source.content) + contentString(source.description)
+    const pHEad = sharedBody.map(f => contentString(payload[f])).join('')
+    const sHead = sharedBody.map(f => contentString(source[f])).join('')
     const pH = countMatches(pHEad, /<h2[\s>]/gi)
     const sH = countMatches(sHead, /<h2[\s>]/gi)
     if (sH > 0) add('heading_count_parity', pH === sH, pH === sH ? '' : `${pH} <h2> vs source ${sH}`)
@@ -409,12 +445,17 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   // `.rendered` page carries Yoast's inline JSON-LD <script>, which used to
   // suppress this check entirely; and it can equally carry a <table> the raw
   // body never had.
-  const bodyStr = contentString(payload.content) + contentString(payload.description) + contentString(payload.short_description) + asString(edRaw)
-  const srcBodyStr = source ? contentString(source.content) + contentString(source.description) + contentString(source.short_description) + asString(source?.meta?._elementor_data) : ''
+  // With no source at all there is no baseline, so the whole payload body is
+  // judged (a <script> in a write body is unusual enough to flag — the documented
+  // source-less mode). With a source, only the fields both sides carry are judged:
+  // a field the source does not have cannot be attributed to this write.
+  const judgedBody = source ? sharedBody : BODY_FIELDS
+  const payBodyStr = judgedBody.map(f => contentString(payload[f])).join('') + asString(edRaw)
+  const srcBodyStr = source ? sharedBody.map(f => contentString(source[f])).join('') + asString(source?.meta?._elementor_data) : ''
   const scripts = (name, rx, what) => {
-    if (source && sourceBodyMissing) return skip(name, 'did not run — source body has no .raw; fetch the entity with context=edit (L-47)')
+    if (source && !sharedBody.length) return skip(name, bodySkipReason)
     if (source && rx.test(srcBodyStr)) return skip(name, `did not run — source already contains ${what}; a pre-existing one cannot be attributed to this write`)
-    add(name, !rx.test(bodyStr), rx.test(bodyStr) ? `${what} introduced` : '')
+    add(name, !rx.test(payBodyStr), rx.test(payBodyStr) ? `${what} introduced` : '')
   }
   scripts('no_new_scripts', SCRIPT_RX, '<script>')
   scripts('no_new_tables', TABLE_RX, '<table>')

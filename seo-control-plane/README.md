@@ -28,8 +28,8 @@ ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch
 
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-03) |
 |---|---|
-| `validate-payload.mjs` | `94ee16af51bc` |
-| `safe-write.mjs` | `653305dd4fe8` |
+| `validate-payload.mjs` | `8ab3fdd35671` |
+| `safe-write.mjs` | `cdd1502769db` |
 
 Regenerate with
 `shasum -a 256 seo-control-plane/validate-payload.mjs seo-control-plane/safe-write.mjs`
@@ -91,6 +91,51 @@ POST /api/seo-batch { op:'result', id, results }                  # → executed
 `expectedFields` uses dotted paths for `meta` (`meta._yoast_wpseo_title`,
 `meta._elementor_data`). Any `*_elementor_data` field is compared by FNV-1a
 hash, not full string.
+
+## Three shapes for one entity — and per-field verification (2026-10-03, L-50/L-51/L-52)
+
+An entity reaches the control plane in three shapes, and **all three must be
+understood**:
+
+```
+nested       { meta: { _elementor_data } }            WP posts/pages, and a payload we build
+flat         { 'meta._elementor_data': … }            the `before` snapshot (dotted keys)
+WooCommerce  { meta_data: [{ key, value }] }          wc/v3 products — meta is a LIST
+```
+
+`normalizeEntity()` folds all of them into `meta` (precedence: `meta_data[]` →
+nested `meta` → dotted `meta.*`), and `safe-write.mjs`'s `get()` resolves a
+dotted `meta.<key>` path from `meta_data[]` too. Before this, a **product**
+payload looked textless: `brand_terms_preserved` falsely failed and
+`widget_count` / `element_ids_preserved` / `length_anomaly` **did not run at
+all** — a silently smaller check set, not an error.
+
+### Verification is per FIELD, not per item
+
+`safeWrite` fingerprints the payload as well as `before`/`after` and returns:
+
+| field | meaning |
+|---|---|
+| `asked` | the payload supplies a value for this expected field that differs from `before` |
+| `landed` | the value differs after the write |
+| **`unlanded`** | asked, but did not land — **the write silently did not happen** |
+
+`verified = ok && !noop && unlanded.length === 0`. A payload where `description`
+lands and `meta._elementor_data` silently does not is **not** verified, and the
+error names the field. An absent payload value, or one already equal to `before`,
+asks for nothing — so over-declaring `expectedFields` (a permission list) stays
+safe. `unlanded` is carried into the `seo_batches` item, the `op:'result'` handler
+and the review UI.
+
+### A source that is present but incomplete is worse than none
+
+Body-level checks compare only the fields **both** sides carry
+(`sharedBody`). If the intersection is empty — a `before` carrying only
+`_elementor_data`, or a source fetched without `context=edit` — the check
+**skips with a reason** instead of running against an empty baseline. Otherwise a
+page's existing `<table>` is reported as newly introduced, or a meta-only write is
+reported as an image wipe. Pass a complete source: both the body fields the write
+touches *and* `context=edit`.
 
 ## The zh-hant guard is derived, not curated (2026-10-03, L-49)
 

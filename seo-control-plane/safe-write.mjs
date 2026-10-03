@@ -11,7 +11,8 @@
 //   ok       — "did anything change that I did not ask to change?" (no drift,
 //              no write error). A no-op satisfies this trivially.
 //   verified — "did the change I asked for actually happen?" False when
-//              expectedFields were declared and NONE of them moved (`noop`).
+//              expectedFields were declared and NONE of them moved (`noop`), OR
+//              when a field the payload asked to change did not (`unlanded`).
 // Callers MUST treat `verified:false` as a failure to report even when `ok` is
 // true (2026-10-03: a payload-less item returned ok:true/verified:true having
 // written nothing).
@@ -48,8 +49,25 @@ const SAFETY_FIELDS = [
   'stock_status', 'stock_quantity', 'categories', 'date', 'featured_media',
 ]
 
+// Read a dotted path. `meta.<key>` resolves from EITHER shape, because
+// WooCommerce carries meta as a LIST — `meta_data: [{ key, value }]` — on the
+// write body and on the read-back alike. Reading only the nested object made
+// `meta._elementor_data` `undefined` on both sides of a product write, so a
+// correct change fingerprinted as though nothing had happened (2026-10-03).
+//
+// Note `meta_data` itself is deliberately NOT in SAFETY_FIELDS: WooCommerce
+// echoes the whole list back (ids, ordering, unrelated keys), so watching it
+// wholesale would trip on noise. `meta._elementor_data` IS always watched, and
+// this is what makes that watch work for a product.
 function get(obj, path) {
-  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj)
+  const direct = path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj)
+  if (direct !== undefined) return direct
+  const m = /^meta\.(.+)$/.exec(path)
+  if (m && Array.isArray(obj?.meta_data)) {
+    const hit = obj.meta_data.find(x => x && x.key === m[1])
+    if (hit) return hit.value
+  }
+  return direct
 }
 
 // Reduce an entity to a comparable fingerprint of the fields we care about.
@@ -101,6 +119,10 @@ export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload,
 
   // What changed that we did NOT ask to change?
   const expected = new Set(expectedFields.map(f => (/_elementor_data$/.test(f) ? 'meta._elementor_data' : f)))
+  // Declaring WooCommerce's whole `meta_data` list covers the Elementor tree
+  // inside it — otherwise the always-on `meta._elementor_data` watch reports the
+  // change the caller just declared as drift.
+  if (expected.has('meta_data')) expected.add('meta._elementor_data')
   const drift = []
   for (const f of watch) {
     if (expected.has(f)) continue
@@ -114,26 +136,47 @@ export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload,
 
   const ok = !writeErr && drift.length === 0
 
-  // A no-op is NOT a verified write (2026-10-03). `ok` above answers "did
+  // Verification is PER FIELD, not per item (2026-10-03). `ok` above answers "did
   // anything change that I did not ask to change?"; it cannot answer "did the
-  // change I asked for happen?" — and a no-op trivially satisfies it. If
-  // expectedFields were declared and none of them moved, the write wrote
-  // nothing: return ok:true / verified:false with noop:true, and callers MUST
-  // treat that as a failure to report, not a success.
+  // change I asked for happen?" — and a no-op trivially satisfies it. But "at
+  // least ONE expected field moved" is still not that question: a payload where
+  // `description` lands and `meta._elementor_data` silently does not reported
+  // verified:true, and four product fixes were called clean while their Elementor
+  // trees were untouched.
+  //
+  // A field is REQUESTED when the payload actually supplies a value for it that
+  // differs from `before`. An absent payload value, or one already equal to
+  // `before`, asks for nothing and is not held against the write — so
+  // over-declaring expectedFields stays safe (it is a permission list), and an
+  // idempotent write is not a false alarm.
+  //
+  //   asked     — the payload asks for a change
+  //   landed    — the value differs after the write
+  //   unlanded  — asked but did not land  -> the write silently did not happen
+  //   noop      — declared fields, and nothing moved at all
   //
   // When no expectedFields are declared there is no stated intent to check, so
   // `verified` stays equal to `ok` (never invent a no-op alarm).
+  const payFp = fingerprint(payload, watch)
   const intended = expectedFields.map(f => (/_elementor_data$/.test(f) ? 'meta._elementor_data' : f))
-  const changed = intended.filter(f => JSON.stringify(beforeFp[f]) !== JSON.stringify(afterFp[f]))
-  const noop = intended.length > 0 && changed.length === 0
-  const verified = ok && !noop
+  const moved = (f) => JSON.stringify(beforeFp[f]) !== JSON.stringify(afterFp[f])
+  const asked = intended.filter(f => get(payload, f) !== undefined && JSON.stringify(payFp[f]) !== JSON.stringify(beforeFp[f]))
+  const landed = intended.filter(moved)
+  const unlanded = asked.filter(f => !moved(f))
+  const noop = intended.length > 0 && landed.length === 0
+  const verified = ok && !noop && unlanded.length === 0
   const noopErr = 'no-op: none of the expected fields changed'
+  const unlandedErr = `requested change did not land in: ${unlanded.join(', ')}`
 
   return {
     ok,
     verified,
     noop,
-    error: writeErr || (noop ? noopErr : null) || (drift.length ? `unexpected drift in ${drift.length} field(s)` : null),
+    unlanded,
+    error: writeErr
+      || (drift.length ? `unexpected drift in ${drift.length} field(s)` : null)
+      || (noop ? noopErr : null)
+      || (unlanded.length ? unlandedErr : null),
     drift,
     before: beforeFp,
     after: afterFp,
@@ -143,9 +186,11 @@ export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload,
       after: afterFp,
       verified,
       noop,
+      unlanded,
       error: writeErr
+        || (drift.length ? JSON.stringify(drift).slice(0, 400) : null)
         || (noop ? noopErr : null)
-        || (drift.length ? JSON.stringify(drift).slice(0, 400) : null),
+        || (unlanded.length ? unlandedErr : null),
     },
   }
 }

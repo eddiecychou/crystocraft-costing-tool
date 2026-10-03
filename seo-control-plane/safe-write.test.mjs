@@ -137,5 +137,114 @@ function harness(entity, applyPut) {
   expect('missing get/put refuses', r.ok === false && /needs get/.test(r.error || ''), String(r.error))
 }
 
+// ── 2026-10-03: WooCommerce products carry meta as a LIST ───────────────
+// `meta_data: [{ key, value }]` on the write body and on the read-back. A dotted
+// `meta._elementor_data` path read `undefined` on both sides, so a correct write
+// fingerprinted as though nothing had happened.
+function mkProduct(extra = {}) {
+  return {
+    id: 53987, type: 'simple', status: 'publish', slug: 'crystal-rose',
+    sku: 'D0268', price: '120.00', name: 'D0268 Crystal Rose', description: 'Old description',
+    meta_data: [
+      { id: 1, key: '_elementor_data', value: 'TREE-OLD' },
+      { id: 2, key: '_yoast_wpseo_title', value: 'Old title' },
+    ],
+    ...extra,
+  }
+}
+// WordPress's answer to a product write: meta_data echoed back with the change.
+const productPut = (keys) => (cur, body) => ({
+  ...cur,
+  meta_data: cur.meta_data.map(m => {
+    if (!keys.includes(m.key)) return m
+    const hit = (body.meta_data || []).find(x => x.key === m.key)
+    return hit ? { ...m, value: hit.value } : m
+  }),
+})
+
+{
+  const h = harness(mkProduct(), productPut(['_elementor_data']))
+  const r = await safeWrite({
+    get: h.get, put: h.put, id: 53987, endpoint: 'wc/v3/products/53987?lang=zh-hant',
+    payload: { meta_data: [{ key: '_elementor_data', value: 'TREE-NEW' }] },
+    expectedFields: ['meta._elementor_data'],
+  })
+  expect('product: a real tree change verifies', r.verified === true && r.noop === false, JSON.stringify(r.result))
+  expect('product: no drift, nothing unlanded', r.drift.length === 0 && r.unlanded.length === 0, JSON.stringify(r))
+  expect('product: the tree is fingerprinted (hashed), not undefined',
+    r.before['meta._elementor_data'] !== null && r.after['meta._elementor_data'] !== null,
+    JSON.stringify({ before: r.before['meta._elementor_data'], after: r.after['meta._elementor_data'] }))
+}
+
+// The false success that was reported: description lands, the tree silently does
+// not — and the item still came back verified:true.
+{
+  // WordPress applies the top-level description and, silently, nothing to the tree.
+  const h = harness(mkProduct(), (cur, body) => ({ ...cur, description: body.description }))
+  const r = await safeWrite({
+    get: h.get, put: h.put, id: 53987, endpoint: 'wc/v3/products/53987?lang=zh-hant',
+    payload: { description: 'New description', meta_data: [{ key: '_elementor_data', value: 'TREE-NEW' }] },
+    expectedFields: ['description', 'meta._elementor_data'],
+  })
+  expect('per-field: the landing field is not enough to verify the item', r.verified === false, JSON.stringify(r.result))
+  expect('per-field: unlanded names the tree', JSON.stringify(r.unlanded) === '["meta._elementor_data"]', JSON.stringify(r.unlanded))
+  expect('per-field: not a no-op (something did move)', r.noop === false)
+  expect('per-field: ok stays true (no drift)', r.ok === true)
+  expect('per-field: error names the field that did not land', /did not land in: meta\._elementor_data/.test(r.result.error || ''), String(r.result.error))
+}
+
+// Declaring the whole list works too — WooCommerce's own shape.
+{
+  const h = harness(mkProduct(), productPut(['_elementor_data']))
+  const r = await safeWrite({
+    get: h.get, put: h.put, id: 53987, endpoint: 'wc/v3/products/53987?lang=zh-hant',
+    payload: { meta_data: [{ key: '_elementor_data', value: 'TREE-NEW' }] },
+    expectedFields: ['meta_data'],
+  })
+  expect('product: expectedFields [meta_data] also verifies', r.verified === true, JSON.stringify(r.result))
+}
+
+// Over-declared expectedFields must not invent an unlanded field: a declared
+// field the payload does not carry is not being written.
+{
+  const h = harness(mkProduct(), productPut(['_elementor_data']))
+  const r = await safeWrite({
+    get: h.get, put: h.put, id: 53987, endpoint: 'wc/v3/products/53987?lang=zh-hant',
+    payload: { meta_data: [{ key: '_elementor_data', value: 'TREE-NEW' }] },
+    expectedFields: ['meta._elementor_data', 'slug', 'status', 'meta._yoast_wpseo_title'],
+  })
+  expect('over-declared fields are not held against the write', r.verified === true && r.unlanded.length === 0,
+    JSON.stringify({ unlanded: r.unlanded, result: r.result }))
+}
+
+// `meta._elementor_data` is always watched — so on a product, a save that
+// silently wipes the tree now trips drift even when the caller never declared it.
+{
+  const h = harness(mkProduct(), (cur) => ({
+    ...cur,
+    meta_data: cur.meta_data.map(m => (m.key === '_elementor_data' ? { ...m, value: 'TREE-WIPED' } : m)),
+  }))
+  const r = await safeWrite({
+    get: h.get, put: h.put, id: 53987, endpoint: 'wc/v3/products/53987?lang=zh-hant',
+    payload: { meta_data: [{ key: '_yoast_wpseo_title', value: 'New title' }] },
+    expectedFields: ['meta._yoast_wpseo_title'],
+  })
+  expect('product: a silent tree wipe on an undeclared field is drift',
+    r.ok === false && r.drift.some(d => d.field === 'meta._elementor_data' && d.before !== d.after),
+    JSON.stringify(r.drift))
+}
+
+// L-44 still holds on the product shape: a write that changes nothing is a no-op.
+{
+  const h = harness(mkProduct(), (cur) => cur)
+  const r = await safeWrite({
+    get: h.get, put: h.put, id: 53987, endpoint: 'wc/v3/products/53987?lang=zh-hant',
+    payload: { meta_data: [{ key: '_elementor_data', value: 'TREE-OLD' }] },
+    expectedFields: ['meta._elementor_data'],
+  })
+  expect('product: an unchanged tree is still a no-op, not a verified write',
+    r.verified === false && r.noop === true, JSON.stringify(r.result))
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

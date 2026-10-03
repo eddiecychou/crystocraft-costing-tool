@@ -253,7 +253,10 @@ export default function SeoReview() {
 
                       {r && (
                         <p className={`mt-2 text-2xs ${rBad ? 'text-red-600' : 'text-green-700'}`}>
-                          {!r.ok ? '✗ failed' : r.verified === false ? '✗ not verified — nothing changed' : '✓ executed'}
+                          {!r.ok ? '✗ failed'
+                            : r.unlanded?.length ? `✗ not verified — did not land: ${r.unlanded.join(', ')}`
+                              : r.verified === false ? '✗ not verified — nothing changed'
+                                : '✓ executed'}
                           {r.verified === true ? ' · verified' : ''}{r.error ? ` — ${r.error}` : ''}
                         </p>
                       )}

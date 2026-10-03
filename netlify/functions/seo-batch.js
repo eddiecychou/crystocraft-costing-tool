@@ -31,7 +31,7 @@
 //                                    (items that failed OC validation come
 //                                     back as decision:'blocked')
 //   { op: 'get', id }              -> { batch }
-//   { op: 'result', id, results: [{ index, ok, after, verified, noop, error }] }
+//   { op: 'result', id, results: [{ index, ok, after, verified, noop, unlanded, error }] }
 //                                  -> { status: 'executed' | 'partial' }
 //
 // `ok` and `verified` answer two different questions (2026-10-03): `ok` proves
@@ -233,6 +233,10 @@ export default async function handler(req) {
             after: r.after ?? null,
             verified: typeof r.verified === 'boolean' ? r.verified : null,
             noop: !!r.noop,
+            // Fields the payload asked to change that did not move — the
+            // per-field half of `verified` (2026-10-03). Kept so the reviewer
+            // sees WHICH field silently did not land, not just that one didn't.
+            unlanded: Array.isArray(r.unlanded) ? r.unlanded.slice(0, 20) : [],
             error: r.error ?? null,
             at: Timestamp.now(),
           } }

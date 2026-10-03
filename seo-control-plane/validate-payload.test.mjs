@@ -471,5 +471,100 @@ function expect(name, cond, detail = '') {
     JSON.stringify(chk(ok4)))
 }
 
+// ── 2026-10-03: WooCommerce products carry meta as a LIST ───────────────
+// `meta_data: [{ key, value }]` — not `meta: { _elementor_data }`. Reading only
+// the nested object made a product payload look textless: brand terms all
+// "dropped", and the three _elementor_data guards absent for exactly the writes
+// that most need them.
+{
+  const widget = { id: 'w1', elType: 'widget', widgetType: 'text-editor', settings: { editor: 'A gift for every occasion.' } }
+  const container = { id: 'c1', elType: 'container', settings: { alt: 'Swarovski crystal rose' } }
+  const tree = JSON.stringify([container, widget])
+  const wcList = {
+    name: 'D0268 Crystal Rose', description: '<p>A gift.</p>',
+    meta_data: [
+      { id: 1, key: '_elementor_data', value: tree },
+      { id: 2, key: '_yoast_wpseo_title', value: 'Crystal Rose' },
+      { id: 3, key: '_yoast_wpseo_metadesc', value: 'A crystal rose gift from Crystocraft.' },
+    ],
+  }
+  // The reported shape: a WC payload against a nested-meta source.
+  const nestedSource = {
+    name: 'D0268 Crystal Rose', description: '<p>A gift.</p>',
+    meta: { _elementor_data: tree, _yoast_wpseo_title: 'Crystal Rose', _yoast_wpseo_metadesc: 'A crystal rose gift from Crystocraft.' },
+  }
+  const v = validatePayload({ kind: 'product', lang: 'zh-hant', endpoint: 'wc/v3/products/53987?lang=zh-hant', payload: wcList, source: nestedSource })
+  const c = chk(v)
+  expect('WC meta_data: json_parses runs', c.json_parses === true, JSON.stringify(v.checks))
+  expect('WC meta_data: widget_count runs', c.widget_count === true, JSON.stringify(c))
+  expect('WC meta_data: element_ids_preserved runs', c.element_ids_preserved === true, JSON.stringify(c))
+  expect('WC meta_data: length_anomaly runs', c.length_anomaly === true, JSON.stringify(c))
+  expect('WC meta_data: brand terms read from the list, none falsely dropped', c.brand_terms_preserved === true,
+    JSON.stringify(v.checks.filter(x => x.ok === false)))
+  expect('WC meta_data: the Yoast title is read from the list', c.seo_title_no_double_brand === true)
+  expect('WC meta_data: the metadesc length check runs', c.seo_desc_length === true)
+  expect('WC meta_data: the whole gate passes, nothing skipped', v.passed === true && v.skipped === 0,
+    JSON.stringify(v.checks.filter(x => x.ok === false)))
+
+  const v2 = validatePayload({ kind: 'product', lang: 'zh-hant', endpoint: 'wc/v3/products/53987?lang=zh-hant', payload: wcList, source: wcList })
+  expect('WC on both sides: structural guards run', chk(v2).widget_count === true && v2.passed === true,
+    JSON.stringify(v2.checks.filter(x => x.ok === false)))
+
+  // Precedence: an explicit nested `meta` beats a carrier `meta_data`.
+  const both = { ...wcList, meta: { _elementor_data: JSON.stringify([{ id: 'x9', elType: 'widget', widgetType: 'heading', settings: { title: 'From meta' } }]) } }
+  const v3 = validatePayload({ kind: 'product', lang: 'zh-hant', endpoint: 'wc/v3/products/53987?lang=zh-hant', payload: both, source: nestedSource })
+  // The nested tree's element id (x9) is not in the source; the meta_data tree's
+  // ids WOULD have been preserved. So a false here proves the nested tree won.
+  expect('nested meta wins over meta_data', chk(v3).element_ids_preserved === false, JSON.stringify(chk(v3)))
+}
+
+// ── an INCOMPLETE source must skip, not run and lie ─────────────────────
+// DSH's `before` carried only `_elementor_data`, so the source side of
+// no_new_tables was empty and a page's EXISTING <table> was reported as newly
+// introduced. A source that is present but incomplete is worse than none.
+{
+  const tree = JSON.stringify([{ id: 'w1', elType: 'widget', widgetType: 'text-editor', settings: { editor: 'x' } }])
+  const v = validatePayload({
+    kind: 'page', lang: 'en', endpoint: 'wp/v2/pages/1',
+    payload: { content: '<p>Intro</p><table><tr><td>long-standing</td></tr></table>', status: 'draft' },
+    source: { meta: { _elementor_data: tree } },
+  })
+  const c = chk(v)
+  expect('incomplete source: no_new_tables skips', c.no_new_tables === null, JSON.stringify(c))
+  expect('incomplete source: no_new_scripts skips', c.no_new_scripts === null)
+  expect('incomplete source: parity skips', c.image_count_parity === null && c.heading_count_parity === null)
+  expect('incomplete source: gate is not blocked by it', v.passed === true, JSON.stringify(v.checks.filter(x => x.ok === false)))
+  expect('incomplete source: the partial pass is visible', v.skipped >= 4, JSON.stringify({ ran: v.ran, skipped: v.skipped }))
+}
+
+// The same class, unreported until now: a meta-only write against a source whose
+// body has images used to report an image wipe (`0 <img> vs source 2`).
+{
+  const v = validatePayload({
+    kind: 'page', lang: 'en', endpoint: 'wp/v2/pages/1',
+    payload: { meta: { _yoast_wpseo_title: 'New title' }, status: 'draft' },
+    source: { content: { rendered: '<p>x</p>', raw: '<p>x</p><img src="a.jpg"/><img src="b.jpg"/>' } },
+  })
+  expect('meta-only write: parity skips instead of reporting a wipe', chk(v).image_count_parity === null,
+    JSON.stringify(v.checks.filter(x => x.ok === false)))
+  expect('meta-only write: gate passes', v.passed === true)
+}
+
+// …while a real wipe, where BOTH sides carry the body, is still caught.
+{
+  const wipe = validatePayload({
+    kind: 'post', lang: 'en', endpoint: 'wp/v2/posts/1',
+    payload: { content: '<p>kept</p>', status: 'draft' },
+    source: { content: { rendered: '<p>x</p>', raw: '<p>kept</p><img src="a.jpg"/><img src="b.jpg"/>' } },
+  })
+  expect('a real image wipe is still caught', chk(wipe).image_count_parity === false, JSON.stringify(chk(wipe)))
+  const script = validatePayload({
+    kind: 'post', lang: 'en', endpoint: 'wp/v2/posts/1',
+    payload: { content: '<p>kept</p><script>track()</script>', status: 'draft' },
+    source: { content: { rendered: '<p>kept</p>', raw: '<p>kept</p>' } },
+  })
+  expect('a newly introduced script is still caught', chk(script).no_new_scripts === false, JSON.stringify(chk(script)))
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -178,14 +178,23 @@ POST /api/seo-batch
   "op": "result",
   "id": "<batchId>",
   "results": [
-    { "index": 0, "ok": true,  "after": { /* safeWrite fingerprint */ }, "verified": true,  "noop": false, "error": null },
-    { "index": 1, "ok": false, "after": {...}, "verified": false, "noop": false, "error": "drift: [{field:'variations',...}]" },
-    { "index": 2, "ok": true,  "after": {...}, "verified": false, "noop": true,  "error": "no-op: none of the expected fields changed" }
+    { "index": 0, "ok": true,  "after": {...}, "verified": true,  "noop": false, "unlanded": [], "error": null },
+    { "index": 1, "ok": false, "after": {...}, "verified": false, "noop": false, "unlanded": [], "error": "drift: [{field:'variations',...}]" },
+    { "index": 2, "ok": true,  "after": {...}, "verified": false, "noop": true,  "unlanded": [], "error": "no-op: none of the expected fields changed" },
+    { "index": 3, "ok": true,  "after": {...}, "verified": false, "noop": false, "unlanded": ["meta._elementor_data"], "error": "requested change did not land in: meta._elementor_data" }
   ]
 }
 → { "ok": true, "status": "executed" | "partial", "executed": n, "unverified": k, "of": m }
 ```
 `safeWrite` returns a ready-made `result` object — pass `{ index, ...r.result }`.
+
+**Verification is per FIELD, not per item (L-51).** Index 3 above is the shape
+that used to report clean: `description` landed, `meta._elementor_data` silently
+did not, and any single expected field moving used to certify the item. Now
+`verified` requires `unlanded` to be empty too, and the error names the fields
+that did not move. A field the payload does not carry, or carries unchanged from
+`before`, asks for nothing and is not held against the write — so over-declaring
+`expectedFields` (a permission list) stays safe.
 
 The OC reads `verified` as follows: `'executed'` requires every approved item to
 have a result with `ok:true` AND not `verified:false`. Index 2 above is a no-op —
@@ -228,6 +237,20 @@ const validation = validatePayload({ kind, lang, endpoint, payload, source: enOr
     it does not, `widget_count`, `element_ids_preserved` and `length_anomaly` report
     `ok:false` ("did not run — …") and the item is **blocked**. An unguarded layout
     write is what B20/B6 are, so that case fails rather than skipping.
+  - **Three shapes, all read.** `payload`/`source` may be nested (`meta: {…}`),
+    flat (`'meta._elementor_data'`), or **WooCommerce** (`meta_data: [{key, value}]`).
+    The validator folds all three into `meta`, and `safeWrite`'s `get()` resolves a
+    dotted `meta.<key>` from `meta_data[]` — so a **product** write declared as
+    `meta._elementor_data` now works. Before this a product payload looked
+    textless: `brand_terms_preserved` falsely failed and the three
+    `_elementor_data` guards **did not run at all** (L-50). If you declare the
+    whole `meta_data` list in `expectedFields`, that covers the tree inside it.
+  - **Send a COMPLETE source.** Body-level checks compare only the fields both
+    sides carry. A `before` carrying *only* `_elementor_data` has no baseline for
+    `content`, so `no_new_tables` / `no_new_scripts` / parity **skip** (rather than
+    reporting the page's existing `<table>` as newly introduced) — you lose those
+    checks (L-52). Include the body fields the write touches, and fetch with
+    `context=edit`.
   - **`before` is a snapshot, not an entity** — it holds only the fields the payload
     touches, in DOTTED form (`'meta._elementor_data'`, not `meta._elementor_data`).
     The OC normalises those dotted keys into a nested `meta` before validating, so a
@@ -287,9 +310,10 @@ const r = await safeWrite({
 })
 
 if (!r.verified) {
-  // !r.ok             → drift or a write error: r.drift = [{ field, before, after, note? }]
-  // ok:true, !verified → r.noop: NOTHING in expectedFields moved; the write
-  //                      wrote nothing. Not a success. Report it.
+  // !r.ok              → drift or a write error: r.drift = [{ field, before, after, note? }]
+  // r.noop             → NOTHING in expectedFields moved; the write wrote nothing
+  // r.unlanded.length  → the payload asked for a change here and it did not land:
+  //                      the write silently did not happen. Name it in the alert.
   // STOP the batch. Do NOT continue to the next item. Alert the owner.
 }
 results.push({ index: it.index, ...r.result })
@@ -325,7 +349,7 @@ dedicated variation id/price-hash guard.
       sha256[:12] fingerprint recorded in `seo-control-plane/README.md` → "Vendoring contract"
       before you trust a run. **Re-vendor after the 2026-10-03 fixes** — both the
       first pass and the `payloadText()` follow-up; `validate-payload.mjs` must
-      fingerprint `94ee16af51bc` and `safe-write.mjs` `653305dd4fe8`. Anything
+      fingerprint `8ab3fdd35671` and `safe-write.mjs` `cdd1502769db`. Anything
       older is stale.
 - [ ] Fetch `source` (and the `before` snapshot) with **`context=edit`**, or the
       body-level checks silently skip.
@@ -353,5 +377,6 @@ a 200-item run to it.
 | 2026-10-03 | **Two defects fixed** (raised by DSH while staging a WordPress write). **1a** `create` now rejects an item with an empty/absent `payload` (400) instead of silently storing `{}` and reporting a no-op as success. **1b** `safe-write.mjs` returns `verified` (did the INTENDED change happen?) alongside `ok` (did anything UNINTENDED move?); `noop:true` when none of `expectedFields` moved, and `op:'result'` now marks a batch `partial` — never `executed` — when any approved item is `verified:false`. **2** `validate-payload.mjs` compares the **RAW** body (`content.raw`) on both sides for image/heading parity and `no_new_scripts` / `no_new_tables`, so a correct Elementor edit (which changes only `meta._elementor_data`) passes. **DSH must re-vendor both files** (sha256[:12] fingerprint in `seo-control-plane/README.md`) and gate execution on `r.verified`, and should drop its `before.content` workaround. |
 | 2026-10-03 | **Defect 2's fix was incomplete — follow-up from DSH, now closed.** `payloadText()` was a fourth call site of the same bug: it resolved an object field to `.rendered`, so the whole built page counted as *source text* and `brand_terms_preserved` reported terms (e.g. `Swarovski, MagSafe`) "translated away" when they were never in the payload body. `contentString()` now also backs `payloadText` **and uses `.raw` only** — an absent `.raw` returns `''` and the body-level checks **skip**, rather than falling back to the render (`wpEntity()` omits `context=edit`, so the fallback silently restored the old behaviour). **Re-vendor `validate-payload.mjs` (fingerprint `3bf6c751c578`), fetch `source`/`before` with `context=edit`, and drop the `before.content` workaround.** L-47. |
 | 2026-10-03 | **The real root cause, found by DSH on the second attempt: a SHAPE ASYMMETRY** — `payload` is nested (`meta: {…}`), `before` is flat (`'meta._elementor_data'`), and `payloadText` skipped the key `meta` but not `meta._elementor_data`. A flat `before` used as `source` therefore (a) **silently disabled** `widget_count`, `element_ids_preserved` and `length_anomaly` — the OC's stored validation simply did not contain them — and (b) pushed the whole 50 KB Elementor JSON as source *text*, so the source always looked richer than the payload and `brand_terms_preserved` was unsatisfiable. `validatePayload` now normalises both shapes (`normalizeEntity`, so a flat `before` works), skips are first-class (`ok:null` + reason, `{passed, checks, ran, skipped}`), the create response adds `skipped_validation`, `_elementor_data` writes without a usable source tree are **blocked**, and `/seo-review` lists skipped checks. Fingerprint `9d5eb99c6eda`. L-48. |
+| 2026-10-03 | **Four product-write gaps closed (L-50/L-51/L-52).** (1) **WooCommerce's meta shape**: a product carries `meta_data: [{key, value}]`, not `meta._elementor_data`, so a product payload looked textless — the three `_elementor_data` guards **did not run** and `brand_terms_preserved` falsely failed. All three shapes are now folded into `meta`, and `safeWrite`'s `get()` resolves `meta.<key>` from `meta_data[]` — so a product write declared as `meta._elementor_data` works. (2) **`verified` is per FIELD**: a payload where `description` landed and `meta._elementor_data` silently did not used to return `verified:true` (four product fixes were called clean with untouched trees). `safeWrite` now returns **`unlanded`** — the fields the payload asked to change that did not move — and `verified` requires it to be empty. (3) **An incomplete source skips instead of lying**: a `before` carrying only `_elementor_data` made `no_new_tables` report a page's existing `<table>` as newly introduced, and a meta-only write reported `0 <img> vs source 2`. Body checks now compare only the fields both sides carry, and skip with a reason when there are none. **Re-vendor both files** (`validate-payload.mjs` `8ab3fdd35671`, `safe-write.mjs` `cdd1502769db`); `op:'result'` carries `unlanded` through. |
 | 2026-10-03 | **The zh-hant `SIMPLIFIED` guard replaced with a DERIVED list (L-49).** The hand-curated 193-character list was **4.9%** of the 3,803 characters OpenCC's `STCharacters.txt` marks simplified-only: it missed `订 礼` (so `訂製`/`禮品` passed the guard), missed `会 时 关 学 爱 给`, and carried **seven characters that are valid Traditional** (`云 厂 叶 后 广 征 种`) — which is why four zh-hant fixes were being refused. It also had 10 duplicate characters. Now derived (mapping changes it AND it never appears on the traditional side of any mapping; plus the four orthographic variants OpenCC also normalises — `床 秘 群 峰`), which needs **no exemption list**: the six previously special-cased (只 繁 慕 谷 回 台) fall out automatically. **Re-vendor `validate-payload.mjs`** — it now also **exports `SIMPLIFIED`**. `scripts/derive-zh-hant-simplified.mjs --check` re-derives from the dictionary and fails on drift. NOTE for your scan: the derived set flags `户` in the footer template's 「客户服務」, i.e. every Chinese page. |
 | 2026-10-03 | **CLOSED — verified by DSH.** All three defects fixed and confirmed against the deployed build (`validate-payload.mjs` `9d5eb99c6eda`, `safe-write.mjs` `653305dd4fe8`; OC deploy `099aa2968`). DSH re-vendored hash-identical and re-ran the affected batch, which now passes on its own merits: the three `_elementor_data` guards run, `brand_terms_preserved` no longer false-flags, and the `before.content` workaround is no longer needed. Nothing outstanding on either side. The round-by-round record and the process rule (a defect is not fixed until the *reporter's* reproduction passes) are in `../docs/skills/LESSONS-LEARNED.md` L-44 / L-45 / L-47 / L-48. |

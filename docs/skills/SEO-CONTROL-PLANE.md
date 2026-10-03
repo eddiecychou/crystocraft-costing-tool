@@ -178,8 +178,19 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   `passed: true, skipped: 0` (full pass) is finally distinguishable from a
   partial one. A payload that writes `_elementor_data` **MUST** carry a usable
   source tree; without one the three layout guards report `ok:false` and the item
-  is blocked. `node seo-control-plane/validate-payload.test.mjs` covers the known
-  incident cases.
+  is blocked.
+  **Three entity SHAPES and one comparison rule (L-50/L-52, 2026-10-03).** A
+  product carries meta as a WooCommerce LIST (`meta_data: [{key, value}]`), not
+  `meta._elementor_data` — reading only the nested object left a product payload
+  apparently textless (`brand_terms_preserved` falsely failing, `json_parses` and
+  the three `_elementor_data` guards **absent**). `normalizeEntity` now folds
+  nested `meta`, dotted `meta.*` and `meta_data[]` into one `meta`. And a
+  body-level check compares **only the fields both sides carry** (`sharedBody`):
+  with no overlap it SKIPS with a reason, because a source that is present but
+  incomplete — a `before` carrying only `_elementor_data` — otherwise reports a
+  page's existing `<table>` as newly introduced.
+  `node seo-control-plane/validate-payload.test.mjs` covers the known incident
+  cases (126).
 - **`safe-write.mjs`** — `safeWrite({ get, put, id, endpoint, payload,
   expectedFields })`. Snapshots the entity → writes → re-reads → returns
   `{ ok:false, drift:[…] }` if any watched field outside `expectedFields`
@@ -190,18 +201,23 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   `verified` + `noop`** — `ok` answers "did anything *unintended* move?", which
   a no-op satisfies trivially; `verified:false` with `noop:true` means none of
   `expectedFields` moved, i.e. the intended change never happened. Callers gate
-  on `verified`, never on `ok` alone. Returns a `result` object shaped for the
-  `seo_batches` `result` op. **No Workbench script writes WordPress any other
+  on `verified`, never on `ok` alone. **Verification is per FIELD (L-51):** it
+  fingerprints the payload as well as `before`/`after` and returns **`unlanded`** —
+  the expected fields the payload asked to change that did not move — so a payload
+  where `description` lands and `meta._elementor_data` silently does not is
+  **not** verified, and the error names the field. `get()` also resolves a dotted
+  `meta.<key>` from WooCommerce's `meta_data[]` (L-50). Returns a `result` object
+  shaped for the `seo_batches` `result` op. **No Workbench script writes WordPress any other
   way.**
 
 This directory is also the **vendoring contract**: DSH copies both files
 verbatim and verifies the sha256[:12] fingerprint recorded in
-`seo-control-plane/README.md` (`validate-payload.mjs` = `94ee16af51bc`,
-`safe-write.mjs` = `653305dd4fe8` after the 2026-10-03 fixes). The
+`seo-control-plane/README.md` (`validate-payload.mjs` = `8ab3fdd35671`,
+`safe-write.mjs` = `cdd1502769db` after the 2026-10-03 fixes). The
 OC tells DSH when either changes (`op:'create'` re-runs the vendored validator
 server-side, so a stale copy shows up as `validation_mismatch`). Both files have
-their own `node`-runnable test: `validate-payload.test.mjs` (107 cases) and
-`safe-write.test.mjs` (24 cases), plus `qa/seo-batch-guard.test.mjs` (13) for the
+their own `node`-runnable test: `validate-payload.test.mjs` (126 cases) and
+`safe-write.test.mjs` (36 cases), plus `qa/seo-batch-guard.test.mjs` (13) for the
 OC-side guards. When a fix changes a *class* of bug, grep for the pattern across
 the file before declaring it done — L-47 is what happens otherwise.
 
@@ -232,6 +248,7 @@ CSV export of the drift/failed rows in both modes.
 | 2026-09-02 | Steps 1–4 built: `seo_state`/`seo_state_history`, `seo_batches` + `seo-batch` + `/seo-review`, `seo-control-plane/` (`validate-payload` + `safe-write`), `/seo-reconcile`. |
 | 2026-09-23 | **L-29** — `placeholder_markers` extended to fr/ja/zh-hant (was en/es/zh-hans only). |
 | 2026-10-03 | **Two control-plane defects raised by DSH while staging a WordPress write, both fixed here.** (1) A payload-less item was accepted, wrote nothing, and returned `ok:true/verified:true` → the batch reported `executed`. `create` now rejects an empty payload (400), and `safeWrite` returns `verified`/`noop` (gate on `verified`, not `ok`) with `op:'result'` marking such a batch `partial`. (2) Image/heading parity was unsatisfiable for Elementor edits because a live entity's `.rendered` page was compared against a raw payload body — both sides now go through `contentString()`, which prefers `.raw`, as do `no_new_scripts`/`no_new_tables`. DSH re-vendors both files (sha256[:12] fingerprint in `seo-control-plane/README.md`) and drops its `before.content` workaround. See `LESSONS-LEARNED.md` L-44 / L-45. |
+| 2026-10-03 | **L-50 / L-51 / L-52 — four product-write gaps.** (1) **WooCommerce's meta shape** (`meta_data: [{key, value}]`): product payloads looked textless, so `brand_terms_preserved` falsely failed and the three `_elementor_data` guards **did not run**. All three shapes now fold into `meta`. (2) **`verified` is per FIELD**: `safeWrite` returns `unlanded` (asked for a change, did not move) and requires it empty — four product fixes had been called clean with untouched trees. (3) **An incomplete source skips**: body checks compare only the fields both sides carry, so a `before` with only `_elementor_data` no longer reports an existing `<table>` as newly introduced (nor a meta-only write as an image wipe). Fingerprints `8ab3fdd35671` / `cdd1502769db`; tests 107 → 126 and 24 → 36. |
 | 2026-10-03 | **L-49 — the zh-hant `SIMPLIFIED` guard replaced with a derived list.** The 193 hand-picked characters were 4.9% of the 3,803 that OpenCC's `STCharacters.txt` marks simplified-only (missed `订 礼`, so `訂製`/`禮品` passed), contained seven valid-Traditional characters (`云 厂 叶 后 广 征 种`, so `皇后`/`征戰` were rejected) and 10 duplicates. Derived instead — and the derivation needs no exemptions, so the six previously special-cased fall out automatically. `scripts/derive-zh-hant-simplified.mjs --check` guards against drift; tests 72 → 107, and against the old guard the new suite fails 26 assertions. |
 | 2026-10-03 | **CLOSED — all three control-plane defects fixed and verified by DSH against the deployed build.** Defect 1 (empty payload / a no-op reported as `executed+verified`, L-44), defect 2's four `.rendered` call sites (L-45, L-47) and the flat/nested shape asymmetry underneath the brand-check failure (L-48 — which had also been silently disabling `widget_count` / `element_ids_preserved` / `length_anomaly` on the authoritative side). Final fingerprints: `validate-payload.mjs` `9d5eb99c6eda`, `safe-write.mjs` `653305dd4fe8`; live in OC deploy `099aa2968`. Skips are now first-class so a partial pass can never again be read as a full one. |
 | 2026-10-03 | **L-48 — DSH's third pass found the real root cause: a shape asymmetry.** `payload` is nested while `before` is flat; falling back to `before` as `source` silently disabled the three `_elementor_data` guards **and** pushed the whole Elementor JSON as source text, so the gate was wrong in both directions (skipped what matters, failed what should pass) while reporting `passed`. `normalizeEntity()` normalises both shapes inside the validator (so DSH's vendored copy is covered too, and `revalidate()` needs no change); skips are first-class (`ok:null` + reason, `{passed, checks, ran, skipped}`) and surfaced via `skipped_validation` on `create` and in `/seo-review`; a layout write with no usable source tree is blocked. Fingerprint `9d5eb99c6eda`; tests 55 → 72. |

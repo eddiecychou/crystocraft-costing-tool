@@ -204,6 +204,39 @@ Simplified character on **every one of the 882 Chinese pages**. None of it was
 visible with a 4.9%-coverage guard. New `validate-payload.mjs` fingerprint
 `94ee16af51bc`.
 
+**Later still — four gaps on the PRODUCT path (L-50 / L-51 / L-52).** All four
+came from DSH's product writes, and all four are the same shape of mistake: the
+gate's model of its input was narrower than the input, so it gave a confident
+answer about something it had not actually looked at.
+
+1. **WooCommerce carries meta as a LIST** — `meta_data: [{ key, value }]`, not
+   `meta: { _elementor_data }`. A product payload therefore looked *textless*:
+   `brand_terms_preserved` falsely failed on a term sitting in the payload's own
+   `meta_data`, and `json_parses`, `widget_count`, `element_ids_preserved`,
+   `length_anomaly` and `seo_title_no_double_brand` **did not run at all** — 7
+   checks instead of 13, on the writes that most need the structural guards.
+   `normalizeEntity` now folds all three shapes (nested, dotted, `meta_data[]`)
+   into one `meta`.
+2. **`verified` was per ITEM.** `ok` proves no *unintended* drift (L-44), but
+   "at least one expected field moved" is still not "the change happened": a
+   payload where `description` landed and `meta._elementor_data` silently did not
+   returned `ok:true, verified:true, noop:false` with the tree unreadable in its
+   own fingerprint. Four product fixes were reported clean with untouched
+   Elementor trees. `safeWrite` now fingerprints the payload too and returns
+   **`unlanded`** — expected fields the payload asked to change that did not move
+   — with `verified` requiring it empty.
+3. **An incomplete source ran the check and lied.** A `before` carrying only
+   `_elementor_data` left the source side of `no_new_tables` empty, so a page's
+   long-standing `<table>` was reported as newly introduced.
+4. **…and a latent third case**, found while fixing 3: a **meta-only** write
+   against a source whose body had two images failed `image_count_parity`
+   (`0 <img> vs source 2`).
+
+Body-level checks now compare only the fields **both** sides carry, and skip with
+a reason when there are none. Tests: `validate-payload.test.mjs` 107 → 126,
+`safe-write.test.mjs` 24 → 36; against the pre-fix code the new validator
+assertions fail 16 times. Fingerprints `8ab3fdd35671` / `cdd1502769db`.
+
 WhatsApp correspondence had been importable since V8.2, but only the hard way:
 open `WhatsAppImport.jsx`, hand-pick a `.zip` per chat, match it to a contact,
 repeat. This cycle turned that into a folder you drop exports into, fixed the
