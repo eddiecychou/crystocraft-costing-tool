@@ -1,6 +1,6 @@
 import JSZip from 'jszip'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, getDocs } from 'firebase/firestore'
 import { db, storage, authedUser } from '../firebase'
 import { findOrCreateLeadByPhone, idFromPhone } from './marketingContact'
 
@@ -318,6 +318,47 @@ export async function undoMigrateLegacyThread({ collectionName, parentId, legacy
   await deleteDoc(dstRef)
   await updateDoc(srcRef, { migrated_to: deleteField(), migrated_at: deleteField() })
   return { restored: legacyId, removed: newId }
+}
+
+// One-time scan for legacy (filename-keyed, unattributed) threads across every
+// customer and marketing contact, for the migration review view. There is no
+// whatsapp_threads collection-group rule, so this is a per-parent scan (same
+// posture as whatsappSummaryApi's candidate scan). Sequential is fine for a
+// one-time action; onProgress({done,total}) lets the UI show progress.
+export async function loadLegacyWhatsappThreads(onProgress) {
+  const rows = []
+  const customersSnap = await getDocs(collection(db, 'customers'))
+  const leadsSnap = await getDocs(collection(db, 'marketing_contacts'))
+  const total = customersSnap.size + leadsSnap.size
+  let done = 0
+  const tick = () => { done++; onProgress?.({ done, total }) }
+
+  const collect = (kind, parentId, displayName, snap) => {
+    for (const t of snap.docs) {
+      const d = t.data()
+      if (isLegacyThread(d) && !isMigratedThread(d)) {
+        rows.push({
+          kind, parentId, displayName, legacyId: t.id,
+          subject: d.subject, channel: d.channel,
+          message_count: d.message_count, date_range: d.date_range,
+        })
+      }
+    }
+  }
+
+  for (const c of customersSnap.docs) {
+    const snap = await getDocs(collection(db, 'customers', c.id, 'whatsapp_threads'))
+    collect('customer', c.id, c.data().company_name || c.id, snap)
+    tick()
+  }
+  for (const l of leadsSnap.docs) {
+    const d = l.data()
+    const name = [d.first_name, d.last_name].filter(Boolean).join(' ') || d.company || d.phone || l.id
+    const snap = await getDocs(collection(db, 'marketing_contacts', l.id, 'whatsapp_threads'))
+    collect('lead', l.id, name, snap)
+    tick()
+  }
+  return rows
 }
 
 // Whether this (account × contact) conversation has already been imported for

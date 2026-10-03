@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Upload, Check, AlertCircle, Loader2, Mic, Plus, X, RefreshCw, Sparkles } from 'lucide-react'
 import { useCustomers, CHANNELS, CRM_CATEGORIES, CUSTOMER_COUNTRIES, saveCustomer } from '../domain/customer'
-import { previewWhatsAppZip, importWhatsAppZip, findExistingThread } from '../domain/whatsappImport'
+import { previewWhatsAppZip, importWhatsAppZip, findExistingThread, loadLegacyWhatsappThreads, migrateLegacyThread, undoMigrateLegacyThread } from '../domain/whatsappImport'
 import { loadWhatsappSummaryCandidates, loadContactWhatsappSummaryCandidates, generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 
 // V8.2 — bulk uploader for WhatsApp's own "Export Chat" .zip files (Business
@@ -520,6 +520,152 @@ function ContactSummaryScanSection() {
   )
 }
 
+// One-time migration review for legacy (filename-keyed, pre-§5.1) WhatsApp
+// threads. Re-keys each to the account×contact id via migrateLegacyThread
+// (safe: never hard-deletes the source; undoable via undoMigrateLegacyThread).
+// Account defaults to the thread's existing channel; contact is always an
+// explicit pick (never auto-selected). Run this BEFORE importing new chats so
+// a re-import updates the migrated thread instead of duplicating it.
+function LegacyThreadsSection({ customers }) {
+  const [rows, setRows] = useState(null) // null = not scanned yet
+  const [scanning, setScanning] = useState(false)
+  const [progress, setProgress] = useState(null) // { done, total }
+  const [scanError, setScanError] = useState('')
+  const [selections, setSelections] = useState({}) // key -> { channel, contactId }
+  const [states, setStates] = useState({}) // key -> { status, newId?, error? }
+
+  const rowKey = r => `${r.kind}:${r.parentId}:${r.legacyId}`
+
+  async function handleScan() {
+    setScanning(true); setScanError(''); setProgress(null)
+    try {
+      const list = await loadLegacyWhatsappThreads(({ done, total }) => setProgress({ done, total }))
+      setRows(list)
+      const seed = {}
+      for (const r of list) seed[rowKey(r)] = { channel: r.channel || 'WhatsApp Business', contactId: null }
+      setSelections(seed)
+      setStates({})
+    } catch (e) {
+      setScanError(e.message || 'Could not scan legacy threads.')
+    } finally {
+      setScanning(false); setProgress(null)
+    }
+  }
+
+  async function handleMigrate(r) {
+    const key = rowKey(r)
+    const sel = selections[key] || {}
+    const collectionName = r.kind === 'lead' ? 'marketing_contacts' : 'customers'
+    const contactId = r.kind === 'lead' ? r.parentId : sel.contactId
+    setStates(s => ({ ...s, [key]: { status: 'migrating' } }))
+    try {
+      const res = await migrateLegacyThread({ collectionName, parentId: r.parentId, legacyId: r.legacyId, account: sel.channel, contactId })
+      setStates(s => ({ ...s, [key]: { status: 'done', ...res } }))
+    } catch (e) {
+      setStates(s => ({ ...s, [key]: { status: 'error', error: e.message } }))
+    }
+  }
+
+  async function handleUndo(r) {
+    const key = rowKey(r)
+    const st = states[key]
+    if (!st?.newId) return
+    const collectionName = r.kind === 'lead' ? 'marketing_contacts' : 'customers'
+    setStates(s => ({ ...s, [key]: { status: 'undoing' } }))
+    try {
+      await undoMigrateLegacyThread({ collectionName, parentId: r.parentId, legacyId: r.legacyId, newId: st.newId })
+      setStates(s => { const next = { ...s }; delete next[key]; return next })
+    } catch (e) {
+      setStates(s => ({ ...s, [key]: { status: 'error', error: e.message } }))
+    }
+  }
+
+  return (
+    <div className="card p-5 mt-8">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 className="text-sm text-ink-80">Re-key legacy WhatsApp threads</h2>
+        <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
+          {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          {rows ? 'Re-scan' : 'Scan for legacy threads'}
+        </button>
+      </div>
+      <p className="text-xs text-ink-60 mb-3">
+        Threads imported before contact attribution were keyed by filename, so two people can collide and re-imports can duplicate.
+        Re-key each to its account and contact person — safe and undoable — before importing new chats.
+      </p>
+
+      {scanning && (
+        <p className="text-xs text-brand-600">
+          Scanning{progress ? ` (${progress.done}/${progress.total})` : '…'}
+        </p>
+      )}
+      {scanError && <p className="text-xs text-red-600">{scanError}</p>}
+
+      {rows && rows.length === 0 && (
+        <p className="text-sm text-ink-60">No legacy threads — everything is already attributed. You're clear to import.</p>
+      )}
+
+      {rows && rows.length > 0 && (
+        <div className="divide-y divide-warm-grey border-t border-warm-grey">
+          {rows.map(r => {
+            const key = rowKey(r)
+            const sel = selections[key] || { channel: r.channel || 'WhatsApp Business', contactId: null }
+            const st = states[key]
+            const contacts = r.kind === 'customer' ? (customers.find(c => c.id === r.parentId)?.contacts || []) : []
+            const canMigrate = r.kind === 'lead' ? true : !!sel.contactId
+            return (
+              <div key={key} className="py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-ink">
+                      {r.displayName} <span className="text-ink-60">· {r.subject || r.legacyId}</span>
+                    </p>
+                    <p className="text-xs text-ink-60 mt-0.5">
+                      {r.channel} · {r.message_count} message{r.message_count === 1 ? '' : 's'}
+                      {r.date_range?.length === 2 && ` · ${fmtDate(r.date_range[0])} – ${fmtDate(r.date_range[1])}`}
+                    </p>
+                  </div>
+                  {!st && <span className="shrink-0 text-2xs font-normal uppercase tracking-wide rounded-none px-1 py-0.5 text-amber-600 bg-amber-50">Legacy</span>}
+                </div>
+
+                {st?.status === 'done' ? (
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <span className="text-xs text-green-700">Migrated → {st.newId}</span>
+                    <button type="button" onClick={() => handleUndo(r)} disabled={st.status === 'undoing'} className="btn-secondary text-xs px-2.5 py-1">
+                      {st.status === 'undoing' ? 'Undoing…' : 'Undo'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <select className="input text-sm" value={sel.channel} onChange={e => setSelections(s => ({ ...s, [key]: { ...sel, channel: e.target.value } }))}>
+                      {WA_CHANNELS.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                    {r.kind === 'customer' && (
+                      <select
+                        className={`input text-sm ${sel.contactId ? '' : 'border-amber-400'}`}
+                        value={sel.contactId || ''}
+                        onChange={e => setSelections(s => ({ ...s, [key]: { ...sel, contactId: e.target.value || null } }))}
+                      >
+                        <option value="">Select contact person…</option>
+                        {contacts.map(ct => <option key={ct.id} value={ct.id}>{[ct.name, ct.title].filter(Boolean).join(' · ') || ct.id}</option>)}
+                      </select>
+                    )}
+                    {r.kind === 'lead' && <span className="text-xs text-ink-60">lead — attributed to {r.displayName}</span>}
+                    <button type="button" onClick={() => handleMigrate(r)} disabled={!canMigrate || st?.status === 'migrating'} className="btn-primary text-xs px-3 py-1.5">
+                      {st?.status === 'migrating' ? 'Migrating…' : 'Migrate'}
+                    </button>
+                  </div>
+                )}
+                {st?.status === 'error' && <p className="text-xs text-red-600 mt-1">{st.error}</p>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function WhatsAppImport() {
   const { customers } = useCustomers()
   const [entries, setEntries] = useState([]) // { key, file, status, preview, matchMode, customerId, leadPhone, channel, error, progress }
@@ -636,6 +782,7 @@ export default function WhatsAppImport() {
         </>
       )}
 
+      <LegacyThreadsSection customers={customers} />
       <SummaryScanSection />
       <ContactSummaryScanSection />
     </div>
