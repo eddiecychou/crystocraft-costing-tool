@@ -226,6 +226,28 @@ imports of big groups are rare and the auto-import covers the real workflow.
 `src/pages/WhatsAppImport.jsx` — compare with
 `scripts/upload-whatsapp-media.mjs` and `src/pages/CustomerDetail.jsx`.
 
+## `SIMPLIFIED_JA` is still a hand-curated list
+
+L-49 replaced the zh-hant `SIMPLIFIED` guard with a derivation from OpenCC and a
+`--check` that fails on drift. The **ja** guard next to it (`SIMPLIFIED_JA` in
+`seo-control-plane/validate-payload.mjs`) is still hand-curated — it came from
+B54, where reusing the zh-hant set false-flagged ordinary Japanese kanji, so it
+was narrowed by hand to the PRC-only subset.
+
+That is the same shape of risk L-49 just demonstrated: no way to say whether any
+given character belongs, and no measurement of coverage. It is *not* the same fix
+— Japanese kanji are not a simplified/traditional mapping, so OpenCC's
+`STCharacters.txt` can't derive it the way it derives the zh-hant set; a
+plausible route is the set of characters OpenCC maps *into* Japanese-specific
+forms, or a ja dictionary (e.g. `JPVariants`/`JPShinjitaiCharacters`).
+
+Left alone because it is lower-traffic and the failure mode is a false flag on
+correct ja text rather than a silent pass of Simplified text — but it is the next
+one to measure rather than trust.
+
+**Where:** `seo-control-plane/validate-payload.mjs` (`SIMPLIFIED_JA`),
+`docs/skills/LESSONS-LEARNED.md` L-49 (the zh-hant precedent).
+
 ## Keeping this current
 
 Add an entry when you notice something like this in passing during

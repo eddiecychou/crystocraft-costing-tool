@@ -206,6 +206,26 @@ chunk changed, so compare the route chunk (or the string inside it), not
 `index-*.js`. Note also that the `portal.crystocraft.com` HTML is
 `Cache-Control`d by Netlify's CDN — allow a few seconds after `state: ready`.
 
+## The OpenCC dictionary (for the zh-hant guard)
+
+`seo-control-plane/validate-payload.mjs`'s `SIMPLIFIED` list is **derived**, not
+hand-picked (L-49), and re-deriving it needs OpenCC's `STCharacters.txt`
+(Apache-2.0, from https://github.com/BYVoid/OpenCC). A cached copy normally sits
+at:
+
+```
+"$HOME/Developer/Deepseek Workbench/.tools/opencc/STCharacters.txt"
+```
+
+Verify the committed list against it — this needs no network and no login:
+
+```
+node scripts/derive-zh-hant-simplified.mjs --check
+```
+
+It prints the derived and committed counts and exits non-zero on any difference
+(`--print` emits the canonical list; `--st <path>` points at another copy).
+
 ## The dev server serves edge functions now — don't mistake a 404 for a bug
 
 `.claude/start-dev.sh` runs `npx netlify-cli dev --offline` (not plain

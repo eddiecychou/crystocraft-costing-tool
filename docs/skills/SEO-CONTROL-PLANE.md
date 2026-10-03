@@ -135,6 +135,10 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   `widget_count` + `element_ids_preserved` (B20 stale-copy), `length_anomaly`
   (B6), `wrong_language_chars` (B33/B35 CJK leak, B6 simplified-in-zh-hant),
   `placeholder_markers` (B12; fr/ja/zh-hant coverage added **L-29**,
+  and the **zh-hant `SIMPLIFIED` guard is DERIVED from OpenCC's
+  `STCharacters.txt` — 3,803 characters, not the 193 hand-picked ones it replaced
+  (L-49)**; `scripts/derive-zh-hant-simplified.mjs --check` re-derives and fails on
+  drift, so the constant must never be hand-edited),
   2026-09-23 — was en/es/zh-hans only, missing half the languages this site
   publishes in), `brand_terms_preserved` (§3c), `sku_prefix_
   preserved` (B12), image/heading count parity (§2), `no_new_scripts/tables`,
@@ -192,11 +196,11 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
 
 This directory is also the **vendoring contract**: DSH copies both files
 verbatim and verifies the sha256[:12] fingerprint recorded in
-`seo-control-plane/README.md` (`validate-payload.mjs` = `9d5eb99c6eda`,
+`seo-control-plane/README.md` (`validate-payload.mjs` = `94ee16af51bc`,
 `safe-write.mjs` = `653305dd4fe8` after the 2026-10-03 fixes). The
 OC tells DSH when either changes (`op:'create'` re-runs the vendored validator
 server-side, so a stale copy shows up as `validation_mismatch`). Both files have
-their own `node`-runnable test: `validate-payload.test.mjs` (72 cases) and
+their own `node`-runnable test: `validate-payload.test.mjs` (107 cases) and
 `safe-write.test.mjs` (24 cases), plus `qa/seo-batch-guard.test.mjs` (13) for the
 OC-side guards. When a fix changes a *class* of bug, grep for the pattern across
 the file before declaring it done — L-47 is what happens otherwise.
@@ -228,6 +232,7 @@ CSV export of the drift/failed rows in both modes.
 | 2026-09-02 | Steps 1–4 built: `seo_state`/`seo_state_history`, `seo_batches` + `seo-batch` + `/seo-review`, `seo-control-plane/` (`validate-payload` + `safe-write`), `/seo-reconcile`. |
 | 2026-09-23 | **L-29** — `placeholder_markers` extended to fr/ja/zh-hant (was en/es/zh-hans only). |
 | 2026-10-03 | **Two control-plane defects raised by DSH while staging a WordPress write, both fixed here.** (1) A payload-less item was accepted, wrote nothing, and returned `ok:true/verified:true` → the batch reported `executed`. `create` now rejects an empty payload (400), and `safeWrite` returns `verified`/`noop` (gate on `verified`, not `ok`) with `op:'result'` marking such a batch `partial`. (2) Image/heading parity was unsatisfiable for Elementor edits because a live entity's `.rendered` page was compared against a raw payload body — both sides now go through `contentString()`, which prefers `.raw`, as do `no_new_scripts`/`no_new_tables`. DSH re-vendors both files (sha256[:12] fingerprint in `seo-control-plane/README.md`) and drops its `before.content` workaround. See `LESSONS-LEARNED.md` L-44 / L-45. |
+| 2026-10-03 | **L-49 — the zh-hant `SIMPLIFIED` guard replaced with a derived list.** The 193 hand-picked characters were 4.9% of the 3,803 that OpenCC's `STCharacters.txt` marks simplified-only (missed `订 礼`, so `訂製`/`禮品` passed), contained seven valid-Traditional characters (`云 厂 叶 后 广 征 种`, so `皇后`/`征戰` were rejected) and 10 duplicates. Derived instead — and the derivation needs no exemptions, so the six previously special-cased fall out automatically. `scripts/derive-zh-hant-simplified.mjs --check` guards against drift; tests 72 → 107, and against the old guard the new suite fails 26 assertions. |
 | 2026-10-03 | **CLOSED — all three control-plane defects fixed and verified by DSH against the deployed build.** Defect 1 (empty payload / a no-op reported as `executed+verified`, L-44), defect 2's four `.rendered` call sites (L-45, L-47) and the flat/nested shape asymmetry underneath the brand-check failure (L-48 — which had also been silently disabling `widget_count` / `element_ids_preserved` / `length_anomaly` on the authoritative side). Final fingerprints: `validate-payload.mjs` `9d5eb99c6eda`, `safe-write.mjs` `653305dd4fe8`; live in OC deploy `099aa2968`. Skips are now first-class so a partial pass can never again be read as a full one. |
 | 2026-10-03 | **L-48 — DSH's third pass found the real root cause: a shape asymmetry.** `payload` is nested while `before` is flat; falling back to `before` as `source` silently disabled the three `_elementor_data` guards **and** pushed the whole Elementor JSON as source text, so the gate was wrong in both directions (skipped what matters, failed what should pass) while reporting `passed`. `normalizeEntity()` normalises both shapes inside the validator (so DSH's vendored copy is covered too, and `revalidate()` needs no change); skips are first-class (`ok:null` + reason, `{passed, checks, ran, skipped}`) and surfaced via `skipped_validation` on `create` and in `/seo-review`; a layout write with no usable source tree is blocked. Fingerprint `9d5eb99c6eda`; tests 55 → 72. |
 | 2026-10-03 | **L-47 — defect 2's fix was incomplete and DSH verified the remainder.** `payloadText()` was a fourth call site of the same bug (it fed `brand_terms_preserved` / `wrong_language_chars` / `placeholder_markers` from the built page, so the source always looked richer than the payload and brand terms read as "translated away"), and `contentString()` still fell back to `.rendered` when `.raw` was absent — the default for `wpEntity()` without `context=edit`. `contentString` is now `.raw`-only and `payloadText` uses it; an absent `.raw` makes the body-level checks **skip** rather than compare against the render. New `validate-payload.mjs` fingerprint `3bf6c751c578`; callers must fetch `source`/`before` with `context=edit`. `validate-payload.test.mjs` 49 → 55. |

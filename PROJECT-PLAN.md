@@ -180,6 +180,30 @@ the fixer thought, and says nothing about what the reporter saw. The other
 lasting change is that the gate can no longer shrink its own check set silently
 (`skipped` is reported per item, per batch and in the review UI).
 
+**Later the same day — the zh-hant guard itself was the next limiting factor
+(L-49).** The `SIMPLIFIED` list behind `wrong_language_chars` was **193
+hand-picked characters, 4.9% of the 3,803** that OpenCC's `STCharacters.txt`
+marks simplified-only. It missed `订 礼` (so `訂製` and `禮品` passed the guard)
+and it contained **seven characters that are valid Traditional** — `云 厂 叶 后
+广 征 种` (皇后, 征戰) — so it was *refusing four correct zh-hant writes*, the
+immediate complaint. It also carried 10 duplicates, which is what a list looks
+like after enough hand-editing. Replaced with the derived list (mapping changes
+it AND it never appears on the traditional side of any mapping; plus four
+orthographic variants OpenCC also normalises — `床 秘 群 峰`). The derivation
+needs **no exemption list**: the six forms B51/B53 had special-cased by hand (只
+繁 慕 谷 回 台) fall out automatically. `scripts/derive-zh-hant-simplified.mjs
+--check` re-derives from the dictionary and fails on drift, so the constant
+cannot silently rot again; `validate-payload.test.mjs` went 72 → 107, and run
+against the old guard the new suite fails 26 assertions.
+
+**Open (DSH content work, not OC code):** the scan that found this
+(`reports/zh-simplified-scan.json` on the Workbench side) lists **13 zh-hant
+items carrying Simplified characters**, including a fully-Simplified product name
+(`38612`) — and `户` in the Elementor footer template's 「客户服務」, which puts a
+Simplified character on **every one of the 882 Chinese pages**. None of it was
+visible with a 4.9%-coverage guard. New `validate-payload.mjs` fingerprint
+`94ee16af51bc`.
+
 WhatsApp correspondence had been importable since V8.2, but only the hard way:
 open `WhatsAppImport.jsx`, hand-pick a `.zip` per chat, match it to a contact,
 repeat. This cycle turned that into a folder you drop exports into, fixed the

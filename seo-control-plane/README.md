@@ -28,7 +28,7 @@ ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch
 
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-03) |
 |---|---|
-| `validate-payload.mjs` | `9d5eb99c6eda` |
+| `validate-payload.mjs` | `94ee16af51bc` |
 | `safe-write.mjs` | `653305dd4fe8` |
 
 Regenerate with
@@ -91,6 +91,26 @@ POST /api/seo-batch { op:'result', id, results }                  # → executed
 `expectedFields` uses dotted paths for `meta` (`meta._yoast_wpseo_title`,
 `meta._elementor_data`). Any `*_elementor_data` field is compared by FNV-1a
 hash, not full string.
+
+## The zh-hant guard is derived, not curated (2026-10-03, L-49)
+
+`SIMPLIFIED` is **3,803 characters derived from OpenCC's `STCharacters.txt`** —
+not a hand-picked list. It replaced a 193-character one that measured **4.9%
+coverage** (it missed `订 礼`, so `訂製`/`禮品` passed) and contained **seven
+characters that are valid Traditional** (`云 厂 叶 后 广 征 种`, as in 皇后/征戰),
+so it rejected correct text.
+
+Derivation rule: `s` is simplified-only when the mapping changes it
+(`trad[0] !== s`) **and** `s` never appears on the traditional side of any
+mapping — which excludes the ambiguous forms automatically (台 只 里 后 云 谷 回
+价 …) and needs no hand-written exemption list. `床 秘 群 峰` are additionally
+excluded because OpenCC's ST dictionary also normalises **orthographic variants**
+(`床 -> 牀`), where the left-hand character is standard Traditional.
+
+**Do not hand-edit it.** `node scripts/derive-zh-hant-simplified.mjs --check`
+re-derives from the dictionary and fails if the committed list has drifted.
+Regenerating needs `STCharacters.txt` (Apache-2.0); a cached copy normally sits at
+`"$HOME/Developer/Deepseek Workbench/.tools/opencc/STCharacters.txt"`.
 
 ## Status (2026-10-03)
 

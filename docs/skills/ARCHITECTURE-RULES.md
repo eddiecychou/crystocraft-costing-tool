@@ -368,6 +368,16 @@ boundaries the 2026-10-03 defects established.
   NOT** "fix" a check failure by trimming `source.content` to a bare string: that
   deletes the data the check exists to compare against (`validate-payload.mjs`;
   L-45, L-47).
+- **A character-class guard list MUST be derived, not hand-picked.** The zh-hant
+  `SIMPLIFIED` set is generated from OpenCC's `STCharacters.txt` and must never be
+  edited by hand: the hand-curated version it replaced covered **4.9%** of the real
+  set (so `訂製`/`禮品` passed) and contained seven characters that are valid
+  Traditional (so `皇后`/`征戰` were rejected) — a guard can be wrong in both
+  directions at once, and its *size* says nothing about its coverage.
+  `scripts/derive-zh-hant-simplified.mjs --check` **MUST** pass after any change to
+  it. Such a list **MUST** be iterated by code point (`[...s]`, `new Set(str)`) —
+  1,141 of its characters are CJK Extension-B, which `s.length` / `charCodeAt`
+  silently drop (L-49).
 - **The vendored files are OC-owned SSOT.** When `validate-payload.mjs` or
   `safe-write.mjs` changes, the sha256[:12] fingerprint table in `seo-control-plane/README.md`
   **MUST** be re-stamped in the same commit and DSH told to re-vendor. A stale
@@ -526,5 +536,6 @@ makes it real.
 | 2026-09-01 | Adopted the Magister "AI management" patterns: §1 framed as a deterministic boundary; new §7a "Measure before you change" (report before/after numbers, never "looks fine"); new §8 Deterministic boundaries (AI reports observables, code decides — Product Truth, isolation, pricing, FX, ingestion); new §9 Load-Bearing Decisions (12 rules that must not be undone, plus the honest note that "WhatsApp-first CTA" is NOT implemented so cannot be one). |
 | 2026-10-03 | New §4c "WhatsApp thread identity & intake" — thread id is `account × contact_id` (never a display name); groups are a distinct third type (`{account}__group__{slug}`); Business/Personal accounts never merge; archive→customer matching is an owner-confirmed manifest (never auto/fuzzy); the 1 MiB/doc cap forces attachment URLs to spill to `whatsapp_threads/{id}/media/urls`; every reader must skip `migrated_to` tombstones. |
 | 2026-10-03 | New §4d "WordPress writes — the SEO control plane" — `ok` (no unintended drift) is not `verified` (the intended change happened); gate on `verified` and never report a batch `executed` with an unverified item; a payload-less item is rejected 400 at `create`; an empty `expectedFields` cannot prove intent; body-level validator checks compare the **raw** body on both sides (never `.rendered`), and trimming `source.content` to a workaround is forbidden; the vendored `seo-control-plane/` files are OC-owned SSOT with a sha256[:12] re-vendoring table. Extracted from the two control-plane defects raised by DSH (L-44 / L-45). |
+| 2026-10-03 | §4d: a character-class guard list **MUST be derived, not hand-picked** — the zh-hant `SIMPLIFIED` set is generated from OpenCC's `STCharacters.txt` (3,803 characters) and verified by `scripts/derive-zh-hant-simplified.mjs --check`; the hand-curated 193 it replaced was 4.9% coverage and contained seven valid-Traditional characters. Iterate such a list by code point (1,141 Extension-B characters). L-49. |
 | 2026-10-03 | §4d extended again for L-48 — the real cause of the brand-check failure and a worse finding under it: a **field snapshot is not an entity**. `payload` is nested while `before` is flat, so falling back to `before` as the `source` silently disabled the three `_elementor_data` guards while the gate still reported `passed`. `validatePayload` now normalises both shapes, skips are first-class (`ok:null` + reason, `{passed, checks, ran, skipped}`, `skipped_validation` on `create`, listed in `/seo-review`), and a layout write with no usable source tree fails instead of skipping. A gate MUST NOT be able to shrink its check set without saying so. |
 | 2026-10-03 | §4d's raw-body rule extended after DSH verified defect 2 only *partially* fixed: the rule covers `payloadText()`'s brand/language/placeholder scans too (the fourth call site — L-47), `contentString()` is `.raw`-only so an absent `.raw` **skips** rather than falling back to `.rendered`, and callers **MUST** fetch `source`/`before` with `context=edit`. |

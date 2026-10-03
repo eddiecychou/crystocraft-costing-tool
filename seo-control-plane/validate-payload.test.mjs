@@ -1,5 +1,5 @@
 // node seo-control-plane/validate-payload.test.mjs
-import { validatePayload } from './validate-payload.mjs'
+import { validatePayload, SIMPLIFIED } from './validate-payload.mjs'
 
 let pass = 0, fail = 0
 const chk = (v) => v.checks.reduce((m, c) => (m[c.name] = c.ok, m), {})
@@ -412,6 +412,63 @@ function expect(name, cond, detail = '') {
   const sk = v.checks.find(x => x.name === 'no_new_scripts')
   expect('pre-existing script: listed as skipped with a reason', sk && sk.ok === null && /already contains/.test(sk.detail),
     JSON.stringify(v.checks))
+}
+
+// ── L-49: the zh-hant guard is DERIVED from OpenCC, not hand-picked ─────
+// The hand-curated 193-character list it replaced covered 4.9% of the real set
+// and contained seven characters that are valid Traditional. Both halves of
+// that are regressions worth pinning.
+{
+  expect('guard has 3,803 code points', [...SIMPLIFIED].length === 3803, String([...SIMPLIFIED].length))
+  expect('guard has no duplicates', new Set([...SIMPLIFIED]).size === 3803)
+
+  // covered now, missed by the 193-char list — incl. 訂製 / 禮品, the two
+  // likeliest slips in a corporate-gift vocabulary
+  for (const s of '订礼记师员务学爱给会时关') {
+    expect(`guard covers ${s}`, SIMPLIFIED.includes(s))
+  }
+  const v1 = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant',
+    payload: { title: '订制礼品', status: 'draft' } })
+  expect('zh-hant catches 订制礼品 (訂製/禮品 in Simplified)', chk(v1).wrong_language_chars === false, JSON.stringify(chk(v1)))
+  const ok1 = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant',
+    payload: { title: '訂製禮品', status: 'draft' } })
+  expect('zh-hant passes 訂製禮品', chk(ok1).wrong_language_chars === true, JSON.stringify(ok1.checks.filter(c => c.ok === false)))
+
+  // the seven the old list rejected — all on OpenCC's traditional side, so all
+  // ambiguous and excluded: 皇后 (后), 征戰 (征), 种氏 (种, a surname), 云云 (云),
+  // and the radicals 厂 / 广 / 叶.
+  for (const s of '云厂叶后广征种') {
+    expect(`guard does NOT reject ${s} (valid Traditional)`, !SIMPLIFIED.includes(s))
+  }
+  const v2 = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant',
+    payload: { title: '皇后親征　种氏云云　厂广叶', status: 'draft' } })
+  expect('zh-hant passes text using 后/征/种/云/厂/广/叶', chk(v2).wrong_language_chars === true,
+    JSON.stringify(v2.checks.filter(c => c.ok === false)))
+
+  // the previously special-cased six need no exemption any more — the derivation
+  // excludes them automatically
+  for (const s of '只繁慕谷回台') {
+    expect(`guard excludes ${s} (ambiguous)`, !SIMPLIFIED.includes(s))
+  }
+
+  // the site-wide footer slip: 户 in 客户服務, on every Chinese page
+  const v3 = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant',
+    payload: { title: '客户服務', status: 'draft' } })
+  expect('zh-hant catches 客户服務 (户 -> 戶)', chk(v3).wrong_language_chars === false, JSON.stringify(chk(v3)))
+  const ok3 = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant',
+    payload: { title: '客戶服務', status: 'draft' } })
+  expect('zh-hant passes 客戶服務', chk(ok3).wrong_language_chars === true)
+
+  // CJK Extension-B (astral) — 1,141 of the guard's characters are U+20000+.
+  // Iterating by UTF-16 unit instead of code point would drop all of them.
+  expect('guard covers an Extension-B character', SIMPLIFIED.includes('\u{2003E}'))
+  const v4 = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant',
+    payload: { title: '\u{2003E}', status: 'draft' } })
+  expect('zh-hant catches an Extension-B simplified character', chk(v4).wrong_language_chars === false, JSON.stringify(chk(v4)))
+  const ok4 = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant',
+    payload: { title: '\u{20000}', status: 'draft' } })
+  expect('zh-hant does not flag an Extension-B character outside the guard', chk(ok4).wrong_language_chars === true,
+    JSON.stringify(chk(ok4)))
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
