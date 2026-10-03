@@ -136,6 +136,62 @@ export function messageFingerprint(m) {
   ])
 }
 
+// Epoch-ms of a message in either shape (Date / ISO string), or null.
+function msgTs(m) {
+  const ts = m.date instanceof Date ? m.date.getTime() : (m.date ? new Date(m.date).getTime() : NaN)
+  return Number.isFinite(ts) ? ts : null
+}
+
+// §5.2/§5.3 dry-run overlap analysis — pure, testable without Firestore.
+// Compares freshly-parsed messages against the target's existing threads and
+// returns a deterministic verdict + counts the UI shows BEFORE any import:
+//   new             — no existing thread for this (account × contact)
+//   safe-update     — idempotent re-import (exact matches + new-after-high-water)
+//   overlap-review  — a same-time/same-sender edit, a mid-history difference,
+//                     or a message that already lives under ANOTHER account/contact
+//   invalid         — nothing parsed
+// It reports counts and never mutates or deletes anything (§5.3).
+export function analyzeImportOverlap({ account, contactId, messages, threads = [] }) {
+  if (!messages?.length) return { verdict: 'invalid', reason: 'no-messages' }
+
+  const target = threads.find(t => normalizeAccount(t.account) === normalizeAccount(account) && t.contact_id === contactId)
+  const others = threads.filter(t => t !== target)
+
+  const targetFps = new Set()
+  let highWater = null
+  for (const m of target?.messages || []) {
+    targetFps.add(messageFingerprint(m))
+    const ts = msgTs(m)
+    if (ts != null && (highWater === null || ts > highWater)) highWater = ts
+  }
+
+  const otherFps = new Set()
+  for (const t of others) for (const m of t.messages || []) otherFps.add(messageFingerprint(m))
+
+  let exact = 0, newAfter = 0, conflicts = 0, crossAccount = 0
+  for (const m of messages) {
+    const fp = messageFingerprint(m)
+    if (targetFps.has(fp)) { exact++; continue }
+    if (otherFps.has(fp)) { crossAccount++; continue }
+    const ts = msgTs(m)
+    if (target && highWater != null && ts != null && ts > highWater) { newAfter++; continue }
+    if (target) { conflicts++ } else { newAfter++ }
+  }
+
+  if (!target) {
+    return {
+      verdict: crossAccount > 0 ? 'overlap-review' : 'new',
+      exact, newAfter, conflicts, crossAccount,
+      targetExists: false, otherThreadCount: others.length,
+    }
+  }
+  return {
+    verdict: (conflicts > 0 || crossAccount > 0) ? 'overlap-review' : 'safe-update',
+    exact, newAfter, conflicts, crossAccount,
+    targetExists: true, targetThreadId: target.id,
+  }
+}
+
 // Parsed messages -> the Firestore doc shape. Attachment URLs are filled
 // in separately by uploadAttachments() once the caller has actually
 // uploaded each file to Storage — this function never touches Storage.
@@ -385,6 +441,27 @@ export async function findExistingThread(target, channel) {
   const importId = conversationThreadId({ account, contactId })
   const snap = await getDoc(doc(db, collectionName, parentId, 'whatsapp_threads', importId))
   return snap.exists() ? { importId, ...snap.data() } : null
+}
+
+// Dry-run a prospective import: parse the zip and run the §5.2/§5.3 overlap
+// analysis against every (non-tombstoned) thread already under the target
+// parent, WITHOUT writing anything. Returns the analyzeImportOverlap result.
+export async function analyzeWhatsappImport(file, { target, channel }) {
+  const account = normalizeAccount(channel)
+  const contactId = target.type === 'lead' ? idFromPhone(target.phone) : target.contactId
+  const collectionName = target.type === 'lead' ? 'marketing_contacts' : 'customers'
+  const parentId = target.type === 'lead' ? idFromPhone(target.phone) : target.customerId
+
+  const zip = await JSZip.loadAsync(file)
+  const chatEntry = zip.file('_chat.txt') || zip.file(/_chat\.txt$/i)?.[0]
+  if (!chatEntry) return { verdict: 'invalid', reason: 'no-chat-file' }
+  const text = await chatEntry.async('text')
+  const messages = parseWhatsAppExport(text)
+
+  const snap = await getDocs(collection(db, collectionName, parentId, 'whatsapp_threads'))
+  const threads = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => !isMigratedThread(t))
+
+  return analyzeImportOverlap({ account, contactId, messages, threads })
 }
 
 // Full pipeline for one export: parse -> resolve target -> upload

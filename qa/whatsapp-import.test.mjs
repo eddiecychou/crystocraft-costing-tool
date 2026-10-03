@@ -27,7 +27,7 @@ writeFileSync(modPath, src.replace(/^import .*\n/gm, ''))
 const {
   parseWhatsAppExport, guessContactName, looksLikePhoneNumber, threadDocId,
   buildThreadDoc, messageFingerprint, normalizeAccount, conversationThreadId,
-  isLegacyThread, isMigratedThread, planMigration,
+  isLegacyThread, isMigratedThread, planMigration, analyzeImportOverlap,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -163,6 +163,32 @@ const check = (name, cond, detail = '') => {
   check('planMigration: tombstoned source rejected', planMigration({ legacyExists: true, sourceData: { ...legacy, migrated_to: 'business__c_1' }, targetExists: false }).reason === 'already-migrated')
   check('planMigration: existing target rejected (no clobber)', planMigration({ legacyExists: true, sourceData: legacy, targetExists: true }).reason === 'target-exists')
   check('isMigratedThread flags a tombstone, not a normal thread', isMigratedThread({ migrated_to: 'business__c_1' }) === true && isMigratedThread(legacy) === false)
+}
+
+// ── §5.2/§5.3 dry-run overlap analysis ────────────────────────────────────
+{
+  const T = n => Date.parse('2024-05-12T02:00:00.000Z') + n * 60000 // minute steps
+  const mkMsg = (ts, body) => ({ date: new Date(ts), sender: 'Annie Fan', body, attachment_filename: null })
+  const storedMsg = (ts, body) => ({ date: new Date(ts).toISOString(), from: 'Annie Fan', body_text: body, attachment_filename: null })
+
+  check('invalid when nothing parsed', analyzeImportOverlap({ account: 'business', contactId: 'c_1', messages: [], threads: [] }).verdict === 'invalid')
+
+  const fresh = analyzeImportOverlap({ account: 'business', contactId: 'c_1', messages: [mkMsg(T(0), 'hi')], threads: [] })
+  check('no target -> new', fresh.verdict === 'new' && fresh.newAfter === 1, JSON.stringify(fresh))
+
+  const target = { id: 'business__c_1', account: 'business', contact_id: 'c_1', messages: [storedMsg(T(0), 'hi')] }
+  const exactRun = analyzeImportOverlap({ account: 'business', contactId: 'c_1', messages: [mkMsg(T(0), 'hi')], threads: [target] })
+  check('exact re-import -> safe-update', exactRun.verdict === 'safe-update' && exactRun.exact === 1 && exactRun.newAfter === 0)
+
+  const upd = analyzeImportOverlap({ account: 'business', contactId: 'c_1', messages: [mkMsg(T(0), 'hi'), mkMsg(T(1), 'newer')], threads: [target] })
+  check('exact + new-after-high-water -> safe-update', upd.verdict === 'safe-update' && upd.exact === 1 && upd.newAfter === 1)
+
+  const edit = analyzeImportOverlap({ account: 'business', contactId: 'c_1', messages: [mkMsg(T(0), 'edited body')], threads: [target] })
+  check('same-time different body -> overlap-review', edit.verdict === 'overlap-review' && edit.conflicts === 1, JSON.stringify(edit))
+
+  const other = { id: 'personal__c_1', account: 'personal', contact_id: 'c_1', messages: [storedMsg(T(0), 'hi')] }
+  const cross = analyzeImportOverlap({ account: 'business', contactId: 'c_1', messages: [mkMsg(T(0), 'hi')], threads: [other] })
+  check('message already in another account -> overlap-review', cross.verdict === 'overlap-review' && cross.crossAccount === 1 && cross.targetExists === false, JSON.stringify(cross))
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

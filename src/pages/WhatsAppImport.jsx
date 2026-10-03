@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Upload, Check, AlertCircle, Loader2, Mic, Plus, X, RefreshCw, Sparkles } from 'lucide-react'
 import { useCustomers, CHANNELS, CRM_CATEGORIES, CUSTOMER_COUNTRIES, saveCustomer } from '../domain/customer'
-import { previewWhatsAppZip, importWhatsAppZip, findExistingThread, loadLegacyWhatsappThreads, migrateLegacyThread, undoMigrateLegacyThread } from '../domain/whatsappImport'
+import { previewWhatsAppZip, importWhatsAppZip, analyzeWhatsappImport, loadLegacyWhatsappThreads, migrateLegacyThread, undoMigrateLegacyThread } from '../domain/whatsappImport'
 import { loadWhatsappSummaryCandidates, loadContactWhatsappSummaryCandidates, generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 
 // V8.2 — bulk uploader for WhatsApp's own "Export Chat" .zip files (Business
@@ -106,7 +106,7 @@ function NewCustomerInline({ prefillWhatsapp, defaultChannel, onCreated, onCance
   )
 }
 
-function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChangeMode, onChangeLeadPhone, onChangeContact, onImport }) {
+function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChangeMode, onChangeLeadPhone, onChangeContact, onReviewed, onImport }) {
   const [customerSearch, setCustomerSearch] = useState('')
   const [customerOpen, setCustomerOpen] = useState(false)
   const [creatingNew, setCreatingNew] = useState(false)
@@ -133,21 +133,29 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
 
   const canImport = entry.matchMode === 'lead' ? !!entry.leadPhone?.trim() : !!(entry.customerId && entry.contactId)
 
-  // Duplicate check — re-importing the same file for the same target is
-  // safe either way (the doc id is deterministic, so it updates rather
-  // than duplicates), but the admin should know BEFORE hitting Import
-  // again, not discover it only after. Re-checks whenever the target
-  // actually changes; never creates anything itself.
-  const [existing, setExisting] = useState(undefined) // undefined = not checked yet, null = no existing thread
-  useEffect(() => {
-    if (entry.status !== 'ready' || !canImport) { setExisting(undefined); return }
-    let cancelled = false
+  // §5.2 dry-run review — analyzeWhatsappImport parses + runs the overlap
+  // analysis (no writes). Import is gated on the verdict: 'new'/'safe-update'
+  // proceed; 'overlap-review' blocks with counts for a human to resolve.
+  const [review, setReview] = useState(null) // { status:'reviewing'|'done'|'error', result?, error? }
+  useEffect(() => { setReview(null) }, [entry.customerId, entry.contactId, entry.leadPhone, entry.channel, entry.matchMode])
+
+  async function handleReview() {
     const target = entry.matchMode === 'lead'
       ? { type: 'lead', phone: entry.leadPhone }
       : { type: 'customer', customerId: entry.customerId, contactId: entry.contactId }
-    findExistingThread(target, entry.channel).then(r => { if (!cancelled) setExisting(r) })
-    return () => { cancelled = true }
-  }, [entry.status, entry.matchMode, entry.customerId, entry.contactId, entry.leadPhone, entry.channel, canImport])
+    setReview({ status: 'reviewing' })
+    try {
+      const result = await analyzeWhatsappImport(entry.file, { target, channel: entry.channel })
+      setReview({ status: 'done', result })
+      onReviewed(result.verdict)
+    } catch (e) {
+      setReview({ status: 'error', error: e.message })
+      onReviewed(null)
+    }
+  }
+
+  const reviewed = review?.status === 'done' ? review.result : null
+  const importable = !!reviewed && (reviewed.verdict === 'new' || reviewed.verdict === 'safe-update')
 
   return (
     <div className="card p-4 space-y-3">
@@ -283,19 +291,42 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
               Saved under Marketing Contacts (not Customers) — matched or created by this phone number.
             </p>
           )}
-          {existing && (
-            <p className="text-xs text-amber-600 flex items-center gap-1">
-              <RefreshCw size={11} />
-              Already imported ({existing.message_count} message{existing.message_count === 1 ? '' : 's'}, {fmtDate(existing.imported_at?.toDate?.())}) — importing again will update this thread, not duplicate it.
-            </p>
+          {reviewed && (
+            <div className="text-xs rounded-none border border-warm-grey bg-ivory p-2 space-y-1">
+              {reviewed.verdict === 'new' && (
+                <p className="text-green-700">New thread — {reviewed.newAfter} message{reviewed.newAfter === 1 ? '' : 's'} to import.</p>
+              )}
+              {reviewed.verdict === 'safe-update' && (
+                <p className="text-green-700">Updates an existing thread — {reviewed.exact} already imported, {reviewed.newAfter} new.</p>
+              )}
+              {reviewed.verdict === 'overlap-review' && (
+                <>
+                  <p className="text-amber-700">Overlap — resolve before importing.</p>
+                  <p className="text-ink-60">
+                    {reviewed.exact} exact · {reviewed.newAfter} new · {reviewed.conflicts} conflict{reviewed.conflicts === 1 ? '' : 's'} · {reviewed.crossAccount} cross-account
+                    {reviewed.otherThreadCount > 0 && ` (${reviewed.otherThreadCount} other thread${reviewed.otherThreadCount === 1 ? '' : 's'})`}
+                  </p>
+                </>
+              )}
+              {reviewed.verdict === 'invalid' && (
+                <p className="text-red-600">Nothing to import{reviewed.reason ? ` — ${reviewed.reason}` : ''}.</p>
+              )}
+            </div>
           )}
+          {review?.status === 'error' && <p className="text-xs text-red-600">{review.error}</p>}
         </>
       )}
 
       {entry.status === 'ready' && (
-        <button type="button" onClick={onImport} disabled={!canImport} className="btn-primary text-sm w-full sm:w-auto">
-          {existing ? 'Re-import (update)' : 'Import'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={handleReview} disabled={!canImport || review?.status === 'reviewing'} className="btn-secondary text-sm inline-flex items-center gap-1.5">
+            {review?.status === 'reviewing' && <Loader2 size={13} className="animate-spin" />}
+            {reviewed ? 'Re-review' : 'Review'}
+          </button>
+          <button type="button" onClick={onImport} disabled={!importable} className="btn-primary text-sm">
+            {reviewed?.verdict === 'safe-update' ? 'Re-import (update)' : 'Import'}
+          </button>
+        </div>
       )}
       {entry.status === 'importing' && (
         <p className="text-sm text-brand-600 flex items-center gap-2">
@@ -677,7 +708,7 @@ export default function WhatsAppImport() {
       key: `${file.name}-${file.size}-${file.lastModified}`,
       file, status: 'parsing', preview: null,
       matchMode: 'customer', customerId: null, contactId: null, leadPhone: '',
-      channel: 'WhatsApp Business', error: null, progress: null,
+      channel: 'WhatsApp Business', error: null, progress: null, reviewVerdict: null,
     }))
     setEntries(prev => [...prev, ...newEntries.filter(e => !prev.some(p => p.key === e.key))])
 
@@ -726,12 +757,14 @@ export default function WhatsAppImport() {
   }
 
   const readyCount = entries.filter(e =>
-    e.status === 'ready' && (e.matchMode === 'lead' ? e.leadPhone?.trim() : !!(e.customerId && e.contactId))
+    e.status === 'ready' && (e.matchMode === 'lead' ? e.leadPhone?.trim() : !!(e.customerId && e.contactId)) &&
+    (e.reviewVerdict === 'new' || e.reviewVerdict === 'safe-update')
   ).length
 
   async function handleImportAll() {
     for (const entry of entries) {
-      const ready = entry.status === 'ready' && (entry.matchMode === 'lead' ? entry.leadPhone?.trim() : !!(entry.customerId && entry.contactId))
+      const ready = entry.status === 'ready' && (entry.matchMode === 'lead' ? entry.leadPhone?.trim() : !!(entry.customerId && entry.contactId)) &&
+        (entry.reviewVerdict === 'new' || entry.reviewVerdict === 'safe-update')
       if (ready) await handleImport(entry)
     }
   }
@@ -771,11 +804,12 @@ export default function WhatsAppImport() {
                 key={entry.key}
                 entry={entry}
                 customers={customers}
-                onChangeCustomer={id => updateEntry(entry.key, { customerId: id, contactId: null })}
-                onChangeContact={cid => updateEntry(entry.key, { contactId: cid })}
-                onChangeChannel={ch => updateEntry(entry.key, { channel: ch })}
-                onChangeMode={m => updateEntry(entry.key, { matchMode: m, contactId: null })}
-                onChangeLeadPhone={phone => updateEntry(entry.key, { leadPhone: phone })}
+                onChangeCustomer={id => updateEntry(entry.key, { customerId: id, contactId: null, reviewVerdict: null })}
+                onChangeContact={cid => updateEntry(entry.key, { contactId: cid, reviewVerdict: null })}
+                onChangeChannel={ch => updateEntry(entry.key, { channel: ch, reviewVerdict: null })}
+                onChangeMode={m => updateEntry(entry.key, { matchMode: m, contactId: null, reviewVerdict: null })}
+                onChangeLeadPhone={phone => updateEntry(entry.key, { leadPhone: phone, reviewVerdict: null })}
+                onReviewed={v => updateEntry(entry.key, { reviewVerdict: v })}
                 onImport={() => handleImport(entry)}
               />
             ))}
