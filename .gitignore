@@ -43,6 +43,9 @@ LocalWeb/
 qa/*-preview-seeded.js
 qa/*-preview-seeded.css
 qa/*-preview-seeded.html
+qa/whatsapp-import-preview.js
+qa/whatsapp-import-preview.css
+qa/whatsapp-import-preview.html
 qa/*-VXBWXKA3*
 qa/*-????????.jpg
 qa/*-????????.png
@@ -71,3 +74,6 @@ firestore-debug.log
 firebase-debug.log
 ui-debug.log
 *-debug.log
+
+# playwright-core scratch install for qa/ browser smoke tests
+.qa-playwright/
