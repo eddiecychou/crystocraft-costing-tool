@@ -27,7 +27,7 @@ writeFileSync(modPath, src.replace(/^import .*\n/gm, ''))
 const {
   parseWhatsAppExport, guessContactName, looksLikePhoneNumber, threadDocId,
   buildThreadDoc, messageFingerprint, normalizeAccount, conversationThreadId,
-  isLegacyThread,
+  isLegacyThread, isMigratedThread, planMigration,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -151,6 +151,18 @@ const check = (name, cond, detail = '') => {
   const legacy = buildThreadDoc({ zipFileName: 'WhatsApp Chat - Annie Fan.zip', channel: 'WhatsApp Business', messages: msgs })
   check('pre-§5.1 call (no account/contact) leaves them null', legacy.account === null && legacy.contact_id === null && legacy.matched_by === null)
   check('thread without account/contact_id is flagged legacy', isLegacyThread(legacy) === true)
+}
+
+// ── §5.1 migration decision (pure) + tombstone flag ──────────────────────
+{
+  const legacy = { subject: 'Annie Fan', channel: 'WhatsApp Business', message_count: 3 }
+  const attributed = { subject: 'Annie Fan', account: 'business', contact_id: 'c_abc123' }
+  check('planMigration: ok for a legacy thread with a free target', planMigration({ legacyExists: true, sourceData: legacy, targetExists: false }).ok === true)
+  check('planMigration: missing source rejected', planMigration({ legacyExists: false, sourceData: null, targetExists: false }).reason === 'missing')
+  check('planMigration: already-attributed source rejected', planMigration({ legacyExists: true, sourceData: attributed, targetExists: false }).reason === 'already-attributed')
+  check('planMigration: tombstoned source rejected', planMigration({ legacyExists: true, sourceData: { ...legacy, migrated_to: 'business__c_1' }, targetExists: false }).reason === 'already-migrated')
+  check('planMigration: existing target rejected (no clobber)', planMigration({ legacyExists: true, sourceData: legacy, targetExists: true }).reason === 'target-exists')
+  check('isMigratedThread flags a tombstone, not a normal thread', isMigratedThread({ migrated_to: 'business__c_1' }) === true && isMigratedThread(legacy) === false)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

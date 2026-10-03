@@ -129,7 +129,7 @@ export async function loadWhatsappSummaryCandidates() {
   for (const c of customers) {
     const snap = await getDocs(collection(db, 'customers', c.id, 'whatsapp_threads'))
     if (snap.empty) continue
-    const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    const threads = snap.docs.filter(d => !d.data().migrated_to).map(d => ({ id: d.id, ...d.data() }))
     const currentCount = totalMessageCount(threads)
     const existing = c.whatsapp_summary
     const upToDate = existing && existing.message_count === currentCount
@@ -177,7 +177,7 @@ export async function loadContactWhatsappSummaryCandidates(onProgress) {
       const data = c.data()
       const snap = await getDocs(collection(db, 'marketing_contacts', c.id, 'whatsapp_threads'))
       if (snap.empty) return null
-      const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      const threads = snap.docs.filter(d => !d.data().migrated_to).map(d => ({ id: d.id, ...d.data() }))
       const currentCount = totalMessageCount(threads)
       const existing = data.whatsapp_summary
       const upToDate = existing && existing.message_count === currentCount

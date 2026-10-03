@@ -670,7 +670,9 @@ export default function CustomerDetail() {
   const [transcribeLang, setTranscribeLang] = useState({}) // `${threadId}:${index}` -> Deepgram language code, per-message since a thread can mix languages
   useEffect(() => {
     return onSnapshot(collection(db, 'customers', id, 'whatsapp_threads'), snap => {
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      const all = snap.docs
+        .filter(d => !d.data().migrated_to) // skip re-keyed tombstones (migrateLegacyThread)
+        .map(d => ({ id: d.id, ...d.data() }))
       all.sort((a, b) => String(b.date_range?.[1] || '').localeCompare(String(a.date_range?.[1] || '')))
       setWhatsappThreads(all)
     })
@@ -693,7 +695,7 @@ export default function CustomerDetail() {
     if (!linkedContactIds.length) { setLinkedWhatsappThreads({}); return }
     const unsubs = linkedContactIds.map(contactId =>
       onSnapshot(collection(db, 'marketing_contacts', contactId, 'whatsapp_threads'), snap => {
-        const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        const threads = snap.docs.filter(d => !d.data().migrated_to).map(d => ({ id: d.id, ...d.data() }))
         setLinkedWhatsappThreads(prev => ({ ...prev, [contactId]: threads }))
       })
     )

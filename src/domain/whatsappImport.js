@@ -1,6 +1,6 @@
 import JSZip from 'jszip'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore'
 import { db, storage, authedUser } from '../firebase'
 import { findOrCreateLeadByPhone, idFromPhone } from './marketingContact'
 
@@ -246,6 +246,78 @@ export function conversationThreadId({ account, contactId }) {
 // import is allowed to touch them.
 export function isLegacyThread(threadDoc) {
   return !threadDoc || !threadDoc.contact_id || !threadDoc.account
+}
+
+// A tombstoned thread (re-keyed by migrateLegacyThread) carries migrated_to —
+// readers skip these so a migrated thread never shows/counts twice.
+export function isMigratedThread(threadDoc) {
+  return !!threadDoc?.migrated_to
+}
+
+// Pure decision helper for migrateLegacyThread — the safety-relevant checks
+// live here so they're unit-testable without Firestore. Returns { ok: true }
+// or { ok: false, reason }. Reasons: missing / already-attributed /
+// already-migrated / target-exists.
+export function planMigration({ legacyExists, sourceData, targetExists }) {
+  if (!legacyExists) return { ok: false, reason: 'missing' }
+  if (!isLegacyThread(sourceData)) return { ok: false, reason: 'already-attributed' }
+  if (sourceData?.migrated_to) return { ok: false, reason: 'already-migrated' }
+  if (targetExists) return { ok: false, reason: 'target-exists' }
+  return { ok: true }
+}
+
+// Re-key a legacy (filename-keyed) thread to the §5.1 account×contact id.
+// Safe-by-construction and undoable: it NEVER hard-deletes the source — it
+// writes the new attributed doc, VERIFIES it persisted, then tombstones the
+// source with migrated_to/migrated_at (the source stays as its own undo
+// backup). Readers skip migrated_to docs. undoMigrateLegacyThread reverses it.
+export async function migrateLegacyThread({ collectionName, parentId, legacyId, account, contactId, matchedBy = 'migrated' }) {
+  const newId = conversationThreadId({ account, contactId })
+  const srcRef = doc(db, collectionName, parentId, 'whatsapp_threads', legacyId)
+  const dstRef = doc(db, collectionName, parentId, 'whatsapp_threads', newId)
+
+  const srcSnap = await getDoc(srcRef)
+  const src = srcSnap.exists() ? srcSnap.data() : null
+  const dstSnap = await getDoc(dstRef)
+  const plan = planMigration({ legacyExists: srcSnap.exists(), sourceData: src, targetExists: dstSnap.exists() })
+  if (!plan.ok) throw new Error(`Cannot migrate: ${plan.reason}`)
+
+  // 1. Write the new (attributed) doc — full copy + attribution + lineage.
+  await setDoc(dstRef, {
+    ...src,
+    account: normalizeAccount(account),
+    contact_id: contactId,
+    matched_by: matchedBy,
+    migrated_from: legacyId,
+    migrated_at: serverTimestamp(),
+  })
+
+  // 2. Verify the new doc persisted BEFORE touching the source.
+  if (!(await getDoc(dstRef)).exists()) {
+    throw new Error('Migration write did not persist — source left untouched.')
+  }
+
+  // 3. Tombstone the source (keeps full content for undo; readers skip it).
+  await updateDoc(srcRef, { migrated_to: newId, migrated_at: serverTimestamp() })
+
+  return { legacyId, newId }
+}
+
+// Reverse migrateLegacyThread: delete the migrated doc and clear the source's
+// tombstone marker, restoring the legacy thread exactly as it was (its content
+// was never destroyed). Requires the tombstone marker to be present.
+export async function undoMigrateLegacyThread({ collectionName, parentId, legacyId, newId }) {
+  const srcRef = doc(db, collectionName, parentId, 'whatsapp_threads', legacyId)
+  const dstRef = doc(db, collectionName, parentId, 'whatsapp_threads', newId)
+
+  const srcSnap = await getDoc(srcRef)
+  if (!srcSnap.exists() || !srcSnap.data().migrated_to) {
+    throw new Error('Nothing to undo — the legacy thread has no migration marker.')
+  }
+
+  await deleteDoc(dstRef)
+  await updateDoc(srcRef, { migrated_to: deleteField(), migrated_at: deleteField() })
+  return { restored: legacyId, removed: newId }
 }
 
 // Whether this (account × contact) conversation has already been imported for

@@ -148,7 +148,7 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
   useEffect(() => setSummary(whatsappSummary || null), [whatsappSummary])
   useEffect(() => {
     return onSnapshot(collection(db, 'marketing_contacts', contactId, 'whatsapp_threads'), snap => {
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      const all = snap.docs.filter(d => !d.data().migrated_to).map(d => ({ id: d.id, ...d.data() }))
       all.sort((a, b) => String(b.date_range?.[1] || '').localeCompare(String(a.date_range?.[1] || '')))
       setThreads(all)
     })
