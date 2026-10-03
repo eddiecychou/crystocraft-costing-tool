@@ -4,6 +4,20 @@
     { "file": "WhatsApp Chat - Annie Fan.zip", "type": "customer", "customerId": "KMQ4NVN3NK7edzkOm5Qk", "contactId": "legacy", "channel": "WhatsApp Business" },
     { "file": "WhatsApp Chat - Ayako - WestK.zip", "type": "customer", "customerId": "6yKENXdmWE2AOdfShlR6", "contactId": "legacy", "channel": "WhatsApp Business" },
     { "file": "WhatsApp Chat - Mandy Zheng.zip", "type": "customer", "customerId": "4F3WqlzbVqGhDxi6jPj8", "contactId": "c_mufdvw4m1her1s", "channel": "WhatsApp Business" },
-    { "file": "WhatsApp Chat - Heymans Ho.zip", "type": "customer", "customerId": "DRqtVBnLhTKVyS5fjOZi", "contactId": "legacy", "channel": "Personal WhatsApp" }
+
+    { "file": "WhatsApp Chat - Heymans Ho.zip", "type": "customer", "customerId": "DRqtVBnLhTKVyS5fjOZi", "contactId": "legacy", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Benjamin Chiu.zip", "type": "customer", "customerId": "ex2txASzr3ogofbKJOkf", "contactId": "legacy", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Curry.zip", "type": "customer", "customerId": "LuP6VMDE6peYxMrR93sO", "contactId": "c_mtv4m82hk22mqv", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Estella - Sunlife.zip", "type": "customer", "customerId": "YkMzdlolkZCFjhZT2DKW", "contactId": "c_msgdrfywjzj2io", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Intertek Sweden Event Gift.zip", "type": "group", "customerId": "AxyOSSEtGkoyPsA7FiYf", "groupName": "Intertek Sweden Event Gift", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Jan Chan.zip", "type": "customer", "customerId": "LuP6VMDE6peYxMrR93sO", "contactId": "c_f170b2c4", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Joe Feder.zip", "type": "customer", "customerId": "pGxeXwt4k0KVCPSEZBKD", "contactId": "legacy", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Karina.zip", "type": "customer", "customerId": "YkMzdlolkZCFjhZT2DKW", "contactId": "legacy", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Leo Wong.zip", "type": "customer", "customerId": "WPtYZ6nAxQvXAFfsovQE", "contactId": "legacy", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Luan Poon.zip", "type": "customer", "customerId": "uwGgEz2gX7Bnfw1cupTQ", "contactId": "legacy", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Prestige x UA.zip", "type": "group", "customerId": "fxz0PqsNKOvOHJ9aPPDc", "groupName": "Prestige x UA", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Rex Wong.zip", "type": "customer", "customerId": "2myEUZajmqu54Fcpf1sA", "contactId": "legacy", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Tracie.zip", "type": "customer", "customerId": "PUXhDp59bmUwpknYnGls", "contactId": "c_msgefrx74nlvrl", "channel": "Personal WhatsApp" },
+    { "file": "WhatsApp Chat - Wingki.zip", "type": "customer", "customerId": "PUXhDp59bmUwpknYnGls", "contactId": "legacy", "channel": "Personal WhatsApp" }
   ]
 }

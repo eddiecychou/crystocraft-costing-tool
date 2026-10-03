@@ -678,6 +678,25 @@ export default function CustomerDetail() {
     })
   }, [id])
 
+  // Media URLs for oversized threads (e.g. large group chats) live in a
+  // separate `media/urls` doc (Firestore 1 MiB/doc cap) — read them and merge
+  // into rendering so attachments still resolve.
+  const [mediaUrlMaps, setMediaUrlMaps] = useState({})
+  useEffect(() => {
+    let cancelled = false
+    const needing = whatsappThreads.filter(t => (t.messages || []).some(m => m.attachment_filename && !m.attachment_url))
+    if (!needing.length) { setMediaUrlMaps({}); return }
+    ;(async () => {
+      const maps = {}
+      await Promise.all(needing.map(async t => {
+        const s = await getDoc(doc(db, 'customers', id, 'whatsapp_threads', t.id, 'media', 'urls'))
+        if (s.exists()) maps[t.id] = s.data()
+      }))
+      if (!cancelled) setMediaUrlMaps(maps)
+    })()
+    return () => { cancelled = true }
+  }, [whatsappThreads, id])
+
   // SU-08 Phase 2 (2026-08-19) — every marketing_contacts lead in
   // customer.linked_marketing_contact_ids (domain/marketingContact.js's
   // linkContactToCustomer) may have its OWN whatsapp_threads subcollection,
@@ -1979,6 +1998,7 @@ export default function CustomerDetail() {
                         const msgBusy = transcribingKey === `${t.id}:${i}`
                         const langKey = `${t.id}:${i}`
                         const selectedLang = transcribeLang[langKey] || 'zh-HK'
+                        const attUrl = m.attachment_url || mediaUrlMaps[t.id]?.[m.attachment_filename]
                         return (
                           <div key={i} className="text-sm">
                             <span className="text-xs text-ink-60">{fmtIsoDate(m.date)} · {m.from}</span>
@@ -1990,8 +2010,8 @@ export default function CustomerDetail() {
                             )}
                             {m.attachment_filename && (
                               <div className="flex items-center gap-2 flex-wrap">
-                                <WhatsAppAttachment filename={m.attachment_filename} url={m.attachment_url} className="text-xs" />
-                                {!isLinked && /\.opus$/i.test(m.attachment_filename || '') && m.attachment_url && (
+                                <WhatsAppAttachment filename={m.attachment_filename} url={attUrl} className="text-xs" />
+                                {!isLinked && /\.opus$/i.test(m.attachment_filename || '') && attUrl && (
                                   <>
                                     <select
                                       value={selectedLang}

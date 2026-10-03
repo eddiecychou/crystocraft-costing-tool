@@ -88,7 +88,12 @@ async function main() {
     if (!snap.exists) { console.log(`SKIP (no thread): ${entry.file}`); continue }
 
     const messages = snap.data().messages || []
-    const missing = messages.filter(m => m.attachment_filename && !m.attachment_url)
+    // Media URLs may live in a separate `media/urls` doc when the thread is
+    // too large to hold them inline (Firestore 1 MiB/doc cap) — check both.
+    const mediaRef = ref.collection('media').doc('urls')
+    const mediaSnap = await mediaRef.get()
+    const mediaUrls = mediaSnap.exists ? mediaSnap.data() : {}
+    const missing = messages.filter(m => m.attachment_filename && !m.attachment_url && !mediaUrls[m.attachment_filename])
     if (!missing.length) { console.log(`OK (complete): ${entry.file}`); continue }
     total += missing.length
     if (DRY_RUN) { console.log(`WOULD UPLOAD ${missing.length}: ${entry.file}`); continue }
@@ -110,7 +115,20 @@ async function main() {
       }))
       process.stdout.write(`\r  ${entry.file}: ${Math.min(i + CONCURRENCY, missing.length)}/${missing.length}`)
     }
-    await ref.update({ messages })
+
+    // Store inline if the doc still fits; otherwise move the URLs to `media/urls`
+    // and strip them from the messages so the thread stays under 1 MiB.
+    const fullDoc = { ...snap.data(), messages }
+    if (JSON.stringify(fullDoc).length < 1000000) {
+      await ref.update({ messages })
+    } else {
+      const newUrls = {}
+      for (const m of messages) {
+        if (m.attachment_url) { newUrls[m.attachment_filename] = m.attachment_url; m.attachment_url = null }
+      }
+      await ref.update({ messages })
+      await mediaRef.set({ ...mediaUrls, ...newUrls })
+    }
     uploaded += done
     console.log(`\rUPLOADED ${done}: ${entry.file}`)
   }
