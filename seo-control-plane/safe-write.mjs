@@ -7,6 +7,15 @@
 // regenerated 32 variations with no prices, product went offline, found 8h
 // later).
 //
+// `ok` and `verified` are two different questions and BOTH are returned:
+//   ok       — "did anything change that I did not ask to change?" (no drift,
+//              no write error). A no-op satisfies this trivially.
+//   verified — "did the change I asked for actually happen?" False when
+//              expectedFields were declared and NONE of them moved (`noop`).
+// Callers MUST treat `verified:false` as a failure to report even when `ok` is
+// true (2026-10-03: a payload-less item returned ok:true/verified:true having
+// written nothing).
+//
 // Pure except for the two injected I/O functions, so it's testable:
 //   get(id)              -> the full entity object (Workbench's wp-api.mjs GET)
 //   put(endpoint, body)  -> applies the write (Workbench's wp-api.mjs PUT/POST)
@@ -21,7 +30,8 @@
 //     payload: { meta: { _yoast_wpseo_title: '…' } },
 //     expectedFields: ['meta._yoast_wpseo_title'],
 //   })
-//   if (!r.ok) { alert(r); STOP }   // r.drift lists what else moved
+//   if (!r.verified) { alert(r); STOP }   // r.drift lists what else moved;
+//                                         // r.noop means nothing moved at all
 
 // FNV-1a 32-bit — same fingerprint the OC seo-state page uses for layout.
 export function hash32(str) {
@@ -103,14 +113,40 @@ export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload,
   if (variationDrift) drift.push({ field: 'variations', before: '(hash) ' + beforeVarH?.slice(0, 60), after: '(hash) ' + afterVarH?.slice(0, 60), note: 'B52: variation id/price set changed' })
 
   const ok = !writeErr && drift.length === 0
+
+  // A no-op is NOT a verified write (2026-10-03). `ok` above answers "did
+  // anything change that I did not ask to change?"; it cannot answer "did the
+  // change I asked for happen?" — and a no-op trivially satisfies it. If
+  // expectedFields were declared and none of them moved, the write wrote
+  // nothing: return ok:true / verified:false with noop:true, and callers MUST
+  // treat that as a failure to report, not a success.
+  //
+  // When no expectedFields are declared there is no stated intent to check, so
+  // `verified` stays equal to `ok` (never invent a no-op alarm).
+  const intended = expectedFields.map(f => (/_elementor_data$/.test(f) ? 'meta._elementor_data' : f))
+  const changed = intended.filter(f => JSON.stringify(beforeFp[f]) !== JSON.stringify(afterFp[f]))
+  const noop = intended.length > 0 && changed.length === 0
+  const verified = ok && !noop
+  const noopErr = 'no-op: none of the expected fields changed'
+
   return {
     ok,
-    error: writeErr || (drift.length ? `unexpected drift in ${drift.length} field(s)` : null),
+    verified,
+    noop,
+    error: writeErr || (noop ? noopErr : null) || (drift.length ? `unexpected drift in ${drift.length} field(s)` : null),
     drift,
     before: beforeFp,
     after: afterFp,
     // for the seo_batches `result`
-    result: { ok, after: afterFp, verified: ok, error: writeErr || (drift.length ? JSON.stringify(drift).slice(0, 400) : null) },
+    result: {
+      ok,
+      after: afterFp,
+      verified,
+      noop,
+      error: writeErr
+        || (noop ? noopErr : null)
+        || (drift.length ? JSON.stringify(drift).slice(0, 400) : null),
+    },
   }
 }
 

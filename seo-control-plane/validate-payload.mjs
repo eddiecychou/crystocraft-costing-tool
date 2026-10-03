@@ -22,9 +22,13 @@
 //                              actually publishes in
 //   brand_terms_preserved .... §3c, §8b.5, B53 (ignore Yoast head + JSON-LD)
 //   sku_prefix_preserved ..... B12 (SKU-preserving name translation)
-//   image_count_parity ....... §2 payload validation
-//   heading_count_parity ..... §2
-//   no_new_scripts_or_tables . §2
+//   image_count_parity ....... §2 payload validation (RAW body on both sides)
+//   heading_count_parity ..... §2 (RAW body on both sides — a live entity's
+//                              `.rendered` is the built Elementor page and can
+//                              never match a raw payload body; 2026-10-03)
+//   no_new_scripts_or_tables . §2 (RAW body on both sides — `.rendered` carries
+//                              Yoast's inline JSON-LD, which used to suppress
+//                              the check entirely)
 //   seo_title_no_double_brand . L-09, MASTER §4
 //   seo_desc_length .......... §4, B47
 //   translation_draft_only ... Rule 4 (never publish an unlinked translation)
@@ -136,6 +140,19 @@ function payloadText(payload) {
 const countMatches = (str, rx) => (str.match(rx) || []).length
 const stripTags = (s) => asString(s).replace(/<[^>]+>/g, ' ')
 
+// `content` is either a string (our payload) or the REST object
+// `{ rendered, raw }` (a live entity). Compare like with like, and prefer RAW:
+// `.rendered` is the BUILT page for an Elementor post — the entire page, with
+// its own images, headings and inline JSON-LD — which is not what a body-level
+// check is about, and can never equal a raw payload body (2026-10-03: every
+// correct Elementor edit failed image/heading parity, 0 <img> vs source 36).
+function contentString(c) {
+  if (c == null) return ''
+  if (typeof c === 'string') return c
+  if (typeof c === 'object') return String(c.raw ?? c.rendered ?? '')
+  return String(c)
+}
+
 // ── the gate ──────────────────────────────────────────────────────────────
 // kind: 'post' | 'page' | 'product'   lang: 'en'|'es'|'zh-hant'|'ja'|'fr'
 // payload: the exact WP write body    source: the EN-original object it derives from (optional but recommended)
@@ -240,20 +257,29 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
       payload.name.startsWith(m[1]) ? '' : `name should start with SKU "${m[1]}" — got "${payload.name.slice(0, 40)}"`)
   }
 
-  // 9/10. image + heading count parity (HTML fields)
+  // 9/10. image + heading count parity (HTML fields). Both sides go through
+  // contentString() so a live entity's REST `content` object is compared on its
+  // RAW body, not its rendered page (see the helper).
   if (source) {
-    const pImg = countMatches(asString(payload.content) + asString(payload.description) + asString(payload.short_description), /<img[\s>]/gi)
-    const sImg = countMatches(asString(source.content) + asString(source.description) + asString(source.short_description), /<img[\s>]/gi)
+    const pBody = contentString(payload.content) + contentString(payload.description) + contentString(payload.short_description)
+    const sBody = contentString(source.content) + contentString(source.description) + contentString(source.short_description)
+    const pImg = countMatches(pBody, /<img[\s>]/gi)
+    const sImg = countMatches(sBody, /<img[\s>]/gi)
     if (sImg > 0) add('image_count_parity', pImg === sImg, pImg === sImg ? '' : `${pImg} <img> vs source ${sImg}`)
 
-    const pH = countMatches(asString(payload.content) + asString(payload.description), /<h2[\s>]/gi)
-    const sH = countMatches(asString(source.content) + asString(source.description), /<h2[\s>]/gi)
+    const pHEad = contentString(payload.content) + contentString(payload.description)
+    const sHead = contentString(source.content) + contentString(source.description)
+    const pH = countMatches(pHEad, /<h2[\s>]/gi)
+    const sH = countMatches(sHead, /<h2[\s>]/gi)
     if (sH > 0) add('heading_count_parity', pH === sH, pH === sH ? '' : `${pH} <h2> vs source ${sH}`)
   }
 
-  // 11. no scripts/tables introduced
-  const bodyStr = asString(payload.content) + asString(payload.description) + asString(payload.short_description) + asString(edRaw)
-  const srcBodyStr = source ? asString(source.content) + asString(source.description) + asString(source.short_description) + asString(source?.meta?._elementor_data) : ''
+  // 11. no scripts/tables introduced. Same raw-body rule: a source entity's
+  // `.rendered` page carries Yoast's inline JSON-LD <script>, which used to
+  // suppress this check entirely; and it can equally carry a <table> the raw
+  // body never had.
+  const bodyStr = contentString(payload.content) + contentString(payload.description) + contentString(payload.short_description) + asString(edRaw)
+  const srcBodyStr = source ? contentString(source.content) + contentString(source.description) + contentString(source.short_description) + asString(source?.meta?._elementor_data) : ''
   if (!source || !SCRIPT_RX.test(srcBodyStr)) add('no_new_scripts', !SCRIPT_RX.test(bodyStr), SCRIPT_RX.test(bodyStr) ? '<script> introduced' : '')
   if (!source || !TABLE_RX.test(srcBodyStr)) add('no_new_tables', !TABLE_RX.test(bodyStr), TABLE_RX.test(bodyStr) ? '<table> introduced' : '')
 

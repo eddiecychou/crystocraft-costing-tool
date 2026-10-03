@@ -20,7 +20,7 @@
 |---|---|---|---|
 | 1 | **State store + snapshot** — a structured "what's live now" for posts/pages, snapshottable for rollback | OC page `/seo-state`, edge fn `seo-state`, Firestore `seo_state` + `seo_state_history` | **BUILT 2026-09-02** |
 | 2 | **Batch / review contract** — DSH prepares a change batch, the human approves it per-item in the OC against a real diff | Firestore `seo_batches`, Node fn `seo-batch`, OC page `/seo-review` | **BUILT 2026-09-02** |
-| 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | Reference impls in `seo-control-plane/` (OC-owned, DSH vendors) | **BUILT 2026-09-02**; **V8.15:** the OC now re-runs `validate-payload.mjs` server-side in `seo-batch.js` `create` (stored `validation` = OC's, DSH's kept as `dsh_validation` + `validation_mismatch`), and `poll` blocks any approved-but-OC-failed item — the gate no longer relies on DSH's honesty |
+| 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | Reference impls in `seo-control-plane/` (OC-owned, DSH vendors) | **BUILT 2026-09-02**; **V8.15:** the OC now re-runs `validate-payload.mjs` server-side in `seo-batch.js` `create` (stored `validation` = OC's, DSH's kept as `dsh_validation` + `validation_mismatch`), and `poll` blocks any approved-but-OC-failed item — the gate no longer relies on DSH's honesty. **2026-10-03:** two control-plane defects fixed — empty-payload items rejected at `create`, `verified`/`noop` added to `safeWrite` so a no-op can never report success (L-44), and parity/script checks compare the RAW body (L-45) |
 | 4 | **Reconciliation** — live state vs a history snapshot or an executed batch; flags a reverted page, a clobbered layout, a disappeared SEO field | OC page `/seo-reconcile` | **BUILT 2026-09-02** |
 
 Products are already covered by `woo-sync.js` `catalogue_page` → the **Woo Catalogue** page (Yoast title/desc + WPML `translations` per product). This control plane adds **blog posts and pages**.
@@ -80,11 +80,16 @@ DSH ops (POST JSON):
 - `{ op: 'create', batch: { note, items: [...] } }` → `{ id }`. Each item:
   `{ id, kind, lang, endpoint, summary, payload, before, validation }`
   (≤500 items). Stored with `decision: 'pending'`, `result: null`,
-  `status: 'pending_review'`.
+  `status: 'pending_review'`. **An item with an empty/absent `payload` is
+  rejected 400** (`{ error, indexes }`) — nothing to write (fix 1a, 2026-10-03).
 - `{ op: 'poll' }` → batches where `status === 'approved'` (execute these).
 - `{ op: 'get', id }` → one batch.
-- `{ op: 'result', id, results: [{ index, ok, after, verified, error }] }` →
-  merges results; `status` → `executed` (all approved OK) or `partial`.
+- `{ op: 'result', id, results: [{ index, ok, after, verified, noop, error }] }`
+  → merges results; `status` → `executed` only when every approved item is
+  `ok:true` **and not** `verified:false`, else `partial` (plus `executed`,
+  `unverified`, `of` counts). `ok` proves no *unintended* drift; `verified`
+  proves the *intended* change happened — a no-op satisfies the first trivially
+  (fix 1b, 2026-10-03).
 
 ### `seo_batches/{autoId}` (Firestore)
 ```
@@ -97,10 +102,13 @@ DSH ops (POST JSON):
     before,                                        // touched fields pre-write
     validation: { passed: bool|null, checks: [{name, ok}] },
     decision: 'pending' | 'approve' | 'reject',    // set by the human in /seo-review
-    result: null | { ok, after, verified, error, at }
+    result: null | { ok, after, verified, noop, error, at }
   }]
 }
 ```
+`result.verified === false` (with `ok: true`) means the write was a **no-op** —
+nothing in `expectedFields` moved. `/seo-review` renders it as a failure, not
+"✓ executed", and `/seo-reconcile` buckets it `failed`.
 Rules: `read, update` if admin (the human, via `/seo-review`); `create, delete`
 denied (DSH creates via Admin SDK, bypassing rules).
 
@@ -133,18 +141,35 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   `seo_title_no_double_brand` (L-09), `seo_desc_length` (B47),
   `translation_draft_only` (Rule 4), and `no_encoding_damage` (U+FFFD, lone
   surrogates, legacy mojibake). CJK and encoding scans run on the
-  **JSON-decoded** `_elementor_data` (B35e). The Workbench attaches the result as each
-  `seo_batches` item's `validation` field. `node
-  seo-control-plane/validate-payload.test.mjs` covers the known incident cases.
+  **JSON-decoded** `_elementor_data` (B35e). **New 2026-10-03 (L-45): the parity
+  and script/table checks read the RAW body on both sides** via `contentString()`
+  — a live entity's `content` is the REST object `{ rendered, raw }` and
+  `.rendered` is the whole built page for an Elementor post, so raw-vs-rendered
+  could never agree and *every* correct Elementor edit failed the gate. The
+  Workbench attaches the result as each `seo_batches` item's `validation` field.
+  `node seo-control-plane/validate-payload.test.mjs` covers the known incident
+  cases.
 - **`safe-write.mjs`** — `safeWrite({ get, put, id, endpoint, payload,
   expectedFields })`. Snapshots the entity → writes → re-reads → returns
   `{ ok:false, drift:[…] }` if any watched field outside `expectedFields`
   changed (plus a dedicated **variation id/price hash** guard for B52 — a
   variable-product save regenerating all variations with no prices). `get`/`put`
   are the Workbench's own `wp-api.mjs` helpers, injected. `*_elementor_data`
-  fields are compared by FNV-1a hash. Returns a `result` object shaped for the
+  fields are compared by FNV-1a hash. **New 2026-10-03 (L-44): it also returns
+  `verified` + `noop`** — `ok` answers "did anything *unintended* move?", which
+  a no-op satisfies trivially; `verified:false` with `noop:true` means none of
+  `expectedFields` moved, i.e. the intended change never happened. Callers gate
+  on `verified`, never on `ok` alone. Returns a `result` object shaped for the
   `seo_batches` `result` op. **No Workbench script writes WordPress any other
   way.**
+
+This directory is also the **vendoring contract**: DSH copies both files
+verbatim and verifies the sha256 recorded in `seo-control-plane/README.md`. The
+OC tells DSH when either changes (`op:'create'` re-runs the vendored validator
+server-side, so a stale copy shows up as `validation_mismatch`). Both files have
+their own `node`-runnable test: `validate-payload.test.mjs` (49 cases) and
+`safe-write.test.mjs` (24 cases), plus `qa/seo-batch-guard.test.mjs` (13) for the
+OC-side guards.
 
 ## Step 4 — reconciliation (BUILT — `/seo-reconcile`)
 
@@ -165,3 +190,11 @@ the last read there) against a chosen baseline. Two modes:
   `failed`. Answers "did our approved changes land and stay?"
 
 CSV export of the drift/failed rows in both modes.
+
+## Change Log
+
+| Date | Change |
+|---|---|
+| 2026-09-02 | Steps 1–4 built: `seo_state`/`seo_state_history`, `seo_batches` + `seo-batch` + `/seo-review`, `seo-control-plane/` (`validate-payload` + `safe-write`), `/seo-reconcile`. |
+| 2026-09-23 | **L-29** — `placeholder_markers` extended to fr/ja/zh-hant (was en/es/zh-hans only). |
+| 2026-10-03 | **Two control-plane defects raised by DSH while staging a WordPress write, both fixed here.** (1) A payload-less item was accepted, wrote nothing, and returned `ok:true/verified:true` → the batch reported `executed`. `create` now rejects an empty payload (400), and `safeWrite` returns `verified`/`noop` (gate on `verified`, not `ok`) with `op:'result'` marking such a batch `partial`. (2) Image/heading parity was unsatisfiable for Elementor edits because a live entity's `.rendered` page was compared against a raw payload body — both sides now go through `contentString()`, which prefers `.raw`, as do `no_new_scripts`/`no_new_tables`. DSH re-vendors both files (sha256 in `seo-control-plane/README.md`) and drops its `before.content` workaround. See `LESSONS-LEARNED.md` L-44 / L-45. |

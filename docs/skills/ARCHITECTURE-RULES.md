@@ -316,6 +316,37 @@ Intake is **manifest-driven**, never inferred — the same deterministic posture
   (`CustomerDetail.jsx`, `MarketingContacts.jsx`, `src/whatsappSummaryApi.js`,
   and the digest's `activityFromWhatsappThreads`; `LESSONS-LEARNED.md` L-42).
 
+### 4d. WordPress writes — the SEO control plane
+
+The OC never writes WordPress; DSH is the sole writer and goes through
+`seo-control-plane/` (`docs/skills/SEO-CONTROL-PLANE.md`). These are the
+boundaries the 2026-10-03 defects established.
+
+- **"No unintended drift" is not "the change happened".** `safeWrite` returns
+  both: `ok` (nothing outside `expectedFields` moved) and `verified` (at least
+  one declared `expectedFields` actually moved — false + `noop:true` means the
+  write wrote nothing). **MUST** gate execution on `verified`, never on `ok`
+  alone, and **MUST NOT** report a batch `executed` when any approved item is
+  `verified:false` (`netlify/functions/seo-batch.js` `batchOutcome`; L-44).
+- **A payload-less item is rejected, never stored.** `op:'create'` returns 400
+  `{ error, indexes }` for an absent/`{}`/`[]` payload — the old
+  `payload: it.payload ?? {}` silently turned a caller error into a no-op that
+  reported success.
+- **`expectedFields` is the intent, so an empty one cannot be verified.** With
+  no declared fields `verified` falls back to `ok` — do not invent a no-op
+  alarm; equally, **MUST NOT** omit `expectedFields` on a write whose success
+  you intend to prove.
+- **Compare like with like.** A live entity's `content` is the REST object
+  `{ rendered, raw }`; `.rendered` is the *built* page (and for Elementor, the
+  whole page). Body-level checks **MUST** read `.raw` via `contentString()` —
+  raw-vs-rendered can never agree (`validate-payload.mjs`; L-45). **MUST NOT**
+  "fix" a parity failure by trimming `source.content` to a bare string: that
+  deletes the data the check exists to compare against.
+- **The vendored files are OC-owned SSOT.** When `validate-payload.mjs` or
+  `safe-write.mjs` changes, the sha256 table in `seo-control-plane/README.md`
+  **MUST** be re-stamped in the same commit and DSH told to re-vendor. A stale
+  copy surfaces as `validation_mismatch` on `create`.
+
 ## 5. Denormalised snapshots (and the `normLine` whitelist)
 
 Order / PI / invoice / PO / quote lines are deliberately **free-text snapshots**,
@@ -468,3 +499,4 @@ makes it real.
 | 2026-08-31 | Created by merging root `INDEX.md` §4/§6 (cross-cutting + verify/deploy) with new hard-rule sections (isolation, RBAC contract, data lifecycles). Added the **Planned `sales` role** (§2a) per owner scope. Grounded in V8.12. |
 | 2026-09-01 | Adopted the Magister "AI management" patterns: §1 framed as a deterministic boundary; new §7a "Measure before you change" (report before/after numbers, never "looks fine"); new §8 Deterministic boundaries (AI reports observables, code decides — Product Truth, isolation, pricing, FX, ingestion); new §9 Load-Bearing Decisions (12 rules that must not be undone, plus the honest note that "WhatsApp-first CTA" is NOT implemented so cannot be one). |
 | 2026-10-03 | New §4c "WhatsApp thread identity & intake" — thread id is `account × contact_id` (never a display name); groups are a distinct third type (`{account}__group__{slug}`); Business/Personal accounts never merge; archive→customer matching is an owner-confirmed manifest (never auto/fuzzy); the 1 MiB/doc cap forces attachment URLs to spill to `whatsapp_threads/{id}/media/urls`; every reader must skip `migrated_to` tombstones. |
+| 2026-10-03 | New §4d "WordPress writes — the SEO control plane" — `ok` (no unintended drift) is not `verified` (the intended change happened); gate on `verified` and never report a batch `executed` with an unverified item; a payload-less item is rejected 400 at `create`; an empty `expectedFields` cannot prove intent; body-level validator checks compare the **raw** body on both sides (never `.rendered`), and trimming `source.content` to a workaround is forbidden; the vendored `seo-control-plane/` files are OC-owned SSOT with a sha256 re-vendoring table. Extracted from the two control-plane defects raised by DSH (L-44 / L-45). |

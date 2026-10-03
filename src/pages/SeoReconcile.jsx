@@ -78,7 +78,10 @@ export default function SeoReconcile() {
       const c = cur.get(`${it.kind}:${it.id}`)
       const after = it.result?.after || {}
       const notes = []
-      if (it.result && !it.result.ok) notes.push({ field: 'execution', detail: it.result.error || 'write failed / drift at execution time' })
+      // `verified:false` with `ok:true` is a no-op — the intended change never
+      // happened — so it belongs in the `failed` bucket, not `held` (2026-10-03).
+      const execFailed = !!it.result && (!it.result.ok || it.result.verified === false)
+      if (execFailed) notes.push({ field: 'execution', detail: it.result.error || 'write failed / drift at execution time' })
       if (!c) { notes.push({ field: 'lookup', detail: 'not found in current state (refresh SEO State?)' }) }
       else {
         if (after.slug != null && c.slug !== after.slug) notes.push({ field: 'slug', from: after.slug, to: c.slug, detail: 'changed since execution' })
@@ -95,7 +98,7 @@ export default function SeoReconcile() {
         if (wrote('_yoast_wpseo_title') && !c.seo_title_set) notes.push({ field: 'seo_title', detail: 'we wrote a Yoast title — it is no longer set' })
         if (wrote('_yoast_wpseo_metadesc') && !c.seo_desc_set) notes.push({ field: 'seo_desc', detail: 'we wrote a meta description — it is no longer set' })
       }
-      return { it, c, state: notes.length ? (it.result && !it.result.ok ? 'failed' : 'drifted') : 'held', notes }
+      return { it, c, state: notes.length ? (execFailed ? 'failed' : 'drifted') : 'held', notes }
     })
     const counts = ['held', 'drifted', 'failed'].reduce((m, s) => (m[s] = rows.filter(r => r.state === s).length, m), {})
     return { rows, counts }

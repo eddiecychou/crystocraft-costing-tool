@@ -89,6 +89,45 @@ about the account before assuming the mechanism.
 
 ## V8.17 — WhatsApp archive import becomes automatic; group chats; Dashboard inclusion (2026-10-03)
 
+### 0. Same-day companion fix: two SEO control-plane defects (raised by DSH)
+
+DSH raised two defects while staging a WordPress write through the control plane
+(`seo-control-plane/`); both would have recurred on the other four language
+versions of the same hub and the 22 Elementor posts in the corporate cluster.
+Fixed in the OC, lessons **L-44 / L-45**, contract + hashes in
+`seo-control-plane/README.md` and `docs/skills/SEO-CONTROL-PLANE.md`.
+
+1. **A write with no payload was accepted, wrote nothing, and reported
+   success.** `seo-batch.js` coerced a missing `payload` to `{}`, and
+   `safeWrite` set `verified: ok` where `ok` only means "no *unintended* drift" —
+   which a no-op satisfies trivially. So a caller error came back
+   `{"ok":true,"status":"executed","executed":1,"of":1}` with nothing written.
+   Now: `create` rejects an empty/absent payload with 400 and the offending
+   indexes; `safeWrite` also computes `verified` (did any declared
+   `expectedField` actually move?) and `noop`, with `expectedFields: []`
+   deliberately falling back to `ok` so no false alarm is invented; and
+   `op:'result'` marks a batch `executed` only when every approved item is
+   `ok:true` **and not** `verified:false`, returning an `unverified` count.
+   `/seo-review` and `/seo-reconcile` render a no-op as a failure.
+2. **Image/heading parity was unsatisfiable for Elementor edits.** The validator
+   counted `<img>`/`<h2>` in a live entity's REST `content` object via
+   `asString`/`payloadText`, resolving to `.rendered` — for an Elementor post the
+   *entire built page* (36 images, 4 headings) — against a payload `content`
+   that is the raw `post_content` string. No correct Elementor text edit could
+   pass. Both sides now go through a `contentString()` helper that prefers
+   `.raw`, applied also to `srcBodyStr`'s `no_new_scripts`/`no_new_tables`, which
+   the rendered page's inline JSON-LD `<script>` had been suppressing entirely.
+   (DSH's stopgap — trimming `before.content` to a bare string so both sides
+   count 0 — is to be dropped once it re-vendors.)
+
+New tests: `seo-control-plane/safe-write.test.mjs` (24),
+`qa/seo-batch-guard.test.mjs` (13), `validate-payload.test.mjs` 40 → 49.
+`seo-batch.js`'s create guard + batch verdict were extracted as
+`emptyPayloadIndexes` / `batchOutcome` so they are testable without Firestore
+credentials. **DSH must re-vendor both files** (sha256 table in
+`seo-control-plane/README.md`) and gate execution on `r.verified`, not `r.ok`;
+the OC must tell DSH when it is deployed.
+
 WhatsApp correspondence had been importable since V8.2, but only the hard way:
 open `WhatsAppImport.jsx`, hand-pick a `.zip` per chat, match it to a contact,
 repeat. This cycle turned that into a folder you drop exports into, fixed the

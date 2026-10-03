@@ -428,18 +428,24 @@ DSH stays the sole WordPress writer but goes through this loop:
    snapshot** (with a note). `seo_state_history` is append-only — the rollback
    reference.
 2. **Validate every payload.** Run it through `seo-control-plane/validate-payload.mjs`
-   (vendored verbatim). 15 checks, each mapped to a lesson (B6 length anomaly,
+   (vendored verbatim). 16 checks, each mapped to a lesson (B6 length anomaly,
    B12 placeholder, B20 stale-layout, B33/B35 CJK leak, L-09 double-brand,
    Rule 4 never-publish-unlinked-translation…). A failing payload does not get
-   written.
+   written. The image/heading parity and script/table checks compare the **raw**
+   body on both sides, never a live entity's rendered page — see L-45.
 3. **Batch + human approval.** POST the batch to `/api/seo-batch`
    (`op:'create'`, Bearer `SEO_BATCH_SECRET`). The owner approves/rejects
    per-item at `/seo-review` against a real `before → after` diff, then "Send
-   to DSH".
+   to DSH". An item with an empty/absent `payload` is rejected 400 — nothing to
+   write.
 4. **Execute through `safeWrite`.** `op:'poll'` for approved batches; every
    write goes through `seo-control-plane/safe-write.mjs` — it aborts the batch
-   if any field outside `expectedFields` drifts (B52 variation-price wipe).
-   POST results back (`op:'result'`).
+   if any field outside `expectedFields` drifts (B52 variation-price wipe), and
+   it reports `verified:false` + `noop:true` when **none** of them moved, i.e.
+   the write wrote nothing. Gate on `verified`, not `ok`: `ok` only proves no
+   *unintended* change, which a no-op satisfies trivially (L-44). POST results
+   back (`op:'result'`) — a batch with any unverified item goes `partial`,
+   never `executed`.
 5. **Reconcile.** `/seo-reconcile` — current state vs the snapshot ("has
    anything drifted?") and vs the executed batch ("did our changes stay?").
 
@@ -457,3 +463,4 @@ clear, host purge) is unchanged.
 | 2026-09-02 | Added §6.1a — DSH's three-layer prompt technique ([FOUNDATION]/[NARRATIVE]/[ANCHORS]), percentage-based visual anchoring + margin-safety to stop truncation/drift, and the "rewrite the ANCHORS layer, don't just re-ask" failure-recovery rule. Folded from an external `DETERMINISTIC-ART-GEN.md` draft; its "no invented products" line noted as a restatement of §6.2, not a new rule. |
 | 2026-09-02 | §4 Product Truth: recorded the DETERMINISTIC-ART-GEN audit outcome applied to the in-repo retoucher — `enhance-image.js` gained a `FRAMING` anti-reframe anchor, a consolidated `EXCLUDE` negative-constraint block, `temperature 0` for the faithful modes, and a PNG/JPEG-header reframe guard that surfaces `reframed:true` as an amber UI warning. |
 | 2026-09-02 | Added **§6.6 — the SEO control plane**, the mandatory path for every WordPress write from the external pipeline: snapshot → `validate-payload` → batch → human approval at `/seo-review` → `safeWrite` → `/seo-reconcile`. Backed by `docs/skills/SEO-CONTROL-PLANE.md`, `seo-control-plane/` (vendored validators), Firestore `seo_state` / `seo_state_history` / `seo_batches`, and the `/api/seo-batch` Node function. Replaces "DSH shows a contact sheet in chat, writes live, state in prose". |
+| 2026-10-03 | §6.6 steps 2–4 corrected after DSH raised two control-plane defects while staging a WordPress write: an empty-payload item is now rejected 400 at `create`; `safeWrite` returns `verified`/`noop` and callers gate on `verified`, not `ok` (a no-op is a failure to report — L-44); and the parity/script checks compare the raw body, so correct Elementor edits pass (L-45). |

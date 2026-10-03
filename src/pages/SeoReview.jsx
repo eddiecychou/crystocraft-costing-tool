@@ -168,6 +168,11 @@ export default function SeoReview() {
                   const flat = flatten(it.payload || {})
                   const keys = Object.keys(flat)
                   const v = it.validation || {}
+                  const r = it.result || null
+                  // `ok` proves no unintended drift; `verified:false` means the
+                  // intended change never happened (a no-op) — a failure to
+                  // report, not a success, even though `ok` is true (2026-10-03).
+                  const rBad = !!r && (!r.ok || r.verified === false)
                   return (
                     <div key={it.index} className={`card p-3 ${it.decision === 'reject' ? 'opacity-60' : ''}`}>
                       <div className="flex items-start justify-between gap-3">
@@ -236,9 +241,10 @@ export default function SeoReview() {
                         </table>
                       </div>
 
-                      {it.result && (
-                        <p className={`mt-2 text-2xs ${it.result.ok ? 'text-green-700' : 'text-red-600'}`}>
-                          {it.result.ok ? '✓ executed' : '✗ failed'}{it.result.verified ? ' · verified' : ''}{it.result.error ? ` — ${it.result.error}` : ''}
+                      {r && (
+                        <p className={`mt-2 text-2xs ${rBad ? 'text-red-600' : 'text-green-700'}`}>
+                          {!r.ok ? '✗ failed' : r.verified === false ? '✗ not verified — nothing changed' : '✓ executed'}
+                          {r.verified === true ? ' · verified' : ''}{r.error ? ` — ${r.error}` : ''}
                         </p>
                       )}
                     </div>

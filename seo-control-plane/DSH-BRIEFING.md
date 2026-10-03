@@ -47,6 +47,9 @@ in prose handoffs — is retired.
 4. SUBMIT       POST /api/seo-batch  { op: 'create', batch: { note, items } }
                 → { id, failed_validation, mismatches: [itemIndex] }.
                 Status starts 'pending_review'.
+                An item with an EMPTY or absent `payload` is rejected with 400
+                ({ error, indexes }) — nothing to write. Build the payload
+                first, then the item; never submit a placeholder item.
                 THE OC RE-RUNS validatePayload SERVER-SIDE on every item. The
                 stored `validation` is the OC's result (this is what the owner
                 sees and what `poll` enforces); your self-report is kept as
@@ -68,7 +71,11 @@ in prose handoffs — is retired.
 
 7. EXECUTE      For each item where decision === 'approve':
                   r = await safeWrite({ get, put, id, endpoint, payload, expectedFields })
-                  if (!r.ok) → STOP the whole batch, alert the owner. r.drift says what moved.
+                  if (!r.verified) → STOP the whole batch, alert the owner.
+                `r.ok` alone is NOT enough: it only proves nothing UNINTENDED
+                moved. `r.verified:false` with `r.noop:true` means the intended
+                change never happened (nothing in expectedFields moved) — a
+                failure to report, not a success. `r.drift` says what else moved.
                 Collect { index, ...r.result } for every executed item.
                 NOTE: `poll` downgrades any approved item that failed the OC's
                 validation to decision:'blocked' (with block_reason) and reports
@@ -76,7 +83,12 @@ in prose handoffs — is retired.
                 do not "recover" a blocked item.
 
 8. REPORT       POST /api/seo-batch { op: 'result', id, results }
-                → status becomes 'executed' (all approved OK) or 'partial'.
+                → { status: 'executed' | 'partial', executed, unverified, of }.
+                'executed' requires every approved item to be ok AND not
+                explicitly verified:false, so a no-op can never report as
+                success. `unverified` counts the no-ops — treat a non-zero
+                `unverified`, or status 'partial', as a failed batch to
+                investigate before moving on.
 
 9. RECONCILE    Owner opens OC /seo-reconcile → "vs Batch" → picks this batch.
                 Confirms every approved item is 'held' (not drifted/failed).
@@ -131,6 +143,13 @@ OC-failed item even if it gets approved (returned as `decision:"blocked"`).
 Server stores each item with `index`, `decision: "pending"`, `result: null`,
 and the batch `status: "pending_review"`.
 
+**Empty payload → 400.** An item whose `payload` is absent, `{}`, or `[]` is
+rejected before anything is stored:
+`{ "error": "item(s) with an empty payload — nothing to write", "indexes": [0] }`.
+Before 2026-10-03 such an item was accepted, wrote nothing, and came back
+`ok:true / verified:true`, so the batch reported `executed`. Fix the caller;
+don't resend it unchanged.
+
 ### `op: 'poll'`
 ```
 POST /api/seo-batch { "op": "poll" }
@@ -151,13 +170,21 @@ POST /api/seo-batch
   "op": "result",
   "id": "<batchId>",
   "results": [
-    { "index": 0, "ok": true,  "after": { /* safeWrite fingerprint */ }, "verified": true,  "error": null },
-    { "index": 1, "ok": false, "after": {...}, "verified": false, "error": "drift: [{field:'variations',...}]" }
+    { "index": 0, "ok": true,  "after": { /* safeWrite fingerprint */ }, "verified": true,  "noop": false, "error": null },
+    { "index": 1, "ok": false, "after": {...}, "verified": false, "noop": false, "error": "drift: [{field:'variations',...}]" },
+    { "index": 2, "ok": true,  "after": {...}, "verified": false, "noop": true,  "error": "no-op: none of the expected fields changed" }
   ]
 }
-→ { "ok": true, "status": "executed" | "partial", "executed": n, "of": m }
+→ { "ok": true, "status": "executed" | "partial", "executed": n, "unverified": k, "of": m }
 ```
 `safeWrite` returns a ready-made `result` object — pass `{ index, ...r.result }`.
+
+The OC reads `verified` as follows: `'executed'` requires every approved item to
+have a result with `ok:true` AND not `verified:false`. Index 2 above is a no-op —
+`ok` is true (nothing unintended moved) but the intended change did not happen —
+so it makes the batch `partial` and is counted in `unverified`. Send `noop`
+through so the reviewer sees why. Leave `verified` out entirely only if you are
+an older client: the OC then falls back to `ok` for that result.
 
 ---
 
@@ -188,7 +215,14 @@ const validation = validatePayload({ kind, lang, endpoint, payload, source: enOr
   whenever you have it — it powers widget-count parity, length-anomaly, brand-term
   and SKU-prefix checks, image/H2 parity. Without it, only the language / marker /
   double-brand / draft-only checks run.
-- Returns `{ passed, checks: [{ name, ok, detail }] }`. The 15 checks and their
+  - Pass the **whole live entity**, REST object and all. On an Elementor post,
+    `content` is `{ rendered, raw }` and `.rendered` is the entire built page;
+    the validator now reads `.raw` (2026-10-03), so a correct Elementor edit —
+    one that changes only `meta._elementor_data` — passes the image/H2 parity
+    checks instead of failing `0 <img> vs source 36`. **Do NOT** "fix" a parity
+    failure by trimming `source.content` to a bare string: that removes the
+    source-side data the check needs. Re-vendor the validator instead.
+- Returns `{ passed, checks: [{ name, ok, detail }] }`. The 16 checks and their
   B-lesson mapping are listed at the top of `validate-payload.mjs`.
 - **`passed === false` → do not execute that item.** Full stop.
 
@@ -225,8 +259,10 @@ const r = await safeWrite({
   // allowVariationChange: true   // ONLY when the write is deliberately about variations
 })
 
-if (!r.ok) {
-  // r.error, r.drift = [{ field, before, after, note? }]
+if (!r.verified) {
+  // !r.ok             → drift or a write error: r.drift = [{ field, before, after, note? }]
+  // ok:true, !verified → r.noop: NOTHING in expectedFields moved; the write
+  //                      wrote nothing. Not a success. Report it.
   // STOP the batch. Do NOT continue to the next item. Alert the owner.
 }
 results.push({ index: it.index, ...r.result })
@@ -258,9 +294,12 @@ dedicated variation id/price-hash guard.
 - [x] `SEO_BATCH_SECRET` set on Netlify **and** in the Workbench `.env` (owner, done).
 - [ ] Vendor `seo-control-plane/validate-payload.mjs` and `safe-write.mjs` into
       the Workbench (copy verbatim; re-copy when the OC updates them — a new
-      failure mode adds a check there).
+      failure mode adds a check there). Verify the copy is byte-identical to the
+      sha256 recorded in `seo-control-plane/README.md` → "Vendoring contract"
+      before you trust a run. **Re-vendor after the 2026-10-03 fix** (the
+      versions that produced defects 1 and 2 are stale).
 - [ ] Wrap your `wp-api.mjs` write path so **nothing** writes WordPress except
-      through `safeWrite`.
+      through `safeWrite`, and gate the batch on `r.verified`, not `r.ok`.
 - [ ] Add the batch build + `/api/seo-batch` calls to your pipeline scripts.
 - [ ] Paste the `§4c` block (drafted by the OC) into the Workbench's
       `MASTER-SKILL-ALIGNMENT.md`.
@@ -272,3 +311,12 @@ single category's Yoast titles), submit, have the owner approve at `/seo-review`
 poll, execute through `safeWrite`, report, and check `/seo-reconcile` shows all
 5 `held`. That proves the whole loop and the secret/vendoring before you commit
 a 200-item run to it.
+
+---
+
+## 9. Change Log
+
+| Date | Change |
+|---|---|
+| 2026-09-02 | Briefing written; control plane live (steps 1–4). |
+| 2026-10-03 | **Two defects fixed** (raised by DSH while staging a WordPress write). **1a** `create` now rejects an item with an empty/absent `payload` (400) instead of silently storing `{}` and reporting a no-op as success. **1b** `safe-write.mjs` returns `verified` (did the INTENDED change happen?) alongside `ok` (did anything UNINTENDED move?); `noop:true` when none of `expectedFields` moved, and `op:'result'` now marks a batch `partial` — never `executed` — when any approved item is `verified:false`. **2** `validate-payload.mjs` compares the **RAW** body (`content.raw`) on both sides for image/heading parity and `no_new_scripts` / `no_new_tables`, so a correct Elementor edit (which changes only `meta._elementor_data`) passes. **DSH must re-vendor both files** (sha256 in `seo-control-plane/README.md`) and gate execution on `r.verified`, and should drop its `before.content` workaround. |

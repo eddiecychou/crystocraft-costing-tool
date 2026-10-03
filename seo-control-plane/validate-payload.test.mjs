@@ -210,5 +210,63 @@ function expect(name, cond, detail = '') {
   }
 }
 
+// ── 2026-10-03: parity compares the RAW body, not the REST render ───────
+// A live entity's `content` is `{ rendered, raw }`; for an Elementor post
+// `.rendered` is the whole BUILT page (36 images, 4 <h2>) while the payload's
+// raw body is a short paragraph. Comparing them could never agree, so every
+// correct Elementor edit failed the gate.
+{
+  const rendered = '<h2>One</h2><h2>Two</h2><h2>Three</h2><h2>Four</h2>' + '<img src="a.jpg"/>'.repeat(36)
+  const mkEd = (t) => JSON.stringify([{ id: 'a1', elType: 'widget', widgetType: 'heading', settings: { title: t } }])
+  const source = {
+    content: { rendered, raw: '<p>Short intro.</p>' },
+    meta: { _elementor_data: mkEd('Old heading') },
+  }
+  const payload = { content: '<p>Short intro.</p>', meta: { _elementor_data: mkEd('Neue Überschrift') }, status: 'draft' }
+  const v = validatePayload({ kind: 'page', lang: 'de', endpoint: 'wp/v2/pages?lang=de', payload, source })
+  const c = chk(v)
+  expect('Elementor edit: rendered side no longer drives image parity', c.image_count_parity === undefined,
+    JSON.stringify(v.checks.filter(x => !x.ok)))
+  expect('Elementor edit: rendered side no longer drives heading parity', c.heading_count_parity === undefined,
+    JSON.stringify(v.checks.filter(x => !x.ok)))
+  expect('Elementor edit passes on its own merits', v.passed, JSON.stringify(v.checks.filter(x => !x.ok)))
+}
+
+// ── the same check must still bite when the raw body REALLY has images ──
+{
+  const raw = '<p><img src="a.jpg"/><img src="b.jpg"/></p>'
+  const source = { content: { rendered: raw, raw } }
+  const v = validatePayload({ kind: 'post', lang: 'en', payload: { content: '<p><img src="a.jpg"/></p>', status: 'draft' }, source })
+  expect('classic HTML body still enforces image parity', chk(v).image_count_parity === false,
+    JSON.stringify(chk(v)))
+}
+{
+  const raw = '<h2>About</h2><h2>Care</h2>'
+  const source = { content: { rendered: raw, raw } }
+  const v = validatePayload({ kind: 'post', lang: 'en', payload: { content: '<h2>About</h2>', status: 'draft' }, source })
+  expect('classic HTML body still enforces heading parity', chk(v).heading_count_parity === false,
+    JSON.stringify(chk(v)))
+}
+
+// ── no_new_scripts/tables must read the raw body too ────────────────────
+// Yoast's inline JSON-LD <script> lives in `.rendered`; it used to make the
+// source side look script-bearing and suppress the check entirely.
+{
+  const source = { content: { rendered: '<p>ok</p><script type="application/ld+json">{}</script>', raw: '<p>ok</p>' } }
+  const v = validatePayload({ kind: 'post', lang: 'en', payload: { content: '<p>ok</p><script>alert(1)</script>', status: 'draft' }, source })
+  expect('no_new_scripts compares the raw body', chk(v).no_new_scripts === false, JSON.stringify(chk(v)))
+
+  const v2 = validatePayload({ kind: 'post', lang: 'en', payload: { content: '<p>ok</p>', status: 'draft' }, source })
+  expect('a clean body passes when the render carries JSON-LD', chk(v2).no_new_scripts === true, JSON.stringify(chk(v2)))
+
+  const source2 = { content: { rendered: '<p>ok</p>', raw: '<p>ok</p><script>x</script>' } }
+  const v3 = validatePayload({ kind: 'post', lang: 'en', payload: { content: '<p>ok</p><script>x</script>', status: 'draft' }, source: source2 })
+  expect('a script already in the raw source is skipped, not flagged', chk(v3).no_new_scripts !== false, JSON.stringify(chk(v3)))
+
+  const source3 = { content: { rendered: '<p>ok</p><table><tr><td>x</td></tr></table>', raw: '<p>ok</p>' } }
+  const v4 = validatePayload({ kind: 'post', lang: 'en', payload: { content: '<p>ok</p><table><tr><td>y</td></tr></table>', status: 'draft' }, source: source3 })
+  expect('no_new_tables compares the raw body', chk(v4).no_new_tables === false, JSON.stringify(chk(v4)))
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

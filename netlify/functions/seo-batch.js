@@ -22,12 +22,18 @@
 //   { op: 'create', batch: { note, items: [{ id, kind, lang, endpoint,
 //         summary, payload, before, source, validation }] } }
 //       -> { id, failed_validation, mismatches: [itemIndex] }
+//          (400 if any item has an empty/absent `payload` — nothing to write)
 //   { op: 'poll' }                 -> { batches: [...] }   status === 'approved'
 //                                    (items that failed OC validation come
 //                                     back as decision:'blocked')
 //   { op: 'get', id }              -> { batch }
-//   { op: 'result', id, results: [{ index, ok, after, verified, error }] }
+//   { op: 'result', id, results: [{ index, ok, after, verified, noop, error }] }
 //                                  -> { status: 'executed' | 'partial' }
+//
+// `ok` and `verified` answer two different questions (2026-10-03): `ok` proves
+// no UNINTENDED drift, `verified` proves the INTENDED change happened. A no-op
+// satisfies the first trivially, so `ok:true, verified:false` is a failure to
+// report — see safe-write.mjs and the `result` op below.
 import { initAdminApp } from './lib/firebaseAdmin.js'
 import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 import { timingSafeEqual } from 'node:crypto'
@@ -49,6 +55,33 @@ function secretOk(req) {
   try { return timingSafeEqual(Buffer.from(got), Buffer.from(expected)) } catch { return false }
 }
 
+// Indexes of items with nothing to write. `safeWrite` cannot tell a no-op from
+// a real write (no write error, no drift → ok:true), so a payload-less item was
+// accepted, wrote nothing, and the batch was marked `executed` with
+// verified:true (2026-10-03). Rejected at the door instead. Exported so
+// qa/seo-batch-guard.test.mjs can cover it without Firestore credentials.
+export function emptyPayloadIndexes(items) {
+  return (items || [])
+    .map((it, i) => (!it.payload || (typeof it.payload === 'object' && Object.keys(it.payload).length === 0) ? i : null))
+    .filter(i => i !== null)
+}
+
+// The batch verdict once results are in. `ok` ALONE is not enough: an item
+// whose intended change never happened (`verified:false` — a no-op) is not a
+// success, and the batch must not report `executed` (2026-10-03). A missing
+// `verified` (an older DSH) falls back to `ok` rather than retro-failing.
+export function batchOutcome(items) {
+  const approved = (items || []).filter(it => it.decision === 'approve')
+  const done = approved.filter(it => it.result)
+  const succeeded = (it) => it.result?.ok === true && it.result?.verified !== false
+  return {
+    status: done.length === approved.length && approved.every(succeeded) ? 'executed' : 'partial',
+    executed: done.filter(succeeded).length,
+    unverified: done.filter(it => it.result?.verified === false).length,
+    of: approved.length,
+  }
+}
+
 export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   try { initAdminApp() } catch (e) { return json({ error: String(e?.message || e) }, 500) }
@@ -63,6 +96,11 @@ export default async function handler(req) {
     const items = Array.isArray(body.batch?.items) ? body.batch.items : null
     if (!items?.length) return json({ error: 'batch.items required' }, 400)
     if (items.length > 500) return json({ error: 'batch too large (max 500 items)' }, 400)
+
+    const emptyPayloads = emptyPayloadIndexes(items)
+    if (emptyPayloads.length) {
+      return json({ error: 'item(s) with an empty payload — nothing to write', indexes: emptyPayloads }, 400)
+    }
 
     // Server-side re-validation. `source` (the EN original) makes the full
     // check set run — structure/parity/brand checks are skipped without it —
@@ -155,17 +193,26 @@ export default async function handler(req) {
     const d = await ref.get()
     if (!d.exists) return json({ error: 'not found' }, 404)
     const byIndex = new Map(body.results.map(r => [r.index, r]))
+    // `verified` is kept as an explicit boolean when DSH sends one, and null
+    // when it doesn't (an older DSH — fall back to `ok` for it rather than
+    // retro-failing every result). A present `verified:false` means the
+    // intended change did not happen (no-op), which is a failure to report.
     const items = (d.data().items || []).map(it => {
       const r = byIndex.get(it.index)
       return r
-        ? { ...it, result: { ok: !!r.ok, after: r.after ?? null, verified: !!r.verified, error: r.error ?? null, at: Timestamp.now() } }
+        ? { ...it, result: {
+            ok: !!r.ok,
+            after: r.after ?? null,
+            verified: typeof r.verified === 'boolean' ? r.verified : null,
+            noop: !!r.noop,
+            error: r.error ?? null,
+            at: Timestamp.now(),
+          } }
         : it
     })
-    const approved = items.filter(it => it.decision === 'approve')
-    const done = approved.filter(it => it.result)
-    const status = done.length === approved.length && approved.every(it => it.result?.ok) ? 'executed' : 'partial'
-    await ref.update({ items, status, executed_at: Timestamp.now() })
-    return json({ ok: true, status, executed: done.length, of: approved.length })
+    const outcome = batchOutcome(items)
+    await ref.update({ items, status: outcome.status, executed_at: Timestamp.now() })
+    return json({ ok: true, ...outcome })
   }
 
   return json({ error: `Unknown op: ${body.op}` }, 400)
