@@ -78,6 +78,10 @@ It is not a durable conversation identity:
 3. A conversation imported in an earlier cycle under a different filename,
    customer/lead record, or channel cannot be identified as overlapping by the
    current filename-only warning.
+4. Two different contact persons under the same customer who share a display
+   name (or who are saved under the same name in the phone) collide on the same
+   thread id, so one import overwrites the other — the filename-only key cannot
+   tell the two people apart.
 
 The present UI warning is useful but only answers: “does this filename already
 exist at this exact target?” It does not answer: “does this ZIP contain messages
@@ -94,6 +98,20 @@ logical conversation.
 
 Do not key solely on an archive filename. Store the original filename(s) and
 ZIP SHA-256 as audit metadata, but do not use either as the only identity.
+
+The conversation key resolves to a **specific contact person** (`contact_id` in
+the customer's `contacts[]`), not to a display name. A name is neither durable
+nor unique — two different people can share one, and it can be renamed in the
+phone between exports — so two different contacts must never land on the same
+thread, and a thread must keep its identity across a phone-side rename.
+
+**Personal and Business numbers are always separate conversations.** When the
+same person chats from both a personal and a business WhatsApp number, those are
+two distinct logical conversations: keep one thread per (source account ×
+contact person), and never merge the two into one. Both carry the same
+`contact_id` but different accounts; the UI already distinguishes them by
+channel. Folding both numbers into one thread makes it ambiguous which number
+said what, so they deliberately stay separate.
 
 ### 5.2 Dry-run intake review
 
@@ -130,12 +148,21 @@ The check must report counts, not make a model judgment:
 Fingerprinting supports review and safe update decisions; it must not silently
 delete existing messages. Preserve the raw message text and source provenance.
 
-### 5.4 Customer/lead matching is human-confirmed
+### 5.4 Customer, lead, and contact-person matching is human-confirmed
 
 WhatsApp exports contain a display name, not a reliable phone number/email.
 The current fuzzy customer suggestion is a convenience only. The operator must
 select the target customer or explicitly save a phone-only contact as a lead.
 Never use AI to decide which customer owns correspondence.
+
+One level deeper, the operator must also confirm **which contact person** within
+the customer owns the conversation, not just which customer. Seed the choice
+deterministically — phone number when the export actually reveals one (an
+unsaved contact), then exact name, then fuzzy name against `contacts[].name` —
+and require a human to confirm it. Persist the resolved `contact_id` (and the
+key that produced it, e.g. `matched_by: "phone" | "name"`) on the thread doc so
+the attribution is durable and auditable. An unattributed thread is a visible,
+explicit state, never a silent default.
 
 ### 5.5 Media and transcription handling
 
@@ -157,12 +184,13 @@ Never use AI to decide which customer owns correspondence.
    Do not manually rename an archive to represent a monthly increment; it is a
    full-history update.
 3. Record an intake manifest row: account, file path, export date, SHA-256,
-   chosen customer/lead, parsed message/date/media counts, outcome, and operator
-   review date.
+   chosen customer/lead, chosen contact person, parsed message/date/media
+   counts, outcome, and operator review date.
 4. Run the intake dry-run. Resolve every ambiguous customer match or overlap
    before importing.
-5. Import a small reviewed batch; confirm the customer WhatsApp card has the
-   expected channel, newest-message watermark, counts, and attachments.
+5. Import a small reviewed batch; confirm the customer WhatsApp card shows the
+   expected channel, contact person, newest-message watermark, counts, and
+   attachments.
 6. Generate/refresh the WhatsApp summary only for threads whose message count
    changed. Transcribe only voice notes relevant to current CRM context.
 7. Keep the original ZIPs as the source archive. Do not delete or overwrite
@@ -171,10 +199,12 @@ Never use AI to decide which customer owns correspondence.
 ## 7. Build sequence
 
 1. Write pure parser/fingerprint tests using fixture exports: unchanged
-   re-import, renamed ZIP, Business+Personal same contact, partial overlap,
+   re-import, renamed ZIP, same contact on Business+Personal (must stay
+   separate), two same-named contacts under one customer, partial overlap,
    same-time conflict, and malformed archive.
 2. Evolve thread metadata/identity without destroying existing thread docs;
-   include a migration and review view for legacy filename-keyed imports.
+   add `contact_id` attribution and a migration + review view for legacy
+   filename-keyed imports.
 3. Build the dry-run/review surface and explicit conflict choices.
 4. Build update/merge behaviour only after the review model is proven. Use
    additive/transactional writes; never destructive replacement across different
@@ -195,8 +225,10 @@ Never use AI to decide which customer owns correspondence.
 
 ## 9. Files and boundaries to revisit when work resumes
 
-- `src/domain/whatsappImport.js` — parser, thread identity, attachment reuse,
-  import write path.
+- `src/domain/whatsappImport.js` — parser, thread identity, `contact_id`
+  attribution, attachment reuse, import write path.
+- `src/domain/customer.js` — `contacts[]` shape and the name/phone →
+  `contact_id` resolution the import must record.
 - `src/pages/WhatsAppImport.jsx` — preview, matching, duplicate warning,
   import-all controls.
 - `src/pages/CustomerDetail.jsx` and `src/pages/MarketingContactDetail.jsx` —
@@ -213,9 +245,13 @@ Never use AI to decide which customer owns correspondence.
 - Re-importing the same archive is idempotent and preserves media URLs and
   transcripts.
 - Renaming a ZIP cannot create an accidental duplicate.
-- Business and Personal histories for the same customer can coexist without
-  overwriting each other.
+- Two contact persons under one customer are imported as separate threads and
+  never mixed, even if they share a display name.
+- One person's Personal and Business numbers are two separate conversations,
+  never merged into one thread.
 - Every potential overlap is surfaced with deterministic counts and requires a
   human decision.
-- A human can trace each stored thread to its source account and archived ZIP.
+- A human can trace each stored thread to its source account, archived ZIP, and
+  contact person (`contact_id`); the WhatsApp card shows the contact's name and
+  title, not a raw phone-book nickname.
 - A summary refresh happens only when the imported message total changed.
