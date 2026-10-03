@@ -215,13 +215,21 @@ const validation = validatePayload({ kind, lang, endpoint, payload, source: enOr
   whenever you have it — it powers widget-count parity, length-anomaly, brand-term
   and SKU-prefix checks, image/H2 parity. Without it, only the language / marker /
   double-brand / draft-only checks run.
-  - Pass the **whole live entity**, REST object and all. On an Elementor post,
-    `content` is `{ rendered, raw }` and `.rendered` is the entire built page;
-    the validator now reads `.raw` (2026-10-03), so a correct Elementor edit —
-    one that changes only `meta._elementor_data` — passes the image/H2 parity
-    checks instead of failing `0 <img> vs source 36`. **Do NOT** "fix" a parity
-    failure by trimming `source.content` to a bare string: that removes the
-    source-side data the check needs. Re-vendor the validator instead.
+  - **Fetch it with `context=edit`.** A REST entity fetched without it has no
+    `content.raw`, so the body-level checks (image/heading parity, scripts/tables,
+    and the brand/language text scans) have no authored body to compare and
+    **skip**. That is deliberately the safe answer — not a failure — but a missing
+    `context=edit` silently costs you those checks. Do the same for the `before`
+    snapshot you send: the OC falls back to it when no `source` is given.
+  - Pass the **whole live entity**, REST object and all. `content` is
+    `{ rendered, raw }` and `.rendered` is the entire built page; the validator
+    reads `.raw` **only** (2026-10-03, both the parity/script checks and
+    `payloadText`'s text scans), so a correct Elementor edit — one that changes
+    only `meta._elementor_data` — passes instead of failing
+    `0 <img> vs source 36` or `brand term(s) translated away: Swarovski, MagSafe`
+    on terms that were never in the payload body. **Do NOT** work around a failure
+    by trimming `source.content` to a bare string: that suppresses the check
+    instead of satisfying it. Re-vendor the validator and add `context=edit`.
 - Returns `{ passed, checks: [{ name, ok, detail }] }`. The 16 checks and their
   B-lesson mapping are listed at the top of `validate-payload.mjs`.
 - **`passed === false` → do not execute that item.** Full stop.
@@ -296,8 +304,12 @@ dedicated variation id/price-hash guard.
       the Workbench (copy verbatim; re-copy when the OC updates them — a new
       failure mode adds a check there). Verify the copy is byte-identical to the
       sha256[:12] fingerprint recorded in `seo-control-plane/README.md` → "Vendoring contract"
-      before you trust a run. **Re-vendor after the 2026-10-03 fix** (the
-      versions that produced defects 1 and 2 are stale).
+      before you trust a run. **Re-vendor after the 2026-10-03 fixes** — both the
+      first pass and the `payloadText()` follow-up; `validate-payload.mjs` must
+      fingerprint `3bf6c751c578` and `safe-write.mjs` `653305dd4fe8`. Anything
+      older is stale.
+- [ ] Fetch `source` (and the `before` snapshot) with **`context=edit`**, or the
+      body-level checks silently skip.
 - [ ] Wrap your `wp-api.mjs` write path so **nothing** writes WordPress except
       through `safeWrite`, and gate the batch on `r.verified`, not `r.ok`.
 - [ ] Add the batch build + `/api/seo-batch` calls to your pipeline scripts.
@@ -320,3 +332,4 @@ a 200-item run to it.
 |---|---|
 | 2026-09-02 | Briefing written; control plane live (steps 1–4). |
 | 2026-10-03 | **Two defects fixed** (raised by DSH while staging a WordPress write). **1a** `create` now rejects an item with an empty/absent `payload` (400) instead of silently storing `{}` and reporting a no-op as success. **1b** `safe-write.mjs` returns `verified` (did the INTENDED change happen?) alongside `ok` (did anything UNINTENDED move?); `noop:true` when none of `expectedFields` moved, and `op:'result'` now marks a batch `partial` — never `executed` — when any approved item is `verified:false`. **2** `validate-payload.mjs` compares the **RAW** body (`content.raw`) on both sides for image/heading parity and `no_new_scripts` / `no_new_tables`, so a correct Elementor edit (which changes only `meta._elementor_data`) passes. **DSH must re-vendor both files** (sha256[:12] fingerprint in `seo-control-plane/README.md`) and gate execution on `r.verified`, and should drop its `before.content` workaround. |
+| 2026-10-03 | **Defect 2's fix was incomplete — follow-up from DSH, now closed.** `payloadText()` was a fourth call site of the same bug: it resolved an object field to `.rendered`, so the whole built page counted as *source text* and `brand_terms_preserved` reported terms (e.g. `Swarovski, MagSafe`) "translated away" when they were never in the payload body. `contentString()` now also backs `payloadText` **and uses `.raw` only** — an absent `.raw` returns `''` and the body-level checks **skip**, rather than falling back to the render (`wpEntity()` omits `context=edit`, so the fallback silently restored the old behaviour). **Re-vendor `validate-payload.mjs` (fingerprint `3bf6c751c578`), fetch `source`/`before` with `context=edit`, and drop the `before.content` workaround.** L-47. |

@@ -226,31 +226,6 @@ imports of big groups are rare and the auto-import covers the real workflow.
 `src/pages/WhatsAppImport.jsx` — compare with
 `scripts/upload-whatsapp-media.mjs` and `src/pages/CustomerDetail.jsx`.
 
-## `validate-payload.mjs` still reads `.rendered` for its text scans
-
-The 2026-10-03 fix (L-45) taught the **HTML-counting** checks
-(`image_count_parity`, `heading_count_parity`, `no_new_scripts`,
-`no_new_tables`) to read a live entity's raw body via `contentString()`. The
-**text** scans were deliberately left alone: `payloadText()` still pushes
-`v.rendered` for any object field, so when `seo-batch.js`'s `revalidate()` falls
-back to `it.before` as the `source`, `wrong_language_chars`,
-`brand_terms_preserved` and `placeholder_markers` compare against the built
-Elementor page rather than the authored body.
-
-Same class of mismatch, one level down. It only bites on a batch item submitted
-**without** a real `source` (with one, `payloadText` sees the EN-original
-object's own fields and behaves). Not changed in the same commit because it
-alters three checks' outcomes rather than fixing an unsatisfiable gate — and for
-`brand_terms_preserved` the rendered page is arguably the right comparison
-anyway (its JSON-LD is stripped separately, B53), so the right answer per check
-needs deciding, not just switching.
-
-Fix would be to route `payloadText` through `contentString()` and re-baseline
-the tests. Worth doing deliberately, not in passing.
-
-**Where:** `seo-control-plane/validate-payload.mjs` (`payloadText`, ~line 125),
-`netlify/functions/seo-batch.js` (`revalidate`'s `source ?? before` fallback).
-
 ## Keeping this current
 
 Add an entry when you notice something like this in passing during

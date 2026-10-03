@@ -28,7 +28,7 @@ ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch
 
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-03) |
 |---|---|
-| `validate-payload.mjs` | `995c06578c8d` |
+| `validate-payload.mjs` | `3bf6c751c578` |
 | `safe-write.mjs` | `653305dd4fe8` |
 
 Regenerate with
@@ -92,18 +92,30 @@ POST /api/seo-batch { op:'result', id, results }                  # → executed
 `meta._elementor_data`). Any `*_elementor_data` field is compared by FNV-1a
 hash, not full string.
 
-## Comparing like with like (2026-10-03)
+## Comparing like with like (2026-10-03, and its follow-up)
 
-The image/heading parity checks and `no_new_scripts` / `no_new_tables` read the
-**RAW body** on both sides via `contentString()`: our payload's `content` is a
-string, but a live entity's is the REST object `{ rendered, raw }`, and
-`.rendered` for an Elementor post is the **entire built page**. Comparing a raw
-payload against a rendered page can never agree — every correct Elementor edit
-(one that changes only `meta._elementor_data`) failed `image_count_parity`
-(`0 <img> vs source 36`) and `heading_count_parity` (`0 <h2> vs source 4`). The
-same applied to `.rendered`'s inline JSON-LD, which suppressed the
-`no_new_scripts` check entirely.
+**One rule, four call sites.** A live entity's `content` is the REST object
+`{ rendered, raw }`; `.rendered` for an Elementor post is the **entire built
+page**. Everything that reads a body — or the text of one — goes through
+`contentString()`, which uses `.raw` **only**:
 
-**Do not work around this by trimming `source.content` to a bare string** — that
-deletes the source-side data the check exists to compare against. Pass the whole
-live entity and let the validator read `.raw`.
+- `image_count_parity` and `heading_count_parity`
+- `srcBodyStr` for `no_new_scripts` / `no_new_tables`
+- **`payloadText()`**, which feeds `brand_terms_preserved`,
+  `wrong_language_chars` and `placeholder_markers`
+
+The first three were fixed first; `payloadText()` was missed, and the render kept
+being counted as *source text* — so the source always looked richer than the
+payload and `brand_terms_preserved` reported terms "translated away" that were
+never in the payload body to begin with (L-47).
+
+**An absent `.raw` means "no authored body — nothing to compare".** That case
+returns `''` and the body-level checks **skip**; it does *not* fall back to
+`.rendered`. This matters because `wpEntity()` fetches **without
+`context=edit`**, which omits `.raw` — a `.rendered` fallback would silently
+restore the old behaviour for every caller that forgot the parameter.
+
+**So: fetch `source` / `before` with `context=edit`.** Without it the body-level
+checks cannot run at all. And **do not** work around a failure by trimming
+`source.content` to a bare string — that suppresses the check instead of
+satisfying it. Pass the whole live entity.

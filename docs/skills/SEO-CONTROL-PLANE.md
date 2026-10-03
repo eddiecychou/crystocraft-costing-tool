@@ -20,7 +20,7 @@
 |---|---|---|---|
 | 1 | **State store + snapshot** — a structured "what's live now" for posts/pages, snapshottable for rollback | OC page `/seo-state`, edge fn `seo-state`, Firestore `seo_state` + `seo_state_history` | **BUILT 2026-09-02** |
 | 2 | **Batch / review contract** — DSH prepares a change batch, the human approves it per-item in the OC against a real diff | Firestore `seo_batches`, Node fn `seo-batch`, OC page `/seo-review` | **BUILT 2026-09-02** |
-| 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | Reference impls in `seo-control-plane/` (OC-owned, DSH vendors) | **BUILT 2026-09-02**; **V8.15:** the OC now re-runs `validate-payload.mjs` server-side in `seo-batch.js` `create` (stored `validation` = OC's, DSH's kept as `dsh_validation` + `validation_mismatch`), and `poll` blocks any approved-but-OC-failed item — the gate no longer relies on DSH's honesty. **2026-10-03:** two control-plane defects fixed — empty-payload items rejected at `create`, `verified`/`noop` added to `safeWrite` so a no-op can never report success (L-44), and parity/script checks compare the RAW body (L-45) |
+| 3 | **`safeWrite` + `validate-payload`** — no DSH script writes WordPress except through a snapshot-guarded, field-scoped wrapper; no payload reaches a write without passing the code gate | Reference impls in `seo-control-plane/` (OC-owned, DSH vendors) | **BUILT 2026-09-02**; **V8.15:** the OC now re-runs `validate-payload.mjs` server-side in `seo-batch.js` `create` (stored `validation` = OC's, DSH's kept as `dsh_validation` + `validation_mismatch`), and `poll` blocks any approved-but-OC-failed item — the gate no longer relies on DSH's honesty. **2026-10-03:** two control-plane defects fixed — empty-payload items rejected at `create`, `verified`/`noop` added to `safeWrite` so a no-op can never report success (L-44), and every body-level check (parity, scripts/tables, and the brand/language text scans) compares the RAW body (L-45, completed at the fourth call site by **L-47**) |
 | 4 | **Reconciliation** — live state vs a history snapshot or an executed batch; flags a reverted page, a clobbered layout, a disappeared SEO field | OC page `/seo-reconcile` | **BUILT 2026-09-02** |
 
 Products are already covered by `woo-sync.js` `catalogue_page` → the **Woo Catalogue** page (Yoast title/desc + WPML `translations` per product). This control plane adds **blog posts and pages**.
@@ -145,8 +145,18 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   and script/table checks read the RAW body on both sides** via `contentString()`
   — a live entity's `content` is the REST object `{ rendered, raw }` and
   `.rendered` is the whole built page for an Elementor post, so raw-vs-rendered
-  could never agree and *every* correct Elementor edit failed the gate. The
-  Workbench attaches the result as each `seo_batches` item's `validation` field.
+  could never agree and *every* correct Elementor edit failed the gate. **A
+  same-day follow-up (L-47) closed the same bug at its fourth call site**:
+  `payloadText()` — which feeds `brand_terms_preserved`, `wrong_language_chars`
+  and `placeholder_markers` — also resolved objects to `.rendered`, so the built
+  page counted as *source text* and brand terms were reported "translated away"
+  (`Swarovski, MagSafe`) on posts whose own body had never contained them. And
+  `contentString()` no longer falls back to `.rendered`: an absent `.raw` returns
+  `''`, so the body-level checks **skip** — because `wpEntity()` fetches without
+  `context=edit` by default and a fallback silently restored the old behaviour.
+  **Callers MUST fetch `source`/`before` with `context=edit`**, or those checks
+  cannot run. The Workbench attaches the result as each `seo_batches` item's
+  `validation` field.
   `node seo-control-plane/validate-payload.test.mjs` covers the known incident
   cases.
 - **`safe-write.mjs`** — `safeWrite({ get, put, id, endpoint, payload,
@@ -164,12 +174,15 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   way.**
 
 This directory is also the **vendoring contract**: DSH copies both files
-verbatim and verifies the sha256[:12] fingerprint recorded in `seo-control-plane/README.md`. The
+verbatim and verifies the sha256[:12] fingerprint recorded in
+`seo-control-plane/README.md` (`validate-payload.mjs` = `3bf6c751c578`,
+`safe-write.mjs` = `653305dd4fe8` after the 2026-10-03 fixes). The
 OC tells DSH when either changes (`op:'create'` re-runs the vendored validator
 server-side, so a stale copy shows up as `validation_mismatch`). Both files have
-their own `node`-runnable test: `validate-payload.test.mjs` (49 cases) and
+their own `node`-runnable test: `validate-payload.test.mjs` (55 cases) and
 `safe-write.test.mjs` (24 cases), plus `qa/seo-batch-guard.test.mjs` (13) for the
-OC-side guards.
+OC-side guards. When a fix changes a *class* of bug, grep for the pattern across
+the file before declaring it done — L-47 is what happens otherwise.
 
 ## Step 4 — reconciliation (BUILT — `/seo-reconcile`)
 
@@ -198,3 +211,4 @@ CSV export of the drift/failed rows in both modes.
 | 2026-09-02 | Steps 1–4 built: `seo_state`/`seo_state_history`, `seo_batches` + `seo-batch` + `/seo-review`, `seo-control-plane/` (`validate-payload` + `safe-write`), `/seo-reconcile`. |
 | 2026-09-23 | **L-29** — `placeholder_markers` extended to fr/ja/zh-hant (was en/es/zh-hans only). |
 | 2026-10-03 | **Two control-plane defects raised by DSH while staging a WordPress write, both fixed here.** (1) A payload-less item was accepted, wrote nothing, and returned `ok:true/verified:true` → the batch reported `executed`. `create` now rejects an empty payload (400), and `safeWrite` returns `verified`/`noop` (gate on `verified`, not `ok`) with `op:'result'` marking such a batch `partial`. (2) Image/heading parity was unsatisfiable for Elementor edits because a live entity's `.rendered` page was compared against a raw payload body — both sides now go through `contentString()`, which prefers `.raw`, as do `no_new_scripts`/`no_new_tables`. DSH re-vendors both files (sha256[:12] fingerprint in `seo-control-plane/README.md`) and drops its `before.content` workaround. See `LESSONS-LEARNED.md` L-44 / L-45. |
+| 2026-10-03 | **L-47 — defect 2's fix was incomplete and DSH verified the remainder.** `payloadText()` was a fourth call site of the same bug (it fed `brand_terms_preserved` / `wrong_language_chars` / `placeholder_markers` from the built page, so the source always looked richer than the payload and brand terms read as "translated away"), and `contentString()` still fell back to `.rendered` when `.raw` was absent — the default for `wpEntity()` without `context=edit`. `contentString` is now `.raw`-only and `payloadText` uses it; an absent `.raw` makes the body-level checks **skip** rather than compare against the render. New `validate-payload.mjs` fingerprint `3bf6c751c578`; callers must fetch `source`/`before` with `context=edit`. `validate-payload.test.mjs` 49 → 55. |

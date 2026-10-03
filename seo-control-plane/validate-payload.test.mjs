@@ -268,5 +268,56 @@ function expect(name, cond, detail = '') {
   expect('no_new_tables compares the raw body', chk(v4).no_new_tables === false, JSON.stringify(chk(v4)))
 }
 
+// ── 2026-10-03 FOLLOW-UP (DSH): the render is not source TEXT either ────
+// payloadText()'s object branch resolved `content` to `.rendered` — the whole
+// built page, whose visible text the payload body does not carry. The source
+// then always looked richer than the payload, so `brand_terms_preserved` could
+// never pass for an Elementor edit that carried a complete source. Same root
+// cause as the parity checks, fourth call site (L-47).
+{
+  const rendered = '<p>Intro.</p><h3>Swarovski crystal rose</h3><a href="/c">MagSafe charger</a>'
+  const mkEd = (t) => JSON.stringify([{ id: 'w1', elType: 'widget', widgetType: 'text-editor', settings: { editor: t } }])
+  const source = { content: { rendered, raw: '<p>Intro.</p>' }, meta: { _elementor_data: mkEd('A gift for every occasion.') } }
+  const payload = { content: '<p>Intro.</p>', meta: { _elementor_data: mkEd('A gift for every occasion.') }, status: 'draft' }
+  const v = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant', payload, source })
+  expect('brand terms in the RENDER are not source text', chk(v).brand_terms_preserved === true,
+    JSON.stringify(v.checks.filter(c => !c.ok)))
+}
+
+// ── an absent `.raw` means "nothing to compare", so the checks SKIP ─────
+// `wpEntity()` fetches without `context=edit`, which omits `.raw`; a
+// `.rendered` fallback in contentString() quietly restored the old behaviour
+// for every caller that forgot the parameter (L-47).
+{
+  const source = { content: { rendered: '<img src="a.jpg"/>'.repeat(36) + '<h2>x</h2>'.repeat(4) } }
+  const payload = { content: '<p>Intro.</p>', status: 'draft' }
+  const v = validatePayload({ kind: 'page', lang: 'en', payload, source })
+  const c = chk(v)
+  expect('source without .raw: image parity skipped', c.image_count_parity === undefined, JSON.stringify(v.checks))
+  expect('source without .raw: heading parity skipped', c.heading_count_parity === undefined, JSON.stringify(v.checks))
+}
+{
+  const v = validatePayload({ kind: 'page', lang: 'en',
+    payload: { content: '<p>Intro.</p>', status: 'draft' },
+    source: { content: { rendered: '<h3>Swarovski</h3>' } } })
+  expect('source without .raw: no brand evidence from the render', chk(v).brand_terms_preserved === true,
+    JSON.stringify(v.checks.filter(c => !c.ok)))
+}
+
+// ── the language scan's source-side excuse set comes from `.raw` too ────
+{
+  const v = validatePayload({ kind: 'post', lang: 'fr',
+    payload: { title: 'Bonjour 水晶' },
+    source: { content: { rendered: '<p>水晶</p>', raw: '<p>Hello</p>' } } })
+  expect('CJK in the render alone no longer excuses a leak', chk(v).wrong_language_chars === false,
+    JSON.stringify(chk(v)))
+
+  const v2 = validatePayload({ kind: 'post', lang: 'fr',
+    payload: { title: 'Bonjour 水晶' },
+    source: { content: { rendered: '<p>Hello</p>', raw: '<p>水晶</p>' } } })
+  expect('CJK in the raw source is still excused', chk(v2).wrong_language_chars === true,
+    JSON.stringify(chk(v2)))
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

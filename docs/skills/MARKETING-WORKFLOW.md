@@ -432,7 +432,10 @@ DSH stays the sole WordPress writer but goes through this loop:
    B12 placeholder, B20 stale-layout, B33/B35 CJK leak, L-09 double-brand,
    Rule 4 never-publish-unlinked-translation…). A failing payload does not get
    written. The image/heading parity and script/table checks compare the **raw**
-   body on both sides, never a live entity's rendered page — see L-45.
+   body on both sides, never a live entity's rendered page — as do the brand /
+   language / placeholder text scans, so `source` (and the `before` snapshot)
+   **MUST** be fetched with `context=edit` or those checks silently skip. See
+   L-45 and L-47.
 3. **Batch + human approval.** POST the batch to `/api/seo-batch`
    (`op:'create'`, Bearer `SEO_BATCH_SECRET`). The owner approves/rejects
    per-item at `/seo-review` against a real `before → after` diff, then "Send
@@ -464,3 +467,4 @@ clear, host purge) is unchanged.
 | 2026-09-02 | §4 Product Truth: recorded the DETERMINISTIC-ART-GEN audit outcome applied to the in-repo retoucher — `enhance-image.js` gained a `FRAMING` anti-reframe anchor, a consolidated `EXCLUDE` negative-constraint block, `temperature 0` for the faithful modes, and a PNG/JPEG-header reframe guard that surfaces `reframed:true` as an amber UI warning. |
 | 2026-09-02 | Added **§6.6 — the SEO control plane**, the mandatory path for every WordPress write from the external pipeline: snapshot → `validate-payload` → batch → human approval at `/seo-review` → `safeWrite` → `/seo-reconcile`. Backed by `docs/skills/SEO-CONTROL-PLANE.md`, `seo-control-plane/` (vendored validators), Firestore `seo_state` / `seo_state_history` / `seo_batches`, and the `/api/seo-batch` Node function. Replaces "DSH shows a contact sheet in chat, writes live, state in prose". |
 | 2026-10-03 | §6.6 steps 2–4 corrected after DSH raised two control-plane defects while staging a WordPress write: an empty-payload item is now rejected 400 at `create`; `safeWrite` returns `verified`/`noop` and callers gate on `verified`, not `ok` (a no-op is a failure to report — L-44); and the parity/script checks compare the raw body, so correct Elementor edits pass (L-45). |
+| 2026-10-03 | §6.6 step 2 extended — DSH verified defect 2 only partially fixed: the raw-body rule also covers the brand/language/placeholder text scans (L-47), an absent `.raw` makes those checks skip rather than fall back to the render, and `source`/`before` must be fetched with `context=edit`. |

@@ -120,9 +120,24 @@ Fixed in the OC, lessons **L-44 / L-45**, contract + hashes in
    (DSH's stopgap — trimming `before.content` to a bare string so both sides
    count 0 — is to be dropped once it re-vendors.)
 
+   **Follow-up, same day (L-47): DSH verified the first pass was incomplete.**
+   `payloadText()` was a fourth call site of the same bug — the source's
+   `.rendered` counted as *source text*, so the source always looked richer than
+   the payload and `brand_terms_preserved` reported `Swarovski, MagSafe`
+   "translated away" on a post whose body had never contained them. And
+   `contentString()` still fell back to `.rendered` when `.raw` was absent —
+   which is the default for `wpEntity()` without `context=edit`, so the fallback
+   silently restored the old behaviour for any caller that forgot the parameter.
+   `contentString` is now `.raw`-only (absent → `''` → the body-level checks
+   **skip**), `payloadText` routes object fields through it, and callers **must**
+   fetch `source`/`before` with `context=edit`. New `validate-payload.mjs`
+   fingerprint `3bf6c751c578`.
+
 New tests: `seo-control-plane/safe-write.test.mjs` (24),
-`qa/seo-batch-guard.test.mjs` (13), `validate-payload.test.mjs` 40 → 49.
-`seo-batch.js`'s create guard + batch verdict were extracted as
+`qa/seo-batch-guard.test.mjs` (13), `validate-payload.test.mjs` 40 → 49 → 55
+(the six added in the follow-up were verified to **fail** against the pre-fix
+validator, reproducing DSH's exact `Swarovski, MagSafe` and `0 <img> vs source
+36` output). `seo-batch.js`'s create guard + batch verdict were extracted as
 `emptyPayloadIndexes` / `batchOutcome` so they are testable without Firestore
 credentials. **DSH must re-vendor both files** (sha256[:12] fingerprint table in
 `seo-control-plane/README.md`) and gate execution on `r.verified`, not `r.ok`;

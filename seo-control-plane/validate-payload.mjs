@@ -20,7 +20,9 @@
 //                              repo's LESSONS-LEARNED.md) — was en/es/zh-hans
 //                              only, missing 3 of the 6 languages this site
 //                              actually publishes in
-//   brand_terms_preserved .... §3c, §8b.5, B53 (ignore Yoast head + JSON-LD)
+//   brand_terms_preserved .... §3c, §8b.5, B53 (ignore Yoast head + JSON-LD;
+//                              source text is the RAW body, never `.rendered` —
+//                              L-47)
 //   sku_prefix_preserved ..... B12 (SKU-preserving name translation)
 //   image_count_parity ....... §2 payload validation (RAW body on both sides)
 //   heading_count_parity ..... §2 (RAW body on both sides — a live entity's
@@ -29,6 +31,14 @@
 //   no_new_scripts_or_tables . §2 (RAW body on both sides — `.rendered` carries
 //                              Yoast's inline JSON-LD, which used to suppress
 //                              the check entirely)
+//
+// The RAW-body rule is one rule, not three: `contentString()` is used by the
+// three checks above AND by `payloadText()` (which feeds the language /
+// placeholder / brand scans). An object field contributes `.raw` only, and an
+// absent `.raw` means "no authored body — nothing to compare", so the check
+// SKIPS rather than falling back to the render. Fixing it at only some call
+// sites is how L-47 happened; when this class of bug appears, grep for the
+// pattern rather than patching the site that was reported.
 //   seo_title_no_double_brand . L-09, MASTER §4
 //   seo_desc_length .......... §4, B47
 //   translation_draft_only ... Rule 4 (never publish an unlinked translation)
@@ -116,7 +126,8 @@ function elementIds(tree) {
 }
 
 // Collect all human-readable text in a payload (top-level string fields +
-// decoded Elementor widget text). Used for the language / placeholder scans.
+// decoded Elementor widget text). Used for the language / placeholder / brand
+// scans — on BOTH sides (`text` = payload, `srcText` = source).
 function payloadText(payload) {
   const parts = []
   for (const [k, v] of Object.entries(payload || {})) {
@@ -126,7 +137,13 @@ function payloadText(payload) {
     // brand_terms_preserved and leaking stray chars into the language scan (B53).
     if (k === 'meta' || k === 'yoast_head' || k === 'yoast_head_json') continue
     if (typeof v === 'string') parts.push(v)
-    else if (v && typeof v === 'object' && typeof v.rendered === 'string') parts.push(v.rendered)
+    // An object field is a REST `{ rendered, raw }` (a live entity's content /
+    // excerpt / title). It MUST go through contentString so it contributes its
+    // RAW body: `.rendered` is the whole built page, and counting it as source
+    // text made `brand_terms_preserved` unsatisfiable — the render carries brand
+    // names in image filenames, alt text and links that the payload body cannot
+    // (2026-10-03 follow-up; same false-flag class as `yoast_head` above, L-47).
+    else if (v && typeof v === 'object') parts.push(contentString(v))
   }
   const ed = parseElementor(payload?.meta?._elementor_data)
   if (ed && typeof ed === 'object') for (const w of widgetTexts(ed)) parts.push(w.text)
@@ -141,15 +158,22 @@ const countMatches = (str, rx) => (str.match(rx) || []).length
 const stripTags = (s) => asString(s).replace(/<[^>]+>/g, ' ')
 
 // `content` is either a string (our payload) or the REST object
-// `{ rendered, raw }` (a live entity). Compare like with like, and prefer RAW:
-// `.rendered` is the BUILT page for an Elementor post — the entire page, with
-// its own images, headings and inline JSON-LD — which is not what a body-level
-// check is about, and can never equal a raw payload body (2026-10-03: every
-// correct Elementor edit failed image/heading parity, 0 <img> vs source 36).
+// `{ rendered, raw }` (a live entity). Compare like with like, and use RAW
+// ONLY: `.rendered` is the BUILT page for an Elementor post — the entire page,
+// with its own images, headings, brand-mentioning filenames/alt text and inline
+// JSON-LD — which is not what a body-level check is about and can never equal a
+// raw payload body (2026-10-03: every correct Elementor edit failed
+// image/heading parity, 0 <img> vs source 36).
+//
+// An absent `.raw` returns '' — "no authored body, nothing to compare" — so the
+// body-level checks SKIP rather than silently comparing against the render
+// again. That matters: `wpEntity()` fetches without `context=edit`, which omits
+// `.raw`, so a `.rendered` fallback here would quietly restore the old
+// behaviour for every caller that forgot the parameter (L-47).
 function contentString(c) {
   if (c == null) return ''
   if (typeof c === 'string') return c
-  if (typeof c === 'object') return String(c.raw ?? c.rendered ?? '')
+  if (typeof c === 'object') return String(c.raw ?? '')
   return String(c)
 }
 

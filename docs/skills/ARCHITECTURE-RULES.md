@@ -336,12 +336,19 @@ boundaries the 2026-10-03 defects established.
   no declared fields `verified` falls back to `ok` — do not invent a no-op
   alarm; equally, **MUST NOT** omit `expectedFields` on a write whose success
   you intend to prove.
-- **Compare like with like.** A live entity's `content` is the REST object
-  `{ rendered, raw }`; `.rendered` is the *built* page (and for Elementor, the
-  whole page). Body-level checks **MUST** read `.raw` via `contentString()` —
-  raw-vs-rendered can never agree (`validate-payload.mjs`; L-45). **MUST NOT**
-  "fix" a parity failure by trimming `source.content` to a bare string: that
-  deletes the data the check exists to compare against.
+- **Compare like with like, and RAW only.** A live entity's `content` is the REST
+  object `{ rendered, raw }`; `.rendered` is the *built* page (and for Elementor,
+  the whole page). Every body-level check **MUST** read `.raw` via
+  `contentString()` — that is the parity and script/table checks **and**
+  `payloadText()`'s brand/language/placeholder scans; fixing it at only some call
+  sites is what produced L-47. An absent `.raw` means "no authored body, nothing
+  to compare": the check **skips**, and `contentString` **MUST NOT** fall back to
+  `.rendered` — `wpEntity()` omits `context=edit` by default, so a fallback
+  silently restores the old behaviour for every caller that forgets the
+  parameter. **Callers MUST fetch `source`/`before` with `context=edit`.** **MUST
+  NOT** "fix" a check failure by trimming `source.content` to a bare string: that
+  deletes the data the check exists to compare against (`validate-payload.mjs`;
+  L-45, L-47).
 - **The vendored files are OC-owned SSOT.** When `validate-payload.mjs` or
   `safe-write.mjs` changes, the sha256[:12] fingerprint table in `seo-control-plane/README.md`
   **MUST** be re-stamped in the same commit and DSH told to re-vendor. A stale
@@ -500,3 +507,4 @@ makes it real.
 | 2026-09-01 | Adopted the Magister "AI management" patterns: §1 framed as a deterministic boundary; new §7a "Measure before you change" (report before/after numbers, never "looks fine"); new §8 Deterministic boundaries (AI reports observables, code decides — Product Truth, isolation, pricing, FX, ingestion); new §9 Load-Bearing Decisions (12 rules that must not be undone, plus the honest note that "WhatsApp-first CTA" is NOT implemented so cannot be one). |
 | 2026-10-03 | New §4c "WhatsApp thread identity & intake" — thread id is `account × contact_id` (never a display name); groups are a distinct third type (`{account}__group__{slug}`); Business/Personal accounts never merge; archive→customer matching is an owner-confirmed manifest (never auto/fuzzy); the 1 MiB/doc cap forces attachment URLs to spill to `whatsapp_threads/{id}/media/urls`; every reader must skip `migrated_to` tombstones. |
 | 2026-10-03 | New §4d "WordPress writes — the SEO control plane" — `ok` (no unintended drift) is not `verified` (the intended change happened); gate on `verified` and never report a batch `executed` with an unverified item; a payload-less item is rejected 400 at `create`; an empty `expectedFields` cannot prove intent; body-level validator checks compare the **raw** body on both sides (never `.rendered`), and trimming `source.content` to a workaround is forbidden; the vendored `seo-control-plane/` files are OC-owned SSOT with a sha256[:12] re-vendoring table. Extracted from the two control-plane defects raised by DSH (L-44 / L-45). |
+| 2026-10-03 | §4d's raw-body rule extended after DSH verified defect 2 only *partially* fixed: the rule covers `payloadText()`'s brand/language/placeholder scans too (the fourth call site — L-47), `contentString()` is `.raw`-only so an absent `.raw` **skips** rather than falling back to `.rendered`, and callers **MUST** fetch `source`/`before` with `context=edit`. |
