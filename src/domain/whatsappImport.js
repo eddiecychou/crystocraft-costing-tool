@@ -248,35 +248,40 @@ export function isLegacyThread(threadDoc) {
   return !threadDoc || !threadDoc.contact_id || !threadDoc.account
 }
 
-// Whether this exact file has already been imported for the given target —
-// re-importing is safe either way (setDoc overwrites the same doc id rather
-// than duplicating), but the admin should know before hitting Import again,
-// not find out only after. Read-only: never creates the lead/customer doc
-// just to check (uses idFromPhone directly rather than
+// Whether this (account × contact) conversation has already been imported for
+// the given target — re-importing is safe either way (setDoc overwrites the
+// same doc id rather than duplicating), but the admin should know before
+// hitting Import again, not find out only after. Read-only: never creates the
+// lead/customer doc just to check (uses idFromPhone directly rather than
 // findOrCreateLeadByPhone, which would create one).
-export async function findExistingThread(target, zipFileName) {
-  const importId = threadDocId(zipFileName)
-  let collectionName, parentId
+export async function findExistingThread(target, channel) {
+  const account = normalizeAccount(channel)
+  let collectionName, parentId, contactId
   if (target.type === 'lead') {
     if (!target.phone?.trim()) return null
     collectionName = 'marketing_contacts'
     parentId = idFromPhone(target.phone)
+    contactId = idFromPhone(target.phone)
   } else {
     if (!target.customerId) return null
     collectionName = 'customers'
     parentId = target.customerId
+    contactId = target.contactId
   }
+  if (!contactId) return null
+  const importId = conversationThreadId({ account, contactId })
   const snap = await getDoc(doc(db, collectionName, parentId, 'whatsapp_threads', importId))
   return snap.exists() ? { importId, ...snap.data() } : null
 }
 
 // Full pipeline for one export: parse -> resolve target -> upload
 // attachments -> write the Firestore doc. `file` is a browser File (from an
-// <input type=file>). `target` is either { type: 'customer', customerId }
-// (matched to a real customers/ record) or { type: 'lead', phone } (a "weak
-// lead" — never converted, saved under marketing_contacts/ instead, see
-// findOrCreateLeadByPhone in domain/marketingContact.js).
-export async function importWhatsAppZip(file, { target, channel, onProgress }) {
+// <input type=file>). `target` is either { type: 'customer', customerId,
+// contactId } (a real customer + the resolved contacts[] person) or
+// { type: 'lead', phone } (a "weak lead" — never converted, saved under
+// marketing_contacts/ instead; its "person" is the lead itself). The doc id is
+// the §5.1 account × contact key (conversationThreadId), not the filename.
+export async function importWhatsAppZip(file, { target, channel, onProgress, matchedBy }) {
   const zip = await JSZip.loadAsync(file)
   const chatEntry = zip.file('_chat.txt') || zip.file(/_chat\.txt$/i)?.[0]
   if (!chatEntry) throw new Error('No _chat.txt found in this zip — is it a real WhatsApp chat export?')
@@ -284,8 +289,10 @@ export async function importWhatsAppZip(file, { target, channel, onProgress }) {
   const messages = parseWhatsAppExport(text)
   if (!messages.length) throw new Error('Parsed 0 messages from _chat.txt — the export format may not match what this parser expects.')
 
-  const threadDoc = buildThreadDoc({ zipFileName: file.name, channel, messages })
-  const importId = threadDocId(file.name)
+  const account = normalizeAccount(channel)
+  const contactId = target.type === 'lead' ? idFromPhone(target.phone) : target.contactId
+  const importId = conversationThreadId({ account, contactId })
+  const threadDoc = buildThreadDoc({ zipFileName: file.name, channel, messages, account, contactId, matchedBy })
 
   const collectionName = target.type === 'lead' ? 'marketing_contacts' : 'customers'
   const parentId = target.type === 'lead' ? await findOrCreateLeadByPhone(target.phone) : target.customerId

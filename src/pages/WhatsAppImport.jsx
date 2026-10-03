@@ -106,7 +106,7 @@ function NewCustomerInline({ prefillWhatsapp, defaultChannel, onCreated, onCance
   )
 }
 
-function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChangeMode, onChangeLeadPhone, onImport }) {
+function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChangeMode, onChangeLeadPhone, onChangeContact, onImport }) {
   const [customerSearch, setCustomerSearch] = useState('')
   const [customerOpen, setCustomerOpen] = useState(false)
   const [creatingNew, setCreatingNew] = useState(false)
@@ -118,7 +118,20 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
     return customers.filter(c => c.company_name?.toLowerCase().includes(q)).slice(0, 20)
   }, [customerSearch, customers])
 
-  const canImport = entry.matchMode === 'lead' ? !!entry.leadPhone?.trim() : !!entry.customerId
+  // Suggested contact within the selected customer, from the export's display
+  // name — shown as a hint only, never auto-selected (§5.4: human confirms).
+  const suggestedContact = useMemo(() => {
+    const q = (entry.preview?.contactName || '').toLowerCase()
+    if (!q || !selected?.contacts?.length) return null
+    const exact = selected.contacts.find(c => (c.name || '').toLowerCase() === q)
+    if (exact) return exact
+    return selected.contacts.find(c => {
+      const n = (c.name || '').toLowerCase()
+      return n && (n.includes(q) || q.includes(n))
+    }) || null
+  }, [entry.preview?.contactName, selected])
+
+  const canImport = entry.matchMode === 'lead' ? !!entry.leadPhone?.trim() : !!(entry.customerId && entry.contactId)
 
   // Duplicate check — re-importing the same file for the same target is
   // safe either way (the doc id is deterministic, so it updates rather
@@ -129,10 +142,12 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
   useEffect(() => {
     if (entry.status !== 'ready' || !canImport) { setExisting(undefined); return }
     let cancelled = false
-    const target = entry.matchMode === 'lead' ? { type: 'lead', phone: entry.leadPhone } : { type: 'customer', customerId: entry.customerId }
-    findExistingThread(target, entry.file.name).then(r => { if (!cancelled) setExisting(r) })
+    const target = entry.matchMode === 'lead'
+      ? { type: 'lead', phone: entry.leadPhone }
+      : { type: 'customer', customerId: entry.customerId, contactId: entry.contactId }
+    findExistingThread(target, entry.channel).then(r => { if (!cancelled) setExisting(r) })
     return () => { cancelled = true }
-  }, [entry.status, entry.matchMode, entry.customerId, entry.leadPhone, entry.file.name, canImport])
+  }, [entry.status, entry.matchMode, entry.customerId, entry.contactId, entry.leadPhone, entry.channel, canImport])
 
   return (
     <div className="card p-4 space-y-3">
@@ -187,6 +202,7 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
                 onCancel={() => setCreatingNew(false)}
               />
             ) : (
+              <>
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
                 <div className="relative">
                   <input
@@ -222,6 +238,31 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
                   {WA_CHANNELS.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
+
+              {entry.customerId && (
+                <div className="space-y-1">
+                  <select
+                    className={`input text-sm ${entry.contactId ? '' : 'border-amber-400'}`}
+                    value={entry.contactId || ''}
+                    onChange={e => onChangeContact(e.target.value || null)}
+                  >
+                    <option value="">Select contact person…</option>
+                    {(selected?.contacts || []).map(ct => (
+                      <option key={ct.id} value={ct.id}>
+                        {[ct.name, ct.title].filter(Boolean).join(' · ') || ct.id}
+                      </option>
+                    ))}
+                  </select>
+                  {(selected?.contacts || []).length === 0 ? (
+                    <p className="text-xs text-amber-600">This customer has no contacts — add one on the customer page before importing.</p>
+                  ) : (
+                    <p className="text-xs text-ink-60">
+                      {suggestedContact ? `Suggested: ${suggestedContact.name} — confirm before importing.` : 'Pick the exact person you were chatting with.'}
+                    </p>
+                  )}
+                </div>
+              )}
+              </>
             )
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
@@ -488,7 +529,7 @@ export default function WhatsAppImport() {
     const newEntries = files.map(file => ({
       key: `${file.name}-${file.size}-${file.lastModified}`,
       file, status: 'parsing', preview: null,
-      matchMode: 'customer', customerId: null, leadPhone: '',
+      matchMode: 'customer', customerId: null, contactId: null, leadPhone: '',
       channel: 'WhatsApp Business', error: null, progress: null,
     }))
     setEntries(prev => [...prev, ...newEntries.filter(e => !prev.some(p => p.key === e.key))])
@@ -524,10 +565,11 @@ export default function WhatsAppImport() {
     try {
       const target = entry.matchMode === 'lead'
         ? { type: 'lead', phone: entry.leadPhone }
-        : { type: 'customer', customerId: entry.customerId }
+        : { type: 'customer', customerId: entry.customerId, contactId: entry.contactId }
       await importWhatsAppZip(entry.file, {
         target,
         channel: entry.channel,
+        matchedBy: entry.preview?.looksLikePhone ? 'phone' : 'name',
         onProgress: (done, total) => updateEntry(entry.key, { progress: { done, total } }),
       })
       updateEntry(entry.key, { status: 'done', progress: null })
@@ -537,12 +579,12 @@ export default function WhatsAppImport() {
   }
 
   const readyCount = entries.filter(e =>
-    e.status === 'ready' && (e.matchMode === 'lead' ? e.leadPhone?.trim() : e.customerId)
+    e.status === 'ready' && (e.matchMode === 'lead' ? e.leadPhone?.trim() : !!(e.customerId && e.contactId))
   ).length
 
   async function handleImportAll() {
     for (const entry of entries) {
-      const ready = entry.status === 'ready' && (entry.matchMode === 'lead' ? entry.leadPhone?.trim() : entry.customerId)
+      const ready = entry.status === 'ready' && (entry.matchMode === 'lead' ? entry.leadPhone?.trim() : !!(entry.customerId && entry.contactId))
       if (ready) await handleImport(entry)
     }
   }
@@ -582,9 +624,10 @@ export default function WhatsAppImport() {
                 key={entry.key}
                 entry={entry}
                 customers={customers}
-                onChangeCustomer={id => updateEntry(entry.key, { customerId: id })}
+                onChangeCustomer={id => updateEntry(entry.key, { customerId: id, contactId: null })}
+                onChangeContact={cid => updateEntry(entry.key, { contactId: cid })}
                 onChangeChannel={ch => updateEntry(entry.key, { channel: ch })}
-                onChangeMode={m => updateEntry(entry.key, { matchMode: m })}
+                onChangeMode={m => updateEntry(entry.key, { matchMode: m, contactId: null })}
                 onChangeLeadPhone={phone => updateEntry(entry.key, { leadPhone: phone })}
                 onImport={() => handleImport(entry)}
               />
