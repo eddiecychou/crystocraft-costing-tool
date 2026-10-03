@@ -166,6 +166,20 @@ credentials. **DSH must re-vendor both files** (sha256[:12] fingerprint table in
 `seo-control-plane/README.md`) and gate execution on `r.verified`, not `r.ok`;
 the OC must tell DSH when it is deployed.
 
+**Closed and verified 2026-10-03.** DSH re-vendored both files (hash-identical)
+and re-ran the affected batch against the deployed validator: it **passes on its
+own merits** — the three `_elementor_data` guards run, `brand_terms_preserved` no
+longer false-flags, and the `before.content` workaround is no longer needed. Live in OC
+deploy `099aa2968`; `validate-payload.mjs` `9d5eb99c6eda`, `safe-write.mjs`
+`653305dd4fe8`. It took **three rounds** — defect 1 and part of defect 2 on the
+first, `payloadText` + the `.rendered` fallback on the second (real defects, but
+not the cause), and the shape asymmetry on the third. The process rule that came
+out of it is now in **L-48**: a defect is not fixed until the *reporter's*
+reproduction passes — a green suite on the fixer's side proves the fix does what
+the fixer thought, and says nothing about what the reporter saw. The other
+lasting change is that the gate can no longer shrink its own check set silently
+(`skipped` is reported per item, per batch and in the review UI).
+
 WhatsApp correspondence had been importable since V8.2, but only the hard way:
 open `WhatsAppImport.jsx`, hand-pick a `.zip` per chat, match it to a contact,
 repeat. This cycle turned that into a folder you drop exports into, fixed the

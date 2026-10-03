@@ -92,6 +92,10 @@ POST /api/seo-batch { op:'result', id, results }                  # → executed
 `meta._elementor_data`). Any `*_elementor_data` field is compared by FNV-1a
 hash, not full string.
 
+## Status (2026-10-03)
+
+All three control-plane defects raised by DSH are **closed and verified**. DSH re-vendored both files (hash-identical), re-ran the affected batch against the deployed validator and confirmed it **passes on its own merits** — the structural guards run, the brand check no longer false-flags, and the `before.content` workaround is no longer needed. Live in OC deploy `099aa2968`. Round-by-round record: `../docs/skills/LESSONS-LEARNED.md` L-44 (empty payload / no-op reported as success), L-45 + L-47 (the render vs the body, four call sites), L-48 (the shape asymmetry — the real cause).
+
 ## Two shapes, one entity — and a check never disappears silently (2026-10-03, L-48)
 
 An item can carry an entity in **two shapes**, and the difference is invisible
