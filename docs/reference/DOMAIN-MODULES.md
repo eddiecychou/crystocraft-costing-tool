@@ -85,8 +85,12 @@ subcollections (see FIRESTORE-COLLECTIONS.md's note that the *word*
 `findActiveCustomers()` — collectionGroup-queries `enquiries` (Timestamp
 `date`) and `email_threads` (string `synced_at`, compared lexicographically —
 ISO 8601 sorts correctly as text) for anything in the last 30 days (widened from 7), groups by
-customer, renders a compact per-customer text block. WhatsApp/Alibaba
-deliberately excluded (owner: not the most up-to-date channels).
+customer, renders a compact per-customer text block. **WhatsApp is included**
+since 2026-10-03 (`activityFromWhatsappThreads()` — a per-customer read of
+`whatsapp_threads`, since it has no `synced_at` and no collection-group rule;
+skips `migrated_to` tombstones); Alibaba is still deliberately excluded (manually
+pasted, not kept current). WhatsApp was excluded until then too (owner: "not the
+most up-to-date channels") — the weekly archive auto-import removed that reason.
 `generateWeeklySummary()` sends every active customer's block in ONE batched
 call to `/api/weekly-digest` (not one call per customer), caches the result
 in `dashboard_cache/weekly_summary`. `loadWeeklySummary()` reads the cache —
@@ -95,13 +99,32 @@ on-demand only, no scheduled regeneration.
 ## `whatsappImport.js` — manual WhatsApp export ingestion
 
 No export exists for WhatsApp chat, so this parses the owner's manually
-exported `.zip`: `parseWhatsAppExport(text)` → `buildThreadDoc(...)` →
-`importWhatsAppZip(file, {target, channel, onProgress})`.
-`findExistingThread(target, zipFileName)` / `threadDocId(...)` make a repeat
-import of the same export idempotent instead of duplicating. `guessContactName`/
-`looksLikePhoneNumber` help the "Save as Lead" flow. `transcribeMessage(...)`
-calls `/api/transcribe-whatsapp-audio` for one voice note (see
-API-REFERENCE.md) — the only edge-function call in this file.
+exported `.zip`: `parseWhatsAppExport(text)` → `analyzeImportOverlap(...)`
+(verdict `new` / `safe-update` / `overlap-review` / `invalid` — the Review step
+that gates an import) → `buildThreadDoc(...)` →
+`importWhatsAppZip(file, {target, channel, onProgress, media})`. `media:'none'`
+is the text-first option (import messages, upload no attachments — used for the
+large archive-folder imports; `scripts/upload-whatsapp-media.mjs` backfills the
+media later). `guessContactName`/`looksLikePhoneNumber` help the "Save as Lead"
+flow; `messageFingerprint(m)` is the dedup/overlap key; `carryForwardMedia(...)`
+keeps an existing transcript/download URL when an attachment is re-imported.
+
+Thread identity: `conversationThreadId({account, contactId})` →
+`{account}__{contactId}` for a person, and `conversationGroupId({account,
+groupName})` → `{account}__group__{slug}` for a group (which has no
+`contact_id`; `buildThreadDoc` writes `thread_type`/`group_name`).
+`findExistingThread(target, channel)` / `threadDocId(...)` make a repeat import
+of the same export idempotent; `mergeThreadMessages` / `mergeLegacyThread`
+reconcile colliding archives instead of overwriting.
+
+Migration off the pre-§5.1 filename-keyed ids: `isLegacyThread` (now
+`!threadDoc.account` — a group has no `contact_id` but is not legacy),
+`isMigratedThread`, `planMigration` (the pure guards), `migrateLegacyThread`
+(write → verify → tombstone via `migrated_to`, never hard-delete),
+`undoMigrateLegacyThread`, `loadLegacyWhatsappThreads`.
+
+`transcribeMessage(...)` calls `/api/transcribe-whatsapp-audio` for one voice
+note (see API-REFERENCE.md) — the only edge-function call in this file.
 
 ## `phoneCountry.js` — one function
 

@@ -82,3 +82,9 @@ ui-debug.log
 
 # runtime state for scripts/import-whatsapp-archives.mjs (mtime tracking)
 scripts/.whatsapp-sync-state.json
+# runtime logs from the scheduled WhatsApp auto-import (scripts/whatsapp-sync.sh)
+scripts/whatsapp-sync_*.log
+scripts/launchd-whatsapp.log
+# local scratch dirs
+.npmci-test/
+.qa-home/

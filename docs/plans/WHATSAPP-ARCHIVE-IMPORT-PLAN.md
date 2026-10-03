@@ -1,9 +1,10 @@
 # WhatsApp archive intake — plan
 
-> **PLANNED — no code built.** Owner has no WhatsApp API and will export
-> conversations as WhatsApp `.zip` archives, normally monthly. This plan makes
-> that manual process repeatable without duplicating, overwriting, or
-> cross-contaminating CRM correspondence.
+> **SHIPPED 2026-10-03** — see §11 for what actually landed (group threads, the
+> weekly auto-import, oversized-thread media spill, Dashboard digest inclusion).
+> Owner has no WhatsApp API and exports conversations as WhatsApp `.zip`
+> archives. This plan makes that manual process repeatable without duplicating,
+> overwriting, or cross-contaminating CRM correspondence.
 
 ## 1. Goal and operating model
 
@@ -255,3 +256,71 @@ explicit state, never a silent default.
   contact person (`contact_id`); the WhatsApp card shows the contact's name and
   title, not a raw phone-book nickname.
 - A summary refresh happens only when the imported message total changed.
+
+## 11. Shipped — 2026-10-03
+
+The design above is implemented and live. What actually landed:
+
+### 11.1 Group chats — a third thread type
+
+A WhatsApp **group** has many senders and no single contact person, so it cannot
+be keyed to a `contact_id`. It is a third thread type alongside customer and
+lead:
+
+| Type | Identity key | Belongs to |
+|---|---|---|
+| customer | `account × contact_id` | a customer's person |
+| lead | `account × lead-id` | a phone-only lead |
+| **group** | `account × group-name` (`conversationGroupId`) | a **customer** (company), never a person |
+
+Stored as `thread_type: 'group'`, `group_name`, `contact_id: null`, id like
+`personal__group__prestige-x-ua`. `isLegacyThread()` was re-keyed to `!account`
+(a group legitimately has no `contact_id` but is not legacy). Real examples:
+**Prestige x UA** (5,257 msgs → Prestige Productions HK Ltd) and **Intertek
+Sweden Event Gift** (23 msgs → Intertek).
+
+### 11.2 Two-account model confirmed
+
+The `Business/` vs `Personal/` folder under `~/Whatsapp Archives/` is the
+**source of truth** for which of the owner's two WhatsApp accounts a chat
+belongs to (Eddie: "there are 2 folders that defines whether the contact is
+communicating under my personal whatsapp or business whatsapp"). Heymans Ho had
+been migrated under the wrong account (business) and was corrected to personal;
+the stale `business__legacy` duplicate was deleted.
+
+### 11.3 Automation shipped
+
+The archive folder is now auto-imported, no manual run required:
+
+- `scripts/import-whatsapp-archives.mjs` — text-first, manifest-driven, skips
+  files whose mtime+size are unchanged (`.whatsapp-sync-state.json`).
+- `scripts/upload-whatsapp-media.mjs` — media backfill, idempotent.
+- `scripts/whatsapp-sync.sh` + launchd `com.crystocraft.whatsapp-auto-import`,
+  **weekly** (Sundays 03:00) — matches the owner's weekly export cadence.
+
+Matching stays **manifest-driven, never auto-guessed**: a new filename prints
+`SKIP (no manifest entry)` until a human adds it to
+`scripts/whatsapp-import-manifest.json`.
+
+### 11.4 Oversized threads (Firestore 1 MiB/doc cap)
+
+A thread's `messages[]` can exceed Firestore's 1 MiB per-document cap once
+attachment URLs are inline (the Prestige x UA group: 5,257 msgs / 2,091 media).
+`upload-whatsapp-media.mjs` then spills those URLs to
+`whatsapp_threads/{id}/media/urls` and strips them inline, keeping the thread
+doc at ~1,000 KB; `CustomerDetail.jsx` reads that fallback so attachments still
+render. (The browser import path has not had the same treatment — see
+`TECH-DEBT.md`.)
+
+### 11.5 Dashboard digest
+
+`src/domain/weeklySummary.js`'s "This Month" digest now includes WhatsApp
+alongside the Interaction Log + email. WhatsApp was previously excluded because
+it was "not the most updated communication channel"; the auto-import removed
+that reason.
+
+### 11.6 State
+
+20 archives imported and live (6 Business + 14 Personal); 65 unit tests
+(`qa/whatsapp-import.test.mjs`) and 7 browser smoke assertions
+(`qa/whatsapp-import-smoke.mjs`) pass.

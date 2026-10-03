@@ -87,6 +87,114 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.17 — WhatsApp archive import becomes automatic; group chats; Dashboard inclusion (2026-10-03)
+
+WhatsApp correspondence had been importable since V8.2, but only the hard way:
+open `WhatsAppImport.jsx`, hand-pick a `.zip` per chat, match it to a contact,
+repeat. This cycle turned that into a folder you drop exports into, fixed the
+identity model so two accounts can't blend, taught it that a **group is not a
+person**, and let the Dashboard digest see WhatsApp at all. Plan + design:
+`docs/plans/WHATSAPP-ARCHIVE-IMPORT-PLAN.md` (§11 records what shipped).
+Lessons: **L-38 … L-43**.
+
+### 1. Thread identity — `account × contact_id`, folded into the doc id
+
+A thread's doc id is now `${account}__${contactId}` (`conversationThreadId`,
+account normalised to `business`/`personal`) rather than a slug of the filename.
+The display name stays in `subject`, **never** in the id — names change, and the
+old filename-keyed ids silently split one relationship across several threads
+whenever a chat was renamed. Per the owner, **Business and Personal WhatsApp are
+two separate conversations for the same person and must never merge**, and two
+contacts under one customer stay separate threads too. The
+`~/Whatsapp Archives/{Business,Personal}/` folder is the source of truth for
+which of the owner's two accounts a chat belongs to (this is how Heymans Ho,
+migrated under `business` by mistake, was moved to `personal` — the existing
+wrong-account thread and its tombstone were deleted after the correct one was
+imported).
+
+### 2. A group is not a person — a third thread type
+
+Two of the exports were group chats ("Prestige x UA", 5,257 messages;
+"Intertek Sweden Event Gift", 23). A group's `_chat.txt` carries a different
+sender on every line and there is no single `contacts[]` entry to attach it to,
+so filing one against a person would both misattribute the whole conversation
+and collide with that person's real 1:1 thread. Groups are now their own type:
+`conversationGroupId({account, groupName})` → `${account}__group__${slug}`,
+stored `thread_type:'group'`, `group_name`, `contact_id:null`, linked to a
+**customer (company)**, never a person. `isLegacyThread` was moved to key on
+`account` **alone** — its old `!contact_id` test would have flagged every group
+as an un-migrated legacy thread (**L-41**).
+
+### 3. Legacy migration, and the collision that produced "Merge"
+
+The pre-V8.17 filename-keyed threads were migrated to `account × contact_id`
+one at a time from the WhatsApp Import page. `migrateLegacyThread` never
+hard-deletes — it writes the new thread, verifies it, then stamps the old doc
+`migrated_to:<newId>` as a reversible tombstone — which meant every reader had
+to start filtering those tombstones or migrated chats appeared twice
+(**L-42**). Two legacy archives for the same person ("shajin-raja" 34 msgs
+already migrated, "shajin-raja-2" 147 msgs still legacy) collided on the same
+target id and surfaced as `Cannot migrate: target-exists`; the resolution was a
+**Merge** action (`mergeLegacyThread`) that folds the colliding archive into the
+target, unioning/deduplicating messages by fingerprint rather than dropping
+either.
+
+### 4. Text-first, then media — and the 1 MiB wall
+
+Import now has two passes. The first writes the messages with
+`media:'none'` (no attachment upload), which is fast and can be re-run safely;
+the second (`scripts/upload-whatsapp-media.mjs`) uploads the attachments and
+backfills `attachment_url`, skipping anything already stored. That split is what
+makes a 3,000-message, 1,400-attachment export practical at all. It also ran
+into a structural limit: the Prestige x UA group's document reached **1,401,493
+bytes** once its 2,091 attachment URLs were inline, over Firestore's 1 MiB
+per-doc cap. Oversized threads now spill their URLs to a separate
+`whatsapp_threads/{id}/media/urls` map doc (`{filename: url}`) and strip them
+from `messages[]`; `CustomerDetail.jsx` merges that doc back at render time so
+attachments still resolve (**L-38**).
+
+### 5. The folders self-import (weekly)
+
+`scripts/whatsapp-sync.sh` runs the importer then the media uploader; a launchd
+job (`com.crystocraft.whatsapp-auto-import`) runs it **Sundays 03:00**, since
+the owner exports weekly, not daily. Matching is deliberately **not** automatic —
+`scripts/whatsapp-import-manifest.json` is an owner-confirmed map of filename →
+customer/contact/account (or group), and an unknown filename prints
+`SKIP (no manifest entry)` rather than guessing whose chat it is. Each file's
+mtime+size is recorded in `scripts/.whatsapp-sync-state.json`, so a run with
+nothing changed is a no-op. The first launchd run failed silently with
+`node: command not found` — launchd's minimal `PATH` doesn't include Homebrew
+(**L-39**); the script now hardcodes the interpreter, exactly as the email sync
+already did. Local-tool notes + recreate commands:
+`docs/reference/LOCAL-TOOLS.md`.
+
+### 6. The Dashboard "This Month" digest can finally see WhatsApp
+
+`src/domain/weeklySummary.js` excluded WhatsApp with the note "not the most
+updated communication channels" — true while imports were manual, false the
+moment they became a weekly job. The digest now reads `whatsapp_threads`
+alongside the Interaction Log and email (per-customer, 30-day lookback, 8,000-
+char cap), lights up the `WhatsApp Business` / `Personal WhatsApp` badges the
+Dashboard already had, and skips tombstones. Alibaba stays excluded (still
+manually pasted).
+
+### 7. Security (companion work)
+
+The four edge-function SSRF/allowlist fixes from the bug-fix pack were verified
+live this cycle (direct endpoint probes plus Rules-API checks) rather than by
+inspection. One deploy failed twice for an unrelated reason — Netlify's secrets
+scan flagged a digit-string in a *smoke-test fixture* as `RENDER_ADMIN_PASSWORD`
+(**L-40**); the fixture was made obviously fake, and that password is to be
+rotated since its value is in git history.
+
+### State
+
+20 archives live (6 Business, 14 Personal) — imported text-first with all media
+uploaded; the two groups are filed under their companies. `qa/whatsapp-import.test.mjs`
+(65 unit assertions, no Firebase imports — pure-function coverage of the parser,
+identity, overlap/merge, and group keys) and `qa/whatsapp-import-smoke.mjs`
+(7 headless-browser assertions) both pass; `vite build` green.
+
 ## V8.16 — Product Design folded into Operation Center (2026-09-18)
 
 The standalone **Product Design** app (`~/Developer/Product Design`, a separate

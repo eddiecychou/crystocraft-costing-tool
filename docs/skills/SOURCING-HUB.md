@@ -74,13 +74,29 @@ unified importer):
   needed to catch a newly-added customer against already-scanned older mail).
   AI summaries via
   `refresh-email-summary` / `discuss-customer-email`.
-- **WhatsApp — manual import.** No export API exists, so `WhatsAppImport.jsx` +
-  `src/domain/whatsappImport.js` parse the user's exported `.zip`
-  (`parseWhatsAppExport` → `buildThreadDoc` → `importWhatsAppZip`). Idempotent
-  by export filename (`findExistingThread`/`threadDocId`). Voice notes go through
-  `transcribe-whatsapp-audio` (Deepgram). Attachments preview inline via
-  `WhatsAppAttachment.jsx`. Writes `whatsapp_threads/{id}` under a customer or
-  a "Save as Lead" `marketing_contacts` doc. (Memory `whatsapp-import-plan`.)
+- **WhatsApp — exported `.zip`, auto-imported from two folders.** No export API
+  exists, so the owner manually "Export Chat"s into
+  `~/Whatsapp Archives/{Business,Personal}/` — **the folder IS the account**
+  (Business vs Personal are separate conversations for the same person, never
+  merged). A weekly launchd job (`scripts/whatsapp-sync.sh`, Sundays 03:00) runs
+  `scripts/import-whatsapp-archives.mjs` (text-first) then
+  `scripts/upload-whatsapp-media.mjs` (attachments). Matching is **owner-confirmed
+  and never auto/fuzzy-matched**: `scripts/whatsapp-import-manifest.json` maps a
+  filename → customer/contact/account (or a **group**, `type:'group'`), and an
+  unknown filename is skipped and reported (`SKIP (no manifest entry)`). Thread
+  id is `account × contact_id` (`conversationThreadId`) — **not** the export
+  filename; the old filename-keyed `findExistingThread`/`threadDocId` model is
+  retired. A group is a third type keyed `account × group-name`
+  (`conversationGroupId`, `thread_type:'group'`, `contact_id:null`), filed under
+  a customer rather than a person. A thread whose `messages[]` would exceed
+  Firestore's 1 MiB cap spills its attachment URLs to
+  `whatsapp_threads/{id}/media/urls`. The page (`WhatsAppImport.jsx` +
+  `src/domain/whatsappImport.js`) still does the manual/browser path
+  (`parseWhatsAppExport` → `buildThreadDoc` → `importWhatsAppZip`, with
+  `media:'none'` for text-first). Voice notes go through
+  `transcribe-whatsapp-audio` (Deepgram); attachments preview inline via
+  `WhatsAppAttachment.jsx`. (`ARCHITECTURE-RULES.md` §4c; memory
+  `whatsapp-import-plan`.)
 - **Alibaba — manual paste.** No export exists; buyer-seller chat is pasted as
   text and stored as `alibaba_threads/{id}`; summarized via
   `refresh-alibaba-summary`.
@@ -112,3 +128,4 @@ screening (a supplier gallery has no `branded_for_customer_id` concern). The
 | Date | Change |
 |---|---|
 | 2026-08-31 | Created. Supplier record (contacts[], merge, province backfill), the sourcing-link hub (browser-assisted, not API), per-channel comms capture (email auto / WhatsApp+Alibaba manual / WeChat = screenshot-to-quote only), media gallery. Grounded in V8.12. |
+| 2026-10-03 | §Comms-capture **WhatsApp** bullet rewritten (V8.17): the two archive folders (`~/Whatsapp Archives/{Business,Personal}/`) now auto-import weekly via launchd, matching is owner-confirmed via `scripts/whatsapp-import-manifest.json` (never auto/fuzzy), thread id is `account × contact_id` (the old filename-keyed `findExistingThread`/`threadDocId` model is retired), groups are a third type keyed `account × group-name`, and oversized threads spill attachment URLs to `whatsapp_threads/{id}/media/urls`. See `ARCHITECTURE-RULES.md` §4c. |

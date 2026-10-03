@@ -278,6 +278,44 @@ gap between the app expecting the new rule and the rule being live.
   the three hand-allocated pre-feature orders). An invoice needs a **UC number,
   not an SO** (`CLAUDE.md`).
 
+### 4c. WhatsApp thread identity & intake
+
+Intake is **manifest-driven**, never inferred — the same deterministic posture as
+§8's "Message ingestion" row.
+
+- **Thread id is `account × contact_id`** → `{account}__{contactId}`
+  (`src/domain/whatsappImport.js` `conversationThreadId`; account normalised to
+  `business`/`personal`). **MUST NOT** key a thread on a person's display name —
+  names change; the name lives in `subject`, never the id.
+- **A group is a distinct third type**, not a person (many senders, no single
+  contact): keyed `{account}__group__{slug}`, `thread_type:'group'`,
+  `contact_id:null` (`conversationGroupId`). Because a group legitimately has no
+  `contact_id`, `isLegacyThread` keys on `account` **alone** — do not
+  reintroduce a `contact_id` term there (`LESSONS-LEARNED.md` L-41).
+- **The two accounts are never merged.** Business and Personal WhatsApp stay
+  separate conversations even for the same person, and two contacts under one
+  customer stay separate threads. `~/Whatsapp Archives/{Business,Personal}/` is
+  the source of truth for the account (Heymans Ho was migrated as
+  `business__legacy` by mistake; the fix was re-keying + deleting the
+  wrong-account thread, **not** merging).
+- **Whose customer record a chat belongs to is a HUMAN decision.** **MUST NOT**
+  auto- or fuzzy-match an archive to a customer — the mapping is the
+  owner-confirmed `scripts/whatsapp-import-manifest.json`; an unknown filename is
+  skipped and reported (`SKIP (no manifest entry)`), never guessed.
+- **Firestore's 1 MiB/doc cap is load-bearing for thread docs.** `messages[]`
+  overflows it once `attachment_url` is inline (Prestige x UA: 5,257 msgs / 2,091
+  attachments = 1.4 MB). **MUST** spill the URLs to
+  `whatsapp_threads/{id}/media/urls` (a `{filename: url}` map doc) rather than
+  truncate the thread, and any reader of a thread's attachments **MUST** fall
+  back to that doc (`scripts/upload-whatsapp-media.mjs` writes it;
+  `src/pages/CustomerDetail.jsx` reads it; `LESSONS-LEARNED.md` L-38).
+- **Every reader of `whatsapp_threads` MUST skip `migrated_to` tombstones.**
+  Migration never hard-deletes — it re-keys and stamps the old doc (reversible
+  via `undoMigrateLegacyThread`) — so a reader that lists the subcollection
+  without `.filter(d => !d.data().migrated_to)` shows each migrated chat twice
+  (`CustomerDetail.jsx`, `MarketingContacts.jsx`, `src/whatsappSummaryApi.js`,
+  and the digest's `activityFromWhatsappThreads`; `LESSONS-LEARNED.md` L-42).
+
 ## 5. Denormalised snapshots (and the `normLine` whitelist)
 
 Order / PI / invoice / PO / quote lines are deliberately **free-text snapshots**,
@@ -429,3 +467,4 @@ makes it real.
 |---|---|
 | 2026-08-31 | Created by merging root `INDEX.md` §4/§6 (cross-cutting + verify/deploy) with new hard-rule sections (isolation, RBAC contract, data lifecycles). Added the **Planned `sales` role** (§2a) per owner scope. Grounded in V8.12. |
 | 2026-09-01 | Adopted the Magister "AI management" patterns: §1 framed as a deterministic boundary; new §7a "Measure before you change" (report before/after numbers, never "looks fine"); new §8 Deterministic boundaries (AI reports observables, code decides — Product Truth, isolation, pricing, FX, ingestion); new §9 Load-Bearing Decisions (12 rules that must not be undone, plus the honest note that "WhatsApp-first CTA" is NOT implemented so cannot be one). |
+| 2026-10-03 | New §4c "WhatsApp thread identity & intake" — thread id is `account × contact_id` (never a display name); groups are a distinct third type (`{account}__group__{slug}`); Business/Personal accounts never merge; archive→customer matching is an owner-confirmed manifest (never auto/fuzzy); the 1 MiB/doc cap forces attachment URLs to spill to `whatsapp_threads/{id}/media/urls`; every reader must skip `migrated_to` tombstones. |

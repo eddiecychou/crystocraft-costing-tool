@@ -202,6 +202,30 @@ the reserve/consume flow, not a quick fix:
 4. **PO list — sort by PU number.** `PurchaseOrders.jsx` currently sorts by
    date; add a PU-number sort.
 
+## Browser WhatsApp import can still blow the 1 MiB Firestore doc cap
+
+The **browser** import path — `WhatsAppImport.jsx` → `importWhatsAppZip` →
+`uploadAttachments` (`src/domain/whatsappImport.js`) — still writes
+`attachment_url` **inline** into `messages[]`. A large *manual* import (a group
+with thousands of messages plus media, e.g. Prestige x UA: 5,257 msgs / 2,091
+attachments) would therefore exceed Firestore's 1 MiB per-document cap and fail
+the write.
+
+The **server-side** path already handles this: `scripts/upload-whatsapp-media.mjs`
+spills the URLs to `whatsapp_threads/{id}/media/urls` when the inline doc would
+exceed the cap, and `CustomerDetail.jsx` reads that fallback. The browser path
+was not given the same treatment, so a large manual import remains broken while
+the weekly auto-import (manifest-driven, server-side) is fine.
+
+Fix: route the browser's `uploadAttachments` through the same media-doc spill —
+project the doc size before the transactional write and, on overflow, write the
+URLs to `media/urls` leaving `attachment_url` null. Not done because manual
+imports of big groups are rare and the auto-import covers the real workflow.
+
+**Where:** `src/domain/whatsappImport.js` (`uploadAttachments`),
+`src/pages/WhatsAppImport.jsx` — compare with
+`scripts/upload-whatsapp-media.mjs` and `src/pages/CustomerDetail.jsx`.
+
 ## Keeping this current
 
 Add an entry when you notice something like this in passing during
