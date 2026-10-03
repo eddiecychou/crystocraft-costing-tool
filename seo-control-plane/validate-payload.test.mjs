@@ -293,8 +293,12 @@ function expect(name, cond, detail = '') {
   const payload = { content: '<p>Intro.</p>', status: 'draft' }
   const v = validatePayload({ kind: 'page', lang: 'en', payload, source })
   const c = chk(v)
-  expect('source without .raw: image parity skipped', c.image_count_parity === undefined, JSON.stringify(v.checks))
-  expect('source without .raw: heading parity skipped', c.heading_count_parity === undefined, JSON.stringify(v.checks))
+  // Present but explicitly SKIPPED (ok:null) — never silently absent, and never
+  // compared against the render (L-48).
+  expect('source without .raw: image parity skipped, not absent', c.image_count_parity === null, JSON.stringify(v.checks))
+  expect('source without .raw: heading parity skipped, not absent', c.heading_count_parity === null, JSON.stringify(v.checks))
+  expect('source without .raw: the pass is counted as partial', v.passed === true && v.skipped >= 4 && v.ran + v.skipped === v.checks.length,
+    JSON.stringify({ ran: v.ran, skipped: v.skipped }))
 }
 {
   const v = validatePayload({ kind: 'page', lang: 'en',
@@ -317,6 +321,97 @@ function expect(name, cond, detail = '') {
     source: { content: { rendered: '<p>Hello</p>', raw: '<p>水晶</p>' } } })
   expect('CJK in the raw source is still excused', chk(v2).wrong_language_chars === true,
     JSON.stringify(chk(v2)))
+}
+
+// ── 2026-10-03 SECOND FOLLOW-UP (DSH): the shape asymmetry (L-48) ───────
+// `payload` is NESTED (`meta: { _elementor_data }`); the `before` snapshot is
+// FLAT (`'meta._elementor_data'`). A flat entity used as the source used to
+// (a) disable the three _elementor_data guards, because
+// `parseElementor(source?.meta?._elementor_data)` found nothing, and (b) have
+// its whole Elementor JSON pushed as source TEXT, because payloadText skipped
+// the key `meta` but not `meta._elementor_data`. The OC's authoritative gate
+// therefore ran a reduced check set AND blocked a correct edit.
+{
+  const widget = { id: 'w1', elType: 'widget', widgetType: 'text-editor', settings: { editor: 'A gift for every occasion.' } }
+  // Brand terms live in CONTAINER settings / image metadata — which widgetTexts
+  // correctly excludes. Only the raw-JSON string leak used to pull them in.
+  const container = { id: 'c1', elType: 'container', settings: {
+    background_image: { url: '/assets/crystal-rose.jpg', alt: 'Swarovski crystal rose' },
+    link: { url: '/collections/magsafe', custom_text: 'MagSafe charger' },
+  } }
+  const tree = JSON.stringify([container, widget])
+  const payload = { content: '<p>Intro.</p>', meta: { _elementor_data: tree, _yoast_wpseo_title: 'Crystal Rose' }, status: 'draft' }
+  const before = { content: { rendered: '<p>Intro.</p><h3>Swarovski</h3>', raw: '<p>Intro.</p>' },
+    'meta._elementor_data': tree, 'meta._yoast_wpseo_title': 'Crystal Rose' }
+
+  const v = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant', payload, source: before })
+  const c = chk(v)
+  expect('flat before: structural guards RUN (widget_count)', c.widget_count === true, JSON.stringify(c))
+  expect('flat before: structural guards RUN (element_ids_preserved)', c.element_ids_preserved === true, JSON.stringify(c))
+  expect('flat before: structural guards RUN (length_anomaly)', c.length_anomaly === true, JSON.stringify(c))
+  expect('flat before: brand terms in container settings are not source text', c.brand_terms_preserved === true,
+    JSON.stringify(v.checks.filter(x => x.ok === false)))
+  expect('flat before: the whole gate passes', v.passed === true, JSON.stringify(v.checks.filter(x => x.ok === false)))
+}
+
+// ── a layout write with no usable source tree FAILS, it does not skip ───
+// These three ARE the B20/B6 protection for an _elementor_data write, so
+// "could not run" is a failure — an unguarded layout write is the thing they
+// exist to stop. (A flat `before` no longer lands here: it is normalised.)
+{
+  const tree = JSON.stringify([{ id: 'w1', elType: 'widget', widgetType: 'text-editor', settings: { editor: 'x' } }])
+  const payload = { content: '<p>Intro.</p>', meta: { _elementor_data: tree }, status: 'draft' }
+
+  const noSource = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant', payload })
+  const cn = chk(noSource)
+  expect('layout write, no source: widget_count FAILS with a reason', cn.widget_count === false, JSON.stringify(cn))
+  expect('layout write, no source: detail says why', /MUST carry .source./.test(noSource.checks.find(x => x.name === 'widget_count').detail))
+  expect('layout write, no source: gate blocked', noSource.passed === false)
+
+  // A flat before WITHOUT the elementor key is still unusable — and says so.
+  const flatNoTree = validatePayload({ kind: 'page', lang: 'zh-hant', endpoint: 'wp/v2/pages/1?lang=zh-hant', payload,
+    source: { content: { rendered: '<p>x</p>', raw: '<p>x</p>' }, 'meta._yoast_wpseo_title': 'X' } })
+  expect('layout write, source without a tree: still blocked', chk(flatNoTree).widget_count === false,
+    JSON.stringify(chk(flatNoTree)))
+
+  // A classic HTML payload (no _elementor_data) is untouched by this rule.
+  const classic = validatePayload({ kind: 'post', lang: 'en',
+    payload: { content: '<p>Hello</p>', status: 'draft' }, source: { content: { rendered: '<p>Hello</p>', raw: '<p>Hello</p>' } } })
+  expect('classic HTML write is not blocked', classic.passed === true, JSON.stringify(classic.checks.filter(x => x.ok === false)))
+}
+
+// ── no source at all: the source-dependent checks are LISTED, not absent ──
+{
+  const v = validatePayload({ kind: 'post', lang: 'en', payload: { title: 'Hello', content: '<p>Hi</p>', status: 'draft' } })
+  const c = chk(v)
+  expect('no source: brand_terms_preserved listed as skipped', c.brand_terms_preserved === null)
+  expect('no source: image_count_parity listed as skipped', c.image_count_parity === null)
+  expect('no source: skipped > 0 makes the partial pass visible', v.passed === true && v.skipped >= 4,
+    JSON.stringify({ ran: v.ran, skipped: v.skipped }))
+}
+
+// ── a source body without .raw must not false-fail the script check ────
+// Before the skip existed, a classic post whose source was fetched without
+// `context=edit` had srcBodyStr missing the source body, so a script present in
+// BOTH sides looked newly introduced.
+{
+  const html = '<p>ok</p><script>legacy()</script>'
+  const v = validatePayload({ kind: 'post', lang: 'en',
+    payload: { content: html, status: 'draft' },
+    source: { content: { rendered: html } } })   // no .raw
+  expect('source without .raw: no_new_scripts skips instead of false-failing', chk(v).no_new_scripts === null,
+    JSON.stringify(v.checks.filter(x => x.ok === false)))
+  expect('source without .raw: gate not blocked by it', v.passed === true)
+}
+
+// ── a pre-existing script/table is a skip, not a silent absence ─────────
+{
+  const v = validatePayload({ kind: 'post', lang: 'en',
+    payload: { content: '<p>ok</p><script>x</script>', status: 'draft' },
+    source: { content: { rendered: '<p>ok</p><script>x</script>', raw: '<p>ok</p><script>x</script>' } } })
+  const sk = v.checks.find(x => x.name === 'no_new_scripts')
+  expect('pre-existing script: listed as skipped with a reason', sk && sk.ok === null && /already contains/.test(sk.detail),
+    JSON.stringify(v.checks))
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

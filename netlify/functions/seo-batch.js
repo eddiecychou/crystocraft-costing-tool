@@ -21,8 +21,12 @@
 // Ops (POST JSON):
 //   { op: 'create', batch: { note, items: [{ id, kind, lang, endpoint,
 //         summary, payload, before, source, validation }] } }
-//       -> { id, failed_validation, mismatches: [itemIndex] }
+//       -> { id, failed_validation, skipped_validation, mismatches: [itemIndex] }
 //          (400 if any item has an empty/absent `payload` — nothing to write)
+//          `skipped_validation` = items where the OC gate could not run every
+//          applicable check (no `source`, or a `.raw`-less source body). Those
+//          are not failures, but a FULL pass is only `failed_validation: 0` AND
+//          `skipped_validation: 0` (L-48).
 //   { op: 'poll' }                 -> { batches: [...] }   status === 'approved'
 //                                    (items that failed OC validation come
 //                                     back as decision:'blocked')
@@ -103,9 +107,15 @@ export default async function handler(req) {
     }
 
     // Server-side re-validation. `source` (the EN original) makes the full
-    // check set run — structure/parity/brand checks are skipped without it —
-    // so DSH should include it on translation items; `before` is only a
-    // fallback. A validator throw becomes a failed check, never a 500.
+    // check set run — structure/parity/brand checks cannot run without it — so
+    // DSH should include it on translation items (and fetch it with
+    // `context=edit`); `before` is only a fallback, and a FLAT `before` is fine:
+    // validate-payload's `normalizeEntity` folds its `meta.*` keys into a nested
+    // `meta`, so using it no longer silently disables the layout guards (L-48).
+    // A validator throw becomes a failed check, never a 500.
+    //
+    // `ran`/`skipped` are carried through so a PARTIAL pass stays
+    // distinguishable from a full one — see `skipped_validation` below.
     const revalidate = (it) => {
       try {
         const src = it.source ?? it.original ?? it.before ?? null
@@ -116,9 +126,16 @@ export default async function handler(req) {
           payload: it.payload ?? {},
           source: src && typeof src === 'object' && Object.keys(src).length ? src : null,
         })
-        return { passed: v.passed === true, checks: v.checks || [], by: 'oc', at: Timestamp.now() }
+        return {
+          passed: v.passed === true,
+          checks: v.checks || [],
+          ran: typeof v.ran === 'number' ? v.ran : null,
+          skipped: typeof v.skipped === 'number' ? v.skipped : 0,
+          by: 'oc',
+          at: Timestamp.now(),
+        }
       } catch (e) {
-        return { passed: false, checks: [{ name: 'validator_error', ok: false, detail: String(e?.message || e) }], by: 'oc', at: Timestamp.now() }
+        return { passed: false, checks: [{ name: 'validator_error', ok: false, detail: String(e?.message || e) }], ran: 0, skipped: 0, by: 'oc', at: Timestamp.now() }
       }
     }
 
@@ -156,7 +173,18 @@ export default async function handler(req) {
       items: outItems,
     }
     const ref = await col.add(doc)
-    return json({ ok: true, id: ref.id, failed_validation: failed, mismatches: outItems.filter(x => x.validation_mismatch).map(x => x.index) })
+    // `skipped_validation` counts items whose OC gate could not run every
+    // applicable check (no `source`, or a source body without `.raw`). They are
+    // NOT failures — but `failed_validation: 0` on its own must never be read as
+    // "fully validated", which is exactly the misreading L-48 removed.
+    const skippedValidation = outItems.filter(x => (x.validation?.skipped || 0) > 0).length
+    return json({
+      ok: true,
+      id: ref.id,
+      failed_validation: failed,
+      skipped_validation: skippedValidation,
+      mismatches: outItems.filter(x => x.validation_mismatch).map(x => x.index),
+    })
   }
 
   if (body.op === 'poll') {

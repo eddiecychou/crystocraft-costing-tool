@@ -336,6 +336,25 @@ boundaries the 2026-10-03 defects established.
   no declared fields `verified` falls back to `ok` — do not invent a no-op
   alarm; equally, **MUST NOT** omit `expectedFields` on a write whose success
   you intend to prove.
+- **A field SNAPSHOT is not an entity — both shapes MUST validate.** An item's
+  `payload` is nested (`meta: { _elementor_data }`) while its `before` snapshot is
+  flat (`'meta._elementor_data'`), and `revalidate()` falls back to `before` as
+  the `source`. `validatePayload` **MUST** normalise both shapes
+  (`normalizeEntity`) before any check reads them: a shape mismatch silently
+  disables checks rather than raising, which is exactly how the three
+  `_elementor_data` guards (`widget_count`, `element_ids_preserved`,
+  `length_anomaly`) stopped running while the gate still reported `passed`
+  (L-48). **MUST NOT** pass a `before` snapshot where an entity is expected —
+  it exists for the audit trail and the drift fingerprint.
+- **A gate MUST NOT shrink its own check set silently.** A check that cannot run
+  is reported: `checks[].ok === null` with the reason in `detail`, `skipped`
+  counted in `validatePayload`'s `{ passed, checks, ran, skipped }`, surfaced as
+  `skipped_validation` on `seo-batch` `create`, and listed against the item in
+  `/seo-review`. `passed: true, skipped: 0` is a full pass; `skipped > 0` is a
+  partial one, and **MUST NOT** be read as fully validated (L-48). A payload that
+  writes `_elementor_data` with no usable source tree **MUST** fail
+  (`ok:false`, "did not run — …"), not skip: an unguarded layout write is what
+  B20/B6 are.
 - **Compare like with like, and RAW only.** A live entity's `content` is the REST
   object `{ rendered, raw }`; `.rendered` is the *built* page (and for Elementor,
   the whole page). Every body-level check **MUST** read `.raw` via
@@ -507,4 +526,5 @@ makes it real.
 | 2026-09-01 | Adopted the Magister "AI management" patterns: §1 framed as a deterministic boundary; new §7a "Measure before you change" (report before/after numbers, never "looks fine"); new §8 Deterministic boundaries (AI reports observables, code decides — Product Truth, isolation, pricing, FX, ingestion); new §9 Load-Bearing Decisions (12 rules that must not be undone, plus the honest note that "WhatsApp-first CTA" is NOT implemented so cannot be one). |
 | 2026-10-03 | New §4c "WhatsApp thread identity & intake" — thread id is `account × contact_id` (never a display name); groups are a distinct third type (`{account}__group__{slug}`); Business/Personal accounts never merge; archive→customer matching is an owner-confirmed manifest (never auto/fuzzy); the 1 MiB/doc cap forces attachment URLs to spill to `whatsapp_threads/{id}/media/urls`; every reader must skip `migrated_to` tombstones. |
 | 2026-10-03 | New §4d "WordPress writes — the SEO control plane" — `ok` (no unintended drift) is not `verified` (the intended change happened); gate on `verified` and never report a batch `executed` with an unverified item; a payload-less item is rejected 400 at `create`; an empty `expectedFields` cannot prove intent; body-level validator checks compare the **raw** body on both sides (never `.rendered`), and trimming `source.content` to a workaround is forbidden; the vendored `seo-control-plane/` files are OC-owned SSOT with a sha256[:12] re-vendoring table. Extracted from the two control-plane defects raised by DSH (L-44 / L-45). |
+| 2026-10-03 | §4d extended again for L-48 — the real cause of the brand-check failure and a worse finding under it: a **field snapshot is not an entity**. `payload` is nested while `before` is flat, so falling back to `before` as the `source` silently disabled the three `_elementor_data` guards while the gate still reported `passed`. `validatePayload` now normalises both shapes, skips are first-class (`ok:null` + reason, `{passed, checks, ran, skipped}`, `skipped_validation` on `create`, listed in `/seo-review`), and a layout write with no usable source tree fails instead of skipping. A gate MUST NOT be able to shrink its check set without saying so. |
 | 2026-10-03 | §4d's raw-body rule extended after DSH verified defect 2 only *partially* fixed: the rule covers `payloadText()`'s brand/language/placeholder scans too (the fourth call site — L-47), `contentString()` is `.raw`-only so an absent `.raw` **skips** rather than falling back to `.rendered`, and callers **MUST** fetch `source`/`before` with `context=edit`. |

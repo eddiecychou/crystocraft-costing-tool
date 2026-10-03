@@ -130,7 +130,7 @@ POST /api/seo-batch
     ]
   }
 }
-→ { "ok": true, "id": "<batchId>", "failed_validation": 0, "mismatches": [] }
+→ { "ok": true, "id": "<batchId>", "failed_validation": 0, "skipped_validation": 0, "mismatches": [] }
 ```
 
 **The OC re-runs `validatePayload` on every item.** The stored `validation` is
@@ -139,6 +139,14 @@ is `true` on any item where the two `passed` verdicts differ. `failed_validation
 (count) and `mismatches` (item indexes) in the response are your signal to fix
 and resubmit before the owner even looks. `poll` will not release an
 OC-failed item even if it gets approved (returned as `decision:"blocked"`).
+
+**`skipped_validation` (count) is NOT a failure — but it is not a pass either.**
+It counts items where the OC gate could not run every applicable check (no
+`source` at all, or a source body with no `.raw`). `failed_validation: 0` on its
+own means "nothing failed", not "everything was checked". **A full pass is
+`failed_validation: 0` AND `skipped_validation: 0`.** Each item's stored
+`validation` carries `{ passed, checks, ran, skipped }`, and every check that did
+not run appears in `checks` with `ok: null` and a reason in `detail`.
 
 Server stores each item with `index`, `decision: "pending"`, `result: null`,
 and the batch `status: "pending_review"`.
@@ -210,11 +218,22 @@ The `/seo-review` diff renders `before[key]` vs the payload value per key.
 import { validatePayload } from './validate-payload.mjs'   // vendored verbatim from seo-control-plane/
 const validation = validatePayload({ kind, lang, endpoint, payload, source: enOriginalObject })
 ```
-- `source` = the **EN-original** entity the payload was translated/derived from
-  (the object with `name`, `description`, `meta._elementor_data`, etc.). Pass it
-  whenever you have it — it powers widget-count parity, length-anomaly, brand-term
-  and SKU-prefix checks, image/H2 parity. Without it, only the language / marker /
-  double-brand / draft-only checks run.
+- `source` = the **EN-original** entity the payload was translated/derived from (the
+  object with `name`, `description`, `meta._elementor_data`, etc.). Pass it on every
+  item — it powers widget-count parity, element-id preservation, length-anomaly,
+  brand-term and SKU-prefix checks, image/H2 parity, and the script/table guards.
+  **Without it those checks do not run, and the OC now says so** (`skipped > 0`, and
+  `skipped_validation` on the batch) rather than reporting an unqualified pass.
+  - **A payload that writes `_elementor_data` MUST carry a usable source tree.** If
+    it does not, `widget_count`, `element_ids_preserved` and `length_anomaly` report
+    `ok:false` ("did not run — …") and the item is **blocked**. An unguarded layout
+    write is what B20/B6 are, so that case fails rather than skipping.
+  - **`before` is a snapshot, not an entity** — it holds only the fields the payload
+    touches, in DOTTED form (`'meta._elementor_data'`, not `meta._elementor_data`).
+    The OC normalises those dotted keys into a nested `meta` before validating, so a
+    flat `before` is a usable *fallback*; but send a real nested `source` anyway.
+    A snapshot used where an entity is expected is a type error that silently
+    disables checks — which is exactly what happened before 2026-10-03 (L-48).
   - **Fetch it with `context=edit`.** A REST entity fetched without it has no
     `content.raw`, so the body-level checks (image/heading parity, scripts/tables,
     and the brand/language text scans) have no authored body to compare and
@@ -306,7 +325,7 @@ dedicated variation id/price-hash guard.
       sha256[:12] fingerprint recorded in `seo-control-plane/README.md` → "Vendoring contract"
       before you trust a run. **Re-vendor after the 2026-10-03 fixes** — both the
       first pass and the `payloadText()` follow-up; `validate-payload.mjs` must
-      fingerprint `3bf6c751c578` and `safe-write.mjs` `653305dd4fe8`. Anything
+      fingerprint `9d5eb99c6eda` and `safe-write.mjs` `653305dd4fe8`. Anything
       older is stale.
 - [ ] Fetch `source` (and the `before` snapshot) with **`context=edit`**, or the
       body-level checks silently skip.
@@ -333,3 +352,4 @@ a 200-item run to it.
 | 2026-09-02 | Briefing written; control plane live (steps 1–4). |
 | 2026-10-03 | **Two defects fixed** (raised by DSH while staging a WordPress write). **1a** `create` now rejects an item with an empty/absent `payload` (400) instead of silently storing `{}` and reporting a no-op as success. **1b** `safe-write.mjs` returns `verified` (did the INTENDED change happen?) alongside `ok` (did anything UNINTENDED move?); `noop:true` when none of `expectedFields` moved, and `op:'result'` now marks a batch `partial` — never `executed` — when any approved item is `verified:false`. **2** `validate-payload.mjs` compares the **RAW** body (`content.raw`) on both sides for image/heading parity and `no_new_scripts` / `no_new_tables`, so a correct Elementor edit (which changes only `meta._elementor_data`) passes. **DSH must re-vendor both files** (sha256[:12] fingerprint in `seo-control-plane/README.md`) and gate execution on `r.verified`, and should drop its `before.content` workaround. |
 | 2026-10-03 | **Defect 2's fix was incomplete — follow-up from DSH, now closed.** `payloadText()` was a fourth call site of the same bug: it resolved an object field to `.rendered`, so the whole built page counted as *source text* and `brand_terms_preserved` reported terms (e.g. `Swarovski, MagSafe`) "translated away" when they were never in the payload body. `contentString()` now also backs `payloadText` **and uses `.raw` only** — an absent `.raw` returns `''` and the body-level checks **skip**, rather than falling back to the render (`wpEntity()` omits `context=edit`, so the fallback silently restored the old behaviour). **Re-vendor `validate-payload.mjs` (fingerprint `3bf6c751c578`), fetch `source`/`before` with `context=edit`, and drop the `before.content` workaround.** L-47. |
+| 2026-10-03 | **The real root cause, found by DSH on the second attempt: a SHAPE ASYMMETRY** — `payload` is nested (`meta: {…}`), `before` is flat (`'meta._elementor_data'`), and `payloadText` skipped the key `meta` but not `meta._elementor_data`. A flat `before` used as `source` therefore (a) **silently disabled** `widget_count`, `element_ids_preserved` and `length_anomaly` — the OC's stored validation simply did not contain them — and (b) pushed the whole 50 KB Elementor JSON as source *text*, so the source always looked richer than the payload and `brand_terms_preserved` was unsatisfiable. `validatePayload` now normalises both shapes (`normalizeEntity`, so a flat `before` works), skips are first-class (`ok:null` + reason, `{passed, checks, ran, skipped}`), the create response adds `skipped_validation`, `_elementor_data` writes without a usable source tree are **blocked**, and `/seo-review` lists skipped checks. Fingerprint `9d5eb99c6eda`. L-48. |

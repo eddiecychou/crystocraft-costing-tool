@@ -435,7 +435,11 @@ DSH stays the sole WordPress writer but goes through this loop:
    body on both sides, never a live entity's rendered page — as do the brand /
    language / placeholder text scans, so `source` (and the `before` snapshot)
    **MUST** be fetched with `context=edit` or those checks silently skip. See
-   L-45 and L-47.
+   L-45 and L-47. **A payload is NESTED (`meta: {…}`) but the `before` snapshot is
+   FLAT (`'meta._elementor_data'`)** — the validator normalises both, but pass a
+   real nested `source` anyway: a payload writing `_elementor_data` with no
+   usable source tree is now **blocked**, and a pass with `skipped > 0` is a
+   partial one, not a full validation (L-48).
 3. **Batch + human approval.** POST the batch to `/api/seo-batch`
    (`op:'create'`, Bearer `SEO_BATCH_SECRET`). The owner approves/rejects
    per-item at `/seo-review` against a real `before → after` diff, then "Send
@@ -467,4 +471,5 @@ clear, host purge) is unchanged.
 | 2026-09-02 | §4 Product Truth: recorded the DETERMINISTIC-ART-GEN audit outcome applied to the in-repo retoucher — `enhance-image.js` gained a `FRAMING` anti-reframe anchor, a consolidated `EXCLUDE` negative-constraint block, `temperature 0` for the faithful modes, and a PNG/JPEG-header reframe guard that surfaces `reframed:true` as an amber UI warning. |
 | 2026-09-02 | Added **§6.6 — the SEO control plane**, the mandatory path for every WordPress write from the external pipeline: snapshot → `validate-payload` → batch → human approval at `/seo-review` → `safeWrite` → `/seo-reconcile`. Backed by `docs/skills/SEO-CONTROL-PLANE.md`, `seo-control-plane/` (vendored validators), Firestore `seo_state` / `seo_state_history` / `seo_batches`, and the `/api/seo-batch` Node function. Replaces "DSH shows a contact sheet in chat, writes live, state in prose". |
 | 2026-10-03 | §6.6 steps 2–4 corrected after DSH raised two control-plane defects while staging a WordPress write: an empty-payload item is now rejected 400 at `create`; `safeWrite` returns `verified`/`noop` and callers gate on `verified`, not `ok` (a no-op is a failure to report — L-44); and the parity/script checks compare the raw body, so correct Elementor edits pass (L-45). |
+| 2026-10-03 | §6.6 step 2 extended again for L-48: the validator normalises the nested `payload` and flat `before` shapes (a mismatch used to silently disable the three `_elementor_data` guards while the gate reported `passed`), skips are first-class and surfaced (`skipped_validation`, `/seo-review`), and a layout write with no usable source tree is blocked. |
 | 2026-10-03 | §6.6 step 2 extended — DSH verified defect 2 only partially fixed: the raw-body rule also covers the brand/language/placeholder text scans (L-47), an absent `.raw` makes those checks skip rather than fall back to the render, and `source`/`before` must be fetched with `context=edit`. |

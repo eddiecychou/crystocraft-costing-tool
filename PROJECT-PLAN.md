@@ -133,11 +133,34 @@ Fixed in the OC, lessons **L-44 / L-45**, contract + hashes in
    fetch `source`/`before` with `context=edit`. New `validate-payload.mjs`
    fingerprint `3bf6c751c578`.
 
+   **Third pass, and the actual root cause (L-48): a SHAPE ASYMMETRY.** DSH's
+   next report corrected itself — the two `.rendered` fixes above were real
+   defects but neither was why the brand check failed. An item's `payload` is
+   **nested** (`meta: { _elementor_data }`) while its `before` snapshot is
+   **flat** (`'meta._elementor_data'`), and `revalidate()` falls back to
+   `before` as the `source`. So with a flat `before`: `parseElementor` found no
+   tree, **silently skipping `widget_count` / `element_ids_preserved` /
+   `length_anomaly`** on the authoritative side (confirmed by reading the OC's
+   own stored `validation`), while `payloadText` pushed the whole 50,082-char
+   Elementor JSON as source *text* — container settings, image filenames and alt
+   text that `widgetTexts` deliberately excludes — so the source always looked
+   richer than the payload and the brand check could never pass. **The gate was
+   wrong in both directions and still reported `passed`.** Fixed: `normalizeEntity()`
+   folds dotted `meta.*` keys into a nested `meta` for both `payload` and
+   `source` (in the validator, not in `revalidate()`, so DSH's vendored copy is
+   covered and a flat `before` becomes usable); `payloadText` also skips `meta.*`;
+   **skips are first-class** (`ok: null` + a reason, `{ passed, checks, ran,
+   skipped }`, `skipped_validation` on `create`, and the skipped check names shown
+   per item in `/seo-review`) so `passed: true, skipped: 0` — a full pass — is
+   finally distinguishable from a partial one; and a payload that writes
+   `_elementor_data` with no usable source tree now **fails** (unguarded layout
+   write) instead of skipping. New fingerprint `9d5eb99c6eda`.
+
 New tests: `seo-control-plane/safe-write.test.mjs` (24),
-`qa/seo-batch-guard.test.mjs` (13), `validate-payload.test.mjs` 40 → 49 → 55
-(the six added in the follow-up were verified to **fail** against the pre-fix
-validator, reproducing DSH's exact `Swarovski, MagSafe` and `0 <img> vs source
-36` output). `seo-batch.js`'s create guard + batch verdict were extracted as
+`qa/seo-batch-guard.test.mjs` (13), `validate-payload.test.mjs` 40 → 49 → 55 → 72
+(the assertions added in the later passes were each run against the
+pre-fix validator and fail there, reproducing DSH's exact `Swarovski, MagSafe`,
+`0 <img> vs source 36` and `*** OC SKIPPED ***` output). `seo-batch.js`'s create guard + batch verdict were extracted as
 `emptyPayloadIndexes` / `batchOutcome` so they are testable without Firestore
 credentials. **DSH must re-vendor both files** (sha256[:12] fingerprint table in
 `seo-control-plane/README.md`) and gate execution on `r.verified`, not `r.ok`;

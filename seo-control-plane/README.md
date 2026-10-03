@@ -28,7 +28,7 @@ ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch
 
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-03) |
 |---|---|
-| `validate-payload.mjs` | `3bf6c751c578` |
+| `validate-payload.mjs` | `9d5eb99c6eda` |
 | `safe-write.mjs` | `653305dd4fe8` |
 
 Regenerate with
@@ -91,6 +91,64 @@ POST /api/seo-batch { op:'result', id, results }                  # → executed
 `expectedFields` uses dotted paths for `meta` (`meta._yoast_wpseo_title`,
 `meta._elementor_data`). Any `*_elementor_data` field is compared by FNV-1a
 hash, not full string.
+
+## Two shapes, one entity — and a check never disappears silently (2026-10-03, L-48)
+
+An item can carry an entity in **two shapes**, and the difference is invisible
+until it silently changes what ran:
+
+```
+nested  { content, meta: { _elementor_data, _yoast_wpseo_title } }   ← the write payload, and any real REST entity
+flat    { content, 'meta._elementor_data': …, 'meta._yoast…': … }    ← the `before` snapshot (dotted "touched fields" keys)
+```
+
+Only the nested shape has `meta._elementor_data`, so a flat entity passed as
+`source` used to (a) leave `parseElementor(source.meta._elementor_data)` empty —
+**silently disabling** `widget_count`, `element_ids_preserved` and
+`length_anomaly` — and (b) have its whole Elementor JSON (50 KB in the reported
+case, including container settings, image filenames and alt text that
+`widgetTexts` deliberately excludes) pushed as source **text** by `payloadText`,
+because the guard there skipped the key `meta` but not `meta._elementor_data`.
+The gate's verdict was wrong in both directions: it skipped the three guards and
+failed a correct edit on `brand_terms_preserved`.
+
+`validatePayload` now calls `normalizeEntity()` on both `payload` and `source`,
+folding dotted `meta.*` keys into a nested `meta`, so every check is
+shape-agnostic and `before` is a usable `source`. That is fixed **in the
+validator**, not in `seo-batch.js`'s `revalidate()`, so the Workbench's vendored
+copy and any future caller get it too.
+
+### `skipped` is a first-class outcome
+
+| `checks[].ok` | Meaning |
+|---|---|
+| `true` | ran, clean |
+| `false` | ran and found a problem — **or** could not run where running was mandatory (`detail` says which) |
+| `null` | did not run, and not running is acceptable (`detail` says why) |
+
+`validatePayload` returns `{ passed, checks, ran, skipped }`. `passed` still fails
+only on an explicit `false`, so **nothing that passed before fails now** — but
+`passed: true, skipped: 0` is a full pass and `skipped > 0` is a partial one.
+Before this, those were indistinguishable, and a `passed:true` was read as a full
+validation when three layout guards had not run at all.
+
+- **A payload that writes `_elementor_data` MUST carry a usable source tree.** If
+  it does not, the three layout guards report `ok:false` ("did not run — …") and
+  the item is blocked. An unguarded layout write is exactly the B20/B6 harm they
+  exist to stop, so this case fails rather than skips. A flat `before` with
+  `meta._elementor_data` satisfies it.
+- **Body-level checks skip** (never silently, never against the render) when the
+  source body has no `.raw`, or when the source already contains the
+  `<script>`/`<table>` being guarded.
+- **`seo-batch.js`'s `create` response adds `skipped_validation`** — the count of
+  items whose gate could not run every applicable check. A full pass is
+  `failed_validation: 0` **and** `skipped_validation: 0`. `/seo-review` lists the
+  skipped check names against the item.
+
+**`before` is a snapshot, not an entity.** It is a record of the fields a payload
+touches, kept for the audit trail and the drift fingerprint. Using one where an
+entity is expected is a type error that silently disables checks — so pass a
+nested `source` on every item, and treat a flat `before` as the *fallback* it is.
 
 ## Comparing like with like (2026-10-03, and its follow-up)
 

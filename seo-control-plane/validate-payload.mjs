@@ -135,7 +135,15 @@ function payloadText(payload) {
     // Yoast's GENERATED head (og tags + JSON-LD) that WooCommerce echoes back
     // read-only — its `"name":"Crystocraft"` etc. was false-flagging
     // brand_terms_preserved and leaking stray chars into the language scan (B53).
-    if (k === 'meta' || k === 'yoast_head' || k === 'yoast_head_json') continue
+    //
+    // `meta.*` (dotted) is the same data in the FLAT `before`-snapshot shape.
+    // It is skipped for the same reason `meta` is: the Elementor tree is walked
+    // selectively below, and a raw 50 KB Elementor JSON pushed as text drags in
+    // container settings, image filenames and alt text that `widgetTexts`
+    // deliberately excludes — which made `brand_terms_preserved` unsatisfiable
+    // (L-48). `normalizeEntity` folds these keys away before we get here; this
+    // is the belt-and-braces guard so the leak cannot come back.
+    if (k === 'meta' || k.startsWith('meta.') || k === 'yoast_head' || k === 'yoast_head_json') continue
     if (typeof v === 'string') parts.push(v)
     // An object field is a REST `{ rendered, raw }` (a live entity's content /
     // excerpt / title). It MUST go through contentString so it contributes its
@@ -178,49 +186,116 @@ function contentString(c) {
 }
 
 // ── the gate ──────────────────────────────────────────────────────────────
+// A control-plane item can carry an entity in TWO shapes:
+//   nested  { content, meta: { _elementor_data, _yoast_wpseo_title } }   ← the write payload / a real REST entity
+//   flat    { content, 'meta._elementor_data': …, 'meta._yoast…': … }    ← the `before` snapshot (dotted keys)
+//
+// Only the nested shape has `meta._elementor_data`, so a flat entity used as the
+// `source` used to (a) leave `parseElementor(source?.meta?._elementor_data)`
+// empty — silently DISABLING the three `_elementor_data` guards
+// (`widget_count`, `element_ids_preserved`, `length_anomaly`) — and (b) have its
+// whole Elementor JSON pushed as source TEXT by `payloadText`, because the guard
+// there skipped the key `meta` but not `meta._elementor_data`. Between them the
+// OC's authoritative gate ran a reduced check set, blocked a correct edit, and
+// reported `passed` as though it had fully validated (L-48).
+//
+// Folding the dotted keys into `meta` makes every check below shape-agnostic.
+// Done here, in the validator, rather than in `seo-batch.js`'s `revalidate()`,
+// so it also protects the Workbench's vendored copy and any future caller.
+function normalizeEntity(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj
+  const dotted = Object.keys(obj).filter(k => k.startsWith('meta.'))
+  if (!dotted.length) return obj
+  const out = { ...obj }
+  const nested = obj.meta && typeof obj.meta === 'object' && !Array.isArray(obj.meta) ? obj.meta : {}
+  const meta = { ...nested }
+  for (const k of dotted) { meta[k.slice('meta.'.length)] = obj[k]; delete out[k] }
+  out.meta = meta
+  return out
+}
+
 // kind: 'post' | 'page' | 'product'   lang: 'en'|'es'|'zh-hant'|'ja'|'fr'
 // payload: the exact WP write body    source: the EN-original object it derives from (optional but recommended)
+//
+// Returns { passed, checks, ran, skipped }.
+//   checks[].ok === true   the check ran, clean
+//   checks[].ok === false  the check ran and found a problem — OR could not run
+//                          where running was mandatory (detail says which)
+//   checks[].ok === null   the check did not run, and not running is acceptable
+// `passed` fails only on an explicit `false`, so it is unchanged for every
+// payload that passed before. `skipped` > 0 is what tells a caller its pass was
+// PARTIAL — previously indistinguishable from a full one (L-48). A check never
+// disappears without a reason in `checks`.
 export function validatePayload({ kind, lang, endpoint = '', payload = {}, source = null } = {}) {
   const checks = []
   const add = (name, ok, detail = '') => checks.push({ name, ok, detail })
+  const skip = (name, detail) => add(name, null, detail)
+
+  payload = normalizeEntity(payload) || {}
+  source = normalizeEntity(source)
 
   const isTranslation = !!lang && lang !== 'en'
   const text = payloadText(payload)
   const srcText = source ? payloadText(source) : ''
+
+  // A source fetched without `context=edit` has `content.rendered` but no
+  // `content.raw` — no authored body to compare against (L-47). The body-level
+  // checks below then SKIP with a reason rather than comparing against the
+  // built page.
+  const srcContent = source?.content
+  const sourceBodyMissing = !!srcContent && typeof srcContent === 'object' && typeof srcContent.raw !== 'string'
+  const NO_SOURCE = 'did not run — no source supplied; nothing to compare the payload against'
 
   // 1. Elementor JSON parses
   const edRaw = payload?.meta?._elementor_data
   const ed = parseElementor(edRaw)
   if (edRaw != null) add('json_parses', ed !== undefined, ed === undefined ? '_elementor_data does not JSON.parse' : '')
 
-  // 2/3. structure vs source (only when both have Elementor data)
+  // 2/3/4. structure vs source. A payload that WRITES `_elementor_data` is a
+  // layout write, and these three are its B20 (stale copy) / B6 (hallucination
+  // scale) protection — so "could not run" is a failure here, not an acceptable
+  // skip: an unguarded layout write is exactly what these exist to stop.
   const srcEd = source ? parseElementor(source?.meta?._elementor_data) : null
-  if (ed && typeof ed === 'object' && srcEd && typeof srcEd === 'object') {
-    const pw = [...walk(ed)].filter(isWidget).length
-    const sw = [...walk(srcEd)].filter(isWidget).length
-    add('widget_count', pw === sw, pw === sw ? '' : `payload ${pw} widgets vs source ${sw} (stale layout? B20)`)
+  if (edRaw != null) {
+    if (!(ed && typeof ed === 'object')) {
+      const why = 'did not run — payload _elementor_data does not parse (see json_parses)'
+      add('widget_count', false, why)
+      add('element_ids_preserved', false, why)
+      add('length_anomaly', false, why)
+    } else if (!(srcEd && typeof srcEd === 'object')) {
+      const why = source
+        ? 'did not run — source has no _elementor_data; a layout write MUST carry the live EN entity as `source` (a flat `before` works once meta.* keys are present)'
+        : 'did not run — a payload writing _elementor_data MUST carry `source` (the live EN entity) so the layout guards can run'
+      add('widget_count', false, why)
+      add('element_ids_preserved', false, why)
+      add('length_anomaly', false, why)
+    } else {
+      const pw = [...walk(ed)].filter(isWidget).length
+      const sw = [...walk(srcEd)].filter(isWidget).length
+      add('widget_count', pw === sw, pw === sw ? '' : `payload ${pw} widgets vs source ${sw} (stale layout? B20)`)
 
-    const pIds = elementIds(ed), sIds = elementIds(srcEd)
-    const introduced = [...pIds].filter(id => !sIds.has(id))
-    add('element_ids_preserved', introduced.length === 0,
-      introduced.length ? `payload introduces ${introduced.length} element id(s) not in source: ${introduced.slice(0, 5).join(', ')}` : '')
+      const pIds = elementIds(ed), sIds = elementIds(srcEd)
+      const introduced = [...pIds].filter(id => !sIds.has(id))
+      add('element_ids_preserved', introduced.length === 0,
+        introduced.length ? `payload introduces ${introduced.length} element id(s) not in source: ${introduced.slice(0, 5).join(', ')}` : '')
 
-    // 4. length anomaly per widget vs the source widget of the same id
-    const srcById = new Map()
-    for (const w of widgetTexts(srcEd)) srcById.set(w.id + '|' + w.key, w.text)
-    const anomalies = []
-    for (const w of widgetTexts(ed)) {
-      const s = srcById.get(w.id + '|' + w.key)
-      if (s == null) continue
-      const isEditor = w.key === 'editor' || w.key === 'description_text'
-      const capChars = isEditor ? 2000 : 200
-      const capRatio = isEditor ? 3 : 4
-      if (w.text.length > capChars || (s.length > 0 && w.text.length > s.length * capRatio)) {
-        anomalies.push(`${w.id}.${w.key}: ${s.length}→${w.text.length}`)
+      // length anomaly per widget vs the source widget of the same id
+      const srcById = new Map()
+      for (const w of widgetTexts(srcEd)) srcById.set(w.id + '|' + w.key, w.text)
+      const anomalies = []
+      for (const w of widgetTexts(ed)) {
+        const s = srcById.get(w.id + '|' + w.key)
+        if (s == null) continue
+        const isEditor = w.key === 'editor' || w.key === 'description_text'
+        const capChars = isEditor ? 2000 : 200
+        const capRatio = isEditor ? 3 : 4
+        if (w.text.length > capChars || (s.length > 0 && w.text.length > s.length * capRatio)) {
+          anomalies.push(`${w.id}.${w.key}: ${s.length}→${w.text.length}`)
+        }
       }
+      add('length_anomaly', anomalies.length === 0,
+        anomalies.length ? `hallucination-scale growth (B6): ${anomalies.slice(0, 4).join('; ')}` : '')
     }
-    add('length_anomaly', anomalies.length === 0,
-      anomalies.length ? `hallucination-scale growth (B6): ${anomalies.slice(0, 4).join('; ')}` : '')
   }
 
   // 5. wrong-language characters (run on DECODED text — B35e)
@@ -266,7 +341,9 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   //    Compare on markup-free text: <script>/<style> bodies (JSON-LD in
   //    particular embeds "Crystocraft") and tags would otherwise make a brand
   //    term look "present in source" that no human-visible copy dropped (B53).
-  if (source) {
+  if (!source) {
+    skip('brand_terms_preserved', NO_SOURCE)
+  } else {
     const bare = (s) => stripTags(String(s).replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' '))
     const srcBare = bare(srcText), payBare = bare(text)
     const dropped = BRAND_TERMS.filter(t => srcBare.includes(t) && !payBare.includes(t))
@@ -275,7 +352,9 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   }
 
   // 8. SKU / model prefix preserved on the name
-  if (source && typeof payload.name === 'string' && typeof source.name === 'string') {
+  if (!source) {
+    skip('sku_prefix_preserved', NO_SOURCE)
+  } else if (typeof payload.name === 'string' && typeof source.name === 'string') {
     const m = source.name.match(/^([A-Z0-9]{2,}(?:[-/][A-Z0-9]+)*)[\s–-]/)
     if (m) add('sku_prefix_preserved', payload.name.startsWith(m[1]),
       payload.name.startsWith(m[1]) ? '' : `name should start with SKU "${m[1]}" — got "${payload.name.slice(0, 40)}"`)
@@ -284,7 +363,14 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   // 9/10. image + heading count parity (HTML fields). Both sides go through
   // contentString() so a live entity's REST `content` object is compared on its
   // RAW body, not its rendered page (see the helper).
-  if (source) {
+  if (!source) {
+    skip('image_count_parity', NO_SOURCE)
+    skip('heading_count_parity', NO_SOURCE)
+  } else if (sourceBodyMissing) {
+    const why = 'did not run — source body has no .raw; fetch the entity with context=edit (L-47)'
+    skip('image_count_parity', why)
+    skip('heading_count_parity', why)
+  } else {
     const pBody = contentString(payload.content) + contentString(payload.description) + contentString(payload.short_description)
     const sBody = contentString(source.content) + contentString(source.description) + contentString(source.short_description)
     const pImg = countMatches(pBody, /<img[\s>]/gi)
@@ -304,8 +390,13 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   // body never had.
   const bodyStr = contentString(payload.content) + contentString(payload.description) + contentString(payload.short_description) + asString(edRaw)
   const srcBodyStr = source ? contentString(source.content) + contentString(source.description) + contentString(source.short_description) + asString(source?.meta?._elementor_data) : ''
-  if (!source || !SCRIPT_RX.test(srcBodyStr)) add('no_new_scripts', !SCRIPT_RX.test(bodyStr), SCRIPT_RX.test(bodyStr) ? '<script> introduced' : '')
-  if (!source || !TABLE_RX.test(srcBodyStr)) add('no_new_tables', !TABLE_RX.test(bodyStr), TABLE_RX.test(bodyStr) ? '<table> introduced' : '')
+  const scripts = (name, rx, what) => {
+    if (source && sourceBodyMissing) return skip(name, 'did not run — source body has no .raw; fetch the entity with context=edit (L-47)')
+    if (source && rx.test(srcBodyStr)) return skip(name, `did not run — source already contains ${what}; a pre-existing one cannot be attributed to this write`)
+    add(name, !rx.test(bodyStr), rx.test(bodyStr) ? `${what} introduced` : '')
+  }
+  scripts('no_new_scripts', SCRIPT_RX, '<script>')
+  scripts('no_new_tables', TABLE_RX, '<table>')
 
   // 12. Yoast title double-branding (L-09). A custom Yoast title is emitted
   // verbatim; only the post-title path receives Yoast's site-name template.
@@ -335,7 +426,13 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   if (edRaw != null) add('elementor_cache_reminder', true, 'writes _elementor_data — element-cache clear + flush-css + host purge required after (Rule 5)')
 
   const passed = checks.every(c => c.ok !== false)
-  return { passed, checks }
+  // `ran` / `skipped` are what let a caller tell a FULL pass from a partial one
+  // — the thing that was impossible before L-48. `skipped` counts only checks
+  // that were applicable-but-could-not-run (or that a caller suppressed by not
+  // supplying a source); a check that never applied is simply absent.
+  const ran = checks.filter(c => c.ok === true || c.ok === false).length
+  const skipped = checks.filter(c => c.ok == null).length
+  return { passed, checks, ran, skipped }
 }
 
 export default validatePayload

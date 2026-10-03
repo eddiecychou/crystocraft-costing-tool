@@ -200,8 +200,18 @@ export default function SeoReview() {
 
                       {/* validation — v is the OC's authoritative re-check (by:'oc') */}
                       <div className="mt-2">
-                        {v.passed === true && <p className="text-2xs text-green-700 inline-flex items-center gap-1"><Check size={11} /> validation passed{v.checks?.length ? ` (${v.checks.length} checks${v.by === 'oc' ? ', OC-verified' : ''})` : ''}</p>}
+                        {v.passed === true && <p className="text-2xs text-green-700 inline-flex items-center gap-1"><Check size={11} /> validation passed{v.checks?.length ? ` (${v.ran ?? v.checks.filter(c => c.ok === true || c.ok === false).length} checks ran${v.skipped ? `, ${v.skipped} skipped` : ''}${v.by === 'oc' ? ', OC-verified' : ''})` : ''}</p>}
                         {v.passed === false && <p className="text-2xs text-red-600 inline-flex items-center gap-1"><AlertTriangle size={11} /> validation FAILED{v.by === 'oc' ? ' (OC)' : ''}: {(v.checks || []).filter(c => c.ok === false).map(c => c.name || c).join(', ') || 'see batch'}</p>}
+                        {/* skipped checks are not failures, but "passed" alone must not read as a FULL pass (L-48) */}
+                        {(v.checks || []).some(c => c.ok == null) && (
+                          <p className="text-2xs text-amber-700 inline-flex items-start gap-1 mt-0.5">
+                            <CircleSlash size={11} className="mt-0.5 shrink-0" />
+                            <span>{v.skipped ?? (v.checks || []).filter(c => c.ok == null).length} check(s) did NOT run — not a full validation: {(v.checks || []).filter(c => c.ok == null).map(c => c.name).join(', ')}</span>
+                          </p>
+                        )}
+                        {(v.checks || []).filter(c => c.ok == null && c.detail).slice(0, 2).map(c => (
+                          <p key={c.name} className="text-2xs text-ink-60 mt-0.5 pl-4">{c.name}: {c.detail}</p>
+                        ))}
                         {v.passed == null && <p className="text-2xs text-ink-60 inline-flex items-center gap-1"><CircleSlash size={11} /> not validated</p>}
                         {it.validation_mismatch && (
                           <p className="text-2xs text-amber-700 inline-flex items-center gap-1 mt-0.5">
