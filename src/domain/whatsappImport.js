@@ -544,7 +544,7 @@ export async function analyzeWhatsappImport(file, { target, channel }) {
 // { type: 'lead', phone } (a "weak lead" — never converted, saved under
 // marketing_contacts/ instead; its "person" is the lead itself). The doc id is
 // the §5.1 account × contact key (conversationThreadId), not the filename.
-export async function importWhatsAppZip(file, { target, channel, onProgress, matchedBy }) {
+export async function importWhatsAppZip(file, { target, channel, onProgress, matchedBy, media = 'all' }) {
   const zip = await JSZip.loadAsync(file)
   const chatEntry = zip.file('_chat.txt') || zip.file(/_chat\.txt$/i)?.[0]
   if (!chatEntry) throw new Error('No _chat.txt found in this zip — is it a real WhatsApp chat export?')
@@ -582,7 +582,12 @@ export async function importWhatsAppZip(file, { target, channel, onProgress, mat
     threadDoc.messages = carryForwardMedia(threadDoc.messages, existingMessages)
   }
 
-  await uploadAttachments(zip, threadDoc, `${collectionName}/${parentId}/whatsapp/${importId}`, onProgress, existingUrlsByFilename)
+  // 'text first / media later' (§5.5): media:'none' writes the messages with
+  // attachment_url left null, so a very large archive imports fast and its
+  // media can be uploaded in a later pass (uploadAttachments fills the URLs).
+  if (media !== 'none') {
+    await uploadAttachments(zip, threadDoc, `${collectionName}/${parentId}/whatsapp/${importId}`, onProgress, existingUrlsByFilename)
+  }
 
   // Transactional final write — re-read and re-carry transcripts/URLs so a
   // transcription that landed mid-import isn't lost, and preserve lineage.
