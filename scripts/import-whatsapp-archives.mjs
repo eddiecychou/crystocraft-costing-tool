@@ -49,6 +49,7 @@ const db = getFirestore()
 const ARCHIVE_DIR = process.env.ARCHIVE_DIR || join(homedir(), 'Whatsapp Archives')
 const MANIFEST_PATH = process.env.MANIFEST || join(here, 'whatsapp-import-manifest.json')
 const DRY_RUN = process.argv.includes('--dry-run')
+const STATE_PATH = join(here, '.whatsapp-sync-state.json')
 
 // Recursively collect .zip files.
 function findZips(root) {
@@ -89,6 +90,7 @@ async function main() {
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'))
   const byName = new Map((manifest.archives || []).map(a => [a.file, a]))
   const zips = findZips(ARCHIVE_DIR)
+  const state = existsSync(STATE_PATH) ? JSON.parse(readFileSync(STATE_PATH, 'utf8')) : {}
 
   console.log(`archive dir: ${ARCHIVE_DIR}`)
   console.log(`found ${zips.length} .zip file${zips.length === 1 ? '' : 's'}\n`)
@@ -97,6 +99,9 @@ async function main() {
 
   for (const zipPath of zips) {
     const name = basename(zipPath)
+    const st = statSync(zipPath)
+    const sig = `${Math.round(st.mtimeMs)}:${st.size}`
+    if (!DRY_RUN && state[name] === sig) { console.log(`SKIP (unchanged): ${name}`); skipped++; continue }
     const entry = byName.get(name)
     if (!entry) {
       console.log(`SKIP (no manifest entry): ${name}`)
@@ -134,6 +139,7 @@ async function main() {
       if (existing?.migrated_from) finalDoc.migrated_from = existing.migrated_from
       if (existing?.migrated_at) finalDoc.migrated_at = existing.migrated_at
       await ref.set(finalDoc)
+      state[name] = sig
 
       console.log(`${existing ? 'UPDATE' : 'IMPORT'} ${name} -> ${importId} (${messages.length} msgs, media skipped)`)
       if (existing) updated++; else imported++
@@ -142,6 +148,8 @@ async function main() {
       failed++
     }
   }
+
+  if (!DRY_RUN) writeFileSync(STATE_PATH, JSON.stringify(state, null, 2))
 
   console.log(`\n${imported} imported, ${updated} updated, ${skipped} skipped, ${failed} failed${DRY_RUN ? '  [DRY-RUN — no writes]' : ''}`)
 }

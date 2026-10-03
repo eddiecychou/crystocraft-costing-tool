@@ -79,3 +79,6 @@ ui-debug.log
 .qa-playwright/
 # eslint scratch install for the qa/eslint.no-undef.mjs check
 .qa-eslint/
+
+# runtime state for scripts/import-whatsapp-archives.mjs (mtime tracking)
+scripts/.whatsapp-sync-state.json

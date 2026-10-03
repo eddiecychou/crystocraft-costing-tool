@@ -353,6 +353,47 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.crystocraft.email-ho
 ```
 (Adjust the path if the repo isn't at `~/Developer/costing-tool` on that Mac.)
 
+## Scheduled WhatsApp auto-import (launchd)
+
+`com.crystocraft.whatsapp-auto-import` (added 2026-10-03) runs
+`scripts/whatsapp-sync.sh` hourly (`StartInterval: 3600`, `RunAtLoad: true`),
+mirroring the email job above. It auto-imports `.zip` files dropped into
+`~/Whatsapp Archives/{Business,Personal}/` (text-first, then uploads their
+media). Matching is manifest-driven, NOT automatic: known filenames in
+`scripts/whatsapp-import-manifest.json` map to a customer/contact/account; an
+unknown filename is printed as `SKIP (no manifest entry)` and must be added to
+the manifest once. The importer tracks each file's mtime+size in
+`scripts/.whatsapp-sync-state.json` (gitignored) and skips unchanged files, so
+the hourly run is a no-op until you actually overwrite/add an archive. Logs:
+`scripts/whatsapp-sync_*.log` (newest 48 kept) + `scripts/launchd-whatsapp.log`.
+
+**Manual run / dry-run:**
+```bash
+cd ~/Developer/costing-tool
+node scripts/import-whatsapp-archives.mjs            # import text (manifest-driven)
+node scripts/upload-whatsapp-media.mjs               # upload attachment files
+node scripts/import-whatsapp-archives.mjs --dry-run  # preview, no writes
+```
+
+**To recreate on the other Mac** (plist isn't git-synced):
+```bash
+cat > ~/Library/LaunchAgents/com.crystocraft.whatsapp-auto-import.plist <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>com.crystocraft.whatsapp-auto-import</string>
+    <key>ProgramArguments</key>
+    <array><string>/bin/bash</string><string>/Users/eddie/Developer/costing-tool/scripts/whatsapp-sync.sh</string></array>
+    <key>StartInterval</key><integer>3600</integer>
+    <key>RunAtLoad</key><true/>
+</dict>
+</plist>
+EOF
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.crystocraft.whatsapp-auto-import.plist
+```
+(Adjust the path if the repo isn't at `~/Developer/costing-tool` on that Mac.)
+
 ## Updating this file
 
 When a new tool gets set up in a session (installed, logged in, confirmed
