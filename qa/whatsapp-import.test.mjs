@@ -28,7 +28,7 @@ const {
   parseWhatsAppExport, guessContactName, looksLikePhoneNumber, threadDocId,
   buildThreadDoc, messageFingerprint, normalizeAccount, conversationThreadId,
   isLegacyThread, isMigratedThread, planMigration, analyzeImportOverlap,
-  carryForwardMedia,
+  carryForwardMedia, mergeThreadMessages,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -209,6 +209,18 @@ const check = (name, cond, detail = '') => {
   check('new message (no stored counterpart) untouched', merged[2].transcript === null && merged[2].needs_transcription === true && merged[2].attachment_url === null)
   check('a fresh URL wins over a carried one', carryForwardMedia([{ attachment_filename: 'AUD-1.opus', attachment_url: 'https://new.url', transcript: null }], stored)[0].attachment_url === 'https://new.url')
   check('never mutates the input arrays', merged.length === fresh.length && fresh[0].transcript === null)
+}
+
+// ── step 4: mergeThreadMessages (two archives → one) ─────────────────────
+{
+  const T = n => Date.parse('2024-05-12T02:00:00.000Z') + n * 60000
+  const m = (ts, body) => ({ date: new Date(ts).toISOString(), from: 'Annie', body_text: body, attachment_filename: null })
+  const a = [m(T(0), 'hi'), m(T(1), 'there')]
+  const b = [m(T(1), 'there'), m(T(2), 'again')]
+  const merged = mergeThreadMessages(a, b)
+  check('merge unions + dedupes (3 unique)', merged.length === 3, JSON.stringify(merged.map(x => x.body_text)))
+  check('merge sorts chronologically', merged[0].body_text === 'hi' && merged[1].body_text === 'there' && merged[2].body_text === 'again')
+  check('merge never mutates inputs', a.length === 2 && b.length === 2)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

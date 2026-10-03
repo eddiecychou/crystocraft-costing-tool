@@ -215,6 +215,23 @@ export function carryForwardMedia(newMessages, existingMessages) {
   })
 }
 
+// Merge two stored message lists into one chronological thread: union by
+// fingerprint (dedupes a message that appears in both archives), sorted by
+// date. Used when two legacy archives for the same person+account collide on
+// the new account×contact id. Pure + testable; never deletes a message.
+export function mergeThreadMessages(listA, listB) {
+  const seen = new Set()
+  const merged = []
+  for (const m of [...(listA || []), ...(listB || [])]) {
+    const fp = messageFingerprint(m)
+    if (seen.has(fp)) continue
+    seen.add(fp)
+    merged.push(m)
+  }
+  merged.sort((a, b) => (msgTs(a) ?? 0) - (msgTs(b) ?? 0))
+  return merged
+}
+
 // Parsed messages -> the Firestore doc shape. Attachment URLs are filled
 // in separately by uploadAttachments() once the caller has actually
 // uploaded each file to Storage — this function never touches Storage.
@@ -397,6 +414,39 @@ export async function undoMigrateLegacyThread({ collectionName, parentId, legacy
   await deleteDoc(dstRef)
   await updateDoc(srcRef, { migrated_to: deleteField(), migrated_at: deleteField() })
   return { restored: legacyId, removed: newId }
+}
+
+// Merge a legacy (filename-keyed) thread into an existing account×contact
+// thread — the resolution for "target-exists" when two archives are the same
+// person on the same account. Additive: unions the two message lists (deduped
+// by fingerprint) into the target and tombstones the source; never deletes a
+// message. Transactional (re-reads inside the transaction).
+export async function mergeLegacyThread({ collectionName, parentId, legacyId, account, contactId }) {
+  const newId = conversationThreadId({ account, contactId })
+  const srcRef = doc(db, collectionName, parentId, 'whatsapp_threads', legacyId)
+  const dstRef = doc(db, collectionName, parentId, 'whatsapp_threads', newId)
+
+  await runTransaction(db, async (tx) => {
+    const sSnap = await tx.get(srcRef)
+    const dSnap = await tx.get(dstRef)
+    if (!sSnap.exists()) throw new Error('Legacy thread no longer exists.')
+    if (!dSnap.exists()) throw new Error('Target thread does not exist — migrate first.')
+    const s = sSnap.data()
+    const d = dSnap.data()
+    if (!isLegacyThread(s) || s.migrated_to) throw new Error('Source is not a pending legacy thread.')
+
+    const messages = mergeThreadMessages(d.messages, s.messages)
+    const dates = messages.map(m => msgTs(m)).filter(ts => ts != null)
+    tx.set(dstRef, {
+      ...d,
+      messages,
+      message_count: messages.length,
+      date_range: dates.length ? [new Date(Math.min(...dates)).toISOString(), new Date(Math.max(...dates)).toISOString()] : d.date_range,
+    })
+    tx.set(srcRef, { ...s, migrated_to: newId, migrated_at: serverTimestamp() })
+  })
+
+  return { legacyId, newId }
 }
 
 // One-time scan for legacy (filename-keyed, unattributed) threads across every

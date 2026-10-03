@@ -3,7 +3,7 @@ import { usePersistentState } from '../lib/usePersistentState'
 import { Link } from 'react-router-dom'
 import { Upload, Check, AlertCircle, Loader2, Mic, Plus, X, RefreshCw, Sparkles } from 'lucide-react'
 import { useCustomers, CHANNELS, CRM_CATEGORIES, CUSTOMER_COUNTRIES, saveCustomer } from '../domain/customer'
-import { previewWhatsAppZip, importWhatsAppZip, analyzeWhatsappImport, loadLegacyWhatsappThreads, migrateLegacyThread, undoMigrateLegacyThread } from '../domain/whatsappImport'
+import { previewWhatsAppZip, importWhatsAppZip, analyzeWhatsappImport, loadLegacyWhatsappThreads, migrateLegacyThread, undoMigrateLegacyThread, mergeLegacyThread } from '../domain/whatsappImport'
 import { loadWhatsappSummaryCandidates, loadContactWhatsappSummaryCandidates, generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 
 // V8.2 — bulk uploader for WhatsApp's own "Export Chat" .zip files (Business
@@ -594,6 +594,21 @@ function LegacyThreadsSection({ customers }) {
       const res = await migrateLegacyThread({ collectionName, parentId: r.parentId, legacyId: r.legacyId, account: sel.channel, contactId })
       setStates(s => ({ ...s, [key]: { status: 'done', ...res } }))
     } catch (e) {
+      // target-exists = a second archive for the same person+account — offer merge.
+      setStates(s => ({ ...s, [key]: String(e.message).includes('target-exists') ? { status: 'collision' } : { status: 'error', error: e.message } }))
+    }
+  }
+
+  async function handleMerge(r) {
+    const key = rowKey(r)
+    const sel = selections[key] || {}
+    const collectionName = r.kind === 'lead' ? 'marketing_contacts' : 'customers'
+    const contactId = r.kind === 'lead' ? r.parentId : sel.contactId
+    setStates(s => ({ ...s, [key]: { status: 'merging' } }))
+    try {
+      const res = await mergeLegacyThread({ collectionName, parentId: r.parentId, legacyId: r.legacyId, account: sel.channel, contactId })
+      setStates(s => ({ ...s, [key]: { status: 'done', ...res } }))
+    } catch (e) {
       setStates(s => ({ ...s, [key]: { status: 'error', error: e.message } }))
     }
   }
@@ -660,7 +675,14 @@ function LegacyThreadsSection({ customers }) {
                   {!st && <span className="shrink-0 text-2xs font-normal uppercase tracking-wide rounded-none px-1 py-0.5 text-amber-600 bg-amber-50">Legacy</span>}
                 </div>
 
-                {st?.status === 'done' ? (
+                {(st?.status === 'collision' || st?.status === 'merging') ? (
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <span className="flex-1 min-w-0 break-words text-xs text-amber-700">A thread for this person + account already exists — merge this archive into it.</span>
+                    <button type="button" onClick={() => handleMerge(r)} disabled={st.status === 'merging'} className="btn-primary text-xs px-3 py-1.5 shrink-0">
+                      {st.status === 'merging' ? 'Merging…' : 'Merge'}
+                    </button>
+                  </div>
+                ) : st?.status === 'done' ? (
                   <div className="flex items-center justify-between gap-2 mt-2">
                     <span className="flex-1 min-w-0 break-words text-xs text-green-700">Migrated → {st.newId}</span>
                     <button type="button" onClick={() => handleUndo(r)} disabled={st.status === 'undoing'} className="btn-secondary text-xs px-2.5 py-1 shrink-0">
