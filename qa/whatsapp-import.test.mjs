@@ -26,7 +26,8 @@ const modPath = join(dir, 'whatsappImport.mjs')
 writeFileSync(modPath, src.replace(/^import .*\n/gm, ''))
 const {
   parseWhatsAppExport, guessContactName, looksLikePhoneNumber, threadDocId,
-  buildThreadDoc, messageFingerprint,
+  buildThreadDoc, messageFingerprint, normalizeAccount, conversationThreadId,
+  isLegacyThread,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -116,6 +117,40 @@ const check = (name, cond, detail = '') => {
   check('different body → different fingerprint', messageFingerprint({ ...parsed, body: 'Bye' }) !== messageFingerprint(parsed))
   check('case difference → different fingerprint (conservative, not silently merged)', messageFingerprint({ ...parsed, body: 'hi eddie' }) !== messageFingerprint(parsed))
   check('attachment filename is part of the fingerprint', messageFingerprint({ ...parsed, attachment_filename: 'IMG-1.jpg' }) !== messageFingerprint(parsed))
+}
+
+// ── §5.1 account normalisation ────────────────────────────────────────────
+{
+  check('normalizeAccount: WhatsApp Business → business', normalizeAccount('WhatsApp Business') === 'business')
+  check('normalizeAccount: Personal WhatsApp → personal', normalizeAccount('Personal WhatsApp') === 'personal')
+  check('normalizeAccount: tolerates already-normalised input', normalizeAccount('business') === 'business' && normalizeAccount('personal') === 'personal')
+  check('normalizeAccount: unrecognised → unknown', normalizeAccount('Signal') === 'unknown')
+}
+
+// ── §5.1 conversation id (account + contact folded into the id) ───────────
+{
+  const biz = conversationThreadId({ account: 'WhatsApp Business', contactId: 'c_abc123' })
+  const personal = conversationThreadId({ account: 'Personal WhatsApp', contactId: 'c_abc123' })
+  const other = conversationThreadId({ account: 'WhatsApp Business', contactId: 'c_def456' })
+  check('id folds account + contact_id (no name, so a rename can\'t change it)', biz === 'business__c_abc123', biz)
+  check('contact_id normalised to lowercase', conversationThreadId({ account: 'WhatsApp Business', contactId: 'C_ABC123' }) === 'business__c_abc123')
+  check('same person, Business vs Personal → different id (never merged)', biz !== personal, `${biz} vs ${personal}`)
+  check('two different contacts → different id (never mixed)', biz !== other, `${biz} vs ${other}`)
+  let threw = false
+  try { conversationThreadId({ account: 'WhatsApp Business', contactId: '' }) } catch { threw = true }
+  check('throws without a contact_id (unattributed must not import)', threw)
+}
+
+// ── §5.1/§5.4 buildThreadDoc attribution + legacy detection ───────────────
+{
+  const msgs = parseWhatsAppExport(fx('annie-fan.txt'))
+  const attributed = buildThreadDoc({ zipFileName: 'WhatsApp Chat - Annie Fan.zip', channel: 'WhatsApp Business', messages: msgs, account: 'WhatsApp Business', contactId: 'c_abc123', matchedBy: 'name' })
+  check('buildThreadDoc records account + contact_id + matched_by',
+    attributed.account === 'business' && attributed.contact_id === 'c_abc123' && attributed.matched_by === 'name')
+  check('attributed thread is not legacy', isLegacyThread(attributed) === false)
+  const legacy = buildThreadDoc({ zipFileName: 'WhatsApp Chat - Annie Fan.zip', channel: 'WhatsApp Business', messages: msgs })
+  check('pre-§5.1 call (no account/contact) leaves them null', legacy.account === null && legacy.contact_id === null && legacy.matched_by === null)
+  check('thread without account/contact_id is flagged legacy', isLegacyThread(legacy) === true)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

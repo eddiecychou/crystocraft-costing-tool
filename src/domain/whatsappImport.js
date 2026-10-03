@@ -139,11 +139,17 @@ export function messageFingerprint(m) {
 // Parsed messages -> the Firestore doc shape. Attachment URLs are filled
 // in separately by uploadAttachments() once the caller has actually
 // uploaded each file to Storage — this function never touches Storage.
-export function buildThreadDoc({ zipFileName, channel, messages }) {
+export function buildThreadDoc({ zipFileName, channel, messages, account, contactId, matchedBy }) {
   const dates = messages.map(m => m.date.getTime())
   return {
     subject: guessContactName(zipFileName),
     channel,
+    // §5.1 identity — account (normalised business/personal) + contact_id;
+    // matched_by records which key resolved the contact (phone/name). Null
+    // when absent, so pre-§5.1 callers are unaffected.
+    account: account ? normalizeAccount(account) : null,
+    contact_id: contactId ?? null,
+    matched_by: matchedBy ?? null,
     source_file: zipFileName,
     message_count: messages.length,
     date_range: dates.length ? [new Date(Math.min(...dates)).toISOString(), new Date(Math.max(...dates)).toISOString()] : [],
@@ -201,12 +207,45 @@ async function uploadAttachments(zip, threadDoc, storagePrefix, onProgress, exis
   }
 }
 
-// Deterministic doc id from the export filename (not a random auto-id) —
-// re-importing the same file for the same customer updates the existing
-// thread instead of creating a duplicate, same "safe to repeat" property
-// importErpCustomers already relies on for its own dedupe.
+// LEGACY doc id from the export filename only — used by pre-§5.1 imports and
+// by the migration review view to locate old name-keyed threads. Replaced for
+// new imports by conversationThreadId() below, because a name is neither
+// durable nor unique (plan §5.1: rename, dual-account, same-named contacts).
 export function threadDocId(zipFileName) {
   return guessContactName(zipFileName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'chat'
+}
+
+// Normalise the channel selector's display label to the immutable source
+// account that §5.1 makes part of thread identity: 'WhatsApp Business' →
+// 'business', 'Personal WhatsApp' → 'personal'. Tolerates already-normalised
+// input and case; anything unrecognised is 'unknown' (the caller must not
+// import with 'unknown' — account is chosen explicitly, never guessed).
+export function normalizeAccount(channel) {
+  const c = String(channel || '').toLowerCase()
+  if (c.includes('business')) return 'business'
+  if (c.includes('personal')) return 'personal'
+  return 'unknown'
+}
+
+// §5.1 thread doc id: folds source account + resolved contact_id into the id,
+// so two same-named contacts and one person's Business vs Personal numbers can
+// never collide (the old name-only id would overwrite both). The display name
+// lives in the doc's `subject` field, NOT in the id, so a phone-side rename
+// cannot change identity. Throws without a contact_id — an unattributed
+// thread is never silently imported (§5.4).
+export function conversationThreadId({ account, contactId }) {
+  const a = normalizeAccount(account)
+  const c = String(contactId ?? '').trim().toLowerCase()
+  if (!c) throw new Error('conversationThreadId needs a resolved contact_id — an unattributed thread must not be imported')
+  return `${a}__${c}`
+}
+
+// Whether a stored thread doc predates the §5.1 account+contact_id scheme
+// (filename-keyed, no attribution). The migration review view uses this to
+// surface legacy threads for a human to attach to a contact before any new
+// import is allowed to touch them.
+export function isLegacyThread(threadDoc) {
+  return !threadDoc || !threadDoc.contact_id || !threadDoc.account
 }
 
 // Whether this exact file has already been imported for the given target —
