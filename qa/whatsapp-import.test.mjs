@@ -28,6 +28,7 @@ const {
   parseWhatsAppExport, guessContactName, looksLikePhoneNumber, threadDocId,
   buildThreadDoc, messageFingerprint, normalizeAccount, conversationThreadId,
   isLegacyThread, isMigratedThread, planMigration, analyzeImportOverlap,
+  carryForwardMedia,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -189,6 +190,25 @@ const check = (name, cond, detail = '') => {
   const other = { id: 'personal__c_1', account: 'personal', contact_id: 'c_1', messages: [storedMsg(T(0), 'hi')] }
   const cross = analyzeImportOverlap({ account: 'business', contactId: 'c_1', messages: [mkMsg(T(0), 'hi')], threads: [other] })
   check('message already in another account -> overlap-review', cross.verdict === 'overlap-review' && cross.crossAccount === 1 && cross.targetExists === false, JSON.stringify(cross))
+}
+
+// ── step 4: carryForwardMedia (additive merge, no data loss) ─────────────
+{
+  const stored = [
+    { from: 'Annie', body_text: 'hi', attachment_filename: 'AUD-1.opus', attachment_url: 'https://old.url', transcript: 'transcribed', needs_transcription: false },
+    { from: 'Annie', body_text: 'bye', attachment_filename: 'IMG-1.jpg', attachment_url: 'https://img.url', transcript: null, needs_transcription: false },
+  ]
+  const fresh = [
+    { sender: 'Annie', body: 'hi', attachment_filename: 'AUD-1.opus', attachment_url: null, transcript: null, needs_transcription: true },
+    { sender: 'Annie', body: 'bye', attachment_filename: 'IMG-1.jpg', attachment_url: null, transcript: null, needs_transcription: false },
+    { sender: 'Annie', body: 'new', attachment_filename: 'AUD-2.opus', attachment_url: null, transcript: null, needs_transcription: true },
+  ]
+  const merged = carryForwardMedia(fresh, stored)
+  check('transcript carried forward by filename', merged[0].transcript === 'transcribed' && merged[0].needs_transcription === false)
+  check('attachment URL carried forward', merged[0].attachment_url === 'https://old.url' && merged[1].attachment_url === 'https://img.url')
+  check('new message (no stored counterpart) untouched', merged[2].transcript === null && merged[2].needs_transcription === true && merged[2].attachment_url === null)
+  check('a fresh URL wins over a carried one', carryForwardMedia([{ attachment_filename: 'AUD-1.opus', attachment_url: 'https://new.url', transcript: null }], stored)[0].attachment_url === 'https://new.url')
+  check('never mutates the input arrays', merged.length === fresh.length && fresh[0].transcript === null)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

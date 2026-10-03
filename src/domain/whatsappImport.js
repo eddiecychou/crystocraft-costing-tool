@@ -1,6 +1,6 @@
 import JSZip from 'jszip'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, getDocs } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, getDocs, runTransaction } from 'firebase/firestore'
 import { db, storage, authedUser } from '../firebase'
 import { findOrCreateLeadByPhone, idFromPhone } from './marketingContact'
 
@@ -190,6 +190,29 @@ export function analyzeImportOverlap({ account, contactId, messages, threads = [
     exact, newAfter, conflicts, crossAccount,
     targetExists: true, targetThreadId: target.id,
   }
+}
+
+// §5.5 / step 4 — additive merge: carry what only the stored copy has (a
+// transcript and/or attachment URL keyed by attachment filename, stable across
+// re-exports) onto freshly-parsed messages. The new export's full history is
+// authoritative for message CONTENT; provenance that isn't in the export is
+// carried forward. Never deletes an existing message. Pure + testable.
+export function carryForwardMedia(newMessages, existingMessages) {
+  const prior = new Map()
+  for (const m of existingMessages || []) {
+    if (!m.attachment_filename) continue
+    if (m.transcript || m.attachment_url) {
+      prior.set(m.attachment_filename, { transcript: m.transcript ?? null, url: m.attachment_url ?? null })
+    }
+  }
+  return newMessages.map(m => {
+    const p = m.attachment_filename ? prior.get(m.attachment_filename) : null
+    if (!p) return m
+    const out = { ...m }
+    if (p.transcript) { out.transcript = p.transcript; out.needs_transcription = false }
+    if (p.url && !out.attachment_url) out.attachment_url = p.url
+    return out
+  })
 }
 
 // Parsed messages -> the Firestore doc shape. Attachment URLs are filled
@@ -501,25 +524,31 @@ export async function importWhatsAppZip(file, { target, channel, onProgress, mat
   const existingSnap = await getDoc(ref)
   let existingUrlsByFilename = null
   if (existingSnap.exists()) {
-    const transcriptsByFilename = new Map()
+    const existingMessages = existingSnap.data().messages || []
     existingUrlsByFilename = new Map()
-    for (const m of existingSnap.data().messages || []) {
-      if (!m.attachment_filename) continue
-      if (m.transcript) transcriptsByFilename.set(m.attachment_filename, m.transcript)
-      if (m.attachment_url) existingUrlsByFilename.set(m.attachment_filename, m.attachment_url)
+    for (const m of existingMessages) {
+      if (m.attachment_filename && m.attachment_url) existingUrlsByFilename.set(m.attachment_filename, m.attachment_url)
     }
-    if (transcriptsByFilename.size) {
-      threadDoc.messages = threadDoc.messages.map(m => {
-        const priorTranscript = m.attachment_filename && transcriptsByFilename.get(m.attachment_filename)
-        return priorTranscript ? { ...m, transcript: priorTranscript, needs_transcription: false } : m
-      })
-    }
+    threadDoc.messages = carryForwardMedia(threadDoc.messages, existingMessages)
   }
 
   await uploadAttachments(zip, threadDoc, `${collectionName}/${parentId}/whatsapp/${importId}`, onProgress, existingUrlsByFilename)
-  await setDoc(ref, {
-    ...threadDoc,
-    imported_at: serverTimestamp(),
+
+  // Transactional final write — re-read and re-carry transcripts/URLs so a
+  // transcription that landed mid-import isn't lost, and preserve lineage.
+  // The doc id is account×contact-scoped, so this can never overwrite a
+  // DIFFERENT account's thread (§5.1).
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref)
+    const existing = snap.exists() ? snap.data() : null
+    const finalDoc = {
+      ...threadDoc,
+      messages: existing?.messages ? carryForwardMedia(threadDoc.messages, existing.messages) : threadDoc.messages,
+      imported_at: serverTimestamp(),
+    }
+    if (existing?.migrated_from) finalDoc.migrated_from = existing.migrated_from
+    if (existing?.migrated_at) finalDoc.migrated_at = existing.migrated_at
+    tx.set(ref, finalDoc)
   })
   return { importId, parentId, messageCount: threadDoc.message_count, dateRange: threadDoc.date_range }
 }
