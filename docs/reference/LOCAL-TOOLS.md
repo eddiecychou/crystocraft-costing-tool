@@ -356,16 +356,19 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.crystocraft.email-ho
 ## Scheduled WhatsApp auto-import (launchd)
 
 `com.crystocraft.whatsapp-auto-import` (added 2026-10-03) runs
-`scripts/whatsapp-sync.sh` hourly (`StartInterval: 3600`, `RunAtLoad: true`),
-mirroring the email job above. It auto-imports `.zip` files dropped into
-`~/Whatsapp Archives/{Business,Personal}/` (text-first, then uploads their
+`scripts/whatsapp-sync.sh` weekly — Sundays 03:00 (`StartCalendarInterval`
+`Weekday=0, Hour=3, Minute=0`, `RunAtLoad: true`), matching Eddie's weekly
+export cadence (he doesn't archive daily). It auto-imports `.zip` files dropped
+into `~/Whatsapp Archives/{Business,Personal}/` (text-first, then uploads their
 media). Matching is manifest-driven, NOT automatic: known filenames in
 `scripts/whatsapp-import-manifest.json` map to a customer/contact/account; an
 unknown filename is printed as `SKIP (no manifest entry)` and must be added to
 the manifest once. The importer tracks each file's mtime+size in
 `scripts/.whatsapp-sync-state.json` (gitignored) and skips unchanged files, so
-the hourly run is a no-op until you actually overwrite/add an archive. Logs:
+each run is a no-op until you actually overwrite/add an archive. Logs:
 `scripts/whatsapp-sync_*.log` (newest 48 kept) + `scripts/launchd-whatsapp.log`.
+To import sooner than the next Sunday, run `bash scripts/whatsapp-sync.sh` (or
+`launchctl kickstart -k gui/$(id -u)/com.crystocraft.whatsapp-auto-import`).
 
 **Manual run / dry-run:**
 ```bash
@@ -385,7 +388,8 @@ cat > ~/Library/LaunchAgents/com.crystocraft.whatsapp-auto-import.plist <<'EOF'
     <key>Label</key><string>com.crystocraft.whatsapp-auto-import</string>
     <key>ProgramArguments</key>
     <array><string>/bin/bash</string><string>/Users/eddie/Developer/costing-tool/scripts/whatsapp-sync.sh</string></array>
-    <key>StartInterval</key><integer>3600</integer>
+    <key>StartCalendarInterval</key>
+    <dict><key>Weekday</key><integer>0</integer><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
     <key>RunAtLoad</key><true/>
 </dict>
 </plist>
