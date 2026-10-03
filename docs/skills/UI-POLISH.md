@@ -135,6 +135,18 @@ report the before/after (§7a — an impression is not evidence). Check, in orde
    the catalogue (or wherever the content would come from), not just a
    sentence. Checked across Enquiry/Favourites/OrderHistory/SwatchLibrary —
    several had the sentence but no exit.
+14. **Flex text column next to a fixed sibling: `flex-1 min-w-0 break-words`
+    on the text, `shrink-0` on the badge/button.** A long company/contact name
+    beside a `Legacy`/status badge overflows unless the text column can shrink
+    below its content width AND an unbroken string (no spaces) can wrap —
+    `min-w-0` alone lets the flex item shrink but doesn't break long tokens.
+    **`.input` is `w-full`, so side-by-side controls must NOT sit in a `flex`
+    row** — each input forces its own full-width line (they stack even on
+    desktop). Use the FileRow grid instead — `grid grid-cols-1
+    sm:grid-cols-[1fr_auto_auto]` — flexible field in the `1fr` cell, fixed
+    `<select>`/button in the `auto` cells; it stacks on mobile and sits
+    side-by-side on desktop. (Worked example: WhatsAppImport's legacy-thread
+    re-key rows, 2026-10-03.)
 
 **Report format** for a polish pass (per §7a): before/after screenshot (or the
 exact class deltas), the gap-consolidation ("was 4 distinct section spacings →
@@ -294,4 +306,5 @@ were worth taking now, and they're in §7.1.
 | 2026-09-01 | Created. Reconciles the external `EXPERT-UI-UX-RULES.md` draft against the shipped design system: SSOT is `tailwind.config.js` + `src/index.css` (§1); the square/flat/hairline Crystocraft language (§2); storefront-vs-OpsCenter split (§3); a measurable Second-Pass checklist (§4); and the draft's factual corrections (§5). |
 | 2026-09-01 | From the customer HomePage Second Pass: §4.6 gained the "one hover signal, no stacked motion" worked example; §4.9 (data-derived UI → single source + free data over a new read) and §4.10 (contextual CTA over generic) added; §3 gained the "one rhythm beats local optimisation" rule; new §4a — how to headlessly preview a login-gated storefront/admin page (`qa/home-preview.jsx` + `qa/home-preview-seeded.mjs` patterns). |
 | 2026-09-02 | From the FigurineShop → SwatchLibrary batch (FigurineShop, CorporateShop, CorporateDetail, FigurineDetail, BrandPortalPage, EnquiryPage, FavouritesPage, OrderHistoryPage, SwatchLibraryPage — all done): §2 gained two rows (quiet section headings → `.eyebrow`, not `font-semibold`; any card-like wrapper → `.card`, never a bespoke `rounded-xl`/`rounded-md` container); §4 gained #11 (repeated hand-rolled `.label` markup → the class), #12 (a `<div onClick>` with no button sibling needs `role="button"`/`tabIndex`/keydown/focus-ring), #13 (every empty state needs a link out, not just a sentence). §4a gained four harness gotchas: esbuild's `.css` loader doesn't run Tailwind (seeded page renders unstyled until the real `tailwindcss` CLI runs **after** esbuild, last); serve `qa/` over `python3 -m http.server` rather than opening the `.html` by `file://` path (pinned tabs refuse to navigate, and file:// pages can render as static snapshots); stubbing a data module for the page under test often needs extra exports for what `CustomerLayout`'s own nav-visibility checks pull in (`hasBrandPortalContent`, `query`/`where`/`orderBy`/`limit`) — build, read the "No matching export" error, add, repeat; and the stash→rebuild→shoot→pop→rebuild recipe for before/after pairs, composed with `render-service/.venv`'s PIL. |
+| 2026-10-03 | §4 #14: flex text columns need `flex-1 min-w-0 break-words` (+ `shrink-0` on the fixed sibling) so long names wrap instead of overflow; `.input` is `w-full`, so side-by-side controls go in the FileRow grid (`1fr_auto_auto`), not a `flex` row. From the WhatsApp import legacy-thread re-key UI. |
 | 2026-09-02 | New §7 Mobile, from the customer-portal mobile audit (reconciling the external `MOBILE-FIRST-RESPONSIVE` / `PWA-BEST-PRACTICES` drafts): §7.1 what's already built (both shells now have a fixed bottom tab bar + "More" sheet + safe-area; global `overscroll-behavior`/`tap-highlight`/`.no-scrollbar` in `index.css`); §7.2 the pragmatic touch-target rule (44px standalone / 40px clustered / `.tag` exempt); §7.3 the scroll-nav strip pattern (`.no-scrollbar` + edge fade + active-tab `scrollIntoView`); §7.4 the 375px audit checklist; §7.5 PWA is a build decision, and never SWR operational data. |

@@ -583,8 +583,8 @@ function LegacyThreadsSection({ customers }) {
   return (
     <div className="card p-5 mt-8">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <h2 className="text-sm text-ink-80">Re-key legacy WhatsApp threads</h2>
-        <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
+        <h2 className="text-sm text-ink-80 min-w-0">Re-key legacy WhatsApp threads</h2>
+        <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5 shrink-0">
           {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           {rows ? 'Re-scan' : 'Scan for legacy threads'}
         </button>
@@ -616,8 +616,8 @@ function LegacyThreadsSection({ customers }) {
             return (
               <div key={key} className="py-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm text-ink">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-ink break-words">
                       {r.displayName} <span className="text-ink-60">· {r.subject || r.legacyId}</span>
                     </p>
                     <p className="text-xs text-ink-60 mt-0.5">
@@ -630,17 +630,14 @@ function LegacyThreadsSection({ customers }) {
 
                 {st?.status === 'done' ? (
                   <div className="flex items-center justify-between gap-2 mt-2">
-                    <span className="text-xs text-green-700">Migrated → {st.newId}</span>
-                    <button type="button" onClick={() => handleUndo(r)} disabled={st.status === 'undoing'} className="btn-secondary text-xs px-2.5 py-1">
+                    <span className="flex-1 min-w-0 break-words text-xs text-green-700">Migrated → {st.newId}</span>
+                    <button type="button" onClick={() => handleUndo(r)} disabled={st.status === 'undoing'} className="btn-secondary text-xs px-2.5 py-1 shrink-0">
                       {st.status === 'undoing' ? 'Undoing…' : 'Undo'}
                     </button>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <select className="input text-sm" value={sel.channel} onChange={e => setSelections(s => ({ ...s, [key]: { ...sel, channel: e.target.value } }))}>
-                      {WA_CHANNELS.map(c => <option key={c}>{c}</option>)}
-                    </select>
-                    {r.kind === 'customer' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 mt-2">
+                    {r.kind === 'customer' ? (
                       <select
                         className={`input text-sm ${sel.contactId ? '' : 'border-amber-400'}`}
                         value={sel.contactId || ''}
@@ -649,8 +646,12 @@ function LegacyThreadsSection({ customers }) {
                         <option value="">Select contact person…</option>
                         {contacts.map(ct => <option key={ct.id} value={ct.id}>{[ct.name, ct.title].filter(Boolean).join(' · ') || ct.id}</option>)}
                       </select>
+                    ) : (
+                      <span className="text-xs text-ink-60 self-center break-words">lead — attributed to {r.displayName}</span>
                     )}
-                    {r.kind === 'lead' && <span className="text-xs text-ink-60">lead — attributed to {r.displayName}</span>}
+                    <select className="input text-sm" value={sel.channel} onChange={e => setSelections(s => ({ ...s, [key]: { ...sel, channel: e.target.value } }))}>
+                      {WA_CHANNELS.map(c => <option key={c}>{c}</option>)}
+                    </select>
                     <button type="button" onClick={() => handleMigrate(r)} disabled={!canMigrate || st?.status === 'migrating'} className="btn-primary text-xs px-3 py-1.5">
                       {st?.status === 'migrating' ? 'Migrating…' : 'Migrate'}
                     </button>
