@@ -77,3 +77,5 @@ ui-debug.log
 
 # playwright-core scratch install for qa/ browser smoke tests
 .qa-playwright/
+# eslint scratch install for the qa/eslint.no-undef.mjs check
+.qa-eslint/
