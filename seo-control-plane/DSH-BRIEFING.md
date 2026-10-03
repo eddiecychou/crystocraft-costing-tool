@@ -295,7 +295,7 @@ dedicated variation id/price-hash guard.
 - [ ] Vendor `seo-control-plane/validate-payload.mjs` and `safe-write.mjs` into
       the Workbench (copy verbatim; re-copy when the OC updates them — a new
       failure mode adds a check there). Verify the copy is byte-identical to the
-      sha256 recorded in `seo-control-plane/README.md` → "Vendoring contract"
+      sha256[:12] fingerprint recorded in `seo-control-plane/README.md` → "Vendoring contract"
       before you trust a run. **Re-vendor after the 2026-10-03 fix** (the
       versions that produced defects 1 and 2 are stale).
 - [ ] Wrap your `wp-api.mjs` write path so **nothing** writes WordPress except
@@ -319,4 +319,4 @@ a 200-item run to it.
 | Date | Change |
 |---|---|
 | 2026-09-02 | Briefing written; control plane live (steps 1–4). |
-| 2026-10-03 | **Two defects fixed** (raised by DSH while staging a WordPress write). **1a** `create` now rejects an item with an empty/absent `payload` (400) instead of silently storing `{}` and reporting a no-op as success. **1b** `safe-write.mjs` returns `verified` (did the INTENDED change happen?) alongside `ok` (did anything UNINTENDED move?); `noop:true` when none of `expectedFields` moved, and `op:'result'` now marks a batch `partial` — never `executed` — when any approved item is `verified:false`. **2** `validate-payload.mjs` compares the **RAW** body (`content.raw`) on both sides for image/heading parity and `no_new_scripts` / `no_new_tables`, so a correct Elementor edit (which changes only `meta._elementor_data`) passes. **DSH must re-vendor both files** (sha256 in `seo-control-plane/README.md`) and gate execution on `r.verified`, and should drop its `before.content` workaround. |
+| 2026-10-03 | **Two defects fixed** (raised by DSH while staging a WordPress write). **1a** `create` now rejects an item with an empty/absent `payload` (400) instead of silently storing `{}` and reporting a no-op as success. **1b** `safe-write.mjs` returns `verified` (did the INTENDED change happen?) alongside `ok` (did anything UNINTENDED move?); `noop:true` when none of `expectedFields` moved, and `op:'result'` now marks a batch `partial` — never `executed` — when any approved item is `verified:false`. **2** `validate-payload.mjs` compares the **RAW** body (`content.raw`) on both sides for image/heading parity and `no_new_scripts` / `no_new_tables`, so a correct Elementor edit (which changes only `meta._elementor_data`) passes. **DSH must re-vendor both files** (sha256[:12] fingerprint in `seo-control-plane/README.md`) and gate execution on `r.verified`, and should drop its `before.content` workaround. |

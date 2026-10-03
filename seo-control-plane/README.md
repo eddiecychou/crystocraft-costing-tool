@@ -26,12 +26,22 @@ Before trusting a run against a newly vendored copy, check it is byte-identical
 to the hash below. **The hash changes whenever the file does** — when the OC
 ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch.
 
-| File | sha256 (2026-10-03) |
+| File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-03) |
 |---|---|
-| `validate-payload.mjs` | `995c06578c8d8aa65029e7a30d1b3d4a40cac4833981ec3363824d83c4465f5e` |
-| `safe-write.mjs` | `653305dd4fe8b0269f1b2df73d0e3913fb53a891c45c57f8949c05b7ccd91104` |
+| `validate-payload.mjs` | `995c06578c8d` |
+| `safe-write.mjs` | `653305dd4fe8` |
 
+Regenerate with
 `shasum -a 256 seo-control-plane/validate-payload.mjs seo-control-plane/safe-write.mjs`
+and compare the first 12 characters.
+
+**Only the first 12 characters are recorded, deliberately.** It is the same
+fingerprint length `LESSONS-LEARNED.md` L-29 already passes back to DSH for
+re-vendoring, and 48 bits is plenty to catch an accidental divergence — while a
+64-hex blob in the repo is indistinguishable from a high-entropy secret to a
+reader or a scanner. (This is hygiene, not a diagnosed deploy failure:
+`deno.lock` is hundreds of 64-hex digests and deploys fine. The real 2026-10-03
+deploy breakage was L-46 — a lesson quoting the leaked value it was about.)
 
 When the OC changes either file it must tell DSH, and this table must be
 re-stamped in the same commit (the OC's own `op:'create'` re-runs the vendored

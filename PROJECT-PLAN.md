@@ -124,7 +124,7 @@ New tests: `seo-control-plane/safe-write.test.mjs` (24),
 `qa/seo-batch-guard.test.mjs` (13), `validate-payload.test.mjs` 40 → 49.
 `seo-batch.js`'s create guard + batch verdict were extracted as
 `emptyPayloadIndexes` / `batchOutcome` so they are testable without Firestore
-credentials. **DSH must re-vendor both files** (sha256 table in
+credentials. **DSH must re-vendor both files** (sha256[:12] fingerprint table in
 `seo-control-plane/README.md`) and gate execution on `r.verified`, not `r.ok`;
 the OC must tell DSH when it is deployed.
 

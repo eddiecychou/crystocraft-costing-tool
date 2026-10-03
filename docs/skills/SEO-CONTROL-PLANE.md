@@ -164,7 +164,7 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   way.**
 
 This directory is also the **vendoring contract**: DSH copies both files
-verbatim and verifies the sha256 recorded in `seo-control-plane/README.md`. The
+verbatim and verifies the sha256[:12] fingerprint recorded in `seo-control-plane/README.md`. The
 OC tells DSH when either changes (`op:'create'` re-runs the vendored validator
 server-side, so a stale copy shows up as `validation_mismatch`). Both files have
 their own `node`-runnable test: `validate-payload.test.mjs` (49 cases) and
@@ -197,4 +197,4 @@ CSV export of the drift/failed rows in both modes.
 |---|---|
 | 2026-09-02 | Steps 1–4 built: `seo_state`/`seo_state_history`, `seo_batches` + `seo-batch` + `/seo-review`, `seo-control-plane/` (`validate-payload` + `safe-write`), `/seo-reconcile`. |
 | 2026-09-23 | **L-29** — `placeholder_markers` extended to fr/ja/zh-hant (was en/es/zh-hans only). |
-| 2026-10-03 | **Two control-plane defects raised by DSH while staging a WordPress write, both fixed here.** (1) A payload-less item was accepted, wrote nothing, and returned `ok:true/verified:true` → the batch reported `executed`. `create` now rejects an empty payload (400), and `safeWrite` returns `verified`/`noop` (gate on `verified`, not `ok`) with `op:'result'` marking such a batch `partial`. (2) Image/heading parity was unsatisfiable for Elementor edits because a live entity's `.rendered` page was compared against a raw payload body — both sides now go through `contentString()`, which prefers `.raw`, as do `no_new_scripts`/`no_new_tables`. DSH re-vendors both files (sha256 in `seo-control-plane/README.md`) and drops its `before.content` workaround. See `LESSONS-LEARNED.md` L-44 / L-45. |
+| 2026-10-03 | **Two control-plane defects raised by DSH while staging a WordPress write, both fixed here.** (1) A payload-less item was accepted, wrote nothing, and returned `ok:true/verified:true` → the batch reported `executed`. `create` now rejects an empty payload (400), and `safeWrite` returns `verified`/`noop` (gate on `verified`, not `ok`) with `op:'result'` marking such a batch `partial`. (2) Image/heading parity was unsatisfiable for Elementor edits because a live entity's `.rendered` page was compared against a raw payload body — both sides now go through `contentString()`, which prefers `.raw`, as do `no_new_scripts`/`no_new_tables`. DSH re-vendors both files (sha256[:12] fingerprint in `seo-control-plane/README.md`) and drops its `before.content` workaround. See `LESSONS-LEARNED.md` L-44 / L-45. |

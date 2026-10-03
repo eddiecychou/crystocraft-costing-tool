@@ -164,6 +164,48 @@ siteId `4a234708-a213-477f-91a5-97cdc939c1db`) via its GitHub integration — a
 matches CLAUDE.md's "pushing deploys via Netlify" convention; no separate
 Netlify action is normally needed.
 
+### But `git push` succeeding is NOT a deploy — check it (verified 2026-10-03)
+
+Two deploys in a row silently failed for a day while the site kept serving an
+older build (L-40 → **L-46**: the secrets scan matches *repository* bytes, so a
+docs commit can fail a deploy that `npm run build` passes locally). The site's
+deploy records are **publicly readable with no token**, so this is checkable
+straight from the shell:
+
+```
+SITE=$(python3 -c "import json;print(json.load(open('.netlify/state.json'))['siteId'])")
+
+# last few deploys: state must end up 'ready' (not 'error'), for your commit
+curl -s "https://api.netlify.com/api/v1/sites/$SITE/deploys?per_page=5" \
+  | python3 -c "import json,sys;[print(d['created_at'], d['state'].ljust(6), (d.get('commit_ref') or '')[:9]) for d in json.load(sys.stdin)]"
+
+# which commit is actually LIVE (published_deploy.commit_ref)
+curl -s "https://api.netlify.com/api/v1/sites/$SITE" \
+  | python3 -c "import json,sys;d=json.load(sys.stdin);p=d['published_deploy'];print('live:', p['commit_ref'][:9], p['state'], p['published_at'])"
+```
+
+The build **log** itself still needs `netlify login` (the API returns 401 / an
+empty `error_message` for an unauthenticated caller), so when a deploy errors
+with no visible reason, ask the owner to open
+`https://app.netlify.com/projects/ua-product-manager/deploys` and paste the
+failing line.
+
+Confirmation the build actually republished is behavioural, not just a state
+label. App pages are lazy-loaded route chunks, so the live entry chunk names the
+route chunks it can import:
+
+```
+curl -s https://portal.crystocraft.com/ | grep -o 'assets/index-[^"]*\.js'      # entry chunk
+curl -s https://portal.crystocraft.com/assets/index-XXXX.js -o /tmp/e.js
+grep -o 'SeoReview-[A-Za-z0-9_-]*\.js' /tmp/e.js                                  # route chunk name
+curl -s https://portal.crystocraft.com/assets/SeoReview-YYYY.js | grep -c 'string you just added'
+```
+
+The **entry** chunk hash can be identical across deploys when only a lazy route
+chunk changed, so compare the route chunk (or the string inside it), not
+`index-*.js`. Note also that the `portal.crystocraft.com` HTML is
+`Cache-Control`d by Netlify's CDN — allow a few seconds after `state: ready`.
+
 ## The dev server serves edge functions now — don't mistake a 404 for a bug
 
 `.claude/start-dev.sh` runs `npx netlify-cli dev --offline` (not plain
