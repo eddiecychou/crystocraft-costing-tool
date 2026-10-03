@@ -99,7 +99,11 @@ export function parseWhatsAppExport(text) {
 const BIDI_CONTROL_RE = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
 
 export function guessContactName(zipFileName) {
-  return zipFileName.replace(BIDI_CONTROL_RE, '').replace(/\.zip$/i, '').replace(/^WhatsApp Chat( with)? -\s*/i, '').trim()
+  // iOS writes "WhatsApp Chat - <name>.zip", Android "WhatsApp Chat with
+  // <name>.txt" — the `( with)? -\s*` this replaced only ever stripped the
+  // hyphen form (it still demanded the "-"), so the "with" form kept its whole
+  // "WhatsApp Chat with " prefix. Strip either separator.
+  return zipFileName.replace(BIDI_CONTROL_RE, '').replace(/\.zip$/i, '').replace(/^WhatsApp Chat(?: with| -)\s*/i, '').trim()
 }
 
 // A contact "name" that's really just a phone number (WhatsApp falls back to
@@ -110,6 +114,27 @@ export function guessContactName(zipFileName) {
 // saved contact name by the time there's a chat worth archiving.
 const PHONE_LIKE_RE = /^[+\d][\d\s\-()]{6,}$/
 export const looksLikePhoneNumber = name => PHONE_LIKE_RE.test(String(name || '').trim())
+
+// §5.3 content-level overlap fingerprint — a deterministic per-message key for
+// comparing a freshly-parsed export against already-stored thread messages.
+// Accepts either shape: a parsed message ({ date, sender, body,
+// attachment_filename }) or a stored thread message ({ date: ISO string, from,
+// body_text, attachment_filename }). Normalisation is deliberately conservative
+// — trim + collapse whitespace + strip bidi control, but NO lowercasing or
+// stemming — because the fingerprint only ever REPORTS overlap for a human to
+// review; it must not silently equate two messages on a case difference.
+// Timestamp is reduced to epoch ms so a local Date (parse) and an ISO string
+// (stored) of the same instant compare equal. Returns a stable string.
+export function messageFingerprint(m) {
+  const ts = m.date instanceof Date ? m.date.getTime() : (m.date ? new Date(m.date).getTime() : NaN)
+  const norm = s => String(s ?? '').replace(BIDI_CONTROL_RE, '').trim().replace(/\s+/g, ' ')
+  return JSON.stringify([
+    Number.isFinite(ts) ? ts : null,
+    norm(m.sender ?? m.from),
+    norm(m.body ?? m.body_text),
+    norm(m.attachment_filename ?? ''),
+  ])
+}
 
 // Parsed messages -> the Firestore doc shape. Attachment URLs are filled
 // in separately by uploadAttachments() once the caller has actually
