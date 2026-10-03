@@ -40,7 +40,7 @@ const STUBS = {
       onProgress?.({ done: 2, total: 2 })
       return [
         { kind: 'customer', parentId: 'c1', displayName: 'A Very Long Company Name That Could Overflow At Narrow Widths Limited', legacyId: 'alexandra-winterbottom-smythe', subject: 'Alexandra Winterbottom-Smythe', channel: 'WhatsApp Business', message_count: 120, date_range: ['2024-05-01T00:00:00.000Z', '2024-06-01T00:00:00.000Z'] },
-        { kind: 'lead', parentId: 'wa-85212345678', displayName: 'A Long Lead Name With No Company Record At All', legacyId: 'lead-name', subject: 'Lead Name', channel: 'Personal WhatsApp', message_count: 8, date_range: ['2024-05-01T00:00:00.000Z', '2024-05-02T00:00:00.000Z'] },
+        { kind: 'lead', parentId: 'wa-00000000000', displayName: 'A Long Lead Name With No Company Record At All', legacyId: 'lead-name', subject: 'Lead Name', channel: 'Personal WhatsApp', message_count: 8, date_range: ['2024-05-01T00:00:00.000Z', '2024-05-02T00:00:00.000Z'] },
       ]
     }
     export const migrateLegacyThread = async () => ({ legacyId: 'x', newId: 'business__c_abc123' })
