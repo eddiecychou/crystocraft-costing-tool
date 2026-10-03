@@ -28,7 +28,7 @@ const src = readFileSync(join(here, '..', 'src', 'domain', 'whatsappImport.js'),
 const dir = mkdtempSync(join(tmpdir(), 'wa-media-'))
 const modPath = join(dir, 'whatsappImport.mjs')
 writeFileSync(modPath, src.replace(/^import .*\n/gm, ''))
-const { normalizeAccount, conversationThreadId } = await import(modPath)
+const { normalizeAccount, conversationThreadId, conversationGroupId } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
 const idFromPhone = phone => 'wa-' + String(phone || '').replace(/[^\d]/g, '')
@@ -63,6 +63,9 @@ function resolveTarget(entry) {
   if (entry.type === 'lead') {
     return { collectionName: 'marketing_contacts', parentId: idFromPhone(entry.phone), contactId: idFromPhone(entry.phone) }
   }
+  if (entry.type === 'group') {
+    return { collectionName: 'customers', parentId: entry.customerId, contactId: null, groupName: entry.groupName }
+  }
   return { collectionName: 'customers', parentId: entry.customerId, contactId: entry.contactId }
 }
 
@@ -76,9 +79,10 @@ async function main() {
     const zipPath = zipByFile.get(entry.file)
     if (!zipPath) { console.log(`SKIP (no zip in archive): ${entry.file}`); continue }
 
-    const { collectionName, parentId, contactId } = resolveTarget(entry)
+    const { collectionName, parentId, contactId, groupName } = resolveTarget(entry)
     const account = normalizeAccount(entry.channel)
-    const importId = conversationThreadId({ account, contactId })
+    const isGroup = entry.type === 'group'
+    const importId = isGroup ? conversationGroupId({ account, groupName }) : conversationThreadId({ account, contactId })
     const ref = db.collection(collectionName).doc(parentId).collection('whatsapp_threads').doc(importId)
     const snap = await ref.get()
     if (!snap.exists) { console.log(`SKIP (no thread): ${entry.file}`); continue }

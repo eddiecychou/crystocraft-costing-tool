@@ -34,7 +34,8 @@ const modPath = join(dir, 'whatsappImport.mjs')
 writeFileSync(modPath, src.replace(/^import .*\n/gm, ''))
 const {
   parseWhatsAppExport, buildThreadDoc, normalizeAccount, conversationThreadId,
-  carryForwardMedia, analyzeImportOverlap, guessContactName, isMigratedThread,
+  conversationGroupId, carryForwardMedia, analyzeImportOverlap, guessContactName,
+  isMigratedThread,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -70,6 +71,9 @@ function findZips(root) {
 function resolveTarget(entry) {
   if (entry.type === 'lead') {
     return { collectionName: 'marketing_contacts', parentId: idFromPhone(entry.phone), contactId: idFromPhone(entry.phone) }
+  }
+  if (entry.type === 'group') {
+    return { collectionName: 'customers', parentId: entry.customerId, contactId: null, groupName: entry.groupName }
   }
   return { collectionName: 'customers', parentId: entry.customerId, contactId: entry.contactId }
 }
@@ -109,24 +113,31 @@ async function main() {
       continue
     }
 
-    const { collectionName, parentId, contactId } = resolveTarget(entry)
+    const { collectionName, parentId, contactId, groupName } = resolveTarget(entry)
     const account = normalizeAccount(entry.channel)
-    const importId = conversationThreadId({ account, contactId })
+    const isGroup = entry.type === 'group'
+    const importId = isGroup ? conversationGroupId({ account, groupName }) : conversationThreadId({ account, contactId })
     const ref = db.collection(collectionName).doc(parentId).collection('whatsapp_threads').doc(importId)
 
     try {
       const messages = await parseZip(zipPath)
       const existingSnap = await ref.get()
       const existing = existingSnap.exists ? existingSnap.data() : null
-      const threadDoc = buildThreadDoc({ zipFileName: name, channel: entry.channel, messages, account, contactId, matchedBy: 'script' })
+      const threadDoc = buildThreadDoc({
+        zipFileName: name, channel: entry.channel, messages, account,
+        contactId: isGroup ? null : contactId,
+        matchedBy: 'script',
+        threadType: isGroup ? 'group' : 'direct',
+        groupName: isGroup ? groupName : undefined,
+      })
 
       // Dry-run: report match + verdict, no write.
       if (DRY_RUN) {
         const threads = existing ? [existing] : []
-        const analysis = analyzeImportOverlap({ account, contactId, messages, threads })
+        const analysis = analyzeImportOverlap({ account, contactId: isGroup ? null : contactId, messages, threads })
         console.log(`${name}`)
         console.log(`   -> ${collectionName}/${parentId}  id=${importId}`)
-        console.log(`   account=${account}  contact_id=${contactId}  ${messages.length} msgs  verdict=${analysis.verdict}${analysis.verdict === 'safe-update' ? ` (${analysis.exact} dup, ${analysis.newAfter} new)` : ''}`)
+        console.log(`   account=${account}  ${isGroup ? `group="${groupName}"` : `contact_id=${contactId}`}  ${messages.length} msgs  verdict=${analysis.verdict}${analysis.verdict === 'safe-update' ? ` (${analysis.exact} dup, ${analysis.newAfter} new)` : ''}`)
         continue
       }
 

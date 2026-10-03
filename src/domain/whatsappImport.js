@@ -235,7 +235,7 @@ export function mergeThreadMessages(listA, listB) {
 // Parsed messages -> the Firestore doc shape. Attachment URLs are filled
 // in separately by uploadAttachments() once the caller has actually
 // uploaded each file to Storage — this function never touches Storage.
-export function buildThreadDoc({ zipFileName, channel, messages, account, contactId, matchedBy }) {
+export function buildThreadDoc({ zipFileName, channel, messages, account, contactId, matchedBy, threadType = 'direct', groupName }) {
   const dates = messages.map(m => m.date.getTime())
   return {
     subject: guessContactName(zipFileName),
@@ -246,6 +246,10 @@ export function buildThreadDoc({ zipFileName, channel, messages, account, contac
     account: account ? normalizeAccount(account) : null,
     contact_id: contactId ?? null,
     matched_by: matchedBy ?? null,
+    // A GROUP thread has many senders and no single contact person: keyed on
+    // account × group name (conversationGroupId), contact_id null.
+    thread_type: threadType,
+    group_name: threadType === 'group' ? (groupName ?? guessContactName(zipFileName)) : null,
     source_file: zipFileName,
     message_count: messages.length,
     date_range: dates.length ? [new Date(Math.min(...dates)).toISOString(), new Date(Math.max(...dates)).toISOString()] : [],
@@ -336,12 +340,22 @@ export function conversationThreadId({ account, contactId }) {
   return `${a}__${c}`
 }
 
-// Whether a stored thread doc predates the §5.1 account+contact_id scheme
-// (filename-keyed, no attribution). The migration review view uses this to
-// surface legacy threads for a human to attach to a contact before any new
-// import is allowed to touch them.
+// Group chat id — a WhatsApp GROUP has many senders and no single contact
+// person, so it's keyed on account + group name instead of account + contact_id
+// (and it can never collide with a person's thread id).
+export function conversationGroupId({ account, groupName }) {
+  const a = normalizeAccount(account)
+  const g = String(groupName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  if (!g) throw new Error('conversationGroupId needs a group name')
+  return `${a}__group__${g}`
+}
+
+// Whether a stored thread doc predates the §5.1 scheme (filename-keyed, no
+// attribution). The migration review view uses this to surface legacy threads.
+// A group thread legitimately has no contact_id but DOES have an account, so
+// the marker is `account` alone — a legacy thread is one with no account.
 export function isLegacyThread(threadDoc) {
-  return !threadDoc || !threadDoc.contact_id || !threadDoc.account
+  return !threadDoc || !threadDoc.account
 }
 
 // A tombstoned thread (re-keyed by migrateLegacyThread) carries migrated_to —

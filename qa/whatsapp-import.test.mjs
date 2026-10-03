@@ -28,7 +28,7 @@ const {
   parseWhatsAppExport, guessContactName, looksLikePhoneNumber, threadDocId,
   buildThreadDoc, messageFingerprint, normalizeAccount, conversationThreadId,
   isLegacyThread, isMigratedThread, planMigration, analyzeImportOverlap,
-  carryForwardMedia, mergeThreadMessages,
+  carryForwardMedia, mergeThreadMessages, conversationGroupId,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -221,6 +221,18 @@ const check = (name, cond, detail = '') => {
   check('merge unions + dedupes (3 unique)', merged.length === 3, JSON.stringify(merged.map(x => x.body_text)))
   check('merge sorts chronologically', merged[0].body_text === 'hi' && merged[1].body_text === 'there' && merged[2].body_text === 'again')
   check('merge never mutates inputs', a.length === 2 && b.length === 2)
+}
+
+// ── group threads ─────────────────────────────────────────────────────────
+{
+  check('conversationGroupId keys on account + group name', conversationGroupId({ account: 'Personal WhatsApp', groupName: 'Prestige x UA' }) === 'personal__group__prestige-x-ua', conversationGroupId({ account: 'Personal WhatsApp', groupName: 'Prestige x UA' }))
+  check('group id never collides with a person id', conversationGroupId({ account: 'Personal WhatsApp', groupName: 'Prestige x UA' }) !== conversationThreadId({ account: 'Personal WhatsApp', contactId: 'prestige-x-ua' }))
+  const msgs = parseWhatsAppExport(fx('annie-fan.txt'))
+  const g = buildThreadDoc({ zipFileName: 'WhatsApp Chat - Prestige x UA.zip', channel: 'Personal WhatsApp', messages: msgs, account: 'Personal WhatsApp', threadType: 'group', groupName: 'Prestige x UA' })
+  check('group doc: thread_type=group, contact_id=null, group_name set', g.thread_type === 'group' && g.contact_id === null && g.group_name === 'Prestige x UA')
+  check('group thread is NOT legacy (has account)', isLegacyThread(g) === false)
+  const direct = buildThreadDoc({ zipFileName: 'x.zip', channel: 'WhatsApp Business', messages: msgs, account: 'WhatsApp Business', contactId: 'c_1' })
+  check('direct thread defaults thread_type=direct, group_name=null', direct.thread_type === 'direct' && direct.group_name === null)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
