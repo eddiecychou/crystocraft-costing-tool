@@ -45,6 +45,7 @@ const STUBS = {
     }
     export const migrateLegacyThread = async () => ({ legacyId: 'x', newId: 'business__c_abc123' })
     export const undoMigrateLegacyThread = async () => ({})
+    export const mergeLegacyThread = async () => ({ legacyId: 'x', newId: 'business__c_abc123' })
   `,
   whatsappSummaryApi: `
     export const loadWhatsappSummaryCandidates = async () => []
