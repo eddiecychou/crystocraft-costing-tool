@@ -13,6 +13,7 @@ const SetPassword = lazy(() => import('./pages/SetPassword'))
 const Storefront = lazy(() => import('./customer/Storefront'))
 const PendingScreen = lazy(() => import('./customer/PendingScreen'))
 const Products = lazy(() => import('./pages/Products'))
+const MarketingCopyBulk = lazy(() => import('./pages/MarketingCopyBulk'))
 const Range = lazy(() => import('./pages/Range'))
 const RangeForm = lazy(() => import('./pages/RangeForm'))
 const RangeCosting = lazy(() => import('./pages/RangeCosting'))
@@ -233,6 +234,7 @@ function AdminApp({ user, profile, role }) {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardRoute />} />
                 <Route path="/products" element={<Gate module="products"><Products /></Gate>} />
+                <Route path="/products/marketing-copy-bulk" element={<Gate module="products"><MarketingCopyBulk /></Gate>} />
                 <Route path="/range" element={<Gate module="figurine"><Range /></Gate>} />
                 <Route path="/range/import-images" element={<Gate module="figurine"><ImportImages /></Gate>} />
                 {/* Figurine costing shows component costs + BOM + markup — cost

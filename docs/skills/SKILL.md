@@ -127,10 +127,10 @@ Each entry: pages · logic modules · edge functions · collections · spec. Thi
 the fast path from a request to the exact code.
 
 ### Catalogue — Corp Gift products
-- Pages: `Products.jsx`, `ProductDetail.jsx`, `ProductForm.jsx`, `BulkCategoryEditor.jsx`
-- Logic: `src/domain/customer.js` (owns `products/{id}`), `src/pricing.js`, `src/useProductDefaults.js`, `src/productSource.js`, `src/formatMoq.js`
+- Pages: `Products.jsx`, `ProductDetail.jsx`, `ProductForm.jsx`, `MarketingCopyBulk.jsx`, `BulkCategoryEditor.jsx`
+- Logic: `src/domain/customer.js` (owns `products/{id}`), `src/marketingRegeneration.js` + `src/marketingRegenerationList.js` (admin-reviewed, 114-ID copy refresh + atomic backup), `src/pricing.js`, `src/useProductDefaults.js`, `src/productSource.js`, `src/formatMoq.js`
 - Edge fns: `generate-marketing-copy`, `rewrite-section`, `enhance-image`, `scrape-images`
-- Collections: `products/{id}` (+ `images`, `pricing_tiers` **admin-only**, `customer_prices`, `components/…/supplier_quotes`)
+- Collections: `products/{id}` (+ `images`, `pricing_tiers` **admin-only**, `customer_prices`, `components/…/supplier_quotes`); `product_marketing_history/{runId}_{productId}` (admin-only, immutable backup)
 - Notes: corp-gift pricing card is **hidden from `production`**; per-customer price = `customer_prices/{uid}`; tier markup formula = `settings/pricing_groups` (admin-only, hard wall). `blog_links[]` (V8.16, 2026-09-22) — always-public "Learn More" links, same shape/pattern as `videos[]`: `BlogLinksEditor.jsx` in the admin form, rendered on `src/customer/CorporateDetail.jsx` right next to the videos block.
 
 ### Catalogue — Figurine / Range (Crystocraft's own crystal line)

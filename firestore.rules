@@ -101,6 +101,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Immutable, admin-only backups created atomically with a bulk copy write.
+    match /product_marketing_history/{backupId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
     match /products/{productId} {
       allow read: if canShop() || can('products') || can('quotes');
       allow write: if can('products');

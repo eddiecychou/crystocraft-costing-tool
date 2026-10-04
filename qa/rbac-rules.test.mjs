@@ -95,6 +95,9 @@ const broadS  = env.authenticatedContext('broad1').storage()
 // ---- admin: unchanged, sees everything ------------------------------------
 await ok('admin read customers',       assertSucceeds(getDoc(doc(admin, 'customers/c1'))))
 await ok('admin write settings/pricing_groups', assertSucceeds(setDoc(doc(admin, 'settings/pricing_groups'), { groups: [1] })))
+await ok('admin create marketing backup', assertSucceeds(setDoc(doc(admin, 'product_marketing_history/run_p1'), { product_id: 'p1', previous_description: 'Old copy' })))
+await ok('admin read marketing backup', assertSucceeds(getDoc(doc(admin, 'product_marketing_history/run_p1'))))
+await ok('admin DENIED overwrite marketing backup', assertFails(setDoc(doc(admin, 'product_marketing_history/run_p1'), { previous_description: 'Changed' })))
 
 // ---- staff(supply) ALLOWED — supply + catalogue keys --------------------
 await ok('supply read products',        assertSucceeds(getDoc(doc(supply, 'products/p1'))))
@@ -112,6 +115,8 @@ await ok('supply write crystal_swatch_notes', assertSucceeds(setDoc(doc(supply, 
 
 // ---- staff(supply) DENIED — no customers/quotes/pricing/finance/uc ------
 await ok('supply DENIED customers',     assertFails(getDoc(doc(supply, 'customers/c1'))))
+await ok('supply DENIED marketing backup read', assertFails(getDoc(doc(supply, 'product_marketing_history/run_p1'))))
+await ok('supply DENIED marketing backup create', assertFails(setDoc(doc(supply, 'product_marketing_history/run_p2'), { product_id: 'p2' })))
 await ok('supply DENIED client_quotes', assertFails(getDoc(doc(supply, 'client_quotes/q1'))))
 await ok('supply DENIED credit_notes',  assertFails(getDoc(doc(supply, 'credit_notes/cn1'))))
 await ok('supply DENIED uc_invoices',   assertFails(getDoc(doc(supply, 'uc_invoices/ui1'))))
@@ -157,6 +162,7 @@ await ok('customer read storefront product', assertSucceeds(getDoc(doc(cust, 'pr
 await ok('customer DENIED customers',   assertFails(getDoc(doc(cust, 'customers/c1'))))
 await ok('customer DENIED suppliers',   assertFails(getDoc(doc(cust, 'suppliers/s1'))))
 await ok('customer DENIED products write', assertFails(setDoc(doc(cust, 'products/p9'), { name: 'x' })))
+await ok('customer DENIED marketing backup read', assertFails(getDoc(doc(cust, 'product_marketing_history/run_p1'))))
 
 // ---- Storage — must track Firestore path-for-path ----------------------
 await ok('supply upload products/**',   assertSucceeds(uploadString(storageRef(supplyS, 'products/p1/b.png'), 'x')))
