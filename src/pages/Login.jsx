@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
 import { applyForAccount, applyForAccountGoogle } from '../portalInviteApi'
+import { Mail, MessageCircle } from 'lucide-react'
 import logo from '../assets/logo.png'
 
 const googleProvider = new GoogleAuthProvider()
@@ -281,6 +282,17 @@ function Shell({ children }) {
           <p className="text-xs font-medium text-brand-600 uppercase tracking-widest mt-3">Crystocraft</p>
         </div>
         {children}
+        <div className="mt-6 pt-4 border-t border-ivory-dark text-center">
+          <p className="text-xs text-ink-60 mb-3">Need help? Contact us</p>
+          <div className="flex flex-col items-center gap-2">
+            <a href="mailto:sales@uart.com.hk" className="inline-flex items-center justify-center gap-2 text-sm text-ink-70 hover:text-brand-600">
+              <Mail size={15} aria-hidden="true" /> sales@uart.com.hk
+            </a>
+            <a href="https://wa.me/85246083219" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 text-sm text-ink-70 hover:text-brand-600">
+              <MessageCircle size={15} aria-hidden="true" /> WhatsApp +852 4608 3219
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   )
