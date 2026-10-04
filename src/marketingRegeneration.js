@@ -30,11 +30,11 @@ export async function readTarget(id) {
   return { id, ...snap.data() }
 }
 
-export async function generatePreview(product) {
+export async function generatePreview(product, instructions = '') {
   const response = await fetch('/api/generate-marketing-copy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-    body: JSON.stringify({ product, source: 'corporate', tone: 'professional and premium' }),
+    body: JSON.stringify({ product, source: 'corporate', tone: 'professional and premium', instructions: instructions.trim() }),
   })
   const data = await response.json()
   if (!response.ok || data.error) throw new Error(data.error || `Generator returned HTTP ${response.status}.`)
@@ -47,9 +47,10 @@ export async function generatePreview(product) {
 export async function applyApproved(id, entry, runId) {
   if (!TARGET_IDS.includes(id)) throw new Error('Product is outside the 114-item allowlist.')
   if (!entry.approved || entry.status !== 'previewed') throw new Error('This preview has not been approved.')
+  if ((entry.guidance || '').trim() !== (entry.instructionsApplied || '')) throw new Error('Rewrite with the current instructions before approving.')
   if (!entry.after?.trim() || entry.after.length > MAX_COPY_CHARS) throw new Error('New copy is empty or over 300 characters.')
   const productRef = doc(db, 'products', id)
-  const historyRef = doc(db, 'product_marketing_history', `${runId}_${id}`)
+  const historyRef = doc(db, 'product_marketing_history', entry.previewId ? `${runId}_${id}_${entry.previewId}` : `${runId}_${id}`)
   await runTransaction(db, async tx => {
     const [productSnap, historySnap] = await Promise.all([tx.get(productRef), tx.get(historyRef)])
     if (!productSnap.exists()) throw new Error('Product no longer exists.')

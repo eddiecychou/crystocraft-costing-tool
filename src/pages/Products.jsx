@@ -6,10 +6,8 @@ import { CATEGORIES, PRODUCT_STATUSES, productStatusOf } from '../constants'
 import LoadingBar from '../components/LoadingBar'
 import { Package } from 'lucide-react'
 import CardImageCarousel from '../components/CardImageCarousel'
-import { useRole } from '../access'
 
 export default function Products() {
-  const role = useRole()
   const [products, setProducts] = useState([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]         = useState(() => sessionStorage.getItem('pf-search') || '')
@@ -55,10 +53,7 @@ export default function Products() {
           <h1 className="text-xl md:text-2xl text-ink">Products</h1>
           <p className="text-sm text-ink-60 mt-0.5">{products.length} items in catalogue</p>
         </div>
-        <div className="flex gap-2">
-          {role === 'admin' && <Link to="/products/marketing-copy-bulk" className="btn-secondary text-sm">Bulk marketing copy</Link>}
-          <Link to="/products/new" className="btn-primary text-sm">+ New</Link>
-        </div>
+        <Link to="/products/new" className="btn-primary text-sm">+ New</Link>
       </div>
 
       {/* Filters */}

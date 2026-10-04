@@ -11,6 +11,8 @@ import BulkVideoEditor from '../components/BulkVideoEditor'
 import SchemaAudit from './SchemaAudit'
 import BankAccounts from './BankAccounts'
 import ComponentCodeAudit from './ComponentCodeAudit'
+import MarketingCopyBulk from './MarketingCopyBulk'
+import { useRole } from '../access'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
 // The remaining CUSTOMER_CURRENCIES (src/currency.js) a portal account can be
@@ -40,15 +42,17 @@ const PRODUCT_TABS = [
   { v: 'images',     label: 'Import Images' },
   { v: 'categories', label: 'Bulk Categories' },
   { v: 'video',      label: 'Bulk Video' },
+  { v: 'marketing-copy', label: 'Marketing Copy', adminOnly: true },
   { v: 'defaults',   label: 'Defaults' },
 ]
 
 export default function Settings() {
+  const role = useRole()
   const [searchParams] = useSearchParams()
   // Allow deep links like /settings?tab=products&sub=defaults (e.g. from the
   // Schema Audit "Change the default" hint) to open the right (sub)tab.
   const initTab = TABS.some(t => t.v === searchParams.get('tab')) ? searchParams.get('tab') : 'fx'
-  const initSub = PRODUCT_TABS.some(t => t.v === searchParams.get('sub')) ? searchParams.get('sub') : 'band'
+  const initSub = PRODUCT_TABS.some(t => t.v === searchParams.get('sub') && (!t.adminOnly || role === 'admin')) ? searchParams.get('sub') : 'band'
   const [tab, setTab] = useState(initTab)
   const [productTab, setProductTab] = useState(initSub)
 
@@ -57,8 +61,8 @@ export default function Settings() {
   // here — useState alone wouldn't react to a same-route param change.
   useEffect(() => {
     const t = searchParams.get('tab'); if (TABS.some(x => x.v === t)) setTab(t)
-    const s = searchParams.get('sub'); if (PRODUCT_TABS.some(x => x.v === s)) setProductTab(s)
-  }, [searchParams])
+    const s = searchParams.get('sub'); if (PRODUCT_TABS.some(x => x.v === s && (!x.adminOnly || role === 'admin'))) setProductTab(s)
+  }, [searchParams, role])
 
   return (
     <div>
@@ -94,7 +98,7 @@ export default function Settings() {
         <div>
           {/* Products sub-tabs */}
           <div className="px-4 md:px-6 pt-4 flex gap-1 flex-wrap">
-            {PRODUCT_TABS.map(t => (
+            {PRODUCT_TABS.filter(t => !t.adminOnly || role === 'admin').map(t => (
               <button
                 key={t.v}
                 onClick={() => setProductTab(t.v)}
@@ -124,6 +128,7 @@ export default function Settings() {
               </div>
             )}
             {productTab === 'defaults' && <ProductDefaults />}
+            {productTab === 'marketing-copy' && role === 'admin' && <MarketingCopyBulk embedded />}
           </div>
         </div>
       )}

@@ -127,7 +127,7 @@ Each entry: pages · logic modules · edge functions · collections · spec. Thi
 the fast path from a request to the exact code.
 
 ### Catalogue — Corp Gift products
-- Pages: `Products.jsx`, `ProductDetail.jsx`, `ProductForm.jsx`, `MarketingCopyBulk.jsx`, `BulkCategoryEditor.jsx`
+- Pages: `Products.jsx`, `ProductDetail.jsx`, `ProductForm.jsx`, `MarketingCopyBulk.jsx` (Settings → Products → Marketing Copy), `BulkCategoryEditor.jsx`
 - Logic: `src/domain/customer.js` (owns `products/{id}`), `src/marketingRegeneration.js` + `src/marketingRegenerationList.js` (admin-reviewed, 114-ID copy refresh + atomic backup), `src/pricing.js`, `src/useProductDefaults.js`, `src/productSource.js`, `src/formatMoq.js`
 - Edge fns: `generate-marketing-copy`, `rewrite-section`, `enhance-image`, `scrape-images`
 - Collections: `products/{id}` (+ `images`, `pricing_tiers` **admin-only**, `customer_prices`, `components/…/supplier_quotes`); `product_marketing_history/{runId}_{productId}` (admin-only, immutable backup)

@@ -4,7 +4,7 @@ import { useRole } from '../access'
 import { REGENERATE_IDS, TARGET_IDS } from '../marketingRegenerationList'
 import { applyApproved, delay, generatePreview, loadJob, MAX_COPY_CHARS, readTarget, saveJob, verifyTargets } from '../marketingRegeneration'
 
-export default function MarketingCopyBulk() {
+export default function MarketingCopyBulk({ embedded = false }) {
   const role = useRole()
   const [job, setJob] = useState(loadJob)
   const jobRef = useRef(job)
@@ -36,8 +36,9 @@ export default function MarketingCopyBulk() {
       try {
         const product = await readTarget(id)
         const before = product.marketing_description || ''
-        const after = await generatePreview(product)
-        change(id, { name: product.name || id, before, after, previousChars: before.length, newChars: after.length, approved: false, status: 'previewed', error: '' })
+        const guidance = jobRef.current.entries[id]?.guidance?.trim() || ''
+        const after = await generatePreview(product, guidance)
+        change(id, { name: product.name || id, before, after, previousChars: before.length, newChars: after.length, approved: false, status: 'previewed', error: '', instructionsApplied: guidance, previewId: crypto.randomUUID(), landed: false })
       } catch (error) {
         change(id, { status: 'preview_failed', approved: false, error: error.message || String(error) })
       }
@@ -45,6 +46,25 @@ export default function MarketingCopyBulk() {
     }
     setActiveId('')
     setBusy('')
+  }
+
+  async function rewriteOne(id) {
+    const guidance = jobRef.current.entries[id]?.guidance?.trim()
+    if (!guidance) return
+    setBusy('rewrite')
+    setActiveId(id)
+    setNotice('')
+    try {
+      const product = await readTarget(id)
+      const before = product.marketing_description || ''
+      const after = await generatePreview(product, guidance)
+      change(id, { name: product.name || id, before, after, previousChars: before.length, newChars: after.length, approved: false, status: 'previewed', error: '', instructionsApplied: guidance, previewId: crypto.randomUUID(), landed: false })
+    } catch (error) {
+      change(id, { approved: false, error: `Rewrite failed: ${error.message || String(error)}. Existing copy and preview were not changed.` })
+    } finally {
+      setActiveId('')
+      setBusy('')
+    }
   }
 
   async function apply() {
@@ -111,7 +131,7 @@ export default function MarketingCopyBulk() {
 
   return <div className="p-6 max-w-6xl mx-auto space-y-5">
     <div>
-      <Link to="/products" className="text-sm text-brand-600">← Products</Link>
+      {!embedded && <Link to="/settings?tab=products&sub=marketing-copy" className="text-sm text-brand-600">← Settings · Products</Link>}
       <h1 className="text-2xl text-ink mt-2">Bulk marketing copy review</h1>
       <p className="text-sm text-ink-60">Fixed allowlist: 75 regenerate + 39 generate = 114 products. The 13 already-compliant products are excluded.</p>
       <p className="text-sm text-ink-60">Previews never write. Every item defaults to skip; approve each diff individually. Keep this tab open while a run is active. Progress is saved in this browser.</p>
@@ -122,7 +142,7 @@ export default function MarketingCopyBulk() {
       {activeId && <p className="text-sm text-brand-700">{busy === 'preview' ? 'Generating preview' : busy === 'apply' ? 'Saving' : 'Checking'}: {activeId}</p>}
       {busy === 'verify' && <p className="text-sm text-brand-700">Re-reading {verifyProgress}/114 from Firestore…</p>}
       <div className="flex flex-wrap gap-2">
-        <button className="btn-primary text-sm" disabled={Boolean(busy)} onClick={preview}>Generate / resume dry-run previews</button>
+        <button className="btn-secondary text-sm" disabled={Boolean(busy)} onClick={preview}>Generate / resume dry-run previews</button>
         <button className="btn-primary text-sm" disabled={Boolean(busy) || approved === 0} onClick={apply}>Save {approved} approved</button>
         <button className="btn-secondary text-sm" disabled={Boolean(busy)} onClick={verify}>Re-read all 114</button>
         <button className="btn-secondary text-sm" onClick={downloadReport}>Download report</button>
@@ -138,20 +158,28 @@ export default function MarketingCopyBulk() {
         const e = entries[id] || {}
         const v = verification?.find(item => item.id === id)
         const compliantBefore = Boolean(e.before?.trim()) && e.previousChars <= MAX_COPY_CHARS
+        const instructionsChanged = (e.guidance || '').trim() !== (e.instructionsApplied || '')
         return <div key={id} className="card p-4 space-y-2">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div><p className="text-sm font-semibold text-ink">{e.name || id}</p><p className="text-xs text-ink-60">{REGENERATE_IDS.includes(id) ? 'Regenerate' : 'Generate'} · {id}</p></div>
+            <div><p className="text-sm font-medium text-ink">{e.name || id}</p><p className="text-xs text-ink-60">{REGENERATE_IDS.includes(id) ? 'Regenerate' : 'Generate'} · {id}</p></div>
             <span className="text-xs text-ink-60">{e.status || 'pending'} · before {e.previousChars ?? '—'} chars · after {e.newChars ?? '—'} chars {e.newChars > MAX_COPY_CHARS ? '⚠ OVER 300' : ''}</span>
           </div>
           {e.status === 'previewed' && <>
             <div className="grid md:grid-cols-2 gap-3 text-sm">
-              <div><p className="font-medium">Before</p><p className="whitespace-pre-wrap bg-ivory-dark p-3 rounded">{e.before || '(empty)'}</p></div>
-              <div><p className="font-medium">After</p><p className="whitespace-pre-wrap bg-ivory-dark p-3 rounded">{e.after}</p></div>
+              <div><p className="font-medium">Before</p><p className="whitespace-pre-wrap bg-ivory-dark p-3">{e.before || '(empty)'}</p></div>
+              <div><p className="font-medium">After</p><p className="whitespace-pre-wrap bg-ivory-dark p-3">{e.after}</p></div>
             </div>
             {compliantBefore && <p className="text-xs text-amber-700">Current copy is already within 300 characters; leave skipped unless you explicitly want to replace it.</p>}
-            <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(e.approved)} disabled={Boolean(busy)} onChange={event => change(id, { approved: event.target.checked })} />Approve replacement (default: skip)</label>
+            {instructionsChanged && <p className="text-xs text-amber-700">Instructions changed. Regenerate this preview before approving it.</p>}
+            <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(e.approved)} disabled={Boolean(busy) || instructionsChanged} onChange={event => change(id, { approved: event.target.checked })} />Approve replacement (default: skip)</label>
           </>}
           {e.status === 'written' && <p className="text-sm text-green-700">Write landed; backup saved. {e.previousChars} → {e.newChars} characters.</p>}
+          {['previewed', 'written'].includes(e.status) && <div className="space-y-1">
+            <label htmlFor={`guidance-${id}`} className="block text-sm font-medium">AI rewrite instructions for this item</label>
+            <textarea id={`guidance-${id}`} className="input w-full" rows={2} value={e.guidance || ''} disabled={Boolean(busy)} placeholder="E.g. Do not mention specific colours; colour is customisable." onChange={event => change(id, { guidance: event.target.value, approved: false })} />
+            <button className="btn-secondary text-sm" disabled={Boolean(busy) || !e.guidance?.trim()} onClick={() => rewriteOne(id)}>{e.status === 'written' ? 'Revise saved copy with instructions' : 'Regenerate this preview with instructions'}</button>
+            {e.instructionsApplied && <p className="text-xs text-ink-60">Instructions used for current preview: {e.instructionsApplied}</p>}
+          </div>}
           {e.error && <p role="alert" className="text-sm text-red-700">{e.error}</p>}
           {e.status === 'preview_failed' && <button className="btn-secondary text-sm" disabled={Boolean(busy)} onClick={() => { change(id, { status: 'pending', error: '' }); setNotice('Retry queued. Click Generate / resume dry-run previews.') }}>Retry preview</button>}
           {e.status === 'write_failed' && <button className="btn-secondary text-sm" disabled={Boolean(busy)} onClick={() => change(id, { status: 'previewed', approved: false, error: '' })}>Return to review</button>}
