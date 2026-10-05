@@ -1,4 +1,5 @@
 import { Gem, Cog, Package, TreePine, Cpu, Shirt, Printer, Tag } from 'lucide-react'
+export { CATEGORIES, MARKETING_DESC_MAXLEN } from './productCategories.js'
 
 export const SUPPLIER_CATEGORIES = [
   { value: 'Crystal / Glass',        Icon: Gem },
@@ -51,20 +52,6 @@ export const PRODUCT_STATUSES = [
 const PRODUCT_STATUS_ALIASES = { discontinued: 'retired' }
 export const productStatusOf = v =>
   PRODUCT_STATUSES.find(s => s.value === (PRODUCT_STATUS_ALIASES[v] || v)) || PRODUCT_STATUSES[0]
-
-export const CATEGORIES = [
-  'ESG & Sustainable Gifts',
-  'Dining & Kitchen',
-  'Tech Accessories',
-  'Travel Accessories',
-  'Apparel & Wearables',
-  'Accessories',
-  'Fitness & Wellness',   // water bottles, resistance bands, yoga mats, sports items — 2026-08-04
-  'Games & Leisure',
-  'Stationery',
-  'Decor Objects',
-  'Trophy & Award',
-]
 
 export const CURRENCIES = ['RMB', 'HKD', 'USD', 'EUR']
 
@@ -224,10 +211,6 @@ export const bodyLetter  = code => (((code || '').match(/^[A-Za-z]+/) || [''])[0
 // manager so both order identically.
 export const BRAND_SORT_ORDER = { D: 0, A: 0, U: 0, H: 0, M: 0, UA: 1, UB: 2, B: 4 }
 export const brandSortRank = prefix => BRAND_SORT_ORDER[prefix] ?? 3
-
-// Max length for customer-facing marketing copy so it stays short and fits the
-// catalogue cards / storefront layout (≈45–50 words). Enforced in the editors.
-export const MARKETING_DESC_MAXLEN = 300
 
 // Optional 2nd prefix letter = the design's body / type. Blank = normal metal.
 export const RANGE_BODY_TYPES = [

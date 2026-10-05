@@ -1,6 +1,6 @@
 # API Reference — Netlify Edge Functions
 
-37 edge functions under `netlify/edge-functions/*.js`, each proxied through
+38 edge functions under `netlify/edge-functions/*.js`, each proxied through
 `/api/<name>` (declared in `netlify.toml`, occasionally also via the
 function's own `export const config`). The browser never talks to Supabase,
 Gemini, DeepSeek, Resend, or WooCommerce directly — every external call and
@@ -41,6 +41,8 @@ shape or a gotcha, read the function itself; the file names below are exact.
 - `suggest-tag-merges.js` (`/api/suggest-tag-merges`) — Suggests groupings for drifted-spelling customer tags; proposes only, never writes. Auth: module `marketing`. Called from `src/tagApi.js`.
 
 ## Marketing & Content
+
+- `create-corp-gift-product.js` (`/api/create-corp-gift-product`) — narrow, user-scoped Firestore REST writer for the local corporate-gift MCP tool. Auth: module `products`. Strict text-field allowlist; atomically creates `products/{mcp_*}` with `status: concept`, `active: false`, server timestamps; deterministic request ID prevents retry duplicates. Called from `mcp/product-writer/server.mjs`; setup and customer-read caveat in its README.
 
 - `generate-blog.js` (`/api/generate-blog`) — AI generation of blog post copy. Auth: module `marketing`. Called from `src/pages/BlogGenerator.jsx`.
 - `generate-marketing-copy.js` (`/api/generate-marketing-copy`) — AI generation of product/range marketing copy. Auth: module `products` / `figurine` / `marketing` (any-match — called from both the catalogue and marketing sides). Called from `src/pages/ProductForm.jsx`, `src/pages/RangeForm.jsx`.
