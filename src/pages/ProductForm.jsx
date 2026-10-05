@@ -274,8 +274,8 @@ export default function ProductForm() {
         </div>
 
         <div>
-          <label className="label">Assembly Notes</label>
-          <textarea className="input" rows={2} value={form.assembly_notes} onChange={set('assembly_notes')} placeholder="Factory assembly instructions, special handling notes…" />
+          <label className="label">Internal Remarks</label>
+          <textarea className="input" rows={2} value={form.assembly_notes} onChange={set('assembly_notes')} placeholder="Supplier details, production notes, and points to confirm…" />
         </div>
 
         <VideoUrlsEditor videos={form.videos} onChange={v => setForm(f => ({ ...f, videos: v }))} />

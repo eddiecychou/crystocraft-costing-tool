@@ -247,7 +247,7 @@ export default function ProductDetail() {
 
           {product.assembly_notes && (
             <div className="card p-4">
-              <h2 className="text-sm text-ink-80 mb-1">Assembly Notes</h2>
+              <h2 className="text-sm text-ink-80 mb-1">Internal Remarks</h2>
               <p className="text-sm text-ink-70">{product.assembly_notes}</p>
             </div>
           )}
