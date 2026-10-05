@@ -241,7 +241,7 @@ export default function ProductDetail() {
           {product.description && (
             <div className="card p-4">
               <h2 className="text-sm text-ink-80 mb-1">Description</h2>
-              <p className="text-sm text-ink-70">{product.description}</p>
+              <p className="text-sm text-ink-70 whitespace-pre-line">{product.description}</p>
             </div>
           )}
 
