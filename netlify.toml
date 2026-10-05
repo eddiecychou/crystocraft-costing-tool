@@ -84,6 +84,10 @@
   path = "/api/create-corp-gift-product"
 
 [[edge_functions]]
+  function = "create-corp-gift-product-with-quote"
+  path = "/api/create-corp-gift-product-with-quote"
+
+[[edge_functions]]
   function = "compose-message"
   path = "/api/compose-message"
 

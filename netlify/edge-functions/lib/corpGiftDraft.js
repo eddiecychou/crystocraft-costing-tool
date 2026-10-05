@@ -91,7 +91,7 @@ export function commitBody(documentName, draft, uid, fingerprint) {
   }
 }
 
-async function readLimitedJson(req) {
+export async function readLimitedJson(req) {
   if (Number(req.headers.get('content-length')) > MAX_BODY_BYTES) throw new Error('Request body is too large')
   if (!req.body) throw new Error('Expected a JSON object')
   const reader = req.body.getReader()

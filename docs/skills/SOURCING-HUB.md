@@ -35,6 +35,16 @@
 
 ## 2. Sourcing Workstation — 1688 / Taobao / Alibaba links
 
+The local `mcp/product-writer/` server also offers a narrow corporate-gift
+creation tool that pairs one new inactive concept product and component with a
+preferred supplier quote. It requires an existing `suppliers/{id}` record plus
+both `products` and `supply` access; the Netlify Edge endpoint verifies the
+supplier and commits all three new records atomically with create-only
+preconditions. Supplier unit cost, MOQ, lead time and terms stay in the
+supplier-quote document, not the customer-readable product text. This tool
+does not edit existing products or create suppliers. See its README and
+`docs/reference/API-REFERENCE.md` for setup and endpoint details.
+
 Suppliers carry named sourcing-link fields plus free-form extras
 (`SupplierForm.jsx`, stored on `suppliers/{id}`):
 

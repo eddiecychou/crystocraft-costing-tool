@@ -1,10 +1,19 @@
-# Operation Center corporate-gift draft writer (local MCP)
+# Operation Center corporate-gift writer (local MCP)
 
-This local stdio server exposes exactly one tool, `create_corp_gift_product_draft`.
+This local stdio server exposes `create_corp_gift_product_draft` and
+`create_corp_gift_product_with_supplier_quote`.
 It calls the authenticated Operation Center endpoint; it has no Admin SDK or
 service-account credential. The endpoint writes one `products/{id}` record with
 `status: concept` and `active: false`. Staff finish images, sourcing, costing,
 and any activation in the Operation Center UI.
+
+The second tool requires an existing supplier ID and both the `products` and
+`supply` capabilities. It creates the inactive concept product, a single
+component, and its preferred supplier quote in one atomic write. It does not
+create suppliers, upload images, set sales prices, calculate freight or margin,
+or activate the product. Quote terms and supplier cost belong in quote fields,
+never in catalogue descriptions. To add a quote to an existing product, use
+the Operation Center UI; the bundled tool only creates a new product.
 
 ## Install and sign in (macOS)
 
@@ -22,8 +31,8 @@ The sign-in prompt hides the password. The password is used once and discarded;
 the renewable Firebase user refresh token is saved only in macOS Keychain
 under service `com.crystocraft.operation-center.product-writer` and account
 `crystocraft-costing`. The MCP process reads it, refreshes short-lived user ID
-tokens, and sends those tokens to the endpoint. Access is still checked against
-the user's current `products` capability on every call. Re-run login if the
+tokens, and sends those tokens to the endpoint. Access is checked against
+`products` (and `supply` for the bundled tool) on every call. Re-run login if the
 session is revoked or expires. For an alternate Firebase project, set
 `OC_FIREBASE_PROJECT_ID` consistently for login and MCP runtime; the server's
 endpoint must use that same project.
@@ -51,17 +60,21 @@ only for a trusted test deployment. Ask Codex to create a corporate-gift draft
 and review the proposed fields before approving the write. Generate one UUID
 for `request_id` per intended product, then reuse that UUID and **identical
 content** if a call times out. A reused UUID with changed content is rejected.
-The response contains the product ID, edit URL, and whether the product was
-newly created or returned from an earlier call.
+The bundled response also contains component and quote IDs. The response says
+whether records were newly created or returned from an earlier call. Do not
+reuse a draft-only request ID for the bundled tool: it creates a different
+record set and will conflict with the already-created draft.
 
 ## Scope and privacy limit
 
-The writer cannot set `active`, `status`, images, prices, MOQ, suppliers, or
-arbitrary Firestore paths. `active:false` excludes the draft from the customer
+The draft-only tool cannot set `active`, `status`, images, prices, MOQ,
+suppliers, or arbitrary Firestore paths. The bundled tool accepts only an
+existing supplier ID and bounded quote fields; it cannot set catalogue price
+or arbitrary Firestore paths. `active:false` excludes the draft from the customer
 corporate-shop listing. **It is not a Firestore confidentiality boundary:**
 current `products/{id}` read rules permit approved customers to read product
 documents directly if they know the ID. Do not put confidential supplier or
-customer information in this draft's text fields. A separate rules/UI design
+customer information in product text fields. A separate rules/UI design
 change would be needed before calling these records customer-inaccessible.
 The endpoint also stores `mcp_creator_uid` and `mcp_request_hash` on its own
 drafts solely to verify idempotent retries. The app does not display them.
