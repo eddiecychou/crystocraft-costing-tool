@@ -257,15 +257,25 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   shaped for the `seo_batches` `result` op. **No Workbench script writes WordPress any other
   way.**
 
+  **Wire contract (2026-10-06 smoke follow-up):** a product must be reviewed and
+  sent as `payload: {meta_data:[{key:'_yoast_wpseo_title',value:'…'}]}`;
+  its fresh `get` must expose `meta_data[]`. A `wp/v2` post/page writes
+  `payload: {meta:{_yoast_wpseo_title:'…'}}` and must expose that field in a
+  fresh `get`. In both cases `expectedFields` is
+  `['meta._yoast_wpseo_title']`. `safeWrite` understands either in-memory
+  carrier, but WooCommerce ignores nested `meta` on write. A `put` response
+  echoing the request is not evidence that the value persisted. See the
+  exact examples and SSH transport quoting in `seo-control-plane/DSH-BRIEFING.md`.
+
 This directory is also the **vendoring contract**: DSH copies the validator,
 write wrapper, and Yoast invalidation helper
 verbatim and verifies the sha256[:12] fingerprint recorded in
 `seo-control-plane/README.md` (`validate-payload.mjs` = `57e397f1b810`,
-`safe-write.mjs` = `9802d7c3060c`,
+`safe-write.mjs` = `8e4d16f4f195`,
 `yoast-indexable.mjs` = `28eba647fe55` after the 2026-10-06 changes). The
 OC tells DSH when a vendored file changes (`op:'create'` re-runs the validator
 server-side, so a stale copy shows up as `validation_mismatch`). Local tests:
-`validate-payload.test.mjs` (135 assertions), `safe-write.test.mjs` (43),
+`validate-payload.test.mjs` (135 assertions), `safe-write.test.mjs` (47),
 `corpus-language.test.mjs` (5), `yoast-indexable.test.mjs` (2), and
 `qa/seo-batch-guard.test.mjs` (13) for the
 OC-side guards. When a fix changes a *class* of bug, grep for the pattern across
@@ -295,6 +305,7 @@ CSV export of the drift/failed rows in both modes.
 
 | Date | Change |
 |---|---|
+| 2026-10-06 | DSH's Yoast smoke test exposed an ambiguous meta write contract: `safeWrite` understands nested and list carriers, but `wc/v3` only writes `meta_data[]`; the reviewed payload must be the same body sent at execution. Documented exact `payload`/fresh `get`/`expectedFields` shapes for products and `wp/v2` posts/pages, remote-shell quoting for WP-CLI, and the Workbench sync check's need to inspect both active vendor copies plus `yoast-indexable.mjs`. Added product Yoast and misleading-PUT-echo tests; an undefined old `meta` carrier is no longer counted as an intended field. The Workbench-owned checker and client still need DSH changes. |
 | 2026-10-06 | Corpus script-ratio audit, split cap/growth checks with explicit pre-existing acknowledgement, declared Elementor append intent, exact per-field write read-back, and a fail-closed Workbench Yoast indexable deletion contract. Two vantage notes: User-Agent cache variants and WCML `by_location` REST price conversion. See the sections above and `seo-control-plane/README.md` for current hashes. |
 | 2026-09-02 | Steps 1–4 built: `seo_state`/`seo_state_history`, `seo_batches` + `seo-batch` + `/seo-review`, `seo-control-plane/` (`validate-payload` + `safe-write`), `/seo-reconcile`. |
 | 2026-09-23 | **L-29** — `placeholder_markers` extended to fr/ja/zh-hant (was en/es/zh-hans only). |

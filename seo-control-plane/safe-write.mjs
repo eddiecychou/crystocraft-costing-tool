@@ -28,8 +28,9 @@
 //     put: (ep, b) => wpPut(ep, b),
 //     id: 3194,
 //     endpoint: `wc/v3/products/3194`,
-//     payload: { meta: { _yoast_wpseo_title: '…' } },
+//     payload: { meta_data: [{ key: '_yoast_wpseo_title', value: '…' }] },
 //     expectedFields: ['meta._yoast_wpseo_title'],
+//     invalidateYoastIndexable: ({id, endpoint}) => deleteYoastIndexable({id, endpoint, runWpCli}),
 //   })
 //   if (!r.verified) { alert(r); STOP }   // r.drift lists what else moved;
 //                                         // r.noop means nothing moved at all
@@ -79,6 +80,9 @@ function get(obj, path) {
 function payloadPaths(payload) {
   const paths = []
   for (const [key, value] of Object.entries(payload || {})) {
+    // A caller may convert `meta` to WooCommerce `meta_data` before execution.
+    // An undefined old carrier is not a field being written or verified.
+    if (value === undefined) continue
     if (key === 'meta' && value && typeof value === 'object') {
       for (const name of Object.keys(value)) paths.push(`meta.${name}`)
     } else if (key === 'meta_data' && Array.isArray(value)) {

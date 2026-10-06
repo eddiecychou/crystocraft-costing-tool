@@ -435,8 +435,9 @@ DSH stays the sole WordPress writer but goes through this loop:
    body on both sides, never a live entity's rendered page — as do the brand /
    language / placeholder text scans, so `source` (and the `before` snapshot)
    **MUST** be fetched with `context=edit` or those checks silently skip. See
-   L-45 and L-47. **A payload is NESTED (`meta: {…}`) but the `before` snapshot is
-   FLAT (`'meta._elementor_data'`)** — the validator normalises both, but pass a
+   L-45 and L-47. **A `wp/v2` payload uses nested `meta: {…}`; a `wc/v3`
+   product payload uses `meta_data: [{key,value}]`; the `before` snapshot is
+   FLAT (`'meta._elementor_data'`)** — the validator normalises all three, but pass a
    real nested `source` anyway: a payload writing `_elementor_data` with no
    usable source tree is now **blocked**, and a pass with `skipped > 0` is a
    partial one, not a full validation (L-48).

@@ -32,7 +32,9 @@ in prose handoffs — is retired.
 2. PREPARE      For each intended write, build an item:
                   { id, kind, lang, endpoint, summary, payload, before, source,
                     expectedNewIds?, appendOnly?, acceptPreexistingOverCap?, validation }
-                - payload  = the EXACT WP REST body you would have sent
+                - payload  = the EXACT WP REST body you will send; for a wc/v3
+                             product, meta is `meta_data: [{key,value}]` at review
+                             time, not converted after the owner approves it
                 - before   = a snapshot of the fields `payload` touches, read live NOW
                 - source   = the EN-original entity this was translated/derived from.
                              SEND IT on every translation item — without it the OC's
@@ -242,11 +244,13 @@ const validation = validatePayload({ kind, lang, endpoint, payload, source: enOr
     it does not, `widget_count`, `element_ids_preserved` and `length_anomaly` report
     `ok:false` ("did not run — …") and the item is **blocked**. An unguarded layout
     write is what B20/B6 are, so that case fails rather than skipping.
-  - **Three shapes, all read.** `payload`/`source` may be nested (`meta: {…}`),
-    flat (`'meta._elementor_data'`), or **WooCommerce** (`meta_data: [{key, value}]`).
-    The validator folds all three into `meta`, and `safeWrite`'s `get()` resolves a
-    dotted `meta.<key>` from `meta_data[]` — so a **product** write declared as
-    `meta._elementor_data` now works. Before this a product payload looked
+  - **Three shapes, all understood by validation — not interchangeable REST write
+    bodies.** The validator folds nested (`meta: {…}`), flat
+    (`'meta._elementor_data'`), and WooCommerce (`meta_data: [{key, value}]`)
+    into `meta`. `safeWrite` resolves a dotted `meta.<key>` from either nested
+    `meta` or `meta_data[]`. The actual product REST payload MUST use
+    `meta_data[]`; a `wp/v2` post/page payload uses `meta: {…}` when that key is
+    writable through REST. Before this a product payload looked
     textless: `brand_terms_preserved` falsely failed and the three
     `_elementor_data` guards **did not run at all** (L-50). If you declare the
     whole `meta_data` list in `expectedFields`, that covers the tree inside it.
@@ -287,15 +291,47 @@ anything else moves. Dotted paths for meta; any `*_elementor_data` compared by
 hash.
 ```js
 // a Yoast-meta-only write on a product:
-expectedFields: ['meta._yoast_wpseo_title', 'meta._yoast_wpseo_metadesc']
+const productYoastWrite = {
+  payload: { meta_data: [
+    { key: '_yoast_wpseo_title', value: 'New title' },
+    { key: '_yoast_wpseo_metadesc', value: 'New description' },
+  ] },
+  expectedFields: ['meta._yoast_wpseo_title', 'meta._yoast_wpseo_metadesc'],
+}
 // a translation content write:
-expectedFields: ['name', 'description', 'short_description', 'meta._elementor_data',
-                 'meta._yoast_wpseo_title', 'meta._yoast_wpseo_metadesc', 'slug', 'status']
+const translationExpectedFields = [
+  'name', 'description', 'short_description', 'meta._elementor_data',
+  'meta._yoast_wpseo_title', 'meta._yoast_wpseo_metadesc', 'slug', 'status',
+]
 ```
 `safeWrite` always ALSO watches `status, slug, type, sku, price, regular_price,
 sale_price, stock_status, stock_quantity, categories, date, featured_media` and
 `meta._elementor_data` — so a stray change to any of those trips it even if you
 forgot to list it.
+
+### Exact Yoast field contract (write body vs verification path)
+
+| Endpoint | Reviewed `payload` and `put` body | Fresh `get` result | `expectedFields` |
+|---|---|---|---|
+| `wc/v3/products/:id` | `{ meta_data: [{ key: '_yoast_wpseo_title', value: 'New title' }] }` | `{ meta_data: [{ key: '_yoast_wpseo_title', value: 'New title' }, ...] }` | `['meta._yoast_wpseo_title']` |
+| `wp/v2/posts/:id` or `wp/v2/pages/:id` | `{ meta: { _yoast_wpseo_title: 'New title' } }` | `{ meta: { _yoast_wpseo_title: 'New title' } }` | `['meta._yoast_wpseo_title']` |
+
+One-line calls (both require `invalidateYoastIndexable`):
+
+```js
+await safeWrite({ get: () => wpEntity('wc/v3/products/66373'), put: wpWrite, id: 66373, endpoint: 'wc/v3/products/66373', payload: { meta_data: [{ key: '_yoast_wpseo_title', value: 'New title' }] }, expectedFields: ['meta._yoast_wpseo_title'], invalidateYoastIndexable })
+await safeWrite({ get: () => wpEntity('wp/v2/posts/66373?context=edit'), put: wpWrite, id: 66373, endpoint: 'wp/v2/posts/66373', payload: { meta: { _yoast_wpseo_title: 'New title' } }, expectedFields: ['meta._yoast_wpseo_title'], invalidateYoastIndexable })
+```
+
+For a page, replace `posts` with `pages`. `safeWrite` accepts either shape as
+an **in-memory value carrier**, but the endpoint determines the write body;
+WooCommerce silently ignores `meta: {…}`. Do not convert a product's reviewed
+`meta` payload to `meta_data` only at execution time: the operator must review
+the exact body that is sent. `put`'s response is **not** verification. The
+injected `get` must re-read the persisted value after the write; a `put` echoing
+the new value while `get` still returns the old value correctly fails. If a
+`wp/v2` Yoast key is not exposed for read/write through REST, use an explicitly
+supported authoritative transport or stop — do not infer success from a 200.
 
 ---
 
@@ -309,7 +345,7 @@ const r = await safeWrite({
   get: (id) => wpGet(`wc/v3/products/${id}?lang=fr`),   // your wp-api.mjs GET
   put: (endpoint, body) => wpWrite(endpoint, body),      // your wp-api.mjs PUT/POST
   // Required for _yoast_wpseo_* writes. runWpCli executes argv on the WP host,
-  // rejects non-zero exits, and returns stdout; no shell interpolation.
+  // rejects non-zero exits, and returns stdout; quote argv for the remote shell.
   invalidateYoastIndexable: ({ id, endpoint }) =>
     deleteYoastIndexable({ id, endpoint, runWpCli }),
   id,
@@ -332,6 +368,36 @@ results.push({ index: it.index, ...r.result })
 `safeWrite` does: pre-read → `put` → post-read → compare. It catches B52
 (variable-product save regenerating variations with empty prices) via a
 dedicated variation id/price-hash guard.
+
+`runWpCli(args)` over SSH needs **remote-shell quoting**. `execFileSync` avoids
+the local shell, but SSH joins its remaining arguments into one remote command;
+the remote shell otherwise splits the SQL argument at spaces. Reference
+transport (adapt host/config/path in the Workbench, never place credentials in
+the OC):
+
+```js
+import { execFileSync } from 'node:child_process'
+const remoteQuote = a => "'" + String(a).replace(/'/g, "'\\''") + "'"
+const runWpCli = args => {
+  const remote = ['wp', '--path=' + WP_PATH, ...args].map(remoteQuote).join(' ')
+  return execFileSync('ssh', ['-F', SSH_CONFIG, SSH_HOST, remote], { encoding: 'utf8' })
+}
+```
+
+This is a reference, not a live-tested OC transport. The Workbench owns and
+tests the actual host connection. A non-zero WP-CLI exit must reject.
+
+**Workbench adapter follow-up from the 9/11 smoke:** `dsh-client.mjs` currently
+changes a reviewed product `payload.meta` into `meta_data[]` only inside
+`executeApproved`; construct and submit `meta_data[]` in `buildItem` instead,
+and send that identical body to `safeWrite`. Stop the batch on `!r.verified`
+(not merely `!r.ok`). Parse a numeric WordPress ID from the endpoint **pathname**
+before `?lang=…`, or from a separately validated numeric post ID; a batch item
+label such as `title-9119` is not a safe fallback. Finally, update the
+Workbench-owned `check-vendor-sync.mjs` to include `yoast-indexable.mjs` and
+discover/check every active `seo-control-plane` vendor directory, especially
+both `Deepseek Render/` (the `dsh-client` import) and `SEO/`. This OC repo's
+operating agreement makes those Workbench edits DSH-owned.
 
 **2026-10-06 gates:** The post-read must equal each concrete value in the
 payload, not merely differ from `before`; a changed-but-wrong value and an
@@ -384,10 +450,9 @@ stored price, never the location-dependent REST value.
       the Workbench (copy verbatim; re-copy when the OC updates them — a new
       failure mode adds a check there). Verify the copy is byte-identical to the
       sha256[:12] fingerprint recorded in `seo-control-plane/README.md` → "Vendoring contract"
-      before you trust a run. **Re-vendor after the 2026-10-03 fixes** — both the
-      first pass and the `payloadText()` follow-up; `validate-payload.mjs` must
-      fingerprint `8ab3fdd35671` and `safe-write.mjs` `cdd1502769db`. Anything
-      older is stale.
+      before you trust a run. Current fingerprints: `validate-payload.mjs`
+      `57e397f1b810`, `safe-write.mjs` `8e4d16f4f195`, and
+      `yoast-indexable.mjs` `28eba647fe55`. Anything older is stale.
 - [ ] Fetch `source` (and the `before` snapshot) with **`context=edit`**, or the
       body-level checks silently skip.
 - [ ] Wrap your `wp-api.mjs` write path so **nothing** writes WordPress except

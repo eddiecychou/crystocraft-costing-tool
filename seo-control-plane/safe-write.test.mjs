@@ -220,6 +220,45 @@ const productPut = (keys) => (cur, body) => ({
     JSON.stringify({ before: r.before['meta._elementor_data'], after: r.after['meta._elementor_data'] }))
 }
 
+// Product Yoast writes use the WooCommerce wire shape. The old `meta`
+// carrier left by a caller's conversion is ignored only when undefined.
+{
+  const h = harness(mkProduct(), productPut(['_yoast_wpseo_title']))
+  let invalidated = 0
+  const r = await safeWrite({
+    get: h.get, put: h.put, id: 53987, endpoint: 'wc/v3/products/53987',
+    payload: { meta_data: [{ key: '_yoast_wpseo_title', value: 'New title' }], meta: undefined },
+    expectedFields: ['meta._yoast_wpseo_title'],
+    invalidateYoastIndexable: async () => { invalidated++; return true },
+  })
+  expect('product Yoast meta_data write verifies per key', r.verified === true && r.unlanded.length === 0 && invalidated === 1, JSON.stringify(r.result))
+  expect('undefined old meta carrier is not an intended field', !Object.hasOwn(r.after, 'meta'), JSON.stringify(r.after))
+}
+
+{
+  const h = harness(mkProduct(), (cur) => cur)
+  const r = await safeWrite({
+    get: h.get, put: async (_ep, body) => ({ ...mkProduct(), meta_data: body.meta_data }),
+    id: 53987, endpoint: 'wc/v3/products/53987',
+    payload: { meta_data: [{ key: '_yoast_wpseo_title', value: 'New title' }] },
+    expectedFields: ['meta._yoast_wpseo_title'],
+    invalidateYoastIndexable: async () => true,
+  })
+  expect('PUT echo cannot certify a product if fresh GET is unchanged',
+    r.ok === false && r.verified === false && r.unlanded.includes('meta._yoast_wpseo_title'), JSON.stringify(r.result))
+}
+
+{
+  const h = harness(mkEntity(), (cur, body) => ({ ...cur, meta: { ...cur.meta, ...body.meta } }))
+  const r = await safeWrite({
+    get: h.get, put: h.put, id: 3194, endpoint: 'wp/v2/pages/3194',
+    payload: { meta: { _yoast_wpseo_title: 'New page title' } },
+    expectedFields: ['meta._yoast_wpseo_title'],
+    invalidateYoastIndexable: async () => true,
+  })
+  expect('wp/v2 page Yoast nested meta verifies after fresh GET', r.verified === true, JSON.stringify(r.result))
+}
+
 // The false success that was reported: description lands, the tree silently does
 // not — and the item still came back verified:true.
 {

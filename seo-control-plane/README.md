@@ -16,7 +16,7 @@ commit — then the Workbench re-vendors.
 | `corpus-language.mjs` | Script-ratio audit for *existing* published bodies and Elementor text; shared with `/api/seo-state` `op:'corpus'`. | OC read-only admin route. |
 | `yoast-indexable.mjs` | Guarded WP-CLI deletion of the matching Yoast indexable row after a Yoast meta write lands. | Workbench, with its own `runWpCli(argv)` transport to the WordPress host. |
 | `validate-payload.test.mjs` | `node seo-control-plane/validate-payload.test.mjs` — incident cases covering the known failure modes. | Here (CI / pre-commit). |
-| `safe-write.test.mjs` | `node seo-control-plane/safe-write.test.mjs` — clean write, no-op, drift, write error, Elementor hash change, B52 variation regeneration. | Here (CI / pre-commit). |
+| `safe-write.test.mjs` | `node seo-control-plane/safe-write.test.mjs` — exact product and post/page Yoast read-back, no-op, drift, Elementor hash change, B52 variation regeneration. | Here (CI / pre-commit). |
 
 ## Vendoring contract
 
@@ -31,7 +31,7 @@ ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-06) |
 |---|---|
 | `validate-payload.mjs` | `57e397f1b810` |
-| `safe-write.mjs` | `9802d7c3060c` |
+| `safe-write.mjs` | `8e4d16f4f195` |
 | `yoast-indexable.mjs` | `28eba647fe55` |
 
 Regenerate with
@@ -46,9 +46,19 @@ reader or a scanner. (This is hygiene, not a diagnosed deploy failure:
 `deno.lock` is hundreds of 64-hex digests and deploys fine. The real 2026-10-03
 deploy breakage was L-46 — a lesson quoting the leaked value it was about.)
 
-When the OC changes either file it must tell DSH, and this table must be
+When the OC changes a vendored artifact it must tell DSH, and this table must be
 re-stamped in the same commit (the OC's own `op:'create'` re-runs the vendored
 validator, so a stale DSH copy shows up as `validation_mismatch`).
+
+The Workbench's `check-vendor-sync.mjs` must compare **all active**
+`seo-control-plane/` vendor directories, not just the directory containing the
+checker. In the current Workbench layout, both `Deepseek Render/seo-control-plane/`
+(imported by `dsh-client.mjs`) and `SEO/seo-control-plane/` are active. Its
+artifact list must include `yoast-indexable.mjs` alongside the validator,
+safe-write wrapper, and vendored validator test. Discover directories named
+`seo-control-plane` under the Workbench root, ignore backup/archive folders,
+and fail if any active copy is missing or differs. The OC cannot edit that
+Workbench-owned checker (see `MARKETING-WORKFLOW.md` §6.0).
 
 ## Two questions, not one (2026-10-03)
 
@@ -92,7 +102,15 @@ POST /api/seo-batch { op:'result', id, results }                  # → executed
 ```
 
 `expectedFields` uses dotted paths for `meta` (`meta._yoast_wpseo_title`,
-`meta._elementor_data`). Layout drift fingerprints use FNV-1a; requested-value
+`meta._elementor_data`) **for either wire carrier**. A `wc/v3` product writes
+`{ meta_data: [{ key: '_yoast_wpseo_title', value: 'New title' }] }` and a fresh
+product GET must return that key/value in `meta_data[]`. A `wp/v2` post/page
+writes `{ meta: { _yoast_wpseo_title: 'New title' } }` and its fresh GET must
+return the value in `meta`. `safeWrite` reads either carrier but cannot make a
+WooCommerce endpoint accept the wrong body; the reviewed payload must already
+be the exact REST write body. A successful PUT echo is not a post-read. If a
+`wp/v2` Yoast key is not exposed through REST, fail closed or inject an
+authoritative supported transport. Layout drift fingerprints use FNV-1a; requested-value
 verification compares the actual full value. For Yoast writes, wire the
 callback to `deleteYoastIndexable({ id, endpoint, runWpCli })`; `runWpCli` must
 execute argv on the WordPress host and reject non-zero exits. The helper uses
@@ -100,6 +118,10 @@ execute argv on the WordPress host and reject non-zero exits. The helper uses
 and `object_sub_type`, then confirms the row count is zero. A missing or
 unconfirmed callback blocks success; this repo does **not** have WordPress-host
 WP-CLI access and cannot execute that deletion on its own.
+For SSH transports, quote **each** WP-CLI argv element for the remote shell:
+`execFileSync('ssh', ['-F', config, host, remoteCommand])` protects the local
+shell only; SSH's remote shell otherwise splits SQL at spaces. See the
+reference `remoteQuote` implementation in `DSH-BRIEFING.md` §5.
 
 ## Three shapes for one entity — and per-field verification (2026-10-03, L-50/L-51/L-52)
 
@@ -107,7 +129,7 @@ An entity reaches the control plane in three shapes, and **all three must be
 understood**:
 
 ```
-nested       { meta: { _elementor_data } }            WP posts/pages, and a payload we build
+nested       { meta: { _elementor_data } }            WP posts/pages
 flat         { 'meta._elementor_data': … }            the `before` snapshot (dotted keys)
 WooCommerce  { meta_data: [{ key, value }] }          wc/v3 products — meta is a LIST
 ```
