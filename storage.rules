@@ -42,6 +42,11 @@ service firebase.storage {
     match /suppliers/{supplierId}/{allPaths=**} {
       allow read, write: if can('supply');
     }
+    // Visible-page screenshots from the user-triggered 1688 extension.
+    match /sourcing-captures/{uid}/{allPaths=**} {
+      allow read: if can('supply');
+      allow write: if can('supply') && request.auth.uid == uid;
+    }
     match /catalogues/{catalogueId}/{allPaths=**} {
       allow read, write: if can('catalogues');
     }

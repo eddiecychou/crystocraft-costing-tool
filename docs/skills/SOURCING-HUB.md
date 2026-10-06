@@ -63,6 +63,25 @@ is deliberately permissive (any `http(s)` URL). **MUST NOT** build an automated
 1688/Taobao scraper into these fields without an explicit new decision — the
 current model is a curated link hub, not an integration.
 
+
+### User-triggered 1688 Capture extension (V8.18)
+
+`browser-extensions/1688-capture/` is an unpacked Chrome extension, not a
+server-side scraper. When a staff member clicks its toolbar button on the
+already-open `detail.1688.com/offer/...` page, it reads only that rendered page,
+the visible selection and source image URLs, takes a visible-tab screenshot,
+then opens OC's `/sourcing-captures/import` screen. The extension stores the
+payload locally for 30 minutes and sends it only to the signed-in OC review
+screen; it has no OC credential, background crawl, login automation, API
+access, CAPTCHA bypass or checkout capability.
+
+The OC screen saves an internal, supply-gated `sourcing_captures/{id}` review
+record and screenshot. A capture is evidence, **not** a confirmed specification,
+supplier, supplier quote or customer-facing catalogue item. Review the selected
+SKU and text/image claims; confirm price, MOQ, material, dimensions, logo,
+packaging, lead time and compliance with the supplier. Only after explicit
+approval may the normal corporate-gift MCP workflow create the inactive supplier/
+product/component/quote draft. See the extension README for installation.
 ## 3. Communication capture
 
 What exists in the codebase (document reality; capture is per-channel, not one

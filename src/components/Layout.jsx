@@ -10,7 +10,7 @@ import { useT } from '../i18n'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
   Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles, RotateCcw, ShoppingCart,
-  PanelLeftClose, PanelLeftOpen, LogOut, Palette,
+  PanelLeftClose, PanelLeftOpen, LogOut, Palette, ExternalLink,
 } from 'lucide-react'
 
 // Grouped so the list stays readable as it grows — the flat version was hard
@@ -55,6 +55,7 @@ const nav = [
   { group: 'Supply' },
   { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle, module: 'supply' },
   { to: '/suppliers',  label: 'Suppliers',     short: 'Suppliers',Icon: Factory, module: 'supply' },
+  { to: '/sourcing-captures', label: '1688 Captures', short: '1688', Icon: ExternalLink, module: 'supply' },
   { to: '/purchase-orders', label: 'Purchase Orders', short: 'POs', Icon: FileText, module: 'supply' },
   { to: '/inventory',  label: 'Inventory',     short: 'Stock',    Icon: Boxes, module: 'supply' },
 

@@ -975,6 +975,13 @@ exact file(s), and state the **MUST/MUST NOT** rule it establishes. If it change
 a boundary, also update `ARCHITECTURE-RULES.md`; if it's worth recalling across
 sessions, add an auto-memory. Then note it in the Change Log.
 
+
+## L-57 · Marketplace capture is evidence capture, not catalogue ingestion
+
+- **Symptom.** 1688 listings were slow to transcribe: browser access can be incomplete or blocked, and screenshots caused staff to manually retype facts before a candidate could enter the sourcing workflow.
+- **Root cause.** A server-side scraper would not share the staff member’s selected SKU or browser session, would be brittle against marketplace UI changes, and would blur a source listing into an approved supplier/product claim. Giving a browser extension an OC credential would create a second, unnecessary authentication boundary.
+- **Permanent fix.** `browser-extensions/1688-capture/` captures only the already-open listing after an explicit toolbar click, stores it locally for 30 minutes, and sends it to the signed-in OC review page. OC writes bounded source text and a supply-gated screenshot to `sourcing_captures`; it does not create a supplier, product, component or quote. **MUST** label its content as evidence, review the selected SKU and supplier facts, and obtain explicit approval before the restricted corporate-gift MCP creates an inactive draft. **MUST NOT** turn the extension into an unattended crawler, capture a page without a user action, or put OC/Firebase credentials in the extension.
+
 ## Change Log
 
 | Date | Change |

@@ -25,6 +25,8 @@ const ComponentDetail = lazy(() => import('./pages/ComponentDetail'))
 const SupplierQuoteForm = lazy(() => import('./pages/SupplierQuoteForm'))
 const PricingTiers = lazy(() => import('./pages/PricingTiers'))
 const Suppliers = lazy(() => import('./pages/Suppliers'))
+const SourcingCaptures = lazy(() => import('./pages/SourcingCaptures'))
+const SourcingCaptureImport = lazy(() => import('./pages/SourcingCaptureImport'))
 const SupplierForm = lazy(() => import('./pages/SupplierForm'))
 const SupplierDetail = lazy(() => import('./pages/SupplierDetail'))
 const PurchaseOrders = lazy(() => import('./pages/PurchaseOrders'))
@@ -262,6 +264,9 @@ function AdminApp({ user, profile, role }) {
                 <Route path="/products/:productId/components/:componentId/quotes/new" element={<Gate module="supply"><SupplierQuoteForm /></Gate>} />
                 <Route path="/products/:productId/components/:componentId/quotes/:quoteId" element={<Gate module="supply"><SupplierQuoteForm /></Gate>} />
                 <Route path="/suppliers" element={<Gate module="supply"><Suppliers /></Gate>} />
+                <Route path="/sourcing-captures" element={<Gate module="supply"><SourcingCaptures /></Gate>} />
+                <Route path="/sourcing-captures/import" element={<Gate module="supply"><SourcingCaptureImport /></Gate>} />
+                <Route path="/sourcing-captures/:id" element={<Gate module="supply"><SourcingCaptures /></Gate>} />
                 <Route path="/suppliers/new" element={<Gate module="supply"><SupplierForm /></Gate>} />
                 <Route path="/suppliers/:id" element={<Gate module="supply"><SupplierDetail /></Gate>} />
                 <Route path="/suppliers/:id/edit" element={<Gate module="supply"><SupplierForm /></Gate>} />

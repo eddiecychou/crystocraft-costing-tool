@@ -221,6 +221,17 @@ service cloud.firestore {
         allow read, write: if can('supply');
       }
     }
+
+    // User-triggered browser captures from 1688. These retain source evidence
+    // for staff review only; they are not supplier quotes or catalogue items.
+    match /sourcing_captures/{captureId} {
+      allow read: if can('supply');
+      allow create: if can('supply')
+        && request.resource.data.captured_by_uid == request.auth.uid;
+      allow update: if can('supply')
+        && request.resource.data.captured_by_uid == resource.data.captured_by_uid;
+      allow delete: if false;
+    }
     match /client_quotes/{quoteId} {
       allow read, write: if can('quotes');
       match /items/{itemId} {
