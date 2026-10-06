@@ -43,6 +43,45 @@ function expect(name, cond, detail = '') {
 
 // ── B33/B35: CJK leaked into a FR payload ───────────────────────────────
 {
+  const tree = text => JSON.stringify([{ id: 'e1', elType: 'widget', widgetType: 'text-editor', settings: { editor: text } }])
+  const source = { meta: { _elementor_data: tree('A'.repeat(2180)) } }
+  const payload = { meta: { _elementor_data: tree('A'.repeat(2180)) } }
+  const blocked = validatePayload({ kind: 'post', lang: 'en', payload, source })
+  expect('unchanged over-cap editor is not length growth', chk(blocked).length_anomaly === true)
+  expect('unchanged over-cap editor is separately reported', chk(blocked).over_cap_pre_existing === false)
+  const accepted = validatePayload({ kind: 'post', lang: 'en', payload, source, acceptPreexistingOverCap: true })
+  expect('pre-existing cap acknowledgement passes', chk(accepted).over_cap_pre_existing === true)
+  const changed = validatePayload({ kind: 'post', lang: 'en', payload: { meta: { _elementor_data: tree('B'.repeat(2181)) } }, source,
+    acceptPreexistingOverCap: true })
+  expect('changed over-cap editor still fails', chk(changed).over_cap_introduced === false)
+}
+{
+  const tree = text => JSON.stringify([{ id: 'c1', elType: 'widget', widgetType: 'image', settings: { caption: text } }])
+  const source = { meta: { _elementor_data: tree('X'.repeat(258)) } }
+  const payload = { meta: { _elementor_data: tree('X'.repeat(258)) } }
+  const v = validatePayload({ kind: 'product', lang: 'en', payload, source })
+  expect('unchanged caption over cap is not hallucination', chk(v).length_anomaly === true && chk(v).over_cap_pre_existing === false)
+}
+{
+  const tree = nodes => JSON.stringify(nodes)
+  const old = [{ id: 'a', elType: 'widget', widgetType: 'text-editor', settings: { editor: 'Old' } }]
+  const newer = [...old, { id: 'b', elType: 'widget', widgetType: 'text-editor', settings: { editor: 'New' } }]
+  const args = { kind: 'page', lang: 'fr', source: { meta: { _elementor_data: tree(old) } },
+    payload: { meta: { _elementor_data: tree(newer) } } }
+  const v = validatePayload({ ...args, appendOnly: true, expectedNewIds: ['b'] })
+  expect('declared append passes count and id guards', chk(v).widget_count === true && chk(v).element_ids_preserved === true)
+  const bad = validatePayload({ ...args, appendOnly: true, expectedNewIds: ['wrong'] })
+  expect('undeclared append fails id guard', chk(bad).element_ids_preserved === false)
+  const missing = validatePayload({ ...args, expectedNewIds: ['b'] })
+  expect('new ids without appendOnly fail widget count', chk(missing).widget_count === false)
+  const tooLong = validatePayload({ ...args, appendOnly: true, expectedNewIds: ['b'], acceptPreexistingOverCap: true,
+    payload: { meta: { _elementor_data: tree([...old,
+      { id: 'b', elType: 'widget', widgetType: 'heading', settings: { title: 'X'.repeat(201) } }]) } } })
+  expect('new over-cap append is never grandfathered', chk(tooLong).over_cap_introduced === false)
+}
+
+// ── B33/B35: CJK leaked into a FR payload ───────────────────────────────
+{
   const source = { name: 'Crystal Horse' }
   const payload = { name: 'Cheval en cristal 水晶马', status: 'draft' }
   const v = validatePayload({ kind: 'product', lang: 'fr', payload, source })

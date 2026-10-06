@@ -20,7 +20,8 @@
 //
 // Ops (POST JSON):
 //   { op: 'create', batch: { note, items: [{ id, kind, lang, endpoint,
-//         summary, payload, before, source, validation }] } }
+//         summary, payload, before, source, validation,
+//         expectedNewIds?, appendOnly?, acceptPreexistingOverCap? }] } }
 //       -> { id, failed_validation, skipped_validation, mismatches: [itemIndex] }
 //          (400 if any item has an empty/absent `payload` — nothing to write)
 //          `skipped_validation` = items where the OC gate could not run every
@@ -125,6 +126,9 @@ export default async function handler(req) {
           endpoint: String(it.endpoint || ''),
           payload: it.payload ?? {},
           source: src && typeof src === 'object' && Object.keys(src).length ? src : null,
+          expectedNewIds: it.expectedNewIds ?? [],
+          appendOnly: it.appendOnly === true,
+          acceptPreexistingOverCap: it.acceptPreexistingOverCap === true,
         })
         return {
           passed: v.passed === true,
@@ -154,6 +158,9 @@ export default async function handler(req) {
         payload: it.payload ?? {},
         before: it.before ?? {},
         source: it.source ?? it.original ?? null,
+        expectedNewIds: Array.isArray(it.expectedNewIds) ? it.expectedNewIds : [],
+        appendOnly: it.appendOnly === true,
+        acceptPreexistingOverCap: it.acceptPreexistingOverCap === true,
         validation,                                   // OC's — authoritative
         dsh_validation: dsh,                           // what DSH claimed
         validation_mismatch: dsh.passed != null && dsh.passed !== validation.passed,

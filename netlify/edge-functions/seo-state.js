@@ -15,7 +15,10 @@
 //   { op: 'languages' }                       -> { langs: [{code,label}] }
 //   { op: 'content_page', kind, lang, page }  -> { rows, has_more }   kind: 'post'|'page'
 //   { op: 'wpml_status', type }               -> { rows }   best-effort; type: 'post'|'page'
-import { requireModule } from './lib/auth.js'
+//   { op: 'corpus', kind, lang, page }         -> read-only 20-row published
+//                                                script-ratio audit (admin only)
+import { requireAdmin, requireModule } from './lib/auth.js'
+import { auditCorpusRow } from '../../seo-control-plane/corpus-language.mjs'
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -65,6 +68,45 @@ export default async function handler(req) {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126 Safari/537.36',
   }
   const wp = (path) => fetch(`${BASE}/wp-json/${path}`, { headers })
+
+  // Bounded, read-only corpus sweep. The caller paginates until has_more is
+  // false, collecting flagged rows; never hold the entire site in an edge
+  // request. Unlike payload validation this sees PRE-EXISTING translations.
+  if (body.op === 'corpus') {
+    const admin = await requireAdmin(req)
+    if (!admin.ok) return admin.response
+    const kind = body.kind
+    const lang = body.lang
+    const page = Number(body.page ?? 1)
+    if (!['post', 'page', 'product'].includes(kind) || !['en', 'es', 'fr', 'ja', 'zh-hant', 'zh-hans'].includes(lang)
+        || !Number.isInteger(page) || page < 1 || page > 10000) {
+      return json({ error: 'kind, lang, and positive integer page are required' }, 400)
+    }
+    const perPage = 20
+    let response
+    if (kind === 'product') {
+      const key = Deno.env.get('WC_CONSUMER_KEY'), secret = Deno.env.get('WC_CONSUMER_SECRET')
+      if (!key || !secret) return json({ error: 'WooCommerce read credentials are not configured' }, 500)
+      response = await fetch(`${BASE}/wp-json/wc/v3/products?lang=${encodeURIComponent(lang)}&status=publish&per_page=${perPage}&page=${page}`, {
+        headers: { Authorization: `Basic ${btoa(`${key}:${secret}`)}`, 'User-Agent': headers['User-Agent'] },
+      })
+    } else {
+      const type = kind === 'page' ? 'pages' : 'posts'
+      response = await wp(`wp/v2/${type}?lang=${encodeURIComponent(lang)}&status=publish&context=edit&per_page=${perPage}&page=${page}&_fields=id,status,link,content,excerpt,meta`)
+    }
+    if (!response.ok) return json({ error: `Corpus ${kind} fetch failed`, status: response.status }, 502)
+    const items = await response.json().catch(() => null)
+    if (!Array.isArray(items)) return json({ error: 'Unexpected corpus response' }, 502)
+    const rows = items.filter(item => item?.status === 'publish').map(item => auditCorpusRow(item, kind, lang))
+    const totalHeader = response.headers.get('x-wp-total')
+    const total = totalHeader == null ? NaN : Number(totalHeader)
+    return json({ kind, lang, page, scanned: rows.length,
+      total: Number.isFinite(total) && total >= 0 ? total : null,
+      flagged: rows.filter(row => row.flagged),
+      incomplete: rows.filter(row => !row.coverage.elementor_meta_visible || !row.coverage.raw_body_visible)
+        .map(row => ({ id: row.id, coverage: row.coverage })),
+      has_more: items.length === perPage })
+  }
 
   // ── active languages ──────────────────────────────────────────────────────
   if (body.op === 'languages') {

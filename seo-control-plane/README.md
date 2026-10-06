@@ -1,9 +1,9 @@
 # seo-control-plane/ — shared contract artifacts
 
-Reference implementations for **Step 3** of the OC ⟷ DeepSeek Workbench
-control plane (`docs/skills/SEO-CONTROL-PLANE.md`). These are **not** OC app
-code — nothing in `src/` imports them. They are dependency-free ESM that the
-DeepSeek Workbench **vendors verbatim** and runs on its side.
+Reference implementations for the OC ⟷ DeepSeek Workbench control plane
+(`docs/skills/SEO-CONTROL-PLANE.md`). The validator and write wrapper are
+dependency-free ESM that the DeepSeek Workbench **vendors verbatim**; the
+read-only corpus helper is imported by the OC's SEO state edge function.
 
 The OC owns them (they're the SSOT for "what a safe WordPress write looks
 like"). When a new failure mode appears, add a check here, run the tests,
@@ -11,14 +11,16 @@ commit — then the Workbench re-vendors.
 
 | File | What | Runs where |
 |---|---|---|
-| `validate-payload.mjs` | The validation gate. `validatePayload({kind, lang, endpoint, payload, source})` → `{passed, checks:[{name, ok, detail}]}`. Every check maps to a Workbench LESSONS-LEARNED entry (B6, B12, B20, B33/B35, L-09, Rule 4…). | Workbench, before any write; result attached as the `validation` field on each `seo_batches` item. Also re-run server-side by `netlify/functions/seo-batch.js` — the OC's `validation` is authoritative, DSH's is kept as `dsh_validation`. |
-| `safe-write.mjs` | The write wrapper. `safeWrite({get, put, id, endpoint, payload, expectedFields})` → snapshots the entity, writes, re-reads, **returns `ok:false` + `drift` if any field outside `expectedFields` moved** (B52 variation-wipe guard), and `verified:false` + `noop:true` if NOTHING in `expectedFields` moved. Returns a `result` object shaped for `seo_batches`. | Workbench; `get`/`put` are its own `wp-api.mjs` helpers, injected. |
+| `validate-payload.mjs` | The validation gate. Also accepts item-level `expectedNewIds`, `appendOnly`, and `acceptPreexistingOverCap`. Distinguishes growth from unchanged over-cap content and declared appends. | Workbench before a write; OC re-runs it on batch creation. |
+| `safe-write.mjs` | The write wrapper. Re-reads and compares each concrete requested field with its requested value; a changed-but-wrong or empty result is `ok:false`, `verified:false`, `unlanded`. Yoast meta writes require a confirmed indexable invalidation callback. | Workbench; I/O is injected. |
+| `corpus-language.mjs` | Script-ratio audit for *existing* published bodies and Elementor text; shared with `/api/seo-state` `op:'corpus'`. | OC read-only admin route. |
+| `yoast-indexable.mjs` | Guarded WP-CLI deletion of the matching Yoast indexable row after a Yoast meta write lands. | Workbench, with its own `runWpCli(argv)` transport to the WordPress host. |
 | `validate-payload.test.mjs` | `node seo-control-plane/validate-payload.test.mjs` — incident cases covering the known failure modes. | Here (CI / pre-commit). |
 | `safe-write.test.mjs` | `node seo-control-plane/safe-write.test.mjs` — clean write, no-op, drift, write error, Elementor hash change, B52 variation regeneration. | Here (CI / pre-commit). |
 
 ## Vendoring contract
 
-DSH copies `validate-payload.mjs` and `safe-write.mjs` **verbatim** into the
+DSH copies `validate-payload.mjs`, `safe-write.mjs`, and `yoast-indexable.mjs` **verbatim** into the
 Workbench and runs them as its own. The OC's copies are the SSOT: if they ever
 diverge, the OC's wins and DSH re-vendors.
 
@@ -26,13 +28,14 @@ Before trusting a run against a newly vendored copy, check it is byte-identical
 to the hash below. **The hash changes whenever the file does** — when the OC
 ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch.
 
-| File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-03) |
+| File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-06) |
 |---|---|
-| `validate-payload.mjs` | `8ab3fdd35671` |
-| `safe-write.mjs` | `cdd1502769db` |
+| `validate-payload.mjs` | `57e397f1b810` |
+| `safe-write.mjs` | `9802d7c3060c` |
+| `yoast-indexable.mjs` | `28eba647fe55` |
 
 Regenerate with
-`shasum -a 256 seo-control-plane/validate-payload.mjs seo-control-plane/safe-write.mjs`
+`shasum -a 256 seo-control-plane/validate-payload.mjs seo-control-plane/safe-write.mjs seo-control-plane/yoast-indexable.mjs`
 and compare the first 12 characters.
 
 **Only the first 12 characters are recorded, deliberately.** It is the same
@@ -51,20 +54,20 @@ validator, so a stale DSH copy shows up as `validation_mismatch`).
 
 `safeWrite` answers two different things and returns both:
 
-- **`ok`** — *did anything change that I did not ask to change?* No drift, no
-  write error. A no-op satisfies this trivially.
+- **`ok`** — *did the write pass all safety checks?* No drift, no write error,
+  no requested-value mismatch, and (for Yoast meta) confirmed invalidation.
 - **`verified`** — *did the change I asked for actually happen?* False when
   `expectedFields` were declared and **none** of them moved (`noop:true`).
 
-**Callers MUST gate on `verified`, not `ok`.** `ok:true, verified:false` is a
-no-op — a failure to report, not a success. This was the 2026-10-03 defect: an
+**Callers MUST gate on `verified`, not `ok`.** A no-op or wrong read-back is a
+failure to report, not a success. This was the 2026-10-03 defect: an
 item submitted with no `payload` became `{}`, wrote nothing, and returned
 `ok:true / verified:true`, so `seo_batches` reported `{"status":"executed",
 "executed":1,"of":1}`. `seo-batch.js` now rejects an empty payload at `create`
 (400) and its `op:'result'` marks a batch `partial` when any approved item is
 `verified:false`.
 
-When `expectedFields` is empty there is no stated intent, so `verified` falls
+When the payload is empty there is no stated intent, so `verified` falls
 back to `ok` — a no-op alarm is never invented. A result sent without `verified`
 at all (an older DSH) is treated the same way by the OC.
 
@@ -81,7 +84,7 @@ POST /api/seo-batch { op:'create', batch:{ note, items } }        # → pending_
 POST /api/seo-batch { op:'poll' }                                 # → approved batches
 
 for each item where decision === 'approve':
-  r = await safeWrite({ get: wpGet, put: wpPut, id, endpoint, payload, expectedFields })
+  r = await safeWrite({ get: wpGet, put: wpPut, invalidateYoastIndexable, id, endpoint, payload, expectedFields })
   results.push({ index, ...r.result })
   if (!r.verified) STOP the batch and alert       # drift OR a no-op — do not continue
 
@@ -89,8 +92,14 @@ POST /api/seo-batch { op:'result', id, results }                  # → executed
 ```
 
 `expectedFields` uses dotted paths for `meta` (`meta._yoast_wpseo_title`,
-`meta._elementor_data`). Any `*_elementor_data` field is compared by FNV-1a
-hash, not full string.
+`meta._elementor_data`). Layout drift fingerprints use FNV-1a; requested-value
+verification compares the actual full value. For Yoast writes, wire the
+callback to `deleteYoastIndexable({ id, endpoint, runWpCli })`; `runWpCli` must
+execute argv on the WordPress host and reject non-zero exits. The helper uses
+`wp db prefix` and deletes only the matching `object_id`, `object_type='post'`,
+and `object_sub_type`, then confirms the row count is zero. A missing or
+unconfirmed callback blocks success; this repo does **not** have WordPress-host
+WP-CLI access and cannot execute that deletion on its own.
 
 ## Three shapes for one entity — and per-field verification (2026-10-03, L-50/L-51/L-52)
 
@@ -112,19 +121,20 @@ all** — a silently smaller check set, not an error.
 
 ### Verification is per FIELD, not per item
 
-`safeWrite` fingerprints the payload as well as `before`/`after` and returns:
+`safeWrite` compares each concrete payload field with `before` and the post-read, and returns:
 
 | field | meaning |
 |---|---|
-| `asked` | the payload supplies a value for this expected field that differs from `before` |
+| `supplied` | the payload supplies a concrete value for this field, even if it matched `before` |
 | `landed` | the value differs after the write |
-| **`unlanded`** | asked, but did not land — **the write silently did not happen** |
+| **`unlanded`** | asked, but the post-read is **not equal to the requested value** — including changed-but-wrong or empty |
 
-`verified = ok && !noop && unlanded.length === 0`. A payload where `description`
+`ok` and `verified` both fail when `unlanded` is nonempty; `verified = ok && !noop`. A payload where `description`
 lands and `meta._elementor_data` silently does not is **not** verified, and the
-error names the field. An absent payload value, or one already equal to `before`,
-asks for nothing — so over-declaring `expectedFields` (a permission list) stays
-safe. `unlanded` is carried into the `seo_batches` item, the `op:'result'` handler
+error names the field. An absent payload value asks for nothing; a supplied
+same-value field must still read back correctly. Over-declaring
+`expectedFields` (a permission list) stays safe. `unlanded` is carried into
+the `seo_batches` item, the `op:'result'` handler
 and the review UI.
 
 ### A source that is present but incomplete is worse than none

@@ -37,6 +37,7 @@ function harness(entity, applyPut) {
   const r = await safeWrite({
     get: h.get, put: h.put, id: 3194, endpoint: 'wc/v3/products/3194',
     payload: { meta: { _yoast_wpseo_title: 'Figura de Rosa - Crystocraft' } },
+    invalidateYoastIndexable: async () => true,
     expectedFields: ['meta._yoast_wpseo_title'],
   })
   expect('clean write: ok', r.ok === true, JSON.stringify(r.drift))
@@ -55,14 +56,54 @@ function harness(entity, applyPut) {
   const r = await safeWrite({
     get: h.get, put: h.put, id: 3194, endpoint: 'wc/v3/products/3194',
     payload: { meta: { _yoast_wpseo_title: 'Same title' } },
+    invalidateYoastIndexable: async () => true,
     expectedFields: ['meta._yoast_wpseo_title'],
   })
-  expect('no-op: ok stays true (no drift)', r.ok === true)
+  expect('no-op: failed despite no unintended drift', r.ok === false && r.drift.length === 0)
   expect('no-op: verified is false', r.verified === false)
   expect('no-op: noop is true', r.noop === true)
   expect('no-op: result carries verified:false + noop:true', r.result.verified === false && r.result.noop === true)
-  expect('no-op: error explains why', /no-op/.test(r.result.error || ''), String(r.result.error))
-  expect('no-op: top-level error explains why', /no-op/.test(r.error || ''), String(r.error))
+  expect('no-op: error names unlanded field', /did not land/.test(r.result.error || ''), String(r.result.error))
+  expect('no-op: top-level error names unlanded field', /did not land/.test(r.error || ''), String(r.error))
+}
+
+// ── no stated intent (no expectedFields) must never invent a no-op ──────
+{
+  const h = harness(mkEntity(), (cur) => ({ ...cur, name: 'Wrong replacement' }))
+  const r = await safeWrite({ get: h.get, put: h.put, id: 3194, endpoint: 'wc/v3/products/3194',
+    payload: { name: 'Requested replacement' }, expectedFields: ['name'] })
+  expect('moved to a different value is not verified', r.ok === false && r.verified === false && r.unlanded.includes('name'), JSON.stringify(r.result))
+}
+{
+  const h = harness(mkEntity(), (cur) => ({ ...cur, name: '' }))
+  const r = await safeWrite({ get: h.get, put: h.put, id: 3194, endpoint: 'wc/v3/products/3194',
+    payload: { name: 'Populated title' }, expectedFields: ['name'] })
+  expect('empty after a populated request fails', r.ok === false && r.unlanded.includes('name'), JSON.stringify(r.result))
+}
+{
+  const h = harness(mkEntity(), (cur) => ({ ...cur, name: 'Corrupted despite same-value request' }))
+  const r = await safeWrite({ get: h.get, put: h.put, id: 3194, endpoint: 'wc/v3/products/3194',
+    payload: { name: 'D0268 Crystal Rose' }, expectedFields: ['name'] })
+  expect('same-value request that mutates to wrong value fails exact read-back',
+    r.ok === false && r.unlanded.includes('name'), JSON.stringify(r.result))
+}
+{
+  const h = harness(mkEntity(), (cur, b) => ({ ...cur, meta: { ...cur.meta, ...b.meta } }))
+  const absent = await safeWrite({ get: h.get, put: h.put, id: 3194, endpoint: 'wp/v2/posts/3194',
+    payload: { meta: { _yoast_wpseo_title: 'New title' } }, expectedFields: ['meta._yoast_wpseo_title'] })
+  expect('Yoast write without invalidator is blocked before PUT', absent.ok === false && /requires invalidate/.test(absent.error))
+  expect('missing invalidator returns reportable batch result', absent.result?.ok === false && absent.result?.verified === false)
+  let invalidations = 0
+  const r = await safeWrite({ get: h.get, put: h.put, id: 3194, endpoint: 'wp/v2/posts/3194',
+    payload: { meta: { _yoast_wpseo_title: 'New title' } }, expectedFields: ['meta._yoast_wpseo_title'],
+    invalidateYoastIndexable: async ({ id }) => { invalidations++; return id === 3194 },
+  })
+  expect('Yoast invalidator runs after meta lands', r.verified === true && invalidations === 1, JSON.stringify(r.result))
+  const failed = await safeWrite({ get: h.get, put: h.put, id: 3194, endpoint: 'wp/v2/posts/3194',
+    payload: { meta: { _yoast_wpseo_title: 'Another title' } }, expectedFields: ['meta._yoast_wpseo_title'],
+    invalidateYoastIndexable: async () => false,
+  })
+  expect('unconfirmed Yoast deletion is failure', failed.ok === false && /invalidation failed/.test(failed.error), JSON.stringify(failed.result))
 }
 
 // ── no stated intent (no expectedFields) must never invent a no-op ──────
@@ -83,6 +124,7 @@ function harness(entity, applyPut) {
   const r = await safeWrite({
     get: h.get, put: h.put, id: 3194, endpoint: 'wc/v3/products/3194',
     payload: { meta: { _yoast_wpseo_title: 'New' } },
+    invalidateYoastIndexable: async () => true,
     expectedFields: ['meta._yoast_wpseo_title'],
   })
   expect('drift: ok false', r.ok === false)
@@ -99,6 +141,7 @@ function harness(entity, applyPut) {
     get: h.get, put: async () => { throw new Error('403 forbidden') },
     id: 3194, endpoint: 'wc/v3/products/3194',
     payload: { meta: { _yoast_wpseo_title: 'New' } },
+    invalidateYoastIndexable: async () => true,
     expectedFields: ['meta._yoast_wpseo_title'],
   })
   expect('write error: ok false', r.ok === false)
@@ -125,6 +168,7 @@ function harness(entity, applyPut) {
   const r = await safeWrite({
     get: h.get, put: h.put, id: 3194, endpoint: 'wc/v3/products/3194',
     payload: { meta: { _yoast_wpseo_title: 'X' } },
+    invalidateYoastIndexable: async () => true,
     expectedFields: ['meta._yoast_wpseo_title'],
   })
   expect('B52: variation drift caught', r.ok === false && r.drift.some(d => d.field === 'variations'),
@@ -189,7 +233,7 @@ const productPut = (keys) => (cur, body) => ({
   expect('per-field: the landing field is not enough to verify the item', r.verified === false, JSON.stringify(r.result))
   expect('per-field: unlanded names the tree', JSON.stringify(r.unlanded) === '["meta._elementor_data"]', JSON.stringify(r.unlanded))
   expect('per-field: not a no-op (something did move)', r.noop === false)
-  expect('per-field: ok stays true (no drift)', r.ok === true)
+  expect('per-field: ok false even without unintended drift', r.ok === false && r.drift.length === 0)
   expect('per-field: error names the field that did not land', /did not land in: meta\._elementor_data/.test(r.result.error || ''), String(r.result.error))
 }
 
@@ -227,6 +271,7 @@ const productPut = (keys) => (cur, body) => ({
   const r = await safeWrite({
     get: h.get, put: h.put, id: 53987, endpoint: 'wc/v3/products/53987?lang=zh-hant',
     payload: { meta_data: [{ key: '_yoast_wpseo_title', value: 'New title' }] },
+    invalidateYoastIndexable: async () => true,
     expectedFields: ['meta._yoast_wpseo_title'],
   })
   expect('product: a silent tree wipe on an undeclared field is drift',

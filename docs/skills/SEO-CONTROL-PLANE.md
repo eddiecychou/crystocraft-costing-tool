@@ -27,6 +27,36 @@ Products are already covered by `woo-sync.js` `catalogue_page` → the **Woo Cat
 
 ## Step 1 — the state store (BUILT)
 
+### Corpus language sweep (2026-10-06)
+
+`/api/seo-state` also accepts admin-only `{ op:'corpus', kind:'product'|'post'|'page', lang, page }`.
+It reads one page of 20 **published** translations and returns `{ scanned,
+flagged:[…], incomplete:[…], has_more }`; call pages from 1 until `has_more:false` for every
+kind/language pair. Products use the server's WooCommerce read credentials;
+posts/pages use the WP Application Password with `context=edit`. It measures
+`post_content`, `post_excerpt`, and Elementor `editor`, `title`, `text`,
+`description_text`, `caption` fields from their authored values, not the
+rendered page. Each flagged row includes its aggregate script counts and
+offending fields. `incomplete` names rows where the REST response did not
+expose Elementor meta or raw WP body, so a partial scan is not mistaken for a
+clean page. Thresholds: zh-hant/zh-hans Han <40%; ja Han+kana <30%;
+es/fr CJK >5%; en CJK >40%. This is a **read-only audit of existing content**,
+not a payload gate and not an automatic repair. An absent/invalid Elementor
+tree is reported; an empty body has no ratio and is not mislabeled English.
+
+Example request (with an admin Firebase ID token):
+`POST /api/seo-state` with `{"op":"corpus","kind":"product","lang":"zh-hant","page":1}`.
+Do not infer a full-site result from one page; record pages scanned and any
+WordPress API failures.
+
+**Vantage notes (measured 2026-10-06):** WordPress cache `Vary` includes
+`User-Agent`, so a Googlebot-shaped fetch and a plain fetch may see different
+cache variants. For a comparison use the same user-agent on both reads and
+verify the public render separately. WCML `by_location` converts a REST
+`regular_price` by requester location (the reported Hong Kong workstation saw
+HKD); it is not the stored database value. Verify price truth through WP-CLI,
+not a location-sensitive REST response.
+
 ### `seo-state` edge function (`/api/seo-state`, admin-gated, read-only)
 Reads via the **WP Application Password** (`WP_USER` / `WP_PASS` — `wp/v2/*` does
 not accept the WooCommerce Consumer Key). Ops:
@@ -126,6 +156,22 @@ DSH `poll` → executes each approved item through **`safeWrite`** (Step 3) →
 
 ## Step 3 — `safeWrite` + `validate-payload` (BUILT — `seo-control-plane/`)
 
+**2026-10-06 gate changes.** `length_anomaly` now means actual >3×/4×
+growth; an unchanged old cap breach is separately
+`over_cap_pre_existing` (blocked unless the item carries
+`acceptPreexistingOverCap:true`, which is recorded in the check detail), while
+any changed/introduced cap breach is `over_cap_introduced` and still blocked.
+An intentional append carries both `appendOnly:true` and
+`expectedNewIds:[…]` on the batch item; the OC re-validation passes them to
+the validator, which requires precisely those new IDs and a matching widget
+count increase. These options are **item metadata**, not WordPress payload
+fields. `safeWrite` now compares each requested concrete field's full read-back
+value with the exact payload (not just before/after movement): wrong or empty
+postmeta yields `ok:false`, `verified:false`, and `unlanded`. A Yoast meta write
+requires the Workbench's WP-CLI-backed indexable invalidation callback after
+the meta read-back lands. Missing/failed callback prevents a verified success.
+The OC still never writes WordPress.
+
 Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
 **vendors them verbatim**. See `seo-control-plane/README.md`.
 
@@ -190,34 +236,38 @@ Dependency-free ESM reference implementations, OC-owned SSOT, the Workbench
   incomplete — a `before` carrying only `_elementor_data` — otherwise reports a
   page's existing `<table>` as newly introduced.
   `node seo-control-plane/validate-payload.test.mjs` covers the known incident
-  cases (126).
+  cases (135 after the 2026-10-06 gate additions).
 - **`safe-write.mjs`** — `safeWrite({ get, put, id, endpoint, payload,
   expectedFields })`. Snapshots the entity → writes → re-reads → returns
   `{ ok:false, drift:[…] }` if any watched field outside `expectedFields`
   changed (plus a dedicated **variation id/price hash** guard for B52 — a
   variable-product save regenerating all variations with no prices). `get`/`put`
   are the Workbench's own `wp-api.mjs` helpers, injected. `*_elementor_data`
-  fields are compared by FNV-1a hash. **New 2026-10-03 (L-44): it also returns
-  `verified` + `noop`** — `ok` answers "did anything *unintended* move?", which
-  a no-op satisfies trivially; `verified:false` with `noop:true` means none of
-  `expectedFields` moved, i.e. the intended change never happened. Callers gate
-  on `verified`, never on `ok` alone. **Verification is per FIELD (L-51):** it
-  fingerprints the payload as well as `before`/`after` and returns **`unlanded`** —
-  the expected fields the payload asked to change that did not move — so a payload
+  fields are fingerprinted by FNV-1a for drift checks; requested-value read-back
+  compares the full value. It returns `verified` + `noop`; callers gate on
+  `verified`, never on `ok` alone. **Verification is per FIELD (L-51):** it
+  returns **`unlanded`** — payload fields whose post-read differs from the
+  exact requested value, even if something moved — so a payload
   where `description` lands and `meta._elementor_data` silently does not is
-  **not** verified, and the error names the field. `get()` also resolves a dotted
-  `meta.<key>` from WooCommerce's `meta_data[]` (L-50). Returns a `result` object
+  **not** verified, and the error names the field. A mismatch makes **both**
+  `ok` and `verified` false. Yoast meta writes require `invalidateYoastIndexable`
+  to confirm the matching indexable row was deleted after the value landed;
+  the Workbench supplies WP-CLI transport using `yoast-indexable.mjs`. `get()`
+  also resolves a dotted `meta.<key>` from WooCommerce's `meta_data[]` (L-50). Returns a `result` object
   shaped for the `seo_batches` `result` op. **No Workbench script writes WordPress any other
   way.**
 
-This directory is also the **vendoring contract**: DSH copies both files
+This directory is also the **vendoring contract**: DSH copies the validator,
+write wrapper, and Yoast invalidation helper
 verbatim and verifies the sha256[:12] fingerprint recorded in
-`seo-control-plane/README.md` (`validate-payload.mjs` = `8ab3fdd35671`,
-`safe-write.mjs` = `cdd1502769db` after the 2026-10-03 fixes). The
-OC tells DSH when either changes (`op:'create'` re-runs the vendored validator
-server-side, so a stale copy shows up as `validation_mismatch`). Both files have
-their own `node`-runnable test: `validate-payload.test.mjs` (126 cases) and
-`safe-write.test.mjs` (36 cases), plus `qa/seo-batch-guard.test.mjs` (13) for the
+`seo-control-plane/README.md` (`validate-payload.mjs` = `57e397f1b810`,
+`safe-write.mjs` = `9802d7c3060c`,
+`yoast-indexable.mjs` = `28eba647fe55` after the 2026-10-06 changes). The
+OC tells DSH when a vendored file changes (`op:'create'` re-runs the validator
+server-side, so a stale copy shows up as `validation_mismatch`). Local tests:
+`validate-payload.test.mjs` (135 assertions), `safe-write.test.mjs` (43),
+`corpus-language.test.mjs` (5), `yoast-indexable.test.mjs` (2), and
+`qa/seo-batch-guard.test.mjs` (13) for the
 OC-side guards. When a fix changes a *class* of bug, grep for the pattern across
 the file before declaring it done — L-47 is what happens otherwise.
 
@@ -245,6 +295,7 @@ CSV export of the drift/failed rows in both modes.
 
 | Date | Change |
 |---|---|
+| 2026-10-06 | Corpus script-ratio audit, split cap/growth checks with explicit pre-existing acknowledgement, declared Elementor append intent, exact per-field write read-back, and a fail-closed Workbench Yoast indexable deletion contract. Two vantage notes: User-Agent cache variants and WCML `by_location` REST price conversion. See the sections above and `seo-control-plane/README.md` for current hashes. |
 | 2026-09-02 | Steps 1–4 built: `seo_state`/`seo_state_history`, `seo_batches` + `seo-batch` + `/seo-review`, `seo-control-plane/` (`validate-payload` + `safe-write`), `/seo-reconcile`. |
 | 2026-09-23 | **L-29** — `placeholder_markers` extended to fr/ja/zh-hant (was en/es/zh-hans only). |
 | 2026-10-03 | **Two control-plane defects raised by DSH while staging a WordPress write, both fixed here.** (1) A payload-less item was accepted, wrote nothing, and returned `ok:true/verified:true` → the batch reported `executed`. `create` now rejects an empty payload (400), and `safeWrite` returns `verified`/`noop` (gate on `verified`, not `ok`) with `op:'result'` marking such a batch `partial`. (2) Image/heading parity was unsatisfiable for Elementor edits because a live entity's `.rendered` page was compared against a raw payload body — both sides now go through `contentString()`, which prefers `.raw`, as do `no_new_scripts`/`no_new_tables`. DSH re-vendors both files (sha256[:12] fingerprint in `seo-control-plane/README.md`) and drops its `before.content` workaround. See `LESSONS-LEARNED.md` L-44 / L-45. |

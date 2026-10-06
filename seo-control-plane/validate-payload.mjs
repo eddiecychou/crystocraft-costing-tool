@@ -274,7 +274,7 @@ function normalizeEntity(obj) {
 // payload that passed before. `skipped` > 0 is what tells a caller its pass was
 // PARTIAL — previously indistinguishable from a full one (L-48). A check never
 // disappears without a reason in `checks`.
-export function validatePayload({ kind, lang, endpoint = '', payload = {}, source = null } = {}) {
+export function validatePayload({ kind, lang, endpoint = '', payload = {}, source = null, expectedNewIds = [], appendOnly = false, acceptPreexistingOverCap = false } = {}) {
   const checks = []
   const add = (name, ok, detail = '') => checks.push({ name, ok, detail })
   const skip = (name, detail) => add(name, null, detail)
@@ -328,31 +328,53 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
       add('element_ids_preserved', false, why)
       add('length_anomaly', false, why)
     } else {
+      const newIdsValid = Array.isArray(expectedNewIds) && expectedNewIds.length <= 100 && expectedNewIds.every(id => typeof id === 'string' && id.length > 0)
+        && new Set(expectedNewIds).size === expectedNewIds.length
+      const expectedIds = new Set(newIdsValid ? expectedNewIds : [])
       const pw = [...walk(ed)].filter(isWidget).length
       const sw = [...walk(srcEd)].filter(isWidget).length
-      add('widget_count', pw === sw, pw === sw ? '' : `payload ${pw} widgets vs source ${sw} (stale layout? B20)`)
+      const wantedWidgets = sw + (appendOnly ? expectedIds.size : 0)
+      add('widget_count', newIdsValid && pw === wantedWidgets,
+        newIdsValid && pw === wantedWidgets ? '' : `payload ${pw} widgets vs expected ${wantedWidgets} (appendOnly=${!!appendOnly}; B20)`)
 
       const pIds = elementIds(ed), sIds = elementIds(srcEd)
       const introduced = [...pIds].filter(id => !sIds.has(id))
-      add('element_ids_preserved', introduced.length === 0,
-        introduced.length ? `payload introduces ${introduced.length} element id(s) not in source: ${introduced.slice(0, 5).join(', ')}` : '')
+      const missing = [...sIds].filter(id => !pIds.has(id))
+      const unexpected = introduced.filter(id => !expectedIds.has(id))
+      const declaredAbsent = [...expectedIds].filter(id => !introduced.includes(id))
+      add('element_ids_preserved', newIdsValid && missing.length === 0 && unexpected.length === 0 && declaredAbsent.length === 0,
+        missing.length || unexpected.length || declaredAbsent.length
+          ? `missing existing: ${missing.slice(0, 5).join(', ') || 'none'}; undeclared new: ${unexpected.slice(0, 5).join(', ') || 'none'}; declared but absent: ${declaredAbsent.slice(0, 5).join(', ') || 'none'}`
+          : (newIdsValid ? '' : 'expectedNewIds must be a unique array of non-empty strings'))
 
       // length anomaly per widget vs the source widget of the same id
       const srcById = new Map()
       for (const w of widgetTexts(srcEd)) srcById.set(w.id + '|' + w.key, w.text)
-      const anomalies = []
+      const anomalies = [], preexisting = [], introducedCap = []
       for (const w of widgetTexts(ed)) {
         const s = srcById.get(w.id + '|' + w.key)
-        if (s == null) continue
         const isEditor = w.key === 'editor' || w.key === 'description_text'
         const capChars = isEditor ? 2000 : 200
         const capRatio = isEditor ? 3 : 4
-        if (w.text.length > capChars || (s.length > 0 && w.text.length > s.length * capRatio)) {
+        if (s == null) {
+          if (w.text.length > capChars) introducedCap.push(`${w.id}.${w.key}: new ${w.text.length} chars (cap ${capChars})`)
+          continue
+        }
+        if (s.length > 0 && w.text.length > s.length * capRatio) {
           anomalies.push(`${w.id}.${w.key}: ${s.length}→${w.text.length}`)
+        }
+        if (w.text.length > capChars) {
+          const entry = `${w.id}.${w.key}: ${s.length}→${w.text.length} (cap ${capChars})`
+          if (s.length > capChars && w.text === s) preexisting.push(entry)
+          else introducedCap.push(entry)
         }
       }
       add('length_anomaly', anomalies.length === 0,
         anomalies.length ? `hallucination-scale growth (B6): ${anomalies.slice(0, 4).join('; ')}` : '')
+      if (preexisting.length) add('over_cap_pre_existing', !!acceptPreexistingOverCap,
+        `${acceptPreexistingOverCap ? 'acknowledged' : 'requires acceptPreexistingOverCap:true'} — ${preexisting.slice(0, 4).join('; ')}`)
+      if (introducedCap.length) add('over_cap_introduced', false,
+        `over cap after write: ${introducedCap.slice(0, 4).join('; ')}`)
     }
   }
 

@@ -30,14 +30,16 @@ in prose handoffs — is retired.
                 (You don't call this; you ask the owner to, or confirm it's done.)
 
 2. PREPARE      For each intended write, build an item:
-                  { id, kind, lang, endpoint, summary, payload, before, source, validation }
+                  { id, kind, lang, endpoint, summary, payload, before, source,
+                    expectedNewIds?, appendOnly?, acceptPreexistingOverCap?, validation }
                 - payload  = the EXACT WP REST body you would have sent
                 - before   = a snapshot of the fields `payload` touches, read live NOW
                 - source   = the EN-original entity this was translated/derived from.
                              SEND IT on every translation item — without it the OC's
                              re-validation (below) can't run the structure / parity /
                              brand-preservation checks.
-                - validation = validatePayload({ kind, lang, endpoint, payload, source })
+                - validation = validatePayload({ kind, lang, endpoint, payload, source,
+                    expectedNewIds, appendOnly, acceptPreexistingOverCap })
 
 3. VALIDATE     If validation.passed === false → DO NOT include a live write for it.
                 Fix the payload (re-translate, re-anchor) and re-validate.
@@ -70,11 +72,14 @@ in prose handoffs — is retired.
 6. POLL         POST /api/seo-batch { op: 'poll' }  → batches where status==='approved'.
 
 7. EXECUTE      For each item where decision === 'approve':
-                  r = await safeWrite({ get, put, id, endpoint, payload, expectedFields })
+                  r = await safeWrite({ get, put, invalidateYoastIndexable,
+                    id, endpoint, payload, expectedFields })
                   if (!r.verified) → STOP the whole batch, alert the owner.
                 `r.ok` alone is NOT enough: it only proves nothing UNINTENDED
-                moved. `r.verified:false` with `r.noop:true` means the intended
-                change never happened (nothing in expectedFields moved) — a
+                moved in older vendored wrappers. In the 2026-10-06 wrapper,
+                `ok` ALSO fails when a requested field reads back changed-but-wrong,
+                empty, or Yoast invalidation is unconfirmed. `r.verified:false`
+                with `r.noop:true` means the intended change never happened — a
                 failure to report, not a success. `r.drift` says what else moved.
                 Collect { index, ...r.result } for every executed item.
                 NOTE: `poll` downgrades any approved item that failed the OC's
@@ -298,10 +303,15 @@ forgot to list it.
 
 ```js
 import { safeWrite } from './safe-write.mjs'   // vendored verbatim
+import { deleteYoastIndexable } from './yoast-indexable.mjs'
 
 const r = await safeWrite({
   get: (id) => wpGet(`wc/v3/products/${id}?lang=fr`),   // your wp-api.mjs GET
   put: (endpoint, body) => wpWrite(endpoint, body),      // your wp-api.mjs PUT/POST
+  // Required for _yoast_wpseo_* writes. runWpCli executes argv on the WP host,
+  // rejects non-zero exits, and returns stdout; no shell interpolation.
+  invalidateYoastIndexable: ({ id, endpoint }) =>
+    deleteYoastIndexable({ id, endpoint, runWpCli }),
   id,
   endpoint,
   payload,
@@ -322,6 +332,33 @@ results.push({ index: it.index, ...r.result })
 `safeWrite` does: pre-read → `put` → post-read → compare. It catches B52
 (variable-product save regenerating variations with empty prices) via a
 dedicated variation id/price-hash guard.
+
+**2026-10-06 gates:** The post-read must equal each concrete value in the
+payload, not merely differ from `before`; a changed-but-wrong value and an
+empty field requested as populated are failures. `meta_data[]` is checked per
+key. For intentional Elementor appends, put `expectedNewIds: ['new-id']` and
+`appendOnly: true` on the batch item **and** pass them to `validatePayload`;
+the OC re-validation reads those same item fields. An unchanged over-cap field
+is reported as `over_cap_pre_existing`; use
+`acceptPreexistingOverCap: true` to record an explicit acknowledgement. It
+never waives a new/changed over-cap value. The `length_anomaly` result now
+means actual ratio growth, not an unchanged old breach.
+
+For `_yoast_wpseo_*` writes, the Workbench must vendor
+`yoast-indexable.mjs`, import `deleteYoastIndexable`, and supply a WP-CLI
+transport. `safeWrite` blocks a Yoast write if the callback is missing and
+fails the result if deletion is not confirmed. The OC does not have WP-CLI
+access and does not delete WordPress rows itself. After the callback, fetch
+the public render to confirm Yoast rebuilt the intended title/description.
+
+For existing untranslated content, use admin-only `/api/seo-state`
+`{op:'corpus',kind,lang,page}` (20 published rows per page; continue until
+`has_more:false`). The payload validator cannot discover old content. The
+corpus response reports only flagged rows and the scanned count. Compare
+public page variants with the **same User-Agent**: the reported WordPress
+`Vary` includes `User-Agent`. WCML `by_location` can convert REST
+`regular_price` to HKD from a Hong Kong workstation; use WP-CLI for the
+stored price, never the location-dependent REST value.
 
 ---
 

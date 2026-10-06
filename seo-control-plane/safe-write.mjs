@@ -8,18 +8,18 @@
 // later).
 //
 // `ok` and `verified` are two different questions and BOTH are returned:
-//   ok       — "did anything change that I did not ask to change?" (no drift,
-//              no write error). A no-op satisfies this trivially.
-//   verified — "did the change I asked for actually happen?" False when
-//              expectedFields were declared and NONE of them moved (`noop`), OR
-//              when a field the payload asked to change did not (`unlanded`).
+//   ok       — no drift, write error, requested-value mismatch, or unconfirmed
+//              Yoast indexable invalidation.
+//   verified — ok AND the declared write was not a no-op.
 // Callers MUST treat `verified:false` as a failure to report even when `ok` is
 // true (2026-10-03: a payload-less item returned ok:true/verified:true having
 // written nothing).
 //
-// Pure except for the two injected I/O functions, so it's testable:
+// Pure except for injected I/O functions, so it's testable:
 //   get(id)              -> the full entity object (Workbench's wp-api.mjs GET)
 //   put(endpoint, body)  -> applies the write (Workbench's wp-api.mjs PUT/POST)
+//   invalidateYoastIndexable({id,endpoint}) -> deletes the matching indexable
+//                                              row via WP-CLI; returns true
 //
 // Usage:
 //   import { safeWrite } from './safe-write.mjs'
@@ -61,7 +61,10 @@ const SAFETY_FIELDS = [
 // this is what makes that watch work for a product.
 function get(obj, path) {
   const direct = path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj)
-  if (direct !== undefined) return direct
+  if (direct !== undefined) {
+    if (['content', 'excerpt', 'title'].includes(path) && direct && typeof direct === 'object' && 'raw' in direct) return direct.raw
+    return direct
+  }
   const m = /^meta\.(.+)$/.exec(path)
   if (m && Array.isArray(obj?.meta_data)) {
     const hit = obj.meta_data.find(x => x && x.key === m[1])
@@ -69,6 +72,28 @@ function get(obj, path) {
   }
   return direct
 }
+
+// Verify the concrete keys in the write body, not only that something moved.
+// WooCommerce's meta_data is a partial list; comparing the whole returned list
+// would falsely fail because the REST response includes unrelated entries.
+function payloadPaths(payload) {
+  const paths = []
+  for (const [key, value] of Object.entries(payload || {})) {
+    if (key === 'meta' && value && typeof value === 'object') {
+      for (const name of Object.keys(value)) paths.push(`meta.${name}`)
+    } else if (key === 'meta_data' && Array.isArray(value)) {
+      for (const item of value) if (typeof item?.key === 'string') paths.push(`meta.${item.key}`)
+    } else paths.push(key)
+  }
+  return [...new Set(paths)]
+}
+
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+const yoastWrite = payload => payloadPaths(payload).some(path => /^meta\._yoast_wpseo_/.test(path))
+const failure = (error, extra = {}) => ({
+  ok: false, verified: false, noop: false, unlanded: [], error, ...extra,
+  result: { ok: false, after: null, verified: false, noop: false, unlanded: [], error },
+})
 
 // Reduce an entity to a comparable fingerprint of the fields we care about.
 function fingerprint(entity, fields) {
@@ -96,15 +121,19 @@ function variationHash(entity) {
   return entity.variations.map(v => `${v.id}:${v.price ?? ''}:${v.stock_status ?? ''}`).sort().join('|')
 }
 
-export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload, expectedFields = [], allowVariationChange = false }) {
+export async function safeWrite({ get: getFn, put: putFn, invalidateYoastIndexable, id, endpoint, payload, expectedFields = [], allowVariationChange = false }) {
   if (typeof getFn !== 'function' || typeof putFn !== 'function') {
-    return { ok: false, error: 'safeWrite needs get() and put() functions' }
+    return failure('safeWrite needs get() and put() functions')
   }
-  const watch = [...new Set([...expectedFields, ...SAFETY_FIELDS, 'meta._elementor_data'])]
+  if (yoastWrite(payload) && typeof invalidateYoastIndexable !== 'function') {
+    return failure('Yoast meta write requires invalidateYoastIndexable() before writing')
+  }
+  const paths = payloadPaths(payload)
+  const watch = [...new Set([...expectedFields, ...paths, ...SAFETY_FIELDS, 'meta._elementor_data'])]
 
   let before
-  try { before = await getFn(id) } catch (e) { return { ok: false, error: `pre-read failed: ${e?.message || e}` } }
-  if (!before || typeof before !== 'object') return { ok: false, error: 'pre-read returned no entity' }
+  try { before = await getFn(id) } catch (e) { return failure(`pre-read failed: ${e?.message || e}`) }
+  if (!before || typeof before !== 'object') return failure('pre-read returned no entity')
 
   const beforeFp = fingerprint(before, watch)
   const beforeVarH = variationHash(before)
@@ -113,7 +142,7 @@ export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload,
   try { await putFn(endpoint, payload) } catch (e) { writeErr = e?.message || String(e) }
 
   let after
-  try { after = await getFn(id) } catch (e) { return { ok: false, error: `post-read failed: ${e?.message || e}`, writeError: writeErr, before: beforeFp } }
+  try { after = await getFn(id) } catch (e) { return failure(`post-read failed: ${e?.message || e}`, { writeError: writeErr, before: beforeFp }) }
   const afterFp = fingerprint(after, watch)
   const afterVarH = variationHash(after)
 
@@ -122,7 +151,7 @@ export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload,
   // Declaring WooCommerce's whole `meta_data` list covers the Elementor tree
   // inside it — otherwise the always-on `meta._elementor_data` watch reports the
   // change the caller just declared as drift.
-  if (expected.has('meta_data')) expected.add('meta._elementor_data')
+  if (expected.has('meta_data')) for (const path of watch) if (path.startsWith('meta.')) expected.add(path)
   const drift = []
   for (const f of watch) {
     if (expected.has(f)) continue
@@ -134,37 +163,37 @@ export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload,
     && !expectedFields.some(f => /^(variations|price|regular_price|sale_price|stock)/.test(f))
   if (variationDrift) drift.push({ field: 'variations', before: '(hash) ' + beforeVarH?.slice(0, 60), after: '(hash) ' + afterVarH?.slice(0, 60), note: 'B52: variation id/price set changed' })
 
-  const ok = !writeErr && drift.length === 0
-
-  // Verification is PER FIELD, not per item (2026-10-03). `ok` above answers "did
-  // anything change that I did not ask to change?"; it cannot answer "did the
-  // change I asked for happen?" — and a no-op trivially satisfies it. But "at
+  // Verification is PER FIELD, not per item (2026-10-03). Drift alone cannot
+  // answer "did the change I asked for happen?" — a no-op passes it. But "at
   // least ONE expected field moved" is still not that question: a payload where
   // `description` lands and `meta._elementor_data` silently does not reported
   // verified:true, and four product fixes were called clean while their Elementor
   // trees were untouched.
   //
-  // A field is REQUESTED when the payload actually supplies a value for it that
-  // differs from `before`. An absent payload value, or one already equal to
-  // `before`, asks for nothing and is not held against the write — so
-  // over-declaring expectedFields stays safe (it is a permission list), and an
-  // idempotent write is not a false alarm.
+  // Every concrete payload path is checked against its requested value, even
+  // if it was already equal to `before`. Otherwise a write that corrupts an
+  // already-correct field could pass merely because it was not "asked" to move.
   //
-  //   asked     — the payload asks for a change
   //   landed    — the value differs after the write
-  //   unlanded  — asked but did not land  -> the write silently did not happen
+  //   unlanded  — after is not EXACTLY the supplied value (even if it moved)
   //   noop      — declared fields, and nothing moved at all
   //
-  // When no expectedFields are declared there is no stated intent to check, so
-  // `verified` stays equal to `ok` (never invent a no-op alarm).
-  const payFp = fingerprint(payload, watch)
-  const intended = expectedFields.map(f => (/_elementor_data$/.test(f) ? 'meta._elementor_data' : f))
+  // With an empty payload, there is no stated intent and no no-op alarm.
+  const intended = paths
   const moved = (f) => JSON.stringify(beforeFp[f]) !== JSON.stringify(afterFp[f])
-  const asked = intended.filter(f => get(payload, f) !== undefined && JSON.stringify(payFp[f]) !== JSON.stringify(beforeFp[f]))
   const landed = intended.filter(moved)
-  const unlanded = asked.filter(f => !moved(f))
+  const unlanded = intended.filter(f => get(payload, f) !== undefined && !same(get(payload, f), get(after, f)))
   const noop = intended.length > 0 && landed.length === 0
-  const verified = ok && !noop && unlanded.length === 0
+  let invalidateError = null
+  if (!writeErr && drift.length === 0 && unlanded.length === 0 && yoastWrite(payload)) {
+    try {
+      const invalidated = await invalidateYoastIndexable({ id, endpoint })
+      if (invalidated !== true) throw new Error('callback did not confirm deletion')
+    }
+    catch (e) { invalidateError = `Yoast indexable invalidation failed: ${e?.message || e}` }
+  }
+  const ok = !writeErr && drift.length === 0 && unlanded.length === 0 && !invalidateError
+  const verified = ok && !noop
   const noopErr = 'no-op: none of the expected fields changed'
   const unlandedErr = `requested change did not land in: ${unlanded.join(', ')}`
 
@@ -175,8 +204,9 @@ export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload,
     unlanded,
     error: writeErr
       || (drift.length ? `unexpected drift in ${drift.length} field(s)` : null)
-      || (noop ? noopErr : null)
-      || (unlanded.length ? unlandedErr : null),
+      || (unlanded.length ? unlandedErr : null)
+      || invalidateError
+      || (noop ? noopErr : null),
     drift,
     before: beforeFp,
     after: afterFp,
@@ -189,8 +219,9 @@ export async function safeWrite({ get: getFn, put: putFn, id, endpoint, payload,
       unlanded,
       error: writeErr
         || (drift.length ? JSON.stringify(drift).slice(0, 400) : null)
-        || (noop ? noopErr : null)
-        || (unlanded.length ? unlandedErr : null),
+        || (unlanded.length ? unlandedErr : null)
+        || invalidateError
+        || (noop ? noopErr : null),
     },
   }
 }
