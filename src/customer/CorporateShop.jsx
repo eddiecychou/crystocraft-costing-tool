@@ -12,6 +12,7 @@ import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 import { screenSensitiveImages } from '../sensitiveImages'
 import CardImageCarousel from '../components/CardImageCarousel'
+import useInViewOnce from '../hooks/useInViewOnce'
 
 const PAGE_SIZE = 24
 
@@ -244,6 +245,7 @@ export default function CorporateShop({ profile }) {
 }
 
 function CorpCard({ p, cur, rates, profile, images: initialImages, sensitive }) {
+  const [cardRef, inView] = useInViewOnce()
   const [images, setImages] = useState(initialImages)
   const galleryRequested = useRef(false)
   useEffect(() => {
@@ -259,6 +261,7 @@ function CorpCard({ p, cur, rates, profile, images: initialImages, sensitive }) 
   const [fromPrice, setFromPrice] = useState(undefined) // undefined=loading, null=none
 
   useEffect(() => {
+    if (!inView) return
     const uid = profile?.id || auth.currentUser?.uid
     if (!uid) { setFromPrice(null); return }
     getDoc(doc(db, 'products', p.id, 'customer_prices', uid))
@@ -269,10 +272,15 @@ function CorpCard({ p, cur, rates, profile, images: initialImages, sensitive }) 
         setFromPrice(hkds.length ? convertFromHKD(Math.min(...hkds), profile, rates) : null)
       })
       .catch(() => setFromPrice(null))
-  }, [p.id, cur, rates, profile?.id, profile?.fx_rate])
+  }, [inView, p.id, cur, rates, profile?.id, profile?.fx_rate])
+
+  useEffect(() => {
+    if (inView) loadGallery()
+  }, [inView])
 
   return (
     <Link id={`corp-card-${p.id}`} to={`/shop/corporate/${p.id}`}
+      ref={cardRef}
       onMouseEnter={loadGallery} onFocus={loadGallery}
       onClick={() => sessionStorage.setItem('cs-last-id', p.id)}
       className="mosaic-tile flex flex-col group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">

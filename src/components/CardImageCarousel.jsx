@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { cardImageUrl } from '../cardImageUrl'
 
 // Swipeable image carousel for a PRODUCT CARD in a catalogue grid — distinct
 // from ImageLightbox (the full-screen viewer on a product's DETAIL page).
@@ -16,10 +17,22 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 // should still open the product.
 export default function CardImageCarousel({ images, alt, fallback, imgClassName = 'object-cover', onImageError }) {
   const [index, setIndex] = useState(0)
+  const [originalFallbacks, setOriginalFallbacks] = useState({})
   const touch = useRef(null)      // { x, y, moved }
   const count = images.length
 
   if (!count) return fallback
+
+  const originalUrl = images[index].url
+  const optimizedUrl = cardImageUrl(originalUrl)
+  const src = originalFallbacks[originalUrl] ? originalUrl : optimizedUrl
+  const handleImageError = () => {
+    if (src !== originalUrl) {
+      setOriginalFallbacks(current => ({ ...current, [originalUrl]: true }))
+      return
+    }
+    onImageError?.()
+  }
 
   const go = (e, delta) => {
     e.preventDefault(); e.stopPropagation()
@@ -52,7 +65,7 @@ export default function CardImageCarousel({ images, alt, fallback, imgClassName 
   return (
     <div className="relative w-full h-full group"
          onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <img src={images[index].url} alt={alt || ''} loading="lazy" onError={onImageError}
+      <img src={src} alt={alt || ''} loading="lazy" decoding="async" onError={handleImageError}
            className={`w-full h-full select-none ${imgClassName}`} draggable={false} />
 
       {count > 1 && (

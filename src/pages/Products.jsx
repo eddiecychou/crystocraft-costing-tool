@@ -7,6 +7,7 @@ import LoadingBar from '../components/LoadingBar'
 import { Package } from 'lucide-react'
 import CardImageCarousel from '../components/CardImageCarousel'
 import { buildCardImages } from '../cardImages'
+import useInViewOnce from '../hooks/useInViewOnce'
 
 const PAGE_SIZE = 24
 
@@ -121,6 +122,7 @@ const fmtTierPrice = (val, cur) => {
 }
 
 function ProductCard({ product: p }) {
+  const [cardRef, inView] = useInViewOnce()
   const publishedTiers = Array.isArray(p.pricing_summary) ? p.pricing_summary : null
   const [tiers, setTiers] = useState(publishedTiers)
   const tiersRequested = useRef(false)
@@ -160,11 +162,17 @@ function ProductCard({ product: p }) {
       .catch(() => setImages(p.heroImage ? [{ url: p.heroImage, caption: '' }] : []))
   }
 
+  useEffect(() => {
+    if (!inView) return
+    loadLegacyTiers()
+    loadGallery()
+  }, [inView])
+
   return (
     <Link to={`/products/${p.id}`} id={`product-card-${p.id}`}
       onMouseEnter={() => { loadLegacyTiers(); loadGallery() }}
       onFocus={() => { loadLegacyTiers(); loadGallery() }}
-      ref={el => { if (el) loadLegacyTiers() }}
+      ref={cardRef}
       onClick={() => sessionStorage.setItem('products-last-id', p.id)}
       className={`card hover:border-brand-300 transition-colors overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden relative">

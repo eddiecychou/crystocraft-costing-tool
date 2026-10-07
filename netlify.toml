@@ -5,6 +5,12 @@
 [build.environment]
   NODE_VERSION = "20"
 
+[images]
+  remote_images = [
+    'https://firebasestorage\.googleapis\.com/.*',
+    'https://storage\.googleapis\.com/.*',
+  ]
+
 # Regular Node Lambda functions — distinct from netlify/edge-functions/
 # (Deno). Only used where the Deno edge runtime genuinely can't do the job:
 # SU-07A's portal invitation flow needs firebase-admin (Node-only) to create
