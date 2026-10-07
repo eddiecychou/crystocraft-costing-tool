@@ -14,7 +14,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 // navigates to the product instead of changing the image. A tap that ISN'T
 // a swipe still falls through to the Link on purpose — tapping the photo
 // should still open the product.
-export default function CardImageCarousel({ images, alt, fallback, imgClassName = 'object-cover' }) {
+export default function CardImageCarousel({ images, alt, fallback, imgClassName = 'object-cover', onImageError }) {
   const [index, setIndex] = useState(0)
   const touch = useRef(null)      // { x, y, moved }
   const count = images.length
@@ -52,7 +52,7 @@ export default function CardImageCarousel({ images, alt, fallback, imgClassName 
   return (
     <div className="relative w-full h-full group"
          onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <img src={images[index].url} alt={alt || ''} loading="lazy"
+      <img src={images[index].url} alt={alt || ''} loading="lazy" onError={onImageError}
            className={`w-full h-full select-none ${imgClassName}`} draggable={false} />
 
       {count > 1 && (

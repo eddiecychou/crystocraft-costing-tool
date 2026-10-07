@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
@@ -8,12 +8,16 @@ import { Package } from 'lucide-react'
 import CardImageCarousel from '../components/CardImageCarousel'
 import { buildCardImages } from '../cardImages'
 
+const PAGE_SIZE = 24
+
 export default function Products() {
   const [products, setProducts] = useState([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]         = useState(() => sessionStorage.getItem('pf-search') || '')
   const [filterCat, setFilterCat]   = useState(() => sessionStorage.getItem('pf-cat')    || '')
   const [filterStatus, setFilterStatus] = useState(() => sessionStorage.getItem('pf-status') || '')
+  const [visibleCount, setVisibleCount] = useState(() => Number(sessionStorage.getItem('pf-visible')) || PAGE_SIZE)
+  const filtersMounted = useRef(false)
 
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
@@ -44,6 +48,13 @@ export default function Products() {
     const matchStatus = !filterStatus || productStatusOf(p.status).value === filterStatus
     return matchSearch && matchCat && matchStatus
   })
+  const visible = filtered.slice(0, visibleCount)
+
+  useEffect(() => {
+    if (!filtersMounted.current) { filtersMounted.current = true; return }
+    setVisibleCount(PAGE_SIZE)
+    sessionStorage.setItem('pf-visible', String(PAGE_SIZE))
+  }, [search, filterCat, filterStatus])
 
   return (
     <div className="p-6">
@@ -85,7 +96,19 @@ export default function Products() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(p => <ProductCard key={p.id} product={p} />)}
+          {visible.map(p => <ProductCard key={p.id} product={p} />)}
+        </div>
+      )}
+      {visible.length < filtered.length && (
+        <div className="flex justify-center mt-6">
+          <button type="button" className="btn-secondary text-sm"
+            onClick={() => setVisibleCount(n => {
+              const next = n + PAGE_SIZE
+              sessionStorage.setItem('pf-visible', String(next))
+              return next
+            })}>
+            Load more ({filtered.length - visible.length} remaining)
+          </button>
         </div>
       )}
     </div>
@@ -98,21 +121,30 @@ const fmtTierPrice = (val, cur) => {
 }
 
 function ProductCard({ product: p }) {
-  const [tiers, setTiers] = useState(null)
+  const publishedTiers = Array.isArray(p.pricing_summary) ? p.pricing_summary : null
+  const [tiers, setTiers] = useState(publishedTiers)
+  const tiersRequested = useRef(false)
   const status = productStatusOf(p.status)
   const isRetired = status.value === 'retired'
 
-  useEffect(() => {
+  // Newly published products carry the small card-ready price summary on the
+  // parent document. Legacy products fetch their tiers only when the card is
+  // about to be seen, rather than all catalogue cards querying at once.
+  const loadLegacyTiers = () => {
+    if (tiers !== null || tiersRequested.current) return
+    tiersRequested.current = true
     getDocs(query(collection(db, 'products', p.id, 'pricing_tiers'), orderBy('quantity')))
       .then(snap => setTiers(snap.docs.map(d => d.data()).filter(t => t.price_hkd)))
-  }, [p.id])
+      .catch(() => setTiers([]))
+  }
 
-  // Card carousel images (CardImageCarousel). No sensitive-viewer screening
-  // here, unlike the customer-facing CorporateShop — this page is admin-only
-  // and an admin sees every photo, branded or not. One extra read per card,
-  // alongside the pricing_tiers read this card already does.
-  const [images, setImages] = useState([])
-  useEffect(() => {
+  // Start with the cached hero from the product document. Fetch the full
+  // carousel only when an operator interacts with this card.
+  const [images, setImages] = useState(() => p.heroImage ? [{ url: p.heroImage, caption: '' }] : [])
+  const galleryRequested = useRef(false)
+  const loadGallery = () => {
+    if (galleryRequested.current) return
+    galleryRequested.current = true
     getDocs(query(collection(db, 'products', p.id, 'images'), orderBy('sort_order')))
       .then(snap => {
         const gallery = snap.docs.map(d => d.data())
@@ -126,14 +158,18 @@ function ProductCard({ product: p }) {
         setImages(buildCardImages(gallery, p.heroImage))
       })
       .catch(() => setImages(p.heroImage ? [{ url: p.heroImage, caption: '' }] : []))
-  }, [p.id, p.heroImage])
+  }
 
   return (
     <Link to={`/products/${p.id}`} id={`product-card-${p.id}`}
+      onMouseEnter={() => { loadLegacyTiers(); loadGallery() }}
+      onFocus={() => { loadLegacyTiers(); loadGallery() }}
+      ref={el => { if (el) loadLegacyTiers() }}
       onClick={() => sessionStorage.setItem('products-last-id', p.id)}
       className={`card hover:border-brand-300 transition-colors overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden relative">
         <CardImageCarousel images={images} alt={p.name}
+          onImageError={loadGallery}
           fallback={<Package size={40} strokeWidth={1.25} className="text-platinum" />} />
       </div>
       <div className="p-4 flex flex-col gap-1 flex-1">

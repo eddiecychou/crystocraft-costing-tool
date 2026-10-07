@@ -165,6 +165,12 @@ export default function PricingTiers() {
       await setDoc(doc(db, 'products', id), {
         prices_published_at: serverTimestamp(),
         prices_signature: signature,
+        // Card-ready public/admin reference prices. Keeping this bounded copy
+        // on the parent avoids one pricing_tiers query per catalogue card.
+        pricing_summary: tiers.map(t => ({
+          quantity: Number(t.quantity),
+          price_hkd: Math.ceil(totalUnitCostAtQty(components, rates, t.quantity) * DEFAULT_MARKUP),
+        })),
       }, { merge: true })
       setProduct(p => ({ ...p, prices_published_at: new Date(), prices_signature: signature }))
       setPublishMsg(`Published prices to ${customers.length} customer${customers.length === 1 ? '' : 's'}.`)
