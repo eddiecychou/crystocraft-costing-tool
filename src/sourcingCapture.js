@@ -2,6 +2,7 @@ const MAX_TEXT = 24000
 const MAX_TITLE = 500
 const MAX_URL = 2000
 const MAX_IMAGES = 30
+const MAX_FULL_PAGE_SEGMENTS = 8
 const clean = (value, max) => typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : ''
 const safeUrl = value => { try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) ? url.toString().slice(0, MAX_URL) : '' } catch { return '' } }
 
@@ -30,6 +31,10 @@ export function normaliseSourcingCapture(value) {
   const sourceUrl = safeUrl(value?.source_url)
   if (!/^https:\/\/detail\.1688\.com\/offer\/\d+\.html/i.test(sourceUrl)) throw new Error('This does not appear to be an 1688 offer capture.')
   const images = Array.isArray(value?.image_urls) ? value.image_urls.map(safeUrl).filter(Boolean).slice(0, MAX_IMAGES) : []
+  const fullPageScreenshots = Array.isArray(value?.full_page_screenshot_data_urls)
+    ? value.full_page_screenshot_data_urls.filter(item => typeof item === 'string' && item.startsWith('data:image/jpeg;base64,')).slice(0, MAX_FULL_PAGE_SEGMENTS)
+    : []
+  const fullPage = value?.full_page_capture && typeof value.full_page_capture === 'object' ? value.full_page_capture : {}
   return {
     source: { provider: '1688', offer_id: clean(value?.offer_id, 80), url: sourceUrl, shop_url: safeUrl(value?.shop_url) },
     evidence: {
@@ -38,5 +43,12 @@ export function normaliseSourcingCapture(value) {
       image_urls: [...new Set(images)], captured_at_source: clean(value?.captured_at, 80),
     },
     screenshot_data_url: typeof value?.screenshot_data_url === 'string' && value.screenshot_data_url.startsWith('data:image/jpeg;base64,') ? value.screenshot_data_url : '',
+    full_page_screenshot_data_urls: fullPageScreenshots,
+    full_page_capture: {
+      captured_height: Number.isFinite(Number(fullPage.captured_height)) ? Math.max(0, Number(fullPage.captured_height)) : 0,
+      original_height: Number.isFinite(Number(fullPage.original_height)) ? Math.max(0, Number(fullPage.original_height)) : 0,
+      segment_count: fullPageScreenshots.length,
+      truncated: Boolean(fullPage.truncated),
+    },
   }
 }

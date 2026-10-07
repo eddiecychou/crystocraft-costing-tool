@@ -2,10 +2,10 @@
   "manifest_version": 3,
   "name": "Crystocraft 1688 Capture",
   "description": "Capture the currently open 1688 listing into the Crystocraft Operation Center review inbox.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "action": { "default_title": "Capture this 1688 listing to OC" },
   "background": { "service_worker": "background.js" },
-  "permissions": ["activeTab", "alarms", "storage", "tabs"],
+  "permissions": ["activeTab", "alarms", "storage", "tabs", "unlimitedStorage"],
   "host_permissions": ["https://detail.1688.com/*", "https://portal.crystocraft.com/*"],
   "content_scripts": [{
     "matches": ["https://detail.1688.com/*"],

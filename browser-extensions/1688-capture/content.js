@@ -36,7 +36,30 @@ function capture() {
   }
 }
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== 'crystocraft-capture-page') return
-  try { sendResponse({ ok: true, capture: capture() }) }
-  catch (error) { sendResponse({ ok: false, error: error?.message || 'The page could not be captured.' }) }
+  if (message?.type === 'crystocraft-capture-page') {
+    try { sendResponse({ ok: true, capture: capture() }) }
+    catch (error) { sendResponse({ ok: false, error: error?.message || 'The page could not be captured.' }) }
+    return
+  }
+  if (message?.type !== 'crystocraft-full-page-state') return
+  try {
+    if (message.action === 'prepare') {
+      window.__crystocraftCaptureScroll = { x: window.scrollX, y: window.scrollY }
+      sendResponse({ ok: true, capture: { viewport_width: window.innerWidth, viewport_height: window.innerHeight, scroll_height: Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0) } })
+      return
+    }
+    if (message.action === 'scroll') {
+      window.scrollTo({ top: Math.max(0, Number(message.top) || 0), behavior: 'auto' })
+      requestAnimationFrame(() => requestAnimationFrame(() => sendResponse({ ok: true, capture: { scroll_y: window.scrollY } })))
+      return true
+    }
+    if (message.action === 'restore') {
+      const point = window.__crystocraftCaptureScroll || { x: 0, y: 0 }
+      window.scrollTo({ left: point.x, top: point.y, behavior: 'auto' })
+      delete window.__crystocraftCaptureScroll
+      sendResponse({ ok: true, capture: {} })
+      return
+    }
+    sendResponse({ ok: false, error: 'Unknown full-page capture action.' })
+  } catch (error) { sendResponse({ ok: false, error: error?.message || 'The full page could not be captured.' }) }
 })

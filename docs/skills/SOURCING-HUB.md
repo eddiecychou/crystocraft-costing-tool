@@ -70,8 +70,10 @@ current model is a curated link hub, not an integration.
 server-side scraper. When a staff member clicks its toolbar button on the
 already-open `detail.1688.com/offer/...` page, it reads only that rendered page,
 the visible selection and source image URLs, takes a visible-tab screenshot,
-then opens OC's `/sourcing-captures/import` screen. The extension stores the
-payload locally for 30 minutes and sends it only to the signed-in OC review
+then scrolls that same page to create bounded stitched full-listing evidence
+panels (first 30,000 CSS pixels). It restores the original scroll position
+before opening OC's `/sourcing-captures/import` screen. The extension stores
+the payload locally for 30 minutes and sends it only to the signed-in OC review
 screen; it has no OC credential, background crawl, login automation, API
 access, CAPTCHA bypass or checkout capability.
 
@@ -158,3 +160,4 @@ screening (a supplier gallery has no `branded_for_customer_id` concern). The
 |---|---|
 | 2026-08-31 | Created. Supplier record (contacts[], merge, province backfill), the sourcing-link hub (browser-assisted, not API), per-channel comms capture (email auto / WhatsApp+Alibaba manual / WeChat = screenshot-to-quote only), media gallery. Grounded in V8.12. |
 | 2026-10-03 | §Comms-capture **WhatsApp** bullet rewritten (V8.17): the two archive folders (`~/Whatsapp Archives/{Business,Personal}/`) now auto-import weekly via launchd, matching is owner-confirmed via `scripts/whatsapp-import-manifest.json` (never auto/fuzzy), thread id is `account × contact_id` (the old filename-keyed `findExistingThread`/`threadDocId` model is retired), groups are a third type keyed `account × group-name`, and oversized threads spill attachment URLs to `whatsapp_threads/{id}/media/urls`. See `ARCHITECTURE-RULES.md` §4c. |
+| 2026-10-08 | 1688 Capture v0.2.0 adds an explicit-click full-listing evidence pass: it scrolls only the current listing, restores the reader's original position, and uploads stitched panels beside the viewport screenshot. The 30,000 CSS-pixel cap and segmented output prevent extension/Storage limits from turning evidence capture into an unbounded crawl. |
