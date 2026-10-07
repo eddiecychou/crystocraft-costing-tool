@@ -331,6 +331,7 @@ export default function ProductDetail() {
               showVisibility
               brandedForCustomers={customers}
               onHeroChange={handleHeroChange}
+              heroUrl={product.heroImage}
               downloadPrefix={product?.name}
               enhanceable
             />

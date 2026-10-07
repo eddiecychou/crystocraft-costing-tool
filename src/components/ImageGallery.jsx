@@ -277,7 +277,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
 // are handed to onExtraFiles(files) so a page can route them elsewhere (the
 // supplier gallery drops photos AND videos onto one zone). Both props optional
 // — every existing caller is unaffected.
-export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, showVisibility, brandedForCustomers, onHeroChange, downloadPrefix, enhanceable, onExtraFiles, extraAccept }) {
+export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, showVisibility, brandedForCustomers, onHeroChange, heroUrl, downloadPrefix, enhanceable, onExtraFiles, extraAccept }) {
   const t = useT()
   const fileIdRef = useRef(0)
   const [uploading, setUploading]         = useState(false)
@@ -519,7 +519,10 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 {images.map((img, idx) => (
                   <SortableImageCard
                     key={img.id}
-                    img={img}
+                    // `heroImage` predates the per-image `is_hero` flag. Treat
+                    // either source as authoritative while editing so replacing
+                    // or deleting an old hero also refreshes the product cache.
+                    img={img.is_hero || img.file_url === heroUrl ? { ...img, is_hero: true } : img}
                     idx={idx}
                     typeOptions={typeOptions}
                     captionable={captionable}

@@ -446,7 +446,8 @@ stored price, never the location-dependent REST value.
 ## 7. Setup checklist
 
 - [x] `SEO_BATCH_SECRET` set on Netlify **and** in the Workbench `.env` (owner, done).
-- [ ] Vendor `seo-control-plane/validate-payload.mjs` and `safe-write.mjs` into
+- [x] Vendor `seo-control-plane/validate-payload.mjs`, `safe-write.mjs`, and
+      `yoast-indexable.mjs` into
       the Workbench (copy verbatim; re-copy when the OC updates them — a new
       failure mode adds a check there). Verify the copy is byte-identical to the
       sha256[:12] fingerprint recorded in `seo-control-plane/README.md` → "Vendoring contract"
@@ -455,7 +456,7 @@ stored price, never the location-dependent REST value.
       `yoast-indexable.mjs` `28eba647fe55`. Anything older is stale.
 - [ ] Fetch `source` (and the `before` snapshot) with **`context=edit`**, or the
       body-level checks silently skip.
-- [ ] Wrap your `wp-api.mjs` write path so **nothing** writes WordPress except
+- [x] Wrap your `wp-api.mjs` write path so **nothing** writes WordPress except
       through `safeWrite`, and gate the batch on `r.verified`, not `r.ok`.
 - [ ] Add the batch build + `/api/seo-batch` calls to your pipeline scripts.
 - [ ] Paste the `§4c` block (drafted by the OC) into the Workbench's
@@ -475,6 +476,7 @@ a 200-item run to it.
 
 | Date | Change |
 |---|---|
+| 2026-10-06 | **Yoast wiring closed — DSH smoke-tested 12/12.** Both active Workbench vendor directories are byte-identical at validator `57e397f1b810`, safe-write `8e4d16f4f195`, Yoast helper `28eba647fe55`, and validator test `a21100a463dd`; the sync checker covers both directories and the helper. `dsh-client` sends the reviewed body unchanged, parses numeric IDs from the endpoint pathname, stops on `!ok || !verified`, and retains remote-shell quoting. Product `meta_data[]` persisted and invalidated once; a lying PUT echo with an unchanged fresh GET failed as `unlanded`; the `wp/v2` nested-meta case verified. Two earlier title batches using product `{meta:{…}}` are obsolete and must be rebuilt, never replayed or converted after approval. OC commit `6e7be4f`. |
 | 2026-09-02 | Briefing written; control plane live (steps 1–4). |
 | 2026-10-03 | **Two defects fixed** (raised by DSH while staging a WordPress write). **1a** `create` now rejects an item with an empty/absent `payload` (400) instead of silently storing `{}` and reporting a no-op as success. **1b** `safe-write.mjs` returns `verified` (did the INTENDED change happen?) alongside `ok` (did anything UNINTENDED move?); `noop:true` when none of `expectedFields` moved, and `op:'result'` now marks a batch `partial` — never `executed` — when any approved item is `verified:false`. **2** `validate-payload.mjs` compares the **RAW** body (`content.raw`) on both sides for image/heading parity and `no_new_scripts` / `no_new_tables`, so a correct Elementor edit (which changes only `meta._elementor_data`) passes. **DSH must re-vendor both files** (sha256[:12] fingerprint in `seo-control-plane/README.md`) and gate execution on `r.verified`, and should drop its `before.content` workaround. |
 | 2026-10-03 | **Defect 2's fix was incomplete — follow-up from DSH, now closed.** `payloadText()` was a fourth call site of the same bug: it resolved an object field to `.rendered`, so the whole built page counted as *source text* and `brand_terms_preserved` reported terms (e.g. `Swarovski, MagSafe`) "translated away" when they were never in the payload body. `contentString()` now also backs `payloadText` **and uses `.raw` only** — an absent `.raw` returns `''` and the body-level checks **skip**, rather than falling back to the render (`wpEntity()` omits `context=edit`, so the fallback silently restored the old behaviour). **Re-vendor `validate-payload.mjs` (fingerprint `3bf6c751c578`), fetch `source`/`before` with `context=edit`, and drop the `before.content` workaround.** L-47. |

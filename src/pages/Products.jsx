@@ -6,6 +6,7 @@ import { CATEGORIES, PRODUCT_STATUSES, productStatusOf } from '../constants'
 import LoadingBar from '../components/LoadingBar'
 import { Package } from 'lucide-react'
 import CardImageCarousel from '../components/CardImageCarousel'
+import { buildCardImages } from '../cardImages'
 
 export default function Products() {
   const [products, setProducts] = useState([])
@@ -114,13 +115,15 @@ function ProductCard({ product: p }) {
   useEffect(() => {
     getDocs(query(collection(db, 'products', p.id, 'images'), orderBy('sort_order')))
       .then(snap => {
-        const urls = snap.docs.map(d => d.data())
-          .filter(im => im.file_url)
-          .map(im => ({ url: im.file_url, caption: im.caption || '' }))
-        const heroOk = p.heroImage && urls.some(u => u.url === p.heroImage)
-        setImages(heroOk
-          ? [{ url: p.heroImage, caption: '' }, ...urls.filter(u => u.url !== p.heroImage)]
-          : (p.heroImage ? [{ url: p.heroImage, caption: '' }, ...urls] : urls))
+        const gallery = snap.docs.map(d => d.data())
+        // `heroImage` is a denormalised cache on the product document. Older
+        // image replacements/deletes could leave it pointing at the removed
+        // Storage object, which produced a broken first slide plus an extra dot.
+        // Once a live gallery exists, never inject a URL that is absent from it.
+        // Prefer the cached hero when valid, then the gallery's own hero flag,
+        // then its first sorted image. Keep the cache-only fallback solely for
+        // legacy products that genuinely have no images subcollection.
+        setImages(buildCardImages(gallery, p.heroImage))
       })
       .catch(() => setImages(p.heroImage ? [{ url: p.heroImage, caption: '' }] : []))
   }, [p.id, p.heroImage])

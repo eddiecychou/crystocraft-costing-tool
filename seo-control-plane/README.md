@@ -60,6 +60,26 @@ safe-write wrapper, and vendored validator test. Discover directories named
 and fail if any active copy is missing or differs. The OC cannot edit that
 Workbench-owned checker (see `MARKETING-WORKFLOW.md` §6.0).
 
+### Workbench wiring status — closed 2026-10-06
+
+DSH reported the producer-side follow-up complete after OC commit `6e7be4f`:
+
+- `validate-payload.mjs` `57e397f1b810`, `safe-write.mjs` `8e4d16f4f195`,
+  `yoast-indexable.mjs` `28eba647fe55`, and `validate-payload.test.mjs`
+  `a21100a463dd` are byte-identical in both active Workbench vendor directories.
+- `check-vendor-sync.mjs` now includes the Yoast helper, checks both active
+  directories, reports `in sync`, and runs the 135 validator assertions.
+- `dsh-client.mjs` now sends the exact reviewed payload unchanged, extracts the
+  numeric WordPress ID from the endpoint pathname (before any query string),
+  stops on either `!ok` or `!verified`, and retains remote-shell quoting.
+- The Workbench smoke suite passed 12/12: product `meta_data[]` persisted and
+  invalidated once; a successful PUT echo with an unchanged fresh GET failed as
+  `unlanded`; and the `wp/v2` nested-meta case verified.
+
+Two title batches prepared with the obsolete product `{meta:{…}}` body are
+invalid artifacts. They must be rebuilt as `meta_data[]` and reviewed again;
+they must not be replayed or converted after approval.
+
 ## Two questions, not one (2026-10-03)
 
 `safeWrite` answers two different things and returns both:
