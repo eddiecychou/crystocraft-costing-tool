@@ -1,6 +1,6 @@
 # API Reference — Netlify Edge Functions
 
-38 edge functions under `netlify/edge-functions/*.js`, each proxied through
+39 edge functions under `netlify/edge-functions/*.js`, each proxied through
 `/api/<name>` (declared in `netlify.toml`, occasionally also via the
 function's own `export const config`). The browser never talks to Supabase,
 Gemini, DeepSeek, Resend, or WooCommerce directly — every external call and
@@ -39,6 +39,7 @@ shape or a gotcha, read the function itself; the file names below are exact.
 - `compose-email-answer.js` (`/api/compose-email-answer`) — Merges parallel per-facet partial answers into one Discover-More reply; never sees raw email content. Auth: module `customers`. Called from `src/emailSummaryApi.js`.
 - `transcribe-whatsapp-audio.js` (`/api/transcribe-whatsapp-audio`) — Transcribes one WhatsApp voice note (.opus) via Deepgram. Auth: module `customers`. Called from `src/domain/whatsappImport.js`.
 - `suggest-tag-merges.js` (`/api/suggest-tag-merges`) — Suggests groupings for drifted-spelling customer tags; proposes only, never writes. Auth: module `marketing`. Called from `src/tagApi.js`.
+- `jev-marketing-tags.js` (`/api/jev-marketing-tags`) — Read-only tag-cleanup cascade: JEV classifies imported Mailchimp tags; ambiguous rows alone go to DeepSeek for closer interpretation; JEV then verifies each DeepSeek proposal before it can be marked machine-resolved. Disagreements remain human-review items. Never reads or writes Firestore. Auth: module `marketing`. Called in sequential 30-tag batches from `src/marketingTagJevApi.js` / `MarketingContacts.jsx`.
 
 ## Marketing & Content
 

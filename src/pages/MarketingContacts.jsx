@@ -16,6 +16,7 @@ import { CHANNELS } from '../domain/customer'
 import { addInteraction, listInteractions, deleteInteraction } from '../domain/interactionLog'
 import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/whatsappImport'
 import WhatsAppAttachment from '../components/WhatsAppAttachment'
+import { evaluateMarketingTagsWithJev } from '../marketingTagJevApi'
 
 function fmtIsoDate(iso) {
   if (!iso) return '—'
@@ -744,8 +745,30 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
   const [q, setQ] = useState('')
   const [edits, setEdits] = useState({})
   const [busyTag, setBusyTag] = useState(null)
+  const [jevBusy, setJevBusy] = useState(false)
+  const [jevProgress, setJevProgress] = useState(null)
+  const [jevError, setJevError] = useState('')
+  const [jevReport, setJevReport] = useState(null)
   const counts = useMemo(() => tagCounts(contacts), [contacts])
   const shown = counts.filter(([t]) => t.includes(q.toLowerCase().trim()))
+
+  async function handleJevAnalysis() {
+    setJevBusy(true)
+    setJevError('')
+    setJevReport(null)
+    setJevProgress({ done: 0, total: counts.length })
+    try {
+      const report = await evaluateMarketingTagsWithJev(
+        counts.map(([tag, count]) => ({ tag, count })),
+        (done, total) => setJevProgress({ done, total }),
+      )
+      setJevReport(report)
+    } catch (error) {
+      setJevError(error.message || 'JEV could not analyze the tags.')
+    } finally {
+      setJevBusy(false)
+    }
+  }
 
   async function handleRename(tag) {
     const to = (edits[tag] ?? tag).trim().toLowerCase()
@@ -777,12 +800,78 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-none shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-5xl my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className=" text-ink">Manage tags</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
-        <div className="px-5 pt-3">
+        <div className="px-5 pt-4 space-y-3">
+          <div className="border border-warm-grey bg-ivory-light p-4 flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
+            <div>
+              <p className="text-sm font-medium text-ink">JEV cleanup pilot</p>
+              <p className="text-xs text-ink-60 mt-0.5">
+                Classifies every tag and flags likely normalization or review work. Read-only: it cannot rename, remove, or update contacts.
+              </p>
+            </div>
+            <button type="button" onClick={handleJevAnalysis} disabled={jevBusy || counts.length === 0}
+              className="btn-secondary text-sm shrink-0 inline-flex items-center justify-center gap-1.5 disabled:opacity-50">
+              {jevBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              {jevBusy ? 'Analyzing…' : 'Analyze tags with JEV'}
+            </button>
+          </div>
+          {jevProgress && jevBusy && (
+            <p className="text-xs text-ink-60">Analyzed {jevProgress.done} of {jevProgress.total} tags…</p>
+          )}
+          {jevError && <p className="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2">{jevError}</p>}
+          {jevReport && (
+            <div className="border border-warm-grey">
+              <div className="px-3 py-2 border-b border-warm-grey flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-ink-70">
+                  {jevReport.results.length} tags analyzed · {jevReport.model || 'JEV'} · read-only recommendations
+                </p>
+                <p className="text-2xs text-ink-60">
+                  Confidence is evidence for review, not permission to change data.
+                </p>
+              </div>
+              <div className="max-h-72 overflow-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="sticky top-0 bg-ivory-light text-ink-60">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Current tag</th>
+                      <th className="px-3 py-2 font-medium">Used</th>
+                      <th className="px-3 py-2 font-medium">Type</th>
+                      <th className="px-3 py-2 font-medium">Recommendation</th>
+                      <th className="px-3 py-2 font-medium">Canonical buyer tag</th>
+                      <th className="px-3 py-2 font-medium">Decision</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-warm-grey">
+                    {jevReport.results.map(row => (
+                      <tr key={row.tag} className={row.action === 'keep' ? '' : 'bg-amber-50/40'}>
+                        <td className="px-3 py-2 text-ink-80">{row.tag}</td>
+                        <td className="px-3 py-2 text-ink-60 tabular-nums">{row.count}</td>
+                        <td className="px-3 py-2 text-ink-70">{row.kind.replaceAll('_', ' ')}</td>
+                        <td className="px-3 py-2 text-ink-80">
+                          {row.deepseek?.action?.replaceAll('_', ' ') || row.action.replaceAll('_', ' ')}
+                          {row.deepseek?.reason && <p className="text-2xs text-ink-60 mt-0.5 max-w-xs">{row.deepseek.reason}</p>}
+                        </td>
+                        <td className="px-3 py-2 text-ink-80">{row.deepseek?.canonical || row.canonical || '—'}</td>
+                        <td className="px-3 py-2 text-ink-60">
+                          {row.resolution === 'jev_deepseek_agree' ? (
+                            <span className="text-teal-700">JEV + DeepSeek agree ({Math.round(row.jevAgreement * 100)}%)</span>
+                          ) : row.needsHumanReview ? (
+                            <span className="text-amber-700">Human review</span>
+                          ) : (
+                            <span>JEV ({Math.round(Math.max(row.kindConfidence, row.actionConfidence, row.canonicalConfidence) * 100)}%)</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
           <input type="text" placeholder="Search tags…" className="input w-full" value={q} onChange={e => setQ(e.target.value)} />
         </div>
         <div className="p-5 space-y-2 max-h-[65vh] overflow-auto">
