@@ -7,7 +7,8 @@ import LoadingBar from '../components/LoadingBar'
 import {
   useMarketingContacts, deleteContacts,
   contactName, isCategoryTag, sortTags,
-  promoteContactsToCustomers, tagCounts, renameTagEverywhere, deleteTagEverywhere,
+  promoteContactsToCustomers, tagCounts,
+  applyReviewedMarketingTagChange,
 } from '../domain/marketingContact'
 import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 import { savePastedAlibabaThread, generateAndSaveAlibabaSummary } from '../alibabaSummaryApi'
@@ -17,6 +18,7 @@ import { addInteraction, listInteractions, deleteInteraction } from '../domain/i
 import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/whatsappImport'
 import WhatsAppAttachment from '../components/WhatsAppAttachment'
 import { evaluateMarketingTagsWithJev } from '../marketingTagJevApi'
+import { buildMarketingTagContextRows, normalizeTagReviewDecision, proposedReviewAction } from '../marketingTagCleanup'
 
 function fmtIsoDate(iso) {
   if (!iso) return '—'
@@ -749,6 +751,10 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
   const [jevProgress, setJevProgress] = useState(null)
   const [jevError, setJevError] = useState('')
   const [jevReport, setJevReport] = useState(null)
+  const [reviewDecisions, setReviewDecisions] = useState({})
+  const [applyBusy, setApplyBusy] = useState(false)
+  const [applyProgress, setApplyProgress] = useState(null)
+  const [applyResults, setApplyResults] = useState({})
   const counts = useMemo(() => tagCounts(contacts), [contacts])
   const shown = counts.filter(([t]) => t.includes(q.toLowerCase().trim()))
 
@@ -759,10 +765,12 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
     setJevProgress({ done: 0, total: counts.length })
     try {
       const report = await evaluateMarketingTagsWithJev(
-        counts.map(([tag, count]) => ({ tag, count })),
+        buildMarketingTagContextRows(contacts),
         (done, total) => setJevProgress({ done, total }),
       )
       setJevReport(report)
+      setReviewDecisions({})
+      setApplyResults({})
     } catch (error) {
       setJevError(error.message || 'JEV could not analyze the tags.')
     } finally {
@@ -770,13 +778,66 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
     }
   }
 
+  const humanReviewRows = jevReport?.results.filter(row => row.needsHumanReview) || []
+  const selectedChanges = humanReviewRows
+    .map(row => normalizeTagReviewDecision({ tag: row.tag, ...(reviewDecisions[row.tag] || {}) }, counts.map(([tag]) => tag)))
+    .filter(result => result.valid && ['rename', 'remove'].includes(result.decision.action))
+
+  function setReviewDecision(tag, patch) {
+    setReviewDecisions(current => ({ ...current, [tag]: { action: 'skip', target: '', ...current[tag], ...patch } }))
+  }
+
+  async function handleApplyReviewed() {
+    if (!selectedChanges.length) return
+    const summary = selectedChanges.map(({ decision }) => decision.action === 'rename'
+      ? `Rename “${decision.tag}” to “${decision.target}”`
+      : `Remove “${decision.tag}”`).join('\n')
+    if (!window.confirm(
+      `Apply ${selectedChanges.length} reviewed tag change${selectedChanges.length === 1 ? '' : 's'}?\n\n${summary}\n\n` +
+      'Each change is backed up before its contact updates and verified afterward.'
+    )) return
+
+    setApplyBusy(true)
+    setApplyResults({})
+    let workingContacts = contacts
+    for (let index = 0; index < selectedChanges.length; index++) {
+      const decision = selectedChanges[index].decision
+      const reportRow = jevReport.results.find(row => row.tag === decision.tag)
+      setApplyProgress({ item: index + 1, total: selectedChanges.length, tag: decision.tag, done: 0, affected: reportRow?.count || 0 })
+      try {
+        const result = await applyReviewedMarketingTagChange(
+          workingContacts,
+          decision,
+          { model: jevReport.model, resolution: reportRow?.resolution, jevAgreement: reportRow?.jevAgreement },
+          (done, affected) => setApplyProgress({ item: index + 1, total: selectedChanges.length, tag: decision.tag, done, affected }),
+        )
+        const change = decision.action === 'rename'
+          ? { type: 'rename', from: decision.tag, to: decision.target, count: result.count }
+          : { type: 'delete', tag: decision.tag, count: result.count }
+        onApplied(change)
+        workingContacts = workingContacts.map(contact => {
+          if (!contact.tags.includes(decision.tag)) return contact
+          const tags = decision.action === 'rename'
+            ? [...new Set(contact.tags.map(tag => tag === decision.tag ? decision.target : tag))]
+            : contact.tags.filter(tag => tag !== decision.tag)
+          return { ...contact, tags }
+        })
+        setApplyResults(current => ({ ...current, [decision.tag]: { ok: true, count: result.count } }))
+      } catch (error) {
+        setApplyResults(current => ({ ...current, [decision.tag]: { ok: false, error: error.message || 'Apply failed.' } }))
+      }
+    }
+    setApplyBusy(false)
+    setApplyProgress(null)
+  }
+
   async function handleRename(tag) {
     const to = (edits[tag] ?? tag).trim().toLowerCase()
     if (!to || to === tag) return
     setBusyTag(tag)
     try {
-      const n = await renameTagEverywhere(contacts, tag, to)
-      onApplied({ type: 'rename', from: tag, to, count: n })
+      const result = await applyReviewedMarketingTagChange(contacts, { tag, action: 'rename', target: to }, { resolution: 'manual' })
+      onApplied({ type: 'rename', from: tag, to, count: result.count })
       setEdits(s => { const n2 = { ...s }; delete n2[tag]; return n2 })
     } catch (e) {
       window.alert(e.message || 'Rename failed.')
@@ -786,11 +847,11 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
   }
 
   async function handleDelete(tag, count) {
-    if (!window.confirm(`Remove tag "${tag}" from ${count} contact${count === 1 ? '' : 's'}? This cannot be undone.`)) return
+    if (!window.confirm(`Remove tag "${tag}" from ${count} contact${count === 1 ? '' : 's'}? A recovery snapshot will be written first.`)) return
     setBusyTag(tag)
     try {
-      const n = await deleteTagEverywhere(contacts, tag)
-      onApplied({ type: 'delete', tag, count: n })
+      const result = await applyReviewedMarketingTagChange(contacts, { tag, action: 'remove' }, { resolution: 'manual' })
+      onApplied({ type: 'delete', tag, count: result.count })
     } catch (e) {
       window.alert(e.message || 'Delete failed.')
     } finally {
@@ -827,48 +888,75 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
             <div className="border border-warm-grey">
               <div className="px-3 py-2 border-b border-warm-grey flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-ink-70">
-                  {jevReport.results.length} tags analyzed · {jevReport.model || 'JEV'} · read-only recommendations
+                  {jevReport.results.length} tags analyzed · {jevReport.model || 'JEV'} · {humanReviewRows.length} need review
                 </p>
                 <p className="text-2xs text-ink-60">
                   Confidence is evidence for review, not permission to change data.
                 </p>
               </div>
-              <div className="max-h-72 overflow-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-ivory-light text-ink-60">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Current tag</th>
-                      <th className="px-3 py-2 font-medium">Used</th>
-                      <th className="px-3 py-2 font-medium">Type</th>
-                      <th className="px-3 py-2 font-medium">Recommendation</th>
-                      <th className="px-3 py-2 font-medium">Canonical buyer tag</th>
-                      <th className="px-3 py-2 font-medium">Decision</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-warm-grey">
-                    {jevReport.results.map(row => (
-                      <tr key={row.tag} className={row.action === 'keep' ? '' : 'bg-amber-50/40'}>
-                        <td className="px-3 py-2 text-ink-80">{row.tag}</td>
-                        <td className="px-3 py-2 text-ink-60 tabular-nums">{row.count}</td>
-                        <td className="px-3 py-2 text-ink-70">{row.kind.replaceAll('_', ' ')}</td>
-                        <td className="px-3 py-2 text-ink-80">
-                          {row.deepseek?.action?.replaceAll('_', ' ') || row.action.replaceAll('_', ' ')}
-                          {row.deepseek?.reason && <p className="text-2xs text-ink-60 mt-0.5 max-w-xs">{row.deepseek.reason}</p>}
-                        </td>
-                        <td className="px-3 py-2 text-ink-80">{row.deepseek?.canonical || row.canonical || '—'}</td>
-                        <td className="px-3 py-2 text-ink-60">
-                          {row.resolution === 'jev_deepseek_agree' ? (
-                            <span className="text-teal-700">JEV + DeepSeek agree ({Math.round(row.jevAgreement * 100)}%)</span>
-                          ) : row.needsHumanReview ? (
-                            <span className="text-amber-700">Human review</span>
-                          ) : (
-                            <span>JEV ({Math.round(Math.max(row.kindConfidence, row.actionConfidence, row.canonicalConfidence) * 100)}%)</span>
+              <div className="px-3 py-2 bg-ivory-light border-b border-warm-grey flex flex-wrap gap-x-4 gap-y-1 text-2xs text-ink-60">
+                <span>{jevReport.results.filter(row => !row.needsHumanReview && row.resolution === 'jev').length} resolved by JEV</span>
+                <span>{jevReport.results.filter(row => row.resolution === 'jev_deepseek_agree').length} resolved by DeepSeek + JEV</span>
+                <span className="text-amber-700">{humanReviewRows.length} for you to decide</span>
+              </div>
+              <div className="max-h-[26rem] overflow-auto divide-y divide-warm-grey">
+                {humanReviewRows.map(row => {
+                  const decision = reviewDecisions[row.tag] || { action: 'skip', target: '' }
+                  const proposed = proposedReviewAction(row)
+                  const result = applyResults[row.tag]
+                  const validation = normalizeTagReviewDecision({ tag: row.tag, ...decision }, counts.map(([tag]) => tag))
+                  return (
+                    <div key={row.tag} className="p-3 space-y-2">
+                      <div className="flex flex-col md:flex-row md:items-start gap-2 md:gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm text-ink break-words">{row.tag}</span>
+                            <span className="text-2xs text-ink-60">{row.count} contacts · {row.kind.replaceAll('_', ' ')}</span>
+                          </div>
+                          <p className="text-xs text-ink-70 mt-1">
+                            Suggested: {(row.deepseek?.action || row.action).replaceAll('_', ' ')}
+                            {(row.deepseek?.canonical || row.canonical) ? ` → ${row.deepseek?.canonical || row.canonical}` : ''}
+                          </p>
+                          {row.deepseek?.reason && <p className="text-2xs text-ink-60 mt-0.5">{row.deepseek.reason}</p>}
+                          {row.context?.coTags?.length > 0 && (
+                            <p className="text-2xs text-ink-60 mt-1">Often with: {row.context.coTags.slice(0, 5).join(', ')}</p>
                           )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-2 md:w-[30rem] shrink-0">
+                          <select className="input text-xs" value={decision.action}
+                            onChange={event => setReviewDecision(row.tag, { action: event.target.value })}>
+                            <option value="skip">Skip</option>
+                            <option value="keep">Keep as-is</option>
+                            <option value="rename">Rename / merge</option>
+                            <option value="remove">Remove tag</option>
+                          </select>
+                          <input className="input text-xs" value={decision.target || ''} disabled={decision.action !== 'rename'}
+                            placeholder="Replacement tag"
+                            onChange={event => setReviewDecision(row.tag, { target: event.target.value })} />
+                          <button type="button" className="btn-secondary text-2xs px-2" disabled={proposed.action === 'skip'}
+                            onClick={() => setReviewDecision(row.tag, proposed)}>Use suggestion</button>
+                        </div>
+                      </div>
+                      {result && (
+                        <p className={`text-xs ${result.ok ? 'text-teal-700' : 'text-red-700'}`}>
+                          {result.ok ? `Verified on ${result.count} contact${result.count === 1 ? '' : 's'}.` : result.error}
+                        </p>
+                      )}
+                      {!validation.valid && <p className="text-xs text-red-700">{validation.error}</p>}
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="px-3 py-3 border-t border-warm-grey flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <p className="text-2xs text-ink-60">
+                  Defaults to skip. Rename/remove writes are backed up atomically and read back before success is shown.
+                </p>
+                <button type="button" className="btn-primary text-xs shrink-0" disabled={applyBusy || selectedChanges.length === 0}
+                  onClick={handleApplyReviewed}>
+                  {applyBusy
+                    ? `Applying ${applyProgress?.item || 0}/${applyProgress?.total || selectedChanges.length}…`
+                    : `Apply approved (${selectedChanges.length})`}
+                </button>
               </div>
             </div>
           )}

@@ -10,6 +10,7 @@ import {
   buildDeepSeekVerificationQuestions,
   mergeCascadeResults,
 } from '../netlify/edge-functions/lib/jevMarketingTags.js'
+import { buildMarketingTagContextRows, normalizeTagReviewDecision, proposedReviewAction } from '../src/marketingTagCleanup.js'
 
 const choice = (instructions, criteria) => ({ type: 'choice', instructions, criteria })
 
@@ -18,7 +19,10 @@ test('normalizes, deduplicates, validates and caps tag inputs', () => {
   many.splice(1, 0, { tag: 'tag 0', count: 99 }, { tag: '', count: 3 })
   const tags = normalizeTagInputs(many)
   assert.equal(tags.length, JEV_MARKETING_TAG_BATCH_SIZE)
-  assert.deepEqual(tags[0], { tag: 'tag 0', count: 0 })
+  assert.deepEqual(tags[0], {
+    tag: 'tag 0', count: 0,
+    context: { sampleCompanies: [], countries: [], coTags: [], audiences: [], statuses: [], linkedCustomers: 0 },
+  })
   assert.equal(tags.filter(item => item.tag === 'tag 0').length, 1)
 })
 
@@ -48,6 +52,29 @@ test('sanitizes unknown output and only recommends buyer canonical tags', () => 
   assert.equal(results[1].canonical, null)
   assert.equal(results[1].action, 'review')
   assert.equal(results[1].actionConfidence, 1)
+})
+
+test('builds bounded business context without contact identity or email', () => {
+  const rows = buildMarketingTagContextRows([
+    { id: 'private-1', email: 'hidden@example.com', company: 'Alpha', country: 'Hong Kong', tags: ['nda', 'corp gift'], audiences: ['trade'], status: 'subscribed', is_customer: true },
+    { id: 'private-2', email: 'also-hidden@example.com', company: 'Beta', country: 'Hong Kong', tags: ['nda', 'finance'], audiences: ['trade'], status: 'subscribed' },
+  ])
+  const nda = rows.find(row => row.tag === 'nda')
+  assert.equal(nda.count, 2)
+  assert.deepEqual(nda.context.sampleCompanies, ['Alpha', 'Beta'])
+  assert.deepEqual(nda.context.coTags, ['corp gift', 'finance'])
+  assert.equal(nda.context.linkedCustomers, 1)
+  assert.equal(JSON.stringify(nda).includes('hidden@example.com'), false)
+  assert.equal(JSON.stringify(nda).includes('private-1'), false)
+})
+
+test('review decisions default to skip and validate renames deterministically', () => {
+  assert.equal(normalizeTagReviewDecision({ tag: 'nda' }).decision.action, 'skip')
+  assert.equal(normalizeTagReviewDecision({ tag: 'NDA', action: 'rename', target: 'nda' }).valid, false)
+  const merge = normalizeTagReviewDecision({ tag: 'union metal distributor', action: 'rename', target: 'Distributor' }, ['distributor'])
+  assert.equal(merge.valid, true)
+  assert.equal(merge.decision.mergesExisting, true)
+  assert.deepEqual(proposedReviewAction({ action: 'removal_candidate' }), { action: 'remove', target: '' })
 })
 
 test('routes ambiguous rows through DeepSeek and sanitizes its output', () => {

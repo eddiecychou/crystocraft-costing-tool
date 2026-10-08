@@ -3,7 +3,7 @@ import {
   collection, getDocs, getDoc, doc, addDoc, updateDoc, setDoc, deleteDoc,
   writeBatch, serverTimestamp, arrayUnion, runTransaction,
 } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, authedUser } from '../firebase'
 import { saveCustomer, RETAIL_TAG } from './customer'
 import { countryFromPhone } from './phoneCountry'
 import { repointDraftsToCustomer } from './outreachDrafts'
@@ -340,6 +340,65 @@ export async function deleteTagEverywhere(contacts, tag) {
     await batch.commit()
   }
   return affected.length
+}
+
+// Human-approved JEV cleanup. Every chunk stores the exact pre-change tag
+// arrays in the append-only audit log in the SAME atomic batch as its contact
+// updates, then reads every affected contact back before reporting success.
+// AI recommendations never call this directly; the review UI defaults to skip.
+export async function applyReviewedMarketingTagChange(contacts, decision, source = {}, onProgress) {
+  const from = String(decision?.tag || '').trim()
+  const action = decision?.action
+  const to = action === 'rename' ? String(decision?.target || '').trim().toLowerCase() : null
+  if (!from || !['rename', 'remove'].includes(action)) throw new Error('Choose rename or remove before applying.')
+  if (action === 'rename' && (!to || to === from.toLowerCase())) throw new Error('Choose a different replacement tag.')
+
+  const affected = contacts.filter(contact => contact.tags.includes(from))
+  if (!affected.length) return { count: 0, verified: true }
+  const user = await authedUser()
+  if (!user) throw new Error('Please sign in.')
+
+  let done = 0
+  for (let offset = 0; offset < affected.length; offset += 350) {
+    const chunk = affected.slice(offset, offset + 350)
+    const batch = writeBatch(db)
+    const auditRef = doc(collection(db, 'audit_logs'))
+    batch.set(auditRef, {
+      kind: 'marketing_tag_cleanup',
+      action,
+      from,
+      to,
+      affected_count: affected.length,
+      chunk_index: Math.floor(offset / 350),
+      before: chunk.map(contact => ({ id: contact.id, tags: contact.tags })),
+      source: {
+        model: String(source.model || ''),
+        resolution: String(source.resolution || ''),
+        jev_agreement: Number(source.jevAgreement || 0),
+      },
+      actor_uid: user.uid,
+      actor_email: user.email || '',
+      at: serverTimestamp(),
+    })
+    chunk.forEach(contact => {
+      const tags = action === 'rename'
+        ? [...new Set(contact.tags.map(tag => (tag === from ? to : tag)))]
+        : contact.tags.filter(tag => tag !== from)
+      batch.update(doc(db, 'marketing_contacts', contact.id), { tags, updatedAt: serverTimestamp() })
+    })
+    await batch.commit()
+    done += chunk.length
+    onProgress?.(done, affected.length)
+  }
+
+  const reads = await Promise.all(affected.map(contact => getDoc(doc(db, 'marketing_contacts', contact.id))))
+  const unverified = reads.flatMap((snapshot, index) => {
+    const tags = snapshot.data()?.tags || []
+    const failed = !snapshot.exists() || tags.includes(from) || (action === 'rename' && !tags.includes(to))
+    return failed ? [affected[index].id] : []
+  })
+  if (unverified.length) throw new Error(`The write could not be verified for ${unverified.length} contact${unverified.length === 1 ? '' : 's'}.`)
+  return { count: affected.length, verified: true }
 }
 
 // Record that a contact is now (or already was found to be) an app customer.

@@ -37,6 +37,8 @@ async function hasMarketingAccess(uid, idToken, projectId) {
 const DEEPSEEK_SYSTEM = `You are the second-stage reviewer for a B2B CRM tag cleanup process.
 JEV has already classified the easy tags. You receive only unresolved tags that were ambiguous, low-confidence, or possible removal candidates.
 
+Each row includes bounded evidence from the contacts carrying that tag: representative companies, countries, co-occurring tags, audiences, statuses, and how many are linked to real customers. Use that evidence to resolve historical shorthand; do not infer facts beyond it.
+
 For each tag:
 - Explain briefly what it most likely meant in a historical Mailchimp list.
 - Recommend keep, normalize, review, or removal_candidate.
@@ -121,7 +123,12 @@ export default async function handler(req) {
     let verificationUsage = null
     if (suggestions.length) {
       const verification = await client.systemOne({
-        state: { suggestions },
+        state: {
+          suggestions: suggestions.map(suggestion => ({
+            ...suggestion,
+            context: unresolvedRows.find(row => row.tag === suggestion.tag)?.context || {},
+          })),
+        },
         questions: buildDeepSeekVerificationQuestions(suggestions, { noul }),
       }, { timeout: 20_000, retry: { maxRetries: 2 } })
       verificationAnswers = verification.answers

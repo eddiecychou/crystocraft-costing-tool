@@ -197,9 +197,9 @@ the fast path from a request to the exact code.
 
 ### CRM — Marketing contacts, campaigns, Daily Drafts → see `MARKETING-WORKFLOW.md`
 - Pages: `Marketing.jsx` (tabs), `src/marketing/DailyDrafts.jsx`, `MarketingContacts.jsx`, `MarketingContactDetail.jsx`, `Campaigns.jsx`, `BlogGenerator.jsx`
-- Logic: `src/domain/marketingContact.js`, `src/domain/campaigns.js`, `src/domain/outreachDrafts.js`, `src/domain/draftMemoryRules.js`, `src/domain/outreachTopicTemplates.js`, `src/outreachApi.js`, `src/campaignApi.js`
-- Edge fns: `draft-outreach-topic`, `discuss-outreach-draft`, `generate-outreach-drafts`, `send-personal-email`, `send-campaign`, `generate-blog`, `publish-to-wordpress`, `subscribe`, `unsubscribe`, `suggest-tag-merges`, `resend-webhook`
-- Collections: `marketing_contacts/{id}` (+ same thread subcollections as customers), `marketing_campaigns`, `campaign_templates`, `outreach_drafts`, `draft_memory_rules`, `outreach_topic_templates`. Three sending identities — do not merge (`email-senders` memory).
+- Logic: `src/domain/marketingContact.js`, `src/marketingTagCleanup.js` (bounded tag context + deterministic review decisions), `src/marketingTagJevApi.js`, `src/domain/campaigns.js`, `src/domain/outreachDrafts.js`, `src/domain/draftMemoryRules.js`, `src/domain/outreachTopicTemplates.js`, `src/outreachApi.js`, `src/campaignApi.js`
+- Edge fns: `jev-marketing-tags` (JEV → DeepSeek → JEV review cascade; read-only), `draft-outreach-topic`, `discuss-outreach-draft`, `generate-outreach-drafts`, `send-personal-email`, `send-campaign`, `generate-blog`, `publish-to-wordpress`, `subscribe`, `unsubscribe`, `suggest-tag-merges`, `resend-webhook`
+- Collections: `marketing_contacts/{id}` (+ same thread subcollections as customers), `audit_logs` (`kind:'marketing_tag_cleanup'` append-only backups for explicitly approved tag writes), `marketing_campaigns`, `campaign_templates`, `outreach_drafts`, `draft_memory_rules`, `outreach_topic_templates`. Three sending identities — do not merge (`email-senders` memory). The tag-review queue defaults every row to skip; model output never writes.
 - ⚠️ **Before changing the Blog UI, `publish-to-wordpress.js`, or any SEO/image surface, read `MARKETING-WORKFLOW.md` §6** — the external DeepSeek SEO/Artgen engine's rules (Product Truth, locked art styles, WPML/Elementor/redirect publishing contract) live there; the OC is their custodian and can't see them from its own code.
 
 ### Message ingestion & AI summaries (email / WhatsApp / Alibaba) → see `SOURCING-HUB.md` §Comms-capture

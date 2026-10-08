@@ -41,9 +41,26 @@ export function normalizeTagInputs(rawTags) {
     .map(item => ({
       tag: String(item?.tag ?? '').trim(),
       count: Math.max(0, Math.trunc(Number(item?.count) || 0)),
+      context: sanitizeTagContext(item?.context),
     }))
     .filter(item => item.tag && item.tag.length <= 120 && !seen.has(item.tag) && seen.add(item.tag))
     .slice(0, JEV_MARKETING_TAG_BATCH_SIZE)
+}
+
+const boundedStrings = (value, limit, maxLength = 80) => (Array.isArray(value) ? value : [])
+  .map(item => String(item || '').trim().slice(0, maxLength))
+  .filter(Boolean)
+  .slice(0, limit)
+
+function sanitizeTagContext(raw) {
+  return {
+    sampleCompanies: boundedStrings(raw?.sampleCompanies, 5, 100),
+    countries: boundedStrings(raw?.countries, 6),
+    coTags: boundedStrings(raw?.coTags, 8),
+    audiences: boundedStrings(raw?.audiences, 4),
+    statuses: boundedStrings(raw?.statuses, 4),
+    linkedCustomers: Math.max(0, Math.trunc(Number(raw?.linkedCustomers) || 0)),
+  }
 }
 
 export function buildMarketingTagQuestions(tags, { choice }) {
@@ -143,7 +160,7 @@ export function buildDeepSeekVerificationQuestions(suggestions, { noul }) {
   return Object.fromEntries(suggestions.map((suggestion, index) => [
     `proposal_${index}`,
     noul(
-      `Is suggestions[${index}] a well-supported, conservative interpretation and cleanup recommendation for this CRM tag? The canonical mapping must mean the same thing, not merely be related.`,
+      `Is suggestions[${index}] a well-supported, conservative interpretation and cleanup recommendation for this CRM tag, given its supplied usage context? The canonical mapping must mean the same thing, not merely be related.`,
       {
         true: 'The interpretation is plausible and the proposed action/canonical mapping is conservative and semantically equivalent.',
         false: 'The interpretation is uncertain, the action is too aggressive, or the canonical mapping is only related rather than equivalent.',

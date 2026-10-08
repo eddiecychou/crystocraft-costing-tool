@@ -1,5 +1,11 @@
 # Marketing Workflow — the Content Engine
 
+## Marketing-contact tag cleanup (JEV pilot)
+
+`MarketingContacts.jsx` → Contacts → Manage Tags runs a conservative three-stage cascade through `/api/jev-marketing-tags`: JEV classifies every tag, only unresolved tags reach DeepSeek with bounded aggregate context, and JEV verifies DeepSeek's proposed interpretation. The payload includes representative companies, countries, co-tags, audience/status values, and linked-customer count; it deliberately excludes contact IDs, names, email addresses, phone numbers, notes, and message content.
+
+The model boundary is strict: analysis is advisory and every human-review row defaults to **Skip**. A user must explicitly choose Rename/Merge or Remove and confirm the final list. `applyReviewedMarketingTagChange()` then processes choices sequentially, atomically writes each chunk's exact pre-change tag arrays to append-only `audit_logs`, updates the contacts, and reads every affected contact back. A write is not shown as successful unless that read-back proves the old tag is gone and, for rename, the replacement exists. There is no Mailchimp write API in this workflow; verification is against the Operation Center's Firestore copy.
+
 > How outreach, campaigns, content, and product-image work actually run in this
 > codebase. Grounded in the implementation — where the brief named a concept we
 > haven't built (e.g. a formal "visual grammar"), this documents what the code
