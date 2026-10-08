@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Catalogues from './Catalogues'
 import BlogGenerator from './BlogGenerator'
 import MarketingContacts from './MarketingContacts'
@@ -21,11 +22,30 @@ const TABS = [
 export default function Marketing() {
   const role = useRole()
   const tabs = TABS.filter(t => !t.adminOnly || role === 'admin')
-  const [tab, setTab] = useState('drafts')
+  // Contact detail pages return with ?tab=contacts.  The old bare /marketing
+  // route always opens Daily Drafts, which made an edit feel like it had sent
+  // the operator to a different area of the app.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const initialTab = tabs.some(t => t.v === requestedTab) ? requestedTab : 'drafts'
+  const [tab, setTab] = useState(initialTab)
   // Contacts tab hands off a hand-picked contact list to the Campaigns tab
   // (owner: "click a few contacts and send a template email") — lifted here
   // since both are sibling tabs of the same page, not separate routes.
   const [presetContactIds, setPresetContactIds] = useState(null)
+
+  // Also honour browser Back/Forward and a direct Marketing link with a tab.
+  useEffect(() => {
+    setTab(tabs.some(t => t.v === requestedTab) ? requestedTab : 'drafts')
+  }, [requestedTab, role])
+
+  function selectTab(nextTab) {
+    setTab(nextTab)
+    const next = new URLSearchParams(searchParams)
+    if (nextTab === 'drafts') next.delete('tab')
+    else next.set('tab', nextTab)
+    setSearchParams(next)
+  }
 
   return (
     <div>
@@ -33,7 +53,7 @@ export default function Marketing() {
         <h1 className="text-xl md:text-2xl mb-4">Marketing</h1>
         <div className="flex gap-0 overflow-x-auto overflow-y-hidden whitespace-nowrap">
           {tabs.map(t => (
-            <button key={t.v} onClick={() => setTab(t.v)}
+            <button key={t.v} onClick={() => selectTab(t.v)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px shrink-0 ${
  tab === t.v ? 'border-brand-600 text-brand-600' : 'border-transparent text-ink-60 hover:text-ink'
               }`}>
@@ -47,7 +67,7 @@ export default function Marketing() {
       {tab === 'frontpage'  && <FrontPageConfig embedded />}
       {tab === 'blog'       && <BlogGenerator embedded />}
       {tab === 'contacts'   && (
-        <MarketingContacts onSendEmail={ids => { setPresetContactIds(ids); setTab('campaigns') }} />
+        <MarketingContacts onSendEmail={ids => { setPresetContactIds(ids); selectTab('campaigns') }} />
       )}
       {tab === 'campaigns'  && (
         <Campaigns presetContactIds={presetContactIds} onConsumedPreset={() => setPresetContactIds(null)} />

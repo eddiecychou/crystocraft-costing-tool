@@ -29,6 +29,10 @@ export default function MarketingContactDetail() {
   const [contact, setContact] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  // The Marketing shell defaults to Daily Drafts.  Be explicit whenever a
+  // contact editor returns so the operator lands back in Contacts, with the
+  // list's saved filters still intact.
+  const contactsUrl = '/marketing?tab=contacts'
 
   useEffect(() => {
     let cancelled = false
@@ -48,7 +52,7 @@ export default function MarketingContactDetail() {
   if (loadError || !contact) {
     return (
       <div className="p-4 md:p-6">
-        <Link to="/marketing" className="text-sm text-brand-600 hover:underline inline-flex items-center gap-1 mb-4">
+        <Link to={contactsUrl} className="text-sm text-brand-600 hover:underline inline-flex items-center gap-1 mb-4">
           <ArrowLeft size={14} /> Back to Marketing Contacts
         </Link>
         <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2">
@@ -63,12 +67,13 @@ export default function MarketingContactDetail() {
       contact={contact}
       customers={customers}
       onPatched={(patch) => setContact(prev => ({ ...prev, ...patch }))}
-      onDeleted={() => navigate('/marketing')}
+      onDeleted={() => navigate(contactsUrl)}
+      contactsUrl={contactsUrl}
     />
   )
 }
 
-function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
+function ContactDetailForm({ contact, customers, onPatched, onDeleted, contactsUrl }) {
   const [f, setF] = useState({
     first_name: contact.first_name, last_name: contact.last_name, email: contact.email,
     company: contact.company, country: contact.country, phone: contact.phone,
@@ -156,7 +161,7 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
-      <Link to="/marketing" className="text-sm text-brand-600 hover:underline inline-flex items-center gap-1 mb-3">
+      <Link to={contactsUrl} className="text-sm text-brand-600 hover:underline inline-flex items-center gap-1 mb-3">
         <ArrowLeft size={14} /> Back to Marketing Contacts
       </Link>
 
