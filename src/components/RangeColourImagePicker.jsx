@@ -5,6 +5,7 @@ import { useCrystalColors } from '../crystalColors'
 import { parseRangeVariantSuffix } from '../rangeSku'
 import { generateColourPreview, uploadColourPreview, pickGalleryColourPreview, promoteColourImage, markUsable } from '../colourPreviewApi'
 import { Sparkles, Plus, ZoomIn, Download, X } from 'lucide-react'
+import { imageDownloadUrl } from '../imageDownloadUrl'
 
 // Same download-through-proxy pattern as RangeForm.jsx's downloadRangeImage
 // — a plain <a download> is silently ignored for a cross-origin Storage URL.
@@ -14,7 +15,7 @@ function downloadColourImage(url, baseName) {
   const ext = (url.split('?')[0].match(/\.(jpe?g|png|webp|gif)$/i)?.[1] || 'jpg').toLowerCase()
   const filename = `${safe}.${ext}`
   const a = document.createElement('a')
-  a.href = `/api/download-image?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
+  a.href = imageDownloadUrl(url, filename, true)
   a.download = filename
   document.body.appendChild(a)
   a.click()

@@ -12,12 +12,12 @@ import { isStorefrontVisible, normVideos, youtubeEmbed, normBlogLinks } from '..
 import { engineTypeOf, engineAvailable, engineLabel } from '../customizerEngines'
 import { screenSensitiveImages } from '../sensitiveImages'
 import ImageLightbox from '../components/ImageLightbox'
+import { imageDownloadUrl } from '../imageDownloadUrl'
 
 // Forces a real "Save As" instead of opening the image in-tab — same proxy
 // BrandPortalPage.jsx already uses for customer downloads (a plain
 // <a download> is silently ignored for a cross-origin Firebase Storage URL).
-const downloadUrl = (fileUrl, filename) =>
-  `/api/download-image?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename || 'photo.jpg')}`
+const downloadUrl = (fileUrl, filename) => imageDownloadUrl(fileUrl, filename || 'photo.jpg', true)
 
 export default function CorporateDetail({ profile }) {
   const { id } = useParams()

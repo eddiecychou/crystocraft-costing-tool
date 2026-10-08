@@ -42,6 +42,22 @@ function isAllowedStorageUrl(u, bucket) {
   return u.pathname.includes(`/b/${bucket}/`) || u.pathname.startsWith(`/${bucket}/`)
 }
 
+// Some managed Chrome profiles run downloaded files through enterprise
+// content scanning. A handful of otherwise-valid gallery JPEGs have been
+// false-positive blocked when their original bytes are served unchanged.
+// For Firebase/Google Storage images, ask Netlify Image CDN to decode and
+// re-encode the image before returning it. This is deliberately opt-in so
+// non-image brand assets and the WordPress fallback keep their original bytes.
+export function normalizedImageUrl(requestUrl, target, normalize) {
+  const format = { jpeg: 'jpg', jpg: 'jpg', png: 'png', webp: 'webp', gif: 'gif' }[normalize]
+  if (!format || !ALLOWED_STORAGE_HOSTS.has(target.hostname)) return target
+  const transformed = new URL('/.netlify/images', requestUrl)
+  transformed.searchParams.set('url', target.toString())
+  transformed.searchParams.set('fm', format)
+  transformed.searchParams.set('q', '95')
+  return transformed
+}
+
 export default async function handler(req) {
   const params = new URL(req.url).searchParams
   const rawUrl = params.get('url')
@@ -61,7 +77,8 @@ export default async function handler(req) {
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   let res
   try {
-    res = await fetch(target, { signal: controller.signal, redirect: 'error' })
+    const source = normalizedImageUrl(req.url, target, params.get('normalize'))
+    res = await fetch(source, { signal: controller.signal, redirect: 'error' })
   } catch {
     return new Response('Failed to fetch image', { status: 502 })
   } finally {
@@ -79,6 +96,7 @@ export default async function handler(req) {
     headers: {
       'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${filename}"`,
+      'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'private, max-age=3600',
     },
   })

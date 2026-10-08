@@ -7,6 +7,7 @@ import { Download, FileText, Loader2 } from 'lucide-react'
 import FacetDivider from '../components/FacetDivider'
 import LoadingBar from '../components/LoadingBar'
 import { buildBrandProposalPdf } from '../brandProposalExport'
+import { imageDownloadUrl } from '../imageDownloadUrl'
 
 // "Brand Portal" — replaces the old separate "My Brand Gallery" / "My
 // Proposal" pages (owner, post-launch: two nav entries for the same
@@ -27,8 +28,8 @@ import { buildBrandProposalPdf } from '../brandProposalExport'
 //                         of the pitch, so it sits last.
 // A section renders nothing when it has nothing — most customers won't have
 // all three.
-const downloadUrl = (fileUrl, filename) =>
-  `/api/download-image?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename || 'file')}`
+const downloadUrl = (fileUrl, filename, normalizeImage = false) =>
+  imageDownloadUrl(fileUrl, filename || 'file', normalizeImage)
 const extOf = filename => (filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
 
 export default function BrandPortalPage({ profile }) {
@@ -260,7 +261,7 @@ export default function BrandPortalPage({ profile }) {
                   <Link to={`/shop/corporate/${img.product_id}`} className="min-w-0 hover:text-brand-600">
                     <p className="text-xs text-ink truncate">{img.caption || img.product_name || 'Product photo'}</p>
                   </Link>
-                  <a href={downloadUrl(img.file_url, `${img.product_name || 'product'}.jpg`)}
+                  <a href={downloadUrl(img.file_url, `${img.product_name || 'product'}.jpg`, true)}
                      title="Download" className="shrink-0 text-ink-60 hover:text-brand-600">
                     <Download size={15} />
                   </a>
@@ -284,7 +285,7 @@ export default function BrandPortalPage({ profile }) {
                     <p className="text-xs text-ink truncate">{a.title || a.filename}</p>
                     <p className="text-xs text-ink-60">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
                   </div>
-                  <a href={downloadUrl(a.file_url, a.filename)}
+                  <a href={downloadUrl(a.file_url, a.filename, !cannotRenderAsImage(a.filename))}
                      title="Download" className="shrink-0 text-ink-60 hover:text-brand-600">
                     <Download size={15} />
                   </a>
@@ -311,7 +312,7 @@ export default function BrandPortalPage({ profile }) {
           <p className="text-xs text-ink-60 mb-3">Access your approved logos, guidelines and brand materials.</p>
           <div className="card divide-y divide-ivory-dark">
             {brandAssets.map(a => (
-              <a key={a.id} href={downloadUrl(a.file_url, a.filename)}
+              <a key={a.id} href={downloadUrl(a.file_url, a.filename, !cannotRenderAsImage(a.filename))}
                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-ivory/60 transition-colors">
                 <div className="w-11 h-11 shrink-0 rounded-none border border-ivory-dark bg-white flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
@@ -333,4 +334,3 @@ export default function BrandPortalPage({ profile }) {
     </div>
   )
 }
-

@@ -15,6 +15,7 @@ import { IMAGE_ORIENTATIONS, IMAGE_VISIBILITY, imageVisibility } from '../consta
 import { enhanceProductImage } from '../enhanceImage'
 import ManualAdjust from './ManualAdjust'
 import { useT } from '../i18n'
+import { imageDownloadUrl } from '../imageDownloadUrl'
 
 // Sample both images at 150×150 and count pixels that were clearly coloured in
 // the original but became near-white in the enhanced version — that's colour loss.
@@ -68,7 +69,10 @@ function makeDownloadName(prefix, index) {
 }
 
 function downloadImage(img, filename) {
-  const proxyUrl = `/api/download-image?url=${encodeURIComponent(img.file_url)}&filename=${encodeURIComponent(filename)}`
+  // Product-gallery uploads are JPEGs in Firebase Storage. Re-encode them via
+  // Netlify Image CDN before download so managed Chrome content scanning sees
+  // a clean JPEG rather than preserving a source binary it may false-positive.
+  const proxyUrl = imageDownloadUrl(img.file_url, filename, true)
   const a = document.createElement('a')
   a.href = proxyUrl
   a.download = filename

@@ -32,6 +32,7 @@ import { useComponents, resolveRef, productAvailability } from '../criticalCompo
 import { useCrystals } from '../crystals'
 import { normaliseCrystalBom, emptyCrystalBom } from '../crystalBom'
 import { useProductDefaults } from '../useProductDefaults'
+import { imageDownloadUrl } from '../imageDownloadUrl'
 import { Puzzle, Gem, Check, Download, Plus, X, Sparkles, RotateCcw, AlertTriangle } from 'lucide-react'
 
 // Detect whether the AI has bleached product colours (see ImageGallery.jsx for
@@ -398,7 +399,7 @@ function downloadRangeImage(url, baseName) {
   const safe = (baseName || 'image').replace(/[/\\?%*:|"<>]/g, '-').trim() || 'image'
   const ext = (url.split('?')[0].match(/\.(jpe?g|png|webp|gif)$/i)?.[1] || 'jpg').toLowerCase()
   const filename = `${safe}.${ext}`
-  const proxyUrl = `/api/download-image?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
+  const proxyUrl = imageDownloadUrl(url, filename, true)
   const a = document.createElement('a')
   a.href = proxyUrl
   a.download = filename

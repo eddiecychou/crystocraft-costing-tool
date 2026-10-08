@@ -7,6 +7,7 @@ import { listApprovedConcepts, type ApprovedConcept } from "@/lib/pdConcepts";
 import type { Product } from "@/types/product";
 import { supplierDisplayName, type RealSupplier } from "@/types/supplier";
 import { customerDisplayName, type RealCustomer } from "@/types/customer";
+import { imageDownloadUrl } from "@/imageDownloadUrl";
 
 function ConceptCard({ item }: { item: ApprovedConcept }) {
   const { template, product, thumbUrl } = item;
@@ -32,7 +33,7 @@ function ConceptCard({ item }: { item: ApprovedConcept }) {
           // Storage URL (download is ignored cross-origin unless the
           // response opts in, which Storage doesn't).
           <a
-            href={`/api/image-proxy?url=${encodeURIComponent(thumbUrl)}`}
+            href={imageDownloadUrl(thumbUrl, `${template.name}.jpg`, true)}
             download={`${template.name}.jpg`}
             className="text-2xs text-brand-600 uppercase tracking-wide hover:underline"
           >

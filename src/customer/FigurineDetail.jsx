@@ -19,12 +19,12 @@ import VideoEmbed from '../components/VideoEmbed'
 import { useComponents, productAvailability } from '../criticalComponents'
 import { useProductDefaults } from '../useProductDefaults'
 import ImageLightbox from '../components/ImageLightbox'
+import { imageDownloadUrl } from '../imageDownloadUrl'
 
 // Forces a real "Save As" instead of opening the image in-tab — same proxy
 // BrandPortalPage.jsx already uses for customer downloads (a plain
 // <a download> is silently ignored for a cross-origin Firebase Storage URL).
-const downloadUrl = (fileUrl, filename) =>
-  `/api/download-image?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename || 'photo.jpg')}`
+const downloadUrl = (fileUrl, filename) => imageDownloadUrl(fileUrl, filename || 'photo.jpg', true)
 
 function docVariants(p) {
   if (Array.isArray(p.variants) && p.variants.length) return p.variants

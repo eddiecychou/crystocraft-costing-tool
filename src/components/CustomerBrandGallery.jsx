@@ -8,6 +8,7 @@ import {
 } from '../customerAssets'
 import { IMAGE_VISIBILITY, imageVisibility } from '../constants'
 import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2, ExternalLink, FileText, Download, ChevronDown, ChevronRight } from 'lucide-react'
+import { imageDownloadUrl } from '../imageDownloadUrl'
 
 const extOf = filename => (filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
 
@@ -15,8 +16,8 @@ const extOf = filename => (filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '
 // ignored by most browsers for a different-origin URL (Firebase Storage is),
 // so it just opens the file instead of saving it. Same Netlify proxy
 // ImageGallery.jsx already relies on for this exact reason.
-const downloadUrl = (fileUrl, filename) =>
-  `/api/download-image?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename || 'file')}`
+const downloadUrl = (fileUrl, filename, normalizeImage = false) =>
+  imageDownloadUrl(fileUrl, filename || 'file', normalizeImage)
 
 // A non-raster asset (.ai/.eps/.pdf/.pptx, and .svg which we deliberately
 // never rasterize) can't render as an <img> thumbnail — show the file type
@@ -196,7 +197,7 @@ export default function CustomerBrandGallery({ customerId }) {
                         <span className={`inline-block text-2xs px-1.5 py-0.5 rounded-full font-medium ${visMeta?.cls || 'bg-warm-grey text-ink-70'}`}>
                           {visMeta?.short || vis}
                         </span>
-                        <a href={downloadUrl(img.file_url, `${img.product_name || 'product'}.jpg`)}
+                        <a href={downloadUrl(img.file_url, `${img.product_name || 'product'}.jpg`, true)}
                            title="Download" className="text-ink-60 hover:text-brand-600">
                           <Download size={12} />
                         </a>
@@ -272,7 +273,7 @@ export default function CustomerBrandGallery({ customerId }) {
                               </span>
                             )}
                           </div>
-                          <a href={downloadUrl(a.file_url, a.filename)}
+                          <a href={downloadUrl(a.file_url, a.filename, !cannotRenderAsImage(a.filename))}
                              title="Download" className="shrink-0 text-ink-60 hover:text-brand-600">
                             <Download size={12} />
                           </a>
@@ -347,7 +348,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
             {asset.filename}{' — '}
             <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">view</a>
             {' · '}
-            <a href={downloadUrl(asset.file_url, asset.filename)} className="text-brand-600 hover:underline">download</a>
+            <a href={downloadUrl(asset.file_url, asset.filename, !cannotRenderAsImage(asset.filename))} className="text-brand-600 hover:underline">download</a>
           </p>
 
           <div>

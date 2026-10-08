@@ -20,6 +20,7 @@ import type { Product } from "@/types/product";
 import type { Generation } from "@/types/generation";
 import BrandQuickView from "@/components/BrandQuickView";
 import JsonHierarchyView from "@/components/JsonHierarchyView";
+import { imageDownloadUrl } from "@/imageDownloadUrl";
 
 const STATUS_BADGE: Record<PromptTemplate["status"], string> = {
   draft: "badge-sampled",
@@ -332,7 +333,7 @@ export default function TemplateDetailPage() {
                   Storage URL. Eddie, 2026-09-20: needs this alongside the
                   copied JSON to feed both into Gemini as reference. */}
               <a
-                href={`/api/image-proxy?url=${encodeURIComponent(sourceImage.url)}`}
+                href={imageDownloadUrl(sourceImage.url, `${(template !== "loading" && template?.name) || "source-image"}.jpg`, true)}
                 download={`${(template !== "loading" && template?.name) || "source-image"}.jpg`}
                 className="block mt-1.5 text-2xs text-brand-600 uppercase tracking-wide hover:underline"
               >
@@ -374,7 +375,7 @@ export default function TemplateDetailPage() {
                   <img src={r.url} alt="" className="max-w-full max-h-full object-contain" />
                 </div>
                 <a
-                  href={`/api/image-proxy?url=${encodeURIComponent(r.url)}`}
+                  href={imageDownloadUrl(r.url, r.name, true)}
                   download={r.name}
                   className="block p-1.5 text-2xs text-brand-600 uppercase tracking-wide hover:underline"
                 >
@@ -441,7 +442,7 @@ export default function TemplateDetailPage() {
                       items don't run together edge-to-edge on a narrow card
                       — they now wrap onto a second line instead. */}
                   <a
-                    href={`/api/image-proxy?url=${encodeURIComponent(g.resultImageUrl)}`}
+                    href={imageDownloadUrl(g.resultImageUrl, `${(template !== "loading" && template?.name) || "generation"}-${g.id}.jpg`, true)}
                     download={`${(template !== "loading" && template?.name) || "generation"}-${g.id}.jpg`}
                     className="text-2xs text-brand-600 uppercase tracking-wide hover:underline"
                   >

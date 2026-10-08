@@ -13,6 +13,7 @@ import { storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import BrandQuickView from "@/components/BrandQuickView";
 import JsonHighlightedTextarea from "@/components/JsonHighlightedTextarea";
+import { imageDownloadUrl } from "@/imageDownloadUrl";
 
 type Candidate = {
   label: string;
@@ -410,7 +411,7 @@ export default function EditTemplatePage() {
                 <img src={sourceImage.url} alt="" className="max-w-full max-h-full object-contain" />
               </div>
               <a
-                href={`/api/image-proxy?url=${encodeURIComponent(sourceImage.url)}`}
+                href={imageDownloadUrl(sourceImage.url, `${template.name}.jpg`, true)}
                 download={`${template.name}.jpg`}
                 className="block mt-1.5 text-2xs text-brand-600 uppercase tracking-wide hover:underline"
               >

@@ -23,6 +23,7 @@ import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
 import WhatsAppAttachment from '../components/WhatsAppAttachment'
+import { imageDownloadUrl } from '../imageDownloadUrl'
 import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, buildKeywordFacets, composeEmailAnswer } from '../emailSummaryApi'
 import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 import { savePastedAlibabaThread, generateAndSaveAlibabaSummary } from '../alibabaSummaryApi'
@@ -377,7 +378,7 @@ function ProductDesignConceptCard({ item }) {
         <p className="text-2xs text-ink-60 truncate mb-1">{product?.name || '—'}</p>
         {thumbUrl && (
           <a
-            href={`/api/image-proxy?url=${encodeURIComponent(thumbUrl)}`}
+            href={imageDownloadUrl(thumbUrl, `${template.name}.jpg`, true)}
             download={`${template.name}.jpg`}
             className="text-2xs text-brand-600 uppercase tracking-wide hover:underline"
           >
