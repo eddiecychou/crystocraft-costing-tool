@@ -12,6 +12,7 @@ import {
   usePricingGroups, effectiveMarkup, DEFAULT_MARKUP,
   unitCostHKDAtQty, toolingCostHKD, totalUnitCostAtQty,
 } from '../pricing'
+import { costToHKD, hkdRateForCostCurrency, normalizeCostCurrency } from '../costCurrency'
 
 const DEFAULT_RATES = { RMB: 1.09, USD: 7.78, EUR: 8.60, HKD: 1 }
 
@@ -74,6 +75,14 @@ export default function PricingTiers() {
   const hasVolumeTiers = components.some(c => c.preferred_quote?.volume_tiers?.length > 0)
   const toolingHKD = toolingCostHKD(components, rates)
   const missingPreferred = components.some(c => !c.preferred_quote)
+  const unavailableCurrencies = [...new Set(components.flatMap(c => {
+    const q = c.preferred_quote
+    if (!q) return []
+    const currencies = []
+    if (q.unit_cost != null && hkdRateForCostCurrency(q.unit_cost_currency, rates) == null) currencies.push(q.unit_cost_currency)
+    if (q.tooling_sample_cost && hkdRateForCostCurrency(q.tooling_sample_cost_currency, rates) == null) currencies.push(q.tooling_sample_cost_currency)
+    return currencies
+  }))]
 
   // Signature of everything that feeds published prices (cost inputs, the qty
   // ladder, and the group markups). Compared to what was stored at last publish
@@ -125,6 +134,10 @@ export default function PricingTiers() {
   // customer_prices doc each. Raw cost never leaves the admin tool this way.
   async function publish() {
     if (!tiers.length) { setPublishMsg('Add at least one quantity tier first.'); return }
+    if (tiers.some(t => totalUnitCostAtQty(components, rates, t.quantity) == null)) {
+      setPublishMsg(`Cannot publish: no HKD exchange rate for ${unavailableCurrencies.join(', ') || 'a supplier-cost currency'}.`)
+      return
+    }
     setPublishing(true); setPublishMsg(null)
     try {
       const usersSnap = await getDocs(collection(db, 'users'))
@@ -210,7 +223,8 @@ export default function PricingTiers() {
               {components.map(c => {
                 const q = c.preferred_quote
                 const qty = Number(c.qty_per_product) || 1
-                const costHKD = q?.unit_cost ? Number(q.unit_cost) * (rates[q.unit_cost_currency] || 1) * qty : null
+                const baseCostHKD = q?.unit_cost != null ? costToHKD(q.unit_cost, q.unit_cost_currency, rates) : null
+                const costHKD = baseCostHKD == null ? null : baseCostHKD * qty
                 return (
                   <div key={c.id} className="py-2.5 flex items-center justify-between gap-4">
                     <div className="min-w-0">
@@ -233,13 +247,13 @@ export default function PricingTiers() {
                         </Link>
                       )}
                     </div>
-                    <p className="text-sm font-medium text-ink shrink-0">{costHKD != null ? `HKD ${costHKD.toFixed(2)}` : '—'}</p>
+                    <p className="text-sm font-medium text-ink shrink-0">{costHKD != null ? `HKD ${costHKD.toFixed(2)}` : `Rate unavailable (${normalizeCostCurrency(q?.unit_cost_currency) || 'currency'})`}</p>
                   </div>
                 )
               })}
             </div>
 
-            {toolingHKD > 0 && (
+            {toolingHKD != null && toolingHKD > 0 && (
               <div className="flex items-center justify-between py-2.5 border-t border-warm-grey">
                 <div>
                   <p className="text-sm text-ink">Tooling / Sample Cost</p>
@@ -250,7 +264,7 @@ export default function PricingTiers() {
             )}
             <div className="flex items-center justify-between pt-3 border-t border-warm-grey">
               <p className="text-sm font-semibold text-ink-80">Recurring Unit Cost</p>
-              <p className="text-lg font-bold text-ink">HKD {unitCostHKD.toFixed(2)}</p>
+              <p className="text-lg font-bold text-ink">{unitCostHKD != null ? `HKD ${unitCostHKD.toFixed(2)}` : 'Rate unavailable'}</p>
             </div>
 
             <div className="mt-3 text-xs text-ink-60">
@@ -264,6 +278,12 @@ export default function PricingTiers() {
       {missingPreferred && (
         <div className="bg-orange-50 border border-orange-200 rounded-none px-4 py-3 mb-4 text-sm text-orange-700">
           <AlertTriangle size={13} className="inline align-[-2px] mr-1" />Some components have no preferred supplier — cost totals and prices below are incomplete.
+        </div>
+      )}
+
+      {unavailableCurrencies.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-none px-4 py-3 mb-4 text-sm text-red-700">
+          <AlertTriangle size={13} className="inline align-[-2px] mr-1" />No HKD exchange rate for {unavailableCurrencies.join(', ')}. Costs and price publishing are blocked until the quote currency is corrected or a rate is configured.
         </div>
       )}
 
@@ -290,20 +310,21 @@ export default function PricingTiers() {
               </thead>
               <tbody>
                 {tiers.map((tier, idx) => {
-                  const toolingPerUnit = toolingHKD / tier.quantity
+                  const tierUnitCost = unitCostHKDAtQty(components, rates, tier.quantity)
+                  const toolingPerUnit = toolingHKD == null ? null : toolingHKD / tier.quantity
                   const allInCost = totalUnitCostAtQty(components, rates, tier.quantity)
                   const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-ivory'
                   return (
                     <tr key={tier.id} className={rowBg}>
                       <td className="py-3 pr-4 font-bold text-ink whitespace-nowrap">{tier.quantity.toLocaleString()}</td>
                       <td className="py-3 px-4 text-right text-ink-70 border-l border-warm-grey whitespace-nowrap">
-                        {unitCostHKDAtQty(components, rates, tier.quantity).toFixed(2)}
-                        {hasVolumeTiers && unitCostHKDAtQty(components, rates, tier.quantity) !== unitCostHKD && (
+                        {tierUnitCost == null ? '—' : tierUnitCost.toFixed(2)}
+                        {hasVolumeTiers && tierUnitCost != null && tierUnitCost !== unitCostHKD && (
                           <span className="block text-xs text-brand-500">vol. price</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right text-ink-60 text-xs border-l border-warm-grey whitespace-nowrap">{toolingHKD > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-ink border-l border-warm-grey whitespace-nowrap">{allInCost.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right text-ink-60 text-xs border-l border-warm-grey whitespace-nowrap">{toolingPerUnit != null && toolingPerUnit > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}</td>
+                      <td className="py-3 px-4 text-right font-semibold text-ink border-l border-warm-grey whitespace-nowrap">{allInCost == null ? '—' : allInCost.toFixed(2)}</td>
                       <td className="py-3 px-4 text-right border-l border-warm-grey">
                         <input type="number" className="input text-right w-20 py-1 text-sm" defaultValue={tier.production_lead_time_days ?? ''} placeholder="—"
                           onBlur={e => handleLeadTimeChange(tier.id, e.target.value)} />
@@ -362,7 +383,7 @@ export default function PricingTiers() {
                     <tr key={tier.id} className={rowBg}>
                       <td className="py-3 pr-4 font-bold text-ink whitespace-nowrap">{tier.quantity.toLocaleString()}</td>
                       {previewGroups.map(g => (
-                        <td key={g.id} className="py-3 px-4 text-right text-ink border-l border-warm-grey whitespace-nowrap">{Math.ceil(allIn * g.markup).toLocaleString()}</td>
+                        <td key={g.id} className="py-3 px-4 text-right text-ink border-l border-warm-grey whitespace-nowrap">{allIn == null ? '—' : Math.ceil(allIn * g.markup).toLocaleString()}</td>
                       ))}
                     </tr>
                   )
@@ -387,7 +408,7 @@ export default function PricingTiers() {
           <div className="flex items-center gap-2 shrink-0">
             {published && !stale && <span className="inline-flex items-center gap-1 text-xs text-green-600"><BadgeCheck size={14} /> Up to date</span>}
             {stale && published && <span className="text-xs text-amber-600">Out of date</span>}
-            <button onClick={publish} disabled={publishing || !tiers.length} className="btn-primary text-sm">
+            <button onClick={publish} disabled={publishing || !tiers.length || unavailableCurrencies.length > 0} className="btn-primary text-sm">
               {publishing ? 'Publishing…' : stale ? 'Publish prices' : 'Re-publish'}
             </button>
           </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { doc, onSnapshot, getDoc } from 'firebase/firestore'
 import { db } from './firebase'
+import { costToHKD } from './costCurrency'
 
 // Fallback markup when a customer has no group/override (cost × this).
 export const DEFAULT_MARKUP = 2.0
@@ -60,25 +61,36 @@ export function componentUnitCostAtQty(q, orderQty) {
 }
 
 export function unitCostHKDAtQty(components, rates, orderQty) {
-  return components.reduce((sum, c) => {
+  let total = 0
+  for (const c of components) {
     const q = c.preferred_quote
-    if (!q) return sum
+    if (!q) continue
     const unitCost = componentUnitCostAtQty(q, orderQty)
-    if (unitCost == null) return sum
+    if (unitCost == null) continue
     const compQty = Number(c.qty_per_product) || 1
-    return sum + unitCost * (rates[q.unit_cost_currency] || 1) * compQty
-  }, 0)
+    const converted = costToHKD(unitCost, q.unit_cost_currency, rates)
+    if (converted == null) return null
+    total += converted * compQty
+  }
+  return total
 }
 
 export function toolingCostHKD(components, rates) {
-  return components.reduce((sum, c) => {
+  let total = 0
+  for (const c of components) {
     const q = c.preferred_quote
-    if (!q || !q.tooling_sample_cost) return sum
-    return sum + Number(q.tooling_sample_cost) * (rates[q.tooling_sample_cost_currency] || 1)
-  }, 0)
+    if (!q || !q.tooling_sample_cost) continue
+    const converted = costToHKD(q.tooling_sample_cost, q.tooling_sample_cost_currency, rates)
+    if (converted == null) return null
+    total += converted
+  }
+  return total
 }
 
 // All-in unit cost (recurring + amortised tooling) in HKD at a given quantity.
 export function totalUnitCostAtQty(components, rates, qty) {
-  return unitCostHKDAtQty(components, rates, qty) + (qty > 0 ? toolingCostHKD(components, rates) / qty : 0)
+  const recurring = unitCostHKDAtQty(components, rates, qty)
+  const tooling = toolingCostHKD(components, rates)
+  if (recurring == null || tooling == null) return null
+  return recurring + (qty > 0 ? tooling / qty : 0)
 }

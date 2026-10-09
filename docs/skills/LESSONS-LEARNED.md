@@ -982,6 +982,12 @@ sessions, add an auto-memory. Then note it in the Change Log.
 - **Root cause.** A server-side scraper would not share the staff member’s selected SKU or browser session, would be brittle against marketplace UI changes, and would blur a source listing into an approved supplier/product claim. Giving a browser extension an OC credential would create a second, unnecessary authentication boundary.
 - **Permanent fix.** `browser-extensions/1688-capture/` captures only the already-open listing after an explicit toolbar click, stores it locally for 30 minutes, and sends it to the signed-in OC review page. OC writes bounded source text and a supply-gated screenshot to `sourcing_captures`; it does not create a supplier, product, component or quote. **MUST** label its content as evidence, review the selected SKU and supplier facts, and obtain explicit approval before the restricted corporate-gift MCP creates an inactive draft. **MUST NOT** turn the extension into an unattended crawler, capture a page without a user action, or put OC/Firebase credentials in the extension.
 
+## L-58 · An unfamiliar currency must never silently mean HKD 1:1
+
+- **Symptom.** A corporate-gift supplier quote created through the product-writer MCP stored `35 CNY`, while Pricing displayed and published it as `HKD 35.00`. The configured `RMB→HKD` rate was 1.1653, so the correct recurring unit cost was HKD 40.7855.
+- **Root cause.** The MCP accepted any three-letter code, including `CNY`, but the OC exchange-rate register uses the accounting label `RMB`. Costing used `rates[currency] || 1`, turning an unrecognised supplier currency into a plausible-looking but incorrect 1:1 HKD conversion.
+- **Permanent fix.** `src/costCurrency.js` normalises the Chinese-yuan alias `CNY` to `RMB` before lookup and returns no value when a rate is absent. Corporate pricing visibly marks the cost unavailable and blocks publishing; catalogue-to-quote costing rejects the addition rather than persisting a false cost. The product-writer MCP now permits only `RMB`, `HKD`, `USD`, and `EUR` (accepting `CNY` only as an alias stored as `RMB`). Range costing uses the same alias. Tests pin `35 CNY × 1.1653 = HKD 40.7855` and rejection of an unconfigured `GBP` rate. **MUST NOT** use a fallback rate of `1` for an unknown source currency. **MUST** either canonicalise a documented alias or stop the operation until an explicit rate exists.
+
 ## Change Log
 
 | Date | Change |

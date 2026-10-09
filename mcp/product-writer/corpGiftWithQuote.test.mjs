@@ -19,10 +19,12 @@ const run = (body, fetchImpl, auth = authorize) => handleCreateCorpGiftWithQuote
 test('validates a narrow bundle and rejects unsupported fields', () => {
   const bundle = validateBundle(base)
   assert.equal(bundle.unit_cost, 17)
+  assert.equal(bundle.unit_cost_currency, 'RMB')
   assert.equal(bundle.moq, 100)
   assert.throws(() => validateBundle({ ...base, active: true }), /Unsupported field/)
   assert.throws(() => validateBundle({ ...base, supplier_id: '../suppliers/x' }), /invalid/)
   assert.throws(() => validateBundle({ ...base, unit_cost: -1 }), /nonnegative/)
+  assert.throws(() => validateBundle({ ...base, unit_cost_currency: 'GBP' }), /RMB, HKD, USD or EUR/)
 })
 
 test('creates product, component and quote atomically with fixed hidden and preferred flags', async () => {
@@ -38,6 +40,7 @@ test('creates product, component and quote atomically with fixed hidden and pref
   assert.equal(commit.writes[0].update.fields.active.booleanValue, false)
   assert.equal(commit.writes[2].update.fields.is_preferred.booleanValue, true)
   assert.equal(commit.writes[2].update.fields.unit_cost.doubleValue, 17)
+  assert.equal(commit.writes[2].update.fields.unit_cost_currency.stringValue, 'RMB')
   assert.equal(commit.writes[2].update.fields.supplier_name.stringValue, 'Wenzhou Yanxu (温州颜叙电子科技有限公司)')
   assert.ok(commit.writes[2].update.name.includes('/supplier_quotes/'))
   assert.equal((await res.json()).created, true)

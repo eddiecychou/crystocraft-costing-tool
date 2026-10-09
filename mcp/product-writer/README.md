@@ -65,6 +65,14 @@ whether records were newly created or returned from an earlier call. Do not
 reuse a draft-only request ID for the bundled tool: it creates a different
 record set and will conflict with the already-created draft.
 
+## Supplier-cost currencies
+
+Supplier quotes use the Operation Center's accounting codes: `RMB`, `HKD`,
+`USD`, or `EUR`. The writer accepts `CNY` as a convenience alias for Chinese
+yuan, but normalises it to `RMB` before saving; it never stores `CNY` on a
+quote. Other currencies are rejected rather than being treated as a 1:1 HKD
+cost.
+
 ## Scope and privacy limit
 
 The draft-only tool cannot set `active`, `status`, images, prices, MOQ,

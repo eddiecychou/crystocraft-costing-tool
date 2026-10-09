@@ -7,6 +7,7 @@ const string = value => ({ stringValue: value })
 const integer = value => ({ integerValue: String(value) })
 const number = value => ({ doubleValue: value })
 const allowed = new Set(['name', 'category', 'description', 'marketing_description', 'assembly_notes', 'product_code', 'request_id', 'component_name', 'component_spec', 'supplier_id', 'unit_cost', 'unit_cost_currency', 'moq', 'production_lead_time_days', 'sampling_lead_time_days', 'tooling_lead_time_days', 'tooling_sample_cost', 'tooling_sample_cost_currency', 'quote_notes'])
+const QUOTE_CURRENCIES = new Set(['RMB', 'HKD', 'USD', 'EUR'])
 
 function text(value, key, max, required = false) {
   if (value === undefined && !required) return ''
@@ -18,6 +19,12 @@ function numeric(value, key, integerOnly = false, required = false) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || (integerOnly && !Number.isSafeInteger(value))) throw new Error(`${key} must be a nonnegative ${integerOnly ? 'integer' : 'number'}`)
   return value
 }
+function quoteCurrency(value, key, required = false) {
+  const supplied = text(value, key, 3, required).toUpperCase()
+  const canonical = supplied === 'CNY' ? 'RMB' : supplied
+  if (canonical && !QUOTE_CURRENCIES.has(canonical)) throw new Error(`${key} must be one of RMB, HKD, USD or EUR`)
+  return canonical
+}
 
 export function validateBundle(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Expected a JSON object')
@@ -26,10 +33,8 @@ export function validateBundle(input) {
   const product = validateDraft(Object.fromEntries(Object.entries(input).filter(([key]) => !allowed.has(key) || ['name', 'category', 'description', 'marketing_description', 'assembly_notes', 'product_code', 'request_id'].includes(key))))
   const supplier_id = text(input.supplier_id, 'supplier_id', 128, true)
   if (!/^[A-Za-z0-9_-]+$/.test(supplier_id)) throw new Error('supplier_id is invalid')
-  const unit_cost_currency = text(input.unit_cost_currency, 'unit_cost_currency', 3, true).toUpperCase()
-  if (!/^[A-Z]{3}$/.test(unit_cost_currency)) throw new Error('unit_cost_currency must be a three-letter currency code')
-  const tooling_sample_cost_currency = text(input.tooling_sample_cost_currency, 'tooling_sample_cost_currency', 3).toUpperCase()
-  if (tooling_sample_cost_currency && !/^[A-Z]{3}$/.test(tooling_sample_cost_currency)) throw new Error('tooling_sample_cost_currency must be a three-letter currency code')
+  const unit_cost_currency = quoteCurrency(input.unit_cost_currency, 'unit_cost_currency', true)
+  const tooling_sample_cost_currency = quoteCurrency(input.tooling_sample_cost_currency, 'tooling_sample_cost_currency')
   return {
     product,
     component_name: text(input.component_name, 'component_name', 160, true),

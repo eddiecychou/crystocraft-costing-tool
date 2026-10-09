@@ -19,6 +19,7 @@ import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { loadCustomerAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
+import { costToHKD } from '../costCurrency'
 import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle, Receipt } from 'lucide-react'
 
 // 'confirmed' is the canonical success status (matches the "uploaded" quote
@@ -282,10 +283,14 @@ export default function QuoteDetail() {
         const preferred = qSnap.docs.map(d => d.data()).find(q => q.is_preferred)
         if (preferred?.unit_cost) {
           const qty = Number(cDoc.data().qty_per_product) || 1
-          unit_cost_hkd += Number(preferred.unit_cost) * (fxRates[preferred.unit_cost_currency] || 1) * qty
+          const converted = costToHKD(preferred.unit_cost, preferred.unit_cost_currency, fxRates)
+          if (converted == null) throw new Error(`Cannot add ${p.name}: no HKD exchange rate for ${preferred.unit_cost_currency || 'this supplier currency'}.`)
+          unit_cost_hkd += converted * qty
         }
         if (preferred?.tooling_sample_cost) {
-          tooling_cost_hkd += Number(preferred.tooling_sample_cost) * (fxRates[preferred.tooling_sample_cost_currency] || 1)
+          const converted = costToHKD(preferred.tooling_sample_cost, preferred.tooling_sample_cost_currency, fxRates)
+          if (converted == null) throw new Error(`Cannot add ${p.name}: no HKD exchange rate for ${preferred.tooling_sample_cost_currency || 'this tooling currency'}.`)
+          tooling_cost_hkd += converted
         }
       }))
 

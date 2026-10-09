@@ -10,6 +10,7 @@ import { enumerateRangeSkus } from '../rangeSku'
 import { checkBomCoverage } from '../erpBomCoverage'
 import { useCrystalUnitCosts, crystalSizesOf, crystalBrandsForSize } from '../crystalCosting'
 import { DEFAULT_MARKUP } from '../pricing'
+import { costToHKD } from '../costCurrency'
 import {
   componentCostAtQty, componentsCostHKD, extraLinesHKD,
   toolingHKD, variantAllInCostHKD, variantSellHKD, productMarkup,
@@ -364,7 +365,8 @@ export default function RangeCosting() {
               const c = resolveRef(r, lib)
               const unit = componentCostAtQty(c, 1)
               const qty = Number(r.qty_per_unit) || 1
-              const hk = unit != null ? unit * (rates[c.unit_cost_currency] || 1) * qty : null
+              const baseCostHKD = unit != null ? costToHKD(unit, c.unit_cost_currency, rates) : null
+              const hk = baseCostHKD == null ? null : baseCostHKD * qty
               const plat = (r.plating_code || '').trim().toUpperCase()
               return (
                 <div key={`${r.id || r.code}::${plat}::${i}`} className="py-2.5 flex items-center justify-between gap-4">

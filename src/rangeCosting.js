@@ -41,9 +41,10 @@
 import { resolveRef } from './criticalComponents'
 import { DEFAULT_MARKUP } from './pricing'
 import { resolveCrystalCost } from './crystalCosting'
+import { costToHKD } from './costCurrency'
 
 const toHKD = (amount, currency, rates) =>
-  (Number(amount) || 0) * (rates?.[currency] || 1)
+  costToHKD(amount, currency, rates) ?? 0
 
 const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
 
