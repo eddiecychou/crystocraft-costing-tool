@@ -18,7 +18,7 @@ test('MCP server advertises the draft and bundled quote tools', async () => {
     assert.ok(bundle)
     assert.deepEqual(new Set(draft.inputSchema.required), new Set(['name', 'category', 'request_id']))
     assert.deepEqual(new Set(bundle.inputSchema.required), new Set(['name', 'category', 'request_id', 'component_name', 'supplier_id', 'unit_cost', 'unit_cost_currency']))
-    assert.deepEqual(new Set(bundle.inputSchema.properties.unit_cost_currency.enum), new Set(['RMB', 'CNY', 'HKD', 'USD', 'EUR']))
+    assert.deepEqual(new Set(bundle.inputSchema.properties.unit_cost_currency.enum), new Set(['RMB', 'HKD', 'USD', 'EUR']))
     for (const blocked of ['active', 'status', 'price', 'heroImage', 'collection']) {
       assert.equal(draft.inputSchema.properties[blocked], undefined)
       assert.equal(bundle.inputSchema.properties[blocked], undefined)

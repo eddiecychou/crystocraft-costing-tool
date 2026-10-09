@@ -68,10 +68,10 @@ record set and will conflict with the already-created draft.
 ## Supplier-cost currencies
 
 Supplier quotes use the Operation Center's accounting codes: `RMB`, `HKD`,
-`USD`, or `EUR`. The writer accepts `CNY` as a convenience alias for Chinese
-yuan, but normalises it to `RMB` before saving; it never stores `CNY` on a
-quote. Other currencies are rejected rather than being treated as a 1:1 HKD
-cost.
+`USD`, or `EUR`. The MCP exposes only these canonical units; use `RMB` for
+Chinese yuan. The write endpoint defensively normalises legacy direct `CNY`
+requests to `RMB`, so it never stores `CNY` on a quote. Other currencies are
+rejected rather than being treated as a 1:1 HKD cost.
 
 ## Scope and privacy limit
 
