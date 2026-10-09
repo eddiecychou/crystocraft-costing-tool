@@ -37,7 +37,7 @@ const PO_L = {
 // details change; the PO print is the only consumer.
 const COMPANY = {
   name_cn: '深圳市创联五金制品有限公司',
-  address: '广东省深圳市龙华区大浪街道华盛路133号进门上楼梯 2楼',
+  address: '广东省深圳市龙华区大浪街道水围社区华霆路宏泰科技园3栋二楼210',
   tel: '(86) 755-2770 4425',
 }
 
