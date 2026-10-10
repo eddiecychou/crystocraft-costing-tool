@@ -292,12 +292,14 @@ Intake is **manifest-driven**, never inferred — the same deterministic posture
   `contact_id:null` (`conversationGroupId`). Because a group legitimately has no
   `contact_id`, `isLegacyThread` keys on `account` **alone** — do not
   reintroduce a `contact_id` term there (`LESSONS-LEARNED.md` L-41).
-- **The two accounts are never merged.** Business and Personal WhatsApp stay
-  separate conversations even for the same person, and two contacts under one
-  customer stay separate threads. `~/Whatsapp Archives/{Business,Personal}/` is
-  the source of truth for the account (Heymans Ho was migrated as
-  `business__legacy` by mistake; the fix was re-keying + deleting the
-  wrong-account thread, **not** merging).
+- **Account is source metadata, and the folder is authoritative.** A customer
+  normally has one subthread. A second Personal/Business subthread exists only
+  when that conversation genuinely has exports in both folders; the labels are
+  for the owner's reference. `~/Whatsapp Archives/{Business,Personal}/` decides
+  the account, never stale manifest/migration metadata. Both text and media
+  importers **MUST** call `resolveArchiveAccount`; a disagreement fails with
+  `ARCHIVE_ACCOUNT_MISMATCH` instead of creating a false second subthread.
+  Re-imports from the same folder update the same account-keyed thread.
 - **Whose customer record a chat belongs to is a HUMAN decision.** **MUST NOT**
   auto- or fuzzy-match an archive to a customer — the mapping is the
   owner-confirmed `scripts/whatsapp-import-manifest.json`; an unknown filename is
@@ -315,6 +317,13 @@ Intake is **manifest-driven**, never inferred — the same deterministic posture
   without `.filter(d => !d.data().migrated_to)` shows each migrated chat twice
   (`CustomerDetail.jsx`, `MarketingContacts.jsx`, `src/whatsappSummaryApi.js`,
   and the digest's `activityFromWhatsappThreads`; `LESSONS-LEARNED.md` L-42).
+- **A wrong-account duplicate is repaired by verified supersession, not array
+  concatenation.** First prove the smaller thread is a complete content subset
+  of the authoritative-folder thread while ignoring the historical timezone
+  offset; then point the smaller doc's `migrated_to` at the complete target.
+  Keep the source as a recoverable tombstone. Blind fingerprint-merging can
+  duplicate every message because older imports parsed local timestamps with a
+  two-to-three-hour offset (`LESSONS-LEARNED.md` L-59).
 
 ### 4d. WordPress writes — the SEO control plane
 
@@ -552,6 +561,7 @@ makes it real.
 | 2026-08-31 | Created by merging root `INDEX.md` §4/§6 (cross-cutting + verify/deploy) with new hard-rule sections (isolation, RBAC contract, data lifecycles). Added the **Planned `sales` role** (§2a) per owner scope. Grounded in V8.12. |
 | 2026-09-01 | Adopted the Magister "AI management" patterns: §1 framed as a deterministic boundary; new §7a "Measure before you change" (report before/after numbers, never "looks fine"); new §8 Deterministic boundaries (AI reports observables, code decides — Product Truth, isolation, pricing, FX, ingestion); new §9 Load-Bearing Decisions (12 rules that must not be undone, plus the honest note that "WhatsApp-first CTA" is NOT implemented so cannot be one). |
 | 2026-10-03 | New §4c "WhatsApp thread identity & intake" — thread id is `account × contact_id` (never a display name); groups are a distinct third type (`{account}__group__{slug}`); Business/Personal accounts never merge; archive→customer matching is an owner-confirmed manifest (never auto/fuzzy); the 1 MiB/doc cap forces attachment URLs to spill to `whatsapp_threads/{id}/media/urls`; every reader must skip `migrated_to` tombstones. |
+| 2026-10-11 | Clarified §4c account semantics after the archive-inbox audit: Personal/Business is a source label and creates two subthreads only when both folders genuinely contain exports. The physical folder is authoritative; conflicting mapping metadata fails instead of creating a wrong-account duplicate. Verified subset repairs use recoverable tombstones. |
 | 2026-10-03 | New §4d "WordPress writes — the SEO control plane" — `ok` (no unintended drift) is not `verified` (the intended change happened); gate on `verified` and never report a batch `executed` with an unverified item; a payload-less item is rejected 400 at `create`; an empty `expectedFields` cannot prove intent; body-level validator checks compare the **raw** body on both sides (never `.rendered`), and trimming `source.content` to a workaround is forbidden; the vendored `seo-control-plane/` files are OC-owned SSOT with a sha256[:12] re-vendoring table. Extracted from the two control-plane defects raised by DSH (L-44 / L-45). |
 | 2026-10-03 | §4d extended for L-50/L-51/L-52: an entity's meta arrives in **three shapes** (nested, dotted, WooCommerce `meta_data[]`) and all MUST be read — a product payload otherwise looked textless and the three `_elementor_data` guards silently did not run; verification is **per field** (`unlanded`), never per item; and a check MUST NOT compare against a side that lacks the field (an incomplete source is worse than none). |
 | 2026-10-03 | §4d: a character-class guard list **MUST be derived, not hand-picked** — the zh-hant `SIMPLIFIED` set is generated from OpenCC's `STCharacters.txt` (3,803 characters) and verified by `scripts/derive-zh-hant-simplified.mjs --check`; the hand-curated 193 it replaced was 4.9% coverage and contained seven valid-Traditional characters. Iterate such a list by code point (1,141 Extension-B characters). L-49. |
