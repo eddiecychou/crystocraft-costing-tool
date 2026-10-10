@@ -5,10 +5,12 @@
   "scripts": {
     "start": "node server.mjs",
     "login": "node login.mjs",
+    "provision-service": "node provision-service.mjs",
     "test": "node --test *.test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "firebase-admin": "^14.2.0",
     "zod": "^3.25.0"
   }
 }

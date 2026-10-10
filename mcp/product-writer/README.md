@@ -1,9 +1,11 @@
 # Operation Center corporate-gift writer (local MCP)
 
-This local stdio server exposes `create_corp_gift_product_draft` and
-`create_corp_gift_product_with_supplier_quote`.
-It calls the authenticated Operation Center endpoint; it has no Admin SDK or
-service-account credential. The endpoint writes one `products/{id}` record with
+This local stdio server exposes restricted corporate-gift draft tools plus the
+read-only catalogue tools `search_products`, `get_product`,
+`get_product_costing_readiness`, and `prepare_catalogue_collection`.
+The latter is **dry-run only** in this first release: it validates planned
+catalogue metadata and pricing against real OC data but cannot save, activate,
+or publish a price. The endpoint writes one `products/{id}` record with
 `status: concept` and `active: false`. Staff finish images, sourcing, costing,
 and any activation in the Operation Center UI.
 
@@ -15,27 +17,28 @@ or activate the product. Quote terms and supplier cost belong in quote fields,
 never in catalogue descriptions. To add a quote to an existing product, use
 the Operation Center UI; the bundled tool only creates a new product.
 
-## Install and sign in (macOS)
+## Service identities (macOS)
 
 Run from `mcp/product-writer`:
 
 ```sh
 npm ci
 export OC_FIREBASE_API_KEY="<the project's public VITE_FIREBASE_API_KEY>"
-npm run login
+npm run provision-service
 ```
 
-The API key is the public Firebase web-app key already used by the Operation
-Center (`.env.local` on a configured checkout); it is not a service credential.
-The sign-in prompt hides the password. The password is used once and discarded;
-the renewable Firebase user refresh token is saved only in macOS Keychain
-under service `com.crystocraft.operation-center.product-writer` and account
-`crystocraft-costing`. The MCP process reads it, refreshes short-lived user ID
-tokens, and sends those tokens to the endpoint. Access is checked against
-`products` (and `supply` for the bundled tool) on every call. Re-run login if the
-session is revoked or expires. For an alternate Firebase project, set
-`OC_FIREBASE_PROJECT_ID` consistently for login and MCP runtime; the server's
-endpoint must use that same project.
+`provision-service` is an owner-approved production action: it creates or
+updates two Firebase Auth service principals. The existing writer principal has
+only `products` + `supply`; the separate pricing dry-run principal has
+`products` + `supply` + `pricing`. Neither is an admin account. The process
+uses the configured local service-account file only to mint short-lived Firebase
+tokens; no browser sign-in is required. The legacy Keychain login remains an
+explicit diagnostic fallback (`OC_PRODUCT_WRITER_AUTH=interactive`).
+
+Every later live MCP write will record both `service_principal` and optional
+`requested_by` session metadata in the append-only audit log. This first
+release performs no new writes, so no audit record is created during a read or
+dry run.
 
 The Keychain helper invokes Swift and may show a macOS Keychain permission
 prompt. No token or password is passed as a command-line argument, stored in
