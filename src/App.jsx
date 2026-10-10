@@ -40,7 +40,6 @@ const Customers = lazy(() => import('./pages/Customers'))
 const CustomerForm = lazy(() => import('./pages/CustomerForm'))
 const TagManager = lazy(() => import('./pages/TagManager'))
 const WhatsAppImport = lazy(() => import('./pages/WhatsAppImport'))
-const WhatsAppArchiveInbox = lazy(() => import('./pages/WhatsAppArchiveInbox'))
 const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
 const CustomerBrand = lazy(() => import('./pages/CustomerBrand'))
 const MarketingContactDetail = lazy(() => import('./pages/MarketingContactDetail'))
@@ -282,7 +281,7 @@ function AdminApp({ user, profile, role }) {
                 <Route path="/customers/new" element={<Gate module="customers"><CustomerForm /></Gate>} />
                 <Route path="/customers/tags" element={<Gate module="customers"><TagManager /></Gate>} />
                 <Route path="/customers/whatsapp-import" element={<Gate module="customers"><WhatsAppImport /></Gate>} />
-                <Route path="/customers/whatsapp-archives" element={<Gate module="customers"><WhatsAppArchiveInbox /></Gate>} />
+                <Route path="/customers/whatsapp-archives" element={<Navigate to="/customers/whatsapp-import" replace />} />
                 <Route path="/customers/:id" element={<Gate module="customers"><CustomerDetail /></Gate>} />
                 <Route path="/customers/:id/edit" element={<Gate module="customers"><CustomerForm /></Gate>} />
                 <Route path="/customers/:id/brand" element={<Gate module="customers"><CustomerBrand /></Gate>} />

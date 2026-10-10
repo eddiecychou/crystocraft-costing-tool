@@ -5,6 +5,7 @@ import { Upload, Check, AlertCircle, Loader2, Mic, Plus, X, RefreshCw, Sparkles 
 import { useCustomers, CHANNELS, CRM_CATEGORIES, CUSTOMER_COUNTRIES, saveCustomer } from '../domain/customer'
 import { previewWhatsAppZip, importWhatsAppZip, analyzeWhatsappImport, loadLegacyWhatsappThreads, migrateLegacyThread, undoMigrateLegacyThread, mergeLegacyThread } from '../domain/whatsappImport'
 import { loadWhatsappSummaryCandidates, loadContactWhatsappSummaryCandidates, generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
+import WhatsAppArchiveInbox from './WhatsAppArchiveInbox'
 
 // V8.2 — bulk uploader for WhatsApp's own "Export Chat" .zip files (Business
 // and Personal both — no API access to either, see PROJECT-PLAN.md's "Where
@@ -723,6 +724,7 @@ function LegacyThreadsSection({ customers }) {
 
 export default function WhatsAppImport() {
   const { customers } = useCustomers()
+  const [view, setView] = useState('archives')
   const [entries, setEntries] = usePersistentState('wa-entries', []) // { key, file, status, preview, matchMode, customerId, leadPhone, channel, error, progress }
 
   async function handleFiles(fileList) {
@@ -793,18 +795,22 @@ export default function WhatsAppImport() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl">
+    <div className="p-4 md:p-6 max-w-3xl">
       <div className="mb-6">
         <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
-        <h1 className="text-2xl text-ink mt-1">Import WhatsApp Chats</h1>
+        <h1 className="text-2xl text-ink mt-1">Import WhatsApp</h1>
         <p className="text-sm text-ink-60 mt-0.5">
-          Upload the .zip files from WhatsApp's own "Export Chat" (Contact Info → Export Chat, on iPhone or web.whatsapp.com).
-          Match each one to a real customer, or save it as a lead (for a number that never converted) — voice notes are
-          archived but not yet transcribed to text.
+          Review ZIP files picked up from your Business and Personal archive folders, or upload a one-off export manually.
         </p>
       </div>
 
-      <label className="card p-8 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-warm-grey hover:border-brand-400 transition-colors cursor-pointer mb-6">
+      <div className="flex gap-5 border-b border-warm-grey mb-5" role="tablist" aria-label="WhatsApp import method">
+        {[['archives', 'Archive inbox'], ['manual', 'Manual upload & tools']].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} onClick={() => setView(key)} className={`pb-2 text-sm border-b-2 -mb-px ${view === key ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>{label}</button>)}
+      </div>
+
+      {view === 'archives' && <WhatsAppArchiveInbox customers={customers} />}
+
+      {view === 'manual' && <><label className="card p-8 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-warm-grey hover:border-brand-400 transition-colors cursor-pointer mb-6">
         <Upload size={28} className="text-ink-60" />
         <span className="text-sm font-medium text-ink-80">Choose or drop .zip files</span>
         <span className="text-xs text-ink-60">Multiple files at once is fine</span>
@@ -842,7 +848,7 @@ export default function WhatsAppImport() {
 
       <LegacyThreadsSection customers={customers} />
       <SummaryScanSection />
-      <ContactSummaryScanSection />
+      <ContactSummaryScanSection /></>}
     </div>
   )
 }

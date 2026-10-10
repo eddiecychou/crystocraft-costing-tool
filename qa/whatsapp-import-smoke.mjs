@@ -52,12 +52,30 @@ const STUBS = {
     export const loadContactWhatsappSummaryCandidates = async () => []
     export const generateAndSaveWhatsappSummary = async () => ({})
   `,
+  marketingContact: `
+    export const contactName = c => c.first_name || c.company || c.email || c.id
+    export function useMarketingContacts() {
+      return { contacts: [{ id: 'lead1', first_name: 'Mandy', company: 'Sample Lead' }] }
+    }
+  `,
+  firebase: `export const db = {}`,
+  firestore: `
+    export const collection = (...parts) => parts.join('/')
+    export const doc = (...parts) => parts.join('/')
+    export const serverTimestamp = () => 'server-time'
+    export const writeBatch = () => ({ set: () => {}, commit: async () => ({}) })
+    export const getDocs = async () => ({ docs: [{ id: 'archive1', data: () => ({
+      file: 'WhatsApp Chat - Mandy.zip', archive_key: 'business:WhatsApp Chat - Mandy.zip',
+      account: 'business', suggested_name: 'Mandy', message_count: 18, status: 'pending',
+    }) }] })
+  `,
 }
 
 const stubPlugin = {
   name: 'qa-stubs',
   setup(b) {
-    b.onResolve({ filter: /(^|\/)(customer|whatsappImport|whatsappSummaryApi)$/ }, args => ({
+    b.onResolve({ filter: /^firebase\/firestore$/ }, () => ({ path: 'firestore', namespace: 'qa-stub' }))
+    b.onResolve({ filter: /(^|\/)(customer|whatsappImport|whatsappSummaryApi|marketingContact|firebase)$/ }, args => ({
       path: args.path.split('/').pop(), namespace: 'qa-stub',
     }))
     b.onLoad({ filter: /.*/, namespace: 'qa-stub' }, args => ({
@@ -109,6 +127,11 @@ async function check(viewport) {
   page.on('pageerror', e => errors.push('pageerror: ' + String(e)))
   await page.goto(PAGE_URL, { waitUntil: 'load' })
 
+  // The folder inbox and manual upload now share this one screen.
+  await page.getByText('WhatsApp Chat - Mandy.zip').waitFor({ timeout: 5000 })
+  const hasArchiveInbox = await page.getByRole('tab', { name: 'Archive inbox' }).getAttribute('aria-selected') === 'true'
+  await page.getByRole('tab', { name: 'Manual upload & tools' }).click()
+
   // Migration review: scan -> long-name rows render.
   await page.getByRole('button', { name: 'Scan for legacy threads' }).click()
   await page.getByText('Legacy').first().waitFor({ timeout: 5000 })
@@ -136,6 +159,7 @@ async function check(viewport) {
       hasVerdict: document.body.textContent.includes('Updates an existing thread'),
     }
   })
+  report.hasArchiveInbox = hasArchiveInbox
   await page.close()
   return report
 }
@@ -150,8 +174,10 @@ ok('mobile 375px: no page-level horizontal scroll', !mobile.pageOverflows, `scro
 ok('mobile 375px: no element pokes past the viewport', mobile.maxElementRight <= mobile.innerWidth + 1, `max right ${mobile.maxElementRight} vs ${mobile.innerWidth}`)
 ok('mobile: "Legacy" badge rendered after scan', mobile.hasLegacyBadge)
 ok('mobile: dry-run verdict rendered after review', mobile.hasVerdict)
+ok('mobile: archive inbox is the default integrated tab', mobile.hasArchiveInbox)
 ok('desktop 1280px: no page-level horizontal scroll', !desktop.pageOverflows, `scrollW ${desktop.pageScrollW} vs clientW ${desktop.clientW}`)
 ok('desktop: no element pokes past the viewport', desktop.maxElementRight <= desktop.innerWidth + 1, `max right ${desktop.maxElementRight} vs ${desktop.innerWidth}`)
+ok('desktop: archive inbox is the default integrated tab', desktop.hasArchiveInbox)
 ok('no console/page errors', errors.length === 0, errors.slice(0, 3).join(' | '))
 
 console.log(`\n${pass} passed, ${fail} failed`)

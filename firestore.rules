@@ -39,6 +39,42 @@ service cloud.firestore {
       return isAdmin() || roleName() == 'staff';
     }
 
+    function validWhatsappArchiveMapping(data) {
+      return data.keys().hasOnly([
+          'file', 'archive_key', 'channel', 'approved', 'approved_at',
+          'type', 'customerId', 'contactId', 'leadId', 'groupName'
+        ])
+        && data.keys().hasAll(['file', 'archive_key', 'channel', 'approved', 'approved_at', 'type'])
+        && data.file is string && data.file.size() > 0 && data.file.size() <= 300
+        && data.archive_key is string && data.archive_key.size() > 0 && data.archive_key.size() <= 340
+        && data.archive_key.matches('^(business|personal):.+')
+        && data.channel in ['WhatsApp Business', 'Personal WhatsApp']
+        && data.approved == true
+        && data.approved_at is timestamp
+        && data.type in ['customer', 'lead', 'group']
+        && ((data.type == 'customer'
+              && data.customerId is string && data.customerId.size() > 0 && data.customerId.size() <= 200
+              && data.contactId is string && data.contactId.size() > 0 && data.contactId.size() <= 200
+              && !('leadId' in data) && !('groupName' in data))
+            || (data.type == 'lead'
+              && data.leadId is string && data.leadId.size() > 0 && data.leadId.size() <= 200
+              && !('customerId' in data) && !('contactId' in data) && !('groupName' in data))
+            || (data.type == 'group'
+              && data.customerId is string && data.customerId.size() > 0 && data.customerId.size() <= 200
+              && data.groupName is string && data.groupName.size() > 0 && data.groupName.size() <= 200
+              && !('contactId' in data) && !('leadId' in data)));
+    }
+
+    function validWhatsappInboxDecision() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'mapping_type', 'mapped_at', 'updated_at'])
+        && resource.data.get('status', '') == 'pending'
+        && request.resource.data.status == 'mapped'
+        && request.resource.data.mapping_type in ['customer', 'lead', 'group']
+        && request.resource.data.mapped_at is timestamp
+        && request.resource.data.updated_at is timestamp;
+    }
+
     function isApprovedCustomer() {
       return hasProfile() && profile().role == 'customer' && profile().status == 'approved';
     }
@@ -271,10 +307,15 @@ service cloud.firestore {
     // and CRM pointers only; the local sync script performs the import after
     // an explicit inbox decision, never a fuzzy name match.
     match /whatsapp_archive_inbox/{archiveId} {
-      allow read, write: if can('customers');
+      allow read: if can('customers');
+      allow update: if can('customers') && validWhatsappInboxDecision();
+      allow create, delete: if false;
     }
     match /whatsapp_archive_mappings/{archiveId} {
-      allow read, write: if can('customers');
+      allow read: if can('customers');
+      allow create, update: if can('customers')
+        && validWhatsappArchiveMapping(request.resource.data);
+      allow delete: if false;
     }
 
     // Cached WooCommerce API pulls + the SEO control-plane stores. `woo` module.

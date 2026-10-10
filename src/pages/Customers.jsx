@@ -88,7 +88,6 @@ export default function Customers() {
           <p className="text-sm text-ink-60 mt-0.5">{customers.length} clients</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Link to="/customers/whatsapp-archives" className="btn-secondary text-sm">WhatsApp archives</Link>
           <Link to="/customers/whatsapp-import" className="btn-secondary text-sm">Import WhatsApp</Link>
           <Link to="/customers/tags" className="btn-secondary text-sm">Manage Tags</Link>
           <Link to="/customers/new" className="btn-primary text-sm">+ New</Link>

@@ -87,6 +87,25 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.17 follow-up — WhatsApp archive inbox (2026-10-11)
+
+The daily local archive importer now records unknown ZIPs in an OC review inbox
+instead of requiring a code/manifest edit. The inbox is part of the existing
+`/customers/whatsapp-import` screen as the default **Archive inbox** tab; manual
+upload, legacy migration, and summary tools remain together under **Manual
+upload & tools**. Each human decision is scoped to `Business|Personal ×
+filename` and may target an existing customer contact, marketing lead, or a
+named customer group. No filename/name fuzzy match can approve an import.
+
+The first release exposed the inbox as a second page and committed its Firestore
+rules without deploying them, so production returned `permission-denied`. It
+also left the Mac's dirty canonical checkout on the older importer. The repair
+adds a visible permission error, makes mapping + inbox-state updates one atomic
+batch, validates the strict mapping schema and the `pending → mapped` rule
+transition, preserves the legacy filename-keyed sync state during migration,
+and keeps one Customers-page entry point. Build, 65 parser assertions, and 9
+responsive browser assertions pass; the rules compile in Firebase dry-run.
+
 ## V8.17 — WhatsApp archive import becomes automatic; group chats; Dashboard inclusion (2026-10-03)
 
 ### 0. Same-day companion fix: two SEO control-plane defects (raised by DSH)

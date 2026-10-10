@@ -134,7 +134,7 @@ async function main() {
     const sig = `${Math.round(st.mtimeMs)}:${st.size}`
     const accountFromFolder = archiveAccount(zipPath)
     const key = archiveKey(zipPath)
-    if (!DRY_RUN && state[key] === sig) { console.log(`SKIP (unchanged): ${name}`); skipped++; continue }
+    if (!DRY_RUN && (state[key] === sig || state[name] === sig)) { console.log(`SKIP (unchanged): ${name}`); skipped++; continue }
     const entry = byArchiveKey.get(key) || byName.get(name)
     if (!entry) {
       console.log(`SKIP (no manifest entry): ${name}`)
