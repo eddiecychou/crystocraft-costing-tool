@@ -11,7 +11,7 @@
 //   node scripts/upload-whatsapp-media.mjs --dry-run  # report scope, no upload
 import { readFileSync, readdirSync, existsSync, statSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { join, dirname, basename } from 'path'
+import { join, dirname, basename, relative, sep } from 'path'
 import { homedir } from 'os'
 import { randomUUID } from 'crypto'
 import { initializeApp, cert } from 'firebase-admin/app'
@@ -61,7 +61,8 @@ function findZips(root) {
 
 function resolveTarget(entry) {
   if (entry.type === 'lead') {
-    return { collectionName: 'marketing_contacts', parentId: idFromPhone(entry.phone), contactId: idFromPhone(entry.phone) }
+    const leadId = entry.leadId || idFromPhone(entry.phone)
+    return { collectionName: 'marketing_contacts', parentId: leadId, contactId: leadId }
   }
   if (entry.type === 'group') {
     return { collectionName: 'customers', parentId: entry.customerId, contactId: null, groupName: entry.groupName }
@@ -69,18 +70,38 @@ function resolveTarget(entry) {
   return { collectionName: 'customers', parentId: entry.customerId, contactId: entry.contactId }
 }
 
+function archiveAccount(zipPath) {
+  const firstFolder = relative(ARCHIVE_DIR, zipPath).split(sep)[0]
+  return normalizeAccount(firstFolder)
+}
+
+function archiveKey(zipPath) {
+  return `${archiveAccount(zipPath)}:${basename(zipPath)}`
+}
+
 async function main() {
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'))
-  const zipByFile = new Map(findZips(ARCHIVE_DIR).map(p => [basename(p), p]))
+  const zips = findZips(ARCHIVE_DIR)
+  const mappedByKey = new Map()
+  const mappedByFile = new Map((manifest.archives || []).map(entry => [entry.file, entry]))
+  const saved = await db.collection('whatsapp_archive_mappings').get()
+  saved.forEach(s => {
+    const entry = s.data()
+    if (!entry.approved || !entry.file) return
+    if (entry.archive_key) mappedByKey.set(entry.archive_key, entry)
+    else mappedByFile.set(entry.file, entry)
+  })
+  const entries = zips.map(zipPath => ({
+    zipPath,
+    entry: mappedByKey.get(archiveKey(zipPath)) || mappedByFile.get(basename(zipPath)),
+  })).filter(x => x.entry)
 
   let total = 0, uploaded = 0, already = 0
 
-  for (const entry of manifest.archives || []) {
-    const zipPath = zipByFile.get(entry.file)
-    if (!zipPath) { console.log(`SKIP (no zip in archive): ${entry.file}`); continue }
+  for (const { entry, zipPath } of entries) {
 
     const { collectionName, parentId, contactId, groupName } = resolveTarget(entry)
-    const account = normalizeAccount(entry.channel)
+    const account = normalizeAccount(entry.channel || archiveAccount(zipPath))
     const isGroup = entry.type === 'group'
     const importId = isGroup ? conversationGroupId({ account, groupName }) : conversationThreadId({ account, contactId })
     const ref = db.collection(collectionName).doc(parentId).collection('whatsapp_threads').doc(importId)

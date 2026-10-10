@@ -56,6 +56,9 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 
 ## Customers & CRM
 
+- `whatsapp_archive_inbox/{archiveId}` — pending, local-folder WhatsApp exports that have no owner-approved routing decision. Each record identifies the archive by `account:filename`, preserving Business and Personal separation. Auth: module `customers`. Owned by `WhatsAppArchiveInbox.jsx` and written by `scripts/import-whatsapp-archives.mjs`.
+- `whatsapp_archive_mappings/{archiveId}` — an owner-approved, account-scoped archive routing decision (`customer`, `lead`, or `group`) that the local text and media importers reuse. Auth: module `customers`. This is explicitly not an automatic match table.
+
 - `customers/{id}` — the master customer record: `erp_code`, `erp_code_shared`, `sensitive`, `woo_customer_id`, `linked_marketing_contact_ids`. Auth: admin only. Owned by `src/domain/customer.js` (`normalizeCustomer`). → `users` (back-reference via `customer_id`), `marketing_contacts` (`linked_marketing_contact_ids[]`), `orders`/`client_quotes` (`customer_id`).
   - `customers/{id}/enquiries/{eid}` — CRM **Interaction Log** entries (not the top-level `enquiries` form collection above). Auth: admin only. Owned by `src/domain/interactionLog.js`, shared with `marketing_contacts`' own copy. Also reachable via the `{path=**}/enquiries` collection-group rule for Daily Drafts' topic-dedup query.
   - `customers/{id}/email_threads/{threadId}` — IMAP-ingested correspondence (V8.1).

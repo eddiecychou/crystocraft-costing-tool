@@ -109,12 +109,15 @@ unified importer):
   exists, so the owner manually "Export Chat"s into
   `~/Whatsapp Archives/{Business,Personal}/` — **the folder IS the account**
   (Business vs Personal are separate conversations for the same person, never
-  merged). A weekly launchd job (`scripts/whatsapp-sync.sh`, Sundays 03:00) runs
+  merged). A daily launchd job (`scripts/whatsapp-sync.sh`, 03:00) runs
   `scripts/import-whatsapp-archives.mjs` (text-first) then
   `scripts/upload-whatsapp-media.mjs` (attachments). Matching is **owner-confirmed
   and never auto/fuzzy-matched**: `scripts/whatsapp-import-manifest.json` maps a
-  filename → customer/contact/account (or a **group**, `type:'group'`), and an
-  unknown filename is skipped and reported (`SKIP (no manifest entry)`). Thread
+  filename → customer/contact/account (or a **group**, `type:'group'`). Unknown
+  files are recorded in OC's **Unassigned archives** inbox and remain skipped
+  until the owner explicitly files them as a customer contact, marketing lead,
+  or customer group. The saved inbox decision is keyed by `account × filename`;
+  no name suggestion is ever used as a match. Thread
   id is `account × contact_id` (`conversationThreadId`) — **not** the export
   filename; the old filename-keyed `findExistingThread`/`threadDocId` model is
   retired. A group is a third type keyed `account × group-name`

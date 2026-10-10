@@ -18,7 +18,7 @@
 //   SA_KEY_PATH   — firebase service-account JSON (default ./firebase-service-account.json)
 import { readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync, existsSync, statSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { join, dirname, basename } from 'path'
+import { join, dirname, basename, relative, sep } from 'path'
 import { tmpdir } from 'os'
 import { homedir } from 'os'
 import { initializeApp, cert } from 'firebase-admin/app'
@@ -70,12 +70,25 @@ function findZips(root) {
 // Resolve a manifest entry -> { collectionName, parentId, contactId }.
 function resolveTarget(entry) {
   if (entry.type === 'lead') {
-    return { collectionName: 'marketing_contacts', parentId: idFromPhone(entry.phone), contactId: idFromPhone(entry.phone) }
+    const leadId = entry.leadId || idFromPhone(entry.phone)
+    return { collectionName: 'marketing_contacts', parentId: leadId, contactId: leadId }
   }
   if (entry.type === 'group') {
     return { collectionName: 'customers', parentId: entry.customerId, contactId: null, groupName: entry.groupName }
   }
   return { collectionName: 'customers', parentId: entry.customerId, contactId: entry.contactId }
+}
+
+// The two archive folders are the source accounts.  This is not a name-based
+// guess: it is part of the local folder contract and keeps a Business export
+// separate from a Personal export with the same filename.
+function archiveAccount(zipPath) {
+  const firstFolder = relative(ARCHIVE_DIR, zipPath).split(sep)[0]
+  return normalizeAccount(firstFolder)
+}
+
+function archiveKey(zipPath) {
+  return `${archiveAccount(zipPath)}:${basename(zipPath)}`
 }
 
 // Parse one zip -> messages (or throw with a clear reason).
@@ -92,7 +105,21 @@ async function parseZip(path) {
 
 async function main() {
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'))
+  // OC-managed decisions supplement the legacy manifest. An archive is never
+  // guessed: only a human-approved mapping can move it out of the inbox.
+  const saved = await db.collection('whatsapp_archive_mappings').get()
   const byName = new Map((manifest.archives || []).map(a => [a.file, a]))
+  const byArchiveKey = new Map()
+  saved.forEach(s => {
+    const v = s.data()
+    if (v.file && v.approved === true) {
+      if (v.archive_key) byArchiveKey.set(v.archive_key, v)
+      // Backward-compatible only for an explicit legacy mapping. New inbox
+      // mappings always carry archive_key, so same-named account exports do
+      // not collide.
+      else byName.set(v.file, v)
+    }
+  })
   const zips = findZips(ARCHIVE_DIR)
   const state = existsSync(STATE_PATH) ? JSON.parse(readFileSync(STATE_PATH, 'utf8')) : {}
 
@@ -105,16 +132,29 @@ async function main() {
     const name = basename(zipPath)
     const st = statSync(zipPath)
     const sig = `${Math.round(st.mtimeMs)}:${st.size}`
-    if (!DRY_RUN && state[name] === sig) { console.log(`SKIP (unchanged): ${name}`); skipped++; continue }
-    const entry = byName.get(name)
+    const accountFromFolder = archiveAccount(zipPath)
+    const key = archiveKey(zipPath)
+    if (!DRY_RUN && state[key] === sig) { console.log(`SKIP (unchanged): ${name}`); skipped++; continue }
+    const entry = byArchiveKey.get(key) || byName.get(name)
     if (!entry) {
       console.log(`SKIP (no manifest entry): ${name}`)
+      if (!DRY_RUN) {
+        const messages = await parseZip(zipPath).catch(() => [])
+        const id = Buffer.from(key).toString('base64url')
+        await db.collection('whatsapp_archive_inbox').doc(id).set({
+          file: name, archive_key: key, account: accountFromFolder,
+          suggested_name: guessContactName(name), message_count: messages.length,
+          first_message_at: messages[0]?.date?.toISOString?.() || null,
+          last_message_at: messages.at(-1)?.date?.toISOString?.() || null,
+          status: 'pending', discovered_at: FieldValue.serverTimestamp(), updated_at: FieldValue.serverTimestamp(),
+        }, { merge: true })
+      }
       skipped++
       continue
     }
 
     const { collectionName, parentId, contactId, groupName } = resolveTarget(entry)
-    const account = normalizeAccount(entry.channel)
+    const account = normalizeAccount(entry.channel || accountFromFolder)
     const isGroup = entry.type === 'group'
     const importId = isGroup ? conversationGroupId({ account, groupName }) : conversationThreadId({ account, contactId })
     const ref = db.collection(collectionName).doc(parentId).collection('whatsapp_threads').doc(importId)
@@ -150,7 +190,12 @@ async function main() {
       if (existing?.migrated_from) finalDoc.migrated_from = existing.migrated_from
       if (existing?.migrated_at) finalDoc.migrated_at = existing.migrated_at
       await ref.set(finalDoc)
-      state[name] = sig
+      state[key] = sig
+      if (entry.archive_key) {
+        await db.collection('whatsapp_archive_inbox').doc(Buffer.from(entry.archive_key).toString('base64url')).set({
+          status: 'imported', imported_at: FieldValue.serverTimestamp(), updated_at: FieldValue.serverTimestamp(),
+        }, { merge: true })
+      }
 
       console.log(`${existing ? 'UPDATE' : 'IMPORT'} ${name} -> ${importId} (${messages.length} msgs, media skipped)`)
       if (existing) updated++; else imported++

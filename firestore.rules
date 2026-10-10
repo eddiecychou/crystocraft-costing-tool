@@ -267,6 +267,16 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Owner-approved folder-import routing. These records hold archive names
+    // and CRM pointers only; the local sync script performs the import after
+    // an explicit inbox decision, never a fuzzy name match.
+    match /whatsapp_archive_inbox/{archiveId} {
+      allow read, write: if can('customers');
+    }
+    match /whatsapp_archive_mappings/{archiveId} {
+      allow read, write: if can('customers');
+    }
+
     // Cached WooCommerce API pulls + the SEO control-plane stores. `woo` module.
     match /woo_cache/{doc} {
       allow read, write: if isAdmin() || can('woo');
