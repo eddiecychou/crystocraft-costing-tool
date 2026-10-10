@@ -134,9 +134,15 @@ export async function handleMcpCatalogue(req, { authorize, fetchImpl = fetch, pr
         }
         const moq = Math.max(0, ...detail.components.map(c => Number(c.preferred_quote?.moq) || 0))
         if (moq > tier.quantity) warnings.push(compactError('MOQ_CONFLICT', `Preferred supplier MOQ is ${moq} while requested tier is ${tier.quantity}`, productId))
-        const allInCost = totalUnitCostAtQty(detail.components, rates, tier.quantity)
+        const allInCost = checks.safe_to_publish ? totalUnitCostAtQty(detail.components, rates, tier.quantity) : null
         if (!checks.safe_to_publish || allInCost == null) warnings.push(compactError('NOT_READY_TO_PUBLISH', 'Preferred costs, exchange rates, and at least one tier must be complete before publishing', productId))
-        updated.push({ product_id: productId, name: detail.product.name || '', dry_run: true, catalogue: { status: input.status || detail.product.status || 'concept', visible: input.visible_in_catalogue ?? (detail.product.active !== false), videos_to_add: (input.youtube_urls || []).filter(url => !(detail.product.videos || []).includes(url)), links_to_add: (input.learn_more_links || []).filter(link => !(detail.product.blog_links || []).some(old => old.url === link.url)) }, pricing: { tier: { quantity: tier.quantity, lead_time_days: tier.production_lead_time_days }, all_in_cost_hkd: allInCost, default_price_hkd: allInCost == null ? null : Math.ceil(allInCost * DEFAULT_MARKUP), publish_requested: input.publish_prices === true, publish_enabled: false }, readiness: checks })
+        const existingTier = detail.tiers.some(old => Number(old.quantity) === Number(tier.quantity))
+        if (existingTier) warnings.push(compactError('DUPLICATE_PRICING_TIER', `A pricing tier already exists at quantity ${tier.quantity}`, productId))
+        const requestedVideos = [...new Set(input.youtube_urls || [])]
+        const requestedLinks = [...new Map((input.learn_more_links || []).map(link => [link.url, link])).values()]
+        if (requestedVideos.length !== (input.youtube_urls || []).length) warnings.push(compactError('DUPLICATE_VIDEO_IGNORED', 'Duplicate proposed video URLs were removed from the preview', productId))
+        if (requestedLinks.length !== (input.learn_more_links || []).length) warnings.push(compactError('DUPLICATE_LINK_IGNORED', 'Duplicate proposed link URLs were removed from the preview', productId))
+        updated.push({ product_id: productId, name: detail.product.name || '', dry_run: true, catalogue: { status: input.status || detail.product.status || 'concept', visible: input.visible_in_catalogue ?? (detail.product.active !== false), videos_to_add: requestedVideos.filter(url => !(detail.product.videos || []).includes(url)), links_to_add: requestedLinks.filter(link => !(detail.product.blog_links || []).some(old => old.url === link.url)) }, pricing: { tier: { quantity: tier.quantity, lead_time_days: tier.production_lead_time_days, already_exists: existingTier }, all_in_cost_hkd: allInCost, default_price_hkd: allInCost == null ? null : Math.ceil(allInCost * DEFAULT_MARKUP), publish_requested: input.publish_prices === true, publish_enabled: false }, audit_preview: { service_principal: 'mcp-catalogue-pricing-service', requested_by: input.requested_by || 'unknown', action: 'prepare_catalogue_collection', dry_run: true, will_write: false }, readiness: checks })
       }
       return json({ ok: errors.length === 0, updated, skipped, warnings, errors })
     }
