@@ -94,6 +94,10 @@
   path = "/api/create-corp-gift-product-with-quote"
 
 [[edge_functions]]
+function = "mcp-catalogue"
+path = "/api/mcp-catalogue"
+
+[[edge_functions]]
   function = "compose-message"
   path = "/api/compose-message"
 
