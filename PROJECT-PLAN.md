@@ -97,13 +97,21 @@ upload & tools**. Each human decision is scoped to `Business|Personal ×
 filename` and may target an existing customer contact, marketing lead, or a
 named customer group. No filename/name fuzzy match can approve an import.
 
+The account is a source tag, not a reason to manufacture duplicates. A
+customer normally shows one subthread; two labelled Personal/Business
+subthreads appear only when exports genuinely exist in both folders. The
+folder is authoritative. Import now rejects a conflicting saved channel with
+`ARCHIVE_ACCOUNT_MISMATCH` instead of writing a wrong-account thread. This was
+added after three legacy migrations (Benjamin Chiu, Leo Wong, Rex Wong) had
+created false Business subsets of their complete Personal archives.
+
 The first release exposed the inbox as a second page and committed its Firestore
 rules without deploying them, so production returned `permission-denied`. It
 also left the Mac's dirty canonical checkout on the older importer. The repair
 adds a visible permission error, makes mapping + inbox-state updates one atomic
 batch, validates the strict mapping schema and the `pending → mapped` rule
 transition, preserves the legacy filename-keyed sync state during migration,
-and keeps one Customers-page entry point. Build, 65 parser assertions, and 9
+and keeps one Customers-page entry point. Build, 68 parser assertions, and 9
 responsive browser assertions pass; the rules compile in Firebase dry-run.
 
 ## V8.17 — WhatsApp archive import becomes automatic; group chats; Dashboard inclusion (2026-10-03)

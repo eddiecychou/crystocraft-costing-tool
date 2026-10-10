@@ -35,7 +35,7 @@ writeFileSync(modPath, src.replace(/^import .*\n/gm, ''))
 const {
   parseWhatsAppExport, buildThreadDoc, normalizeAccount, conversationThreadId,
   conversationGroupId, carryForwardMedia, analyzeImportOverlap, guessContactName,
-  isMigratedThread,
+  isMigratedThread, resolveArchiveAccount,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -154,7 +154,7 @@ async function main() {
     }
 
     const { collectionName, parentId, contactId, groupName } = resolveTarget(entry)
-    const account = normalizeAccount(entry.channel || accountFromFolder)
+    const account = resolveArchiveAccount(accountFromFolder, entry.channel)
     const isGroup = entry.type === 'group'
     const importId = isGroup ? conversationGroupId({ account, groupName }) : conversationThreadId({ account, contactId })
     const ref = db.collection(collectionName).doc(parentId).collection('whatsapp_threads').doc(importId)
@@ -164,7 +164,7 @@ async function main() {
       const existingSnap = await ref.get()
       const existing = existingSnap.exists ? existingSnap.data() : null
       const threadDoc = buildThreadDoc({
-        zipFileName: name, channel: entry.channel, messages, account,
+        zipFileName: name, channel: account === 'business' ? 'WhatsApp Business' : 'Personal WhatsApp', messages, account,
         contactId: isGroup ? null : contactId,
         matchedBy: 'script',
         threadType: isGroup ? 'group' : 'direct',

@@ -28,7 +28,7 @@ const src = readFileSync(join(here, '..', 'src', 'domain', 'whatsappImport.js'),
 const dir = mkdtempSync(join(tmpdir(), 'wa-media-'))
 const modPath = join(dir, 'whatsappImport.mjs')
 writeFileSync(modPath, src.replace(/^import .*\n/gm, ''))
-const { normalizeAccount, conversationThreadId, conversationGroupId } = await import(modPath)
+const { normalizeAccount, resolveArchiveAccount, conversationThreadId, conversationGroupId } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
 const idFromPhone = phone => 'wa-' + String(phone || '').replace(/[^\d]/g, '')
@@ -101,7 +101,7 @@ async function main() {
   for (const { entry, zipPath } of entries) {
 
     const { collectionName, parentId, contactId, groupName } = resolveTarget(entry)
-    const account = normalizeAccount(entry.channel || archiveAccount(zipPath))
+    const account = resolveArchiveAccount(archiveAccount(zipPath), entry.channel)
     const isGroup = entry.type === 'group'
     const importId = isGroup ? conversationGroupId({ account, groupName }) : conversationThreadId({ account, contactId })
     const ref = db.collection(collectionName).doc(parentId).collection('whatsapp_threads').doc(importId)

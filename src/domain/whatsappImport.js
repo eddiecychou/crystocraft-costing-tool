@@ -327,6 +327,20 @@ export function normalizeAccount(channel) {
   return 'unknown'
 }
 
+// Archive-folder identity is authoritative for unattended imports. A saved
+// manifest/mapping channel may describe the same account, but must never move
+// a Personal ZIP into a Business thread (or vice versa). Refuse a conflict
+// visibly instead of manufacturing a second conversation.
+export function resolveArchiveAccount(folderAccount, declaredChannel) {
+  const folder = normalizeAccount(folderAccount)
+  if (folder === 'unknown') throw new Error('INVALID_ARCHIVE_FOLDER: expected Business or Personal')
+  const declared = normalizeAccount(declaredChannel)
+  if (declared !== 'unknown' && declared !== folder) {
+    throw new Error(`ARCHIVE_ACCOUNT_MISMATCH: folder=${folder} mapping=${declared}`)
+  }
+  return folder
+}
+
 // §5.1 thread doc id: folds source account + resolved contact_id into the id,
 // so two same-named contacts and one person's Business vs Personal numbers can
 // never collide (the old name-only id would overwrite both). The display name

@@ -26,7 +26,7 @@ const modPath = join(dir, 'whatsappImport.mjs')
 writeFileSync(modPath, src.replace(/^import .*\n/gm, ''))
 const {
   parseWhatsAppExport, guessContactName, looksLikePhoneNumber, threadDocId,
-  buildThreadDoc, messageFingerprint, normalizeAccount, conversationThreadId,
+  buildThreadDoc, messageFingerprint, normalizeAccount, resolveArchiveAccount, conversationThreadId,
   isLegacyThread, isMigratedThread, planMigration, analyzeImportOverlap,
   carryForwardMedia, mergeThreadMessages, conversationGroupId,
 } = await import(modPath)
@@ -135,6 +135,13 @@ const check = (name, cond, detail = '') => {
   const other = conversationThreadId({ account: 'WhatsApp Business', contactId: 'c_def456' })
   check('id folds account + contact_id (no name, so a rename can\'t change it)', biz === 'business__c_abc123', biz)
   check('contact_id normalised to lowercase', conversationThreadId({ account: 'WhatsApp Business', contactId: 'C_ABC123' }) === 'business__c_abc123')
+  check('archive folder is authoritative when mapping agrees', resolveArchiveAccount('personal', 'Personal WhatsApp') === 'personal')
+  let mismatchThrew = false
+  try { resolveArchiveAccount('personal', 'WhatsApp Business') } catch (error) { mismatchThrew = error.message.includes('ARCHIVE_ACCOUNT_MISMATCH') }
+  check('conflicting archive folder and mapping are rejected', mismatchThrew)
+  let folderThrew = false
+  try { resolveArchiveAccount('unknown', 'Personal WhatsApp') } catch (error) { folderThrew = error.message.includes('INVALID_ARCHIVE_FOLDER') }
+  check('archives outside Business or Personal are rejected', folderThrew)
   check('same person, Business vs Personal → different id (never merged)', biz !== personal, `${biz} vs ${personal}`)
   check('two different contacts → different id (never mixed)', biz !== other, `${biz} vs ${other}`)
   let threw = false
