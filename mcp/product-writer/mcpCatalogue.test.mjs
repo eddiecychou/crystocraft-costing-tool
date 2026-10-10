@@ -24,13 +24,13 @@ test('collection preparation is dry-run only and flags MOQ and duplicate conflic
   const fetchImpl = async url => {
     calls.push(url)
     if (url.includes('settings/exchange_rates')) return response(doc('settings/exchange_rates', { RMB: 1.1653, HKD: 1 }))
-    if (url.includes('products/a/components/c/supplier_quotes')) return response({ documents: [doc('products/a/components/c/supplier_quotes/q', { is_preferred: true, unit_cost: 35, unit_cost_currency: 'RMB', moq: 500 })] })
+    if (url.includes('products/a/components/c/supplier_quotes')) return response({ documents: [doc('products/a/components/c/supplier_quotes/q', { is_preferred: true, unit_cost: 35, unit_cost_currency: 'RMB', moq: 500, production_lead_time_days: 30 })] })
     if (url.includes('products/a/components')) return response({ documents: [doc('products/a/components/c', { name: 'Glass', qty_per_product: 1 })] })
     if (url.includes('products/a/pricing_tiers')) return response({ documents: [doc('products/a/pricing_tiers/t', { quantity: 100, production_lead_time_days: 30 })] })
     if (url.includes('/products/a')) return response(doc('products/a', { name: 'Crystal Glass', status: 'concept', active: false }))
     throw new Error(url)
   }
-  const res = await handleMcpCatalogue(request('prepare_catalogue_collection', { product_ids: ['a'], status: 'active', visible_in_catalogue: true, youtube_urls: ['https://youtu.be/example', 'https://youtu.be/example'], learn_more_links: [{ label: 'Collection', url: 'https://www.crystocraft.com/product/glasses/' }, { label: 'Again', url: 'https://www.crystocraft.com/product/glasses/' }], pricing_tier: { quantity: 100, production_lead_time_days: 30 }, publish_prices: true, dry_run: true }), { projectId: 'test', authorize, fetchImpl })
+  const res = await handleMcpCatalogue(request('prepare_catalogue_collection', { product_ids: ['a'], status: 'active', visible_in_catalogue: true, youtube_urls: ['https://youtu.be/example', 'https://youtu.be/example'], learn_more_links: [{ label: 'Collection', url: 'https://www.crystocraft.com/product/glasses/' }, { label: 'Collection', url: 'https://www.crystocraft.com/product/glasses/' }], pricing_tier: { quantity: 100, production_lead_time_days: 30 }, publish_prices: true, dry_run: true }), { projectId: 'test', authorize, fetchImpl })
   const data = await res.json()
   assert.equal(data.ok, true)
   assert.equal(data.updated[0].pricing.all_in_cost_hkd, 40.7855)
@@ -38,6 +38,37 @@ test('collection preparation is dry-run only and flags MOQ and duplicate conflic
   assert.deepEqual(data.warnings.map(w => w.code), ['MOQ_CONFLICT', 'DUPLICATE_PRICING_TIER', 'DUPLICATE_VIDEO_IGNORED', 'DUPLICATE_LINK_IGNORED'])
   assert.equal(data.updated[0].audit_preview.will_write, false)
   assert.ok(calls.every(url => !url.includes(':commit')))
+})
+
+test('readiness returns a complete valid result and a missing product is structured', async () => {
+  const fetchImpl = async url => {
+    if (url.includes('settings/exchange_rates')) return response(doc('settings/exchange_rates', { RMB: 1.1653, HKD: 1 }))
+    if (url.includes('products/a/components/c/supplier_quotes')) return response({ documents: [doc('products/a/components/c/supplier_quotes/q', { is_preferred: true, unit_cost: 35, unit_cost_currency: 'RMB', moq: 100, production_lead_time_days: 30 })] })
+    if (url.includes('products/a/components')) return response({ documents: [doc('products/a/components/c', { name: 'Glass', qty_per_product: 1 })] })
+    if (url.includes('products/a/pricing_tiers')) return response({ documents: [doc('products/a/pricing_tiers/t', { quantity: 100, production_lead_time_days: 30 })] })
+    if (url.includes('/products/a')) return response(doc('products/a', { name: 'Crystal Glass' }))
+    return response({}, 404)
+  }
+  let data = await (await handleMcpCatalogue(request('get_product_costing_readiness', { product_id: 'a' }), { projectId: 'test', authorize, fetchImpl })).json()
+  assert.equal(data.ok, true); assert.equal(data.updated[0].safe_to_publish, true); assert.equal(data.updated[0].preferred_supplier_moq, 100)
+  data = await (await handleMcpCatalogue(request('get_product_costing_readiness', { product_id: 'missing' }), { projectId: 'test', authorize, fetchImpl })).json()
+  assert.equal(data.ok, false); assert.equal(data.errors[0].code, 'PRODUCT_NOT_FOUND')
+})
+
+test('learn more links require label/url order and match canonical pairs without writes', async () => {
+  const links = { arrayValue: { values: [{ mapValue: { fields: { label: { stringValue: 'https://www.crystocraft.com/product/glasses/' }, url: { stringValue: 'Wine Glasses Collection' } } } }] } }
+  const fetchImpl = async url => {
+    if (url.includes('settings/exchange_rates')) return response(doc('settings/exchange_rates', { HKD: 1 }))
+    if (url.includes('products/a/components')) return response({ documents: [] })
+    if (url.includes('products/a/pricing_tiers')) return response({ documents: [] })
+    if (url.includes('/products/a')) return response({ name: 'projects/test/databases/(default)/documents/products/a', fields: { name: { stringValue: 'Glass' }, blog_links: links } })
+    throw new Error(url)
+  }
+  const base = { product_ids: ['a'], pricing_tier: { quantity: 100, production_lead_time_days: 30 }, dry_run: true }
+  let data = await (await handleMcpCatalogue(request('prepare_catalogue_collection', { ...base, learn_more_links: [{ label: 'Wine Glasses Collection', url: 'https://www.crystocraft.com/product/glasses/' }] }), { projectId: 'test', authorize, fetchImpl })).json()
+  assert.ok(data.warnings.some(x => x.code === 'INVALID_LEARN_MORE_LINK')); assert.equal(data.updated[0].catalogue.links_to_add.length, 1)
+  data = await (await handleMcpCatalogue(request('prepare_catalogue_collection', { ...base, learn_more_links: [{ label: 'https://www.crystocraft.com/product/glasses/', url: 'Wine Glasses Collection' }] }), { projectId: 'test', authorize, fetchImpl })).json()
+  assert.equal(data.errors[0].code, 'INVALID_LEARN_MORE_LINK')
 })
 
 test('collection preparation refuses a live write request before any Firestore access', async () => {

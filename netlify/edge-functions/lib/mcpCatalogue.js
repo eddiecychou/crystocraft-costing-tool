@@ -26,18 +26,25 @@ function docData(doc) {
 }
 function compactError(code, message, product_id = undefined) { return { ...(product_id ? { product_id } : {}), code, message } }
 function httpsUrl(value) { try { return new URL(value).protocol === 'https:' } catch { return false } }
+function displayLabel(value) { return typeof value === 'string' && value.trim() && !/^https?:\/\//i.test(value.trim()) }
+function canonicalLink(link) { return { label: link.label.trim(), url: new URL(link.url).href } }
+function invalidLink(link) { return !link || !displayLabel(link.label) || !httpsUrl(link.url) }
 
 function base(projectId) { return `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents` }
 async function readJson(response) { return response.json().catch(() => ({})) }
 async function get(fetchImpl, headers, name) {
-  const response = await fetchImpl(`${baseName(headers.projectId)}/${name}`, { headers })
+  let response
+  try { response = await fetchImpl(`${baseName(headers.projectId)}/${name}`, { headers }) }
+  catch { try { response = await fetchImpl(`${baseName(headers.projectId)}/${name}`, { headers }) } catch { throw new Error('UPSTREAM_READ_FAILED') } }
   if (response.status === 404) return null
   if (!response.ok) throw new Error('Firestore read failed')
   return docData(await readJson(response))
 }
 function baseName(projectId) { return base(projectId) }
 async function list(fetchImpl, headers, path) {
-  const response = await fetchImpl(`${baseName(headers.projectId)}/${path}?pageSize=100`, { headers })
+  let response
+  try { response = await fetchImpl(`${baseName(headers.projectId)}/${path}?pageSize=100`, { headers }) }
+  catch { try { response = await fetchImpl(`${baseName(headers.projectId)}/${path}?pageSize=100`, { headers }) } catch { throw new Error('UPSTREAM_READ_FAILED') } }
   if (!response.ok) throw new Error('Firestore list failed')
   return (await readJson(response)).documents?.map(docData) || []
 }
@@ -68,14 +75,18 @@ function readiness(detail, rates) {
     return [q.unit_cost_currency, q.tooling_sample_cost ? q.tooling_sample_cost_currency : null]
       .filter(currency => currency && hkdRateForCostCurrency(currency, rates) == null)
   }))]
+  const maxMoq = Math.max(0, ...components.map(c => Number(c.preferred_quote?.moq) || 0))
+  const missingLeadTime = components.filter(c => c.preferred_quote && !Number.isFinite(Number(c.preferred_quote.production_lead_time_days))).map(c => c.id)
   return {
     preferred_supplier_quotes_present: missingPreferred.length === 0 && components.length > 0,
     components_without_cost: missingCost,
     components_without_preferred_quote: missingPreferred,
+    components_without_production_lead_time: missingLeadTime,
+    preferred_supplier_moq: maxMoq,
     unavailable_currencies: unavailableCurrencies,
     pricing_tiers: detail.tiers.map(t => ({ quantity: t.quantity, production_lead_time_days: t.production_lead_time_days ?? null })),
     last_price_published_at: detail.product.prices_published_at || null,
-    safe_to_publish: components.length > 0 && !missingPreferred.length && !missingCost.length && !unavailableCurrencies.length && detail.tiers.length > 0,
+    safe_to_publish: components.length > 0 && !missingPreferred.length && !missingCost.length && !missingLeadTime.length && !unavailableCurrencies.length && detail.tiers.length > 0,
   }
 }
 
@@ -119,7 +130,8 @@ export async function handleMcpCatalogue(req, { authorize, fetchImpl = fetch, pr
       if (op === 'prepare_catalogue_collection') requireDryRun(input)
       if (op === 'prepare_catalogue_collection' && input.status && !VALID_STATUS.has(input.status)) throw new Error('status must be concept, sampled, active, or retired')
       for (const url of input.youtube_urls || []) if (!httpsUrl(url)) throw new Error('youtube_urls must contain HTTPS URLs')
-      for (const link of input.learn_more_links || []) if (!link?.label || !httpsUrl(link.url)) throw new Error('learn_more_links must contain a label and HTTPS URL')
+      const malformedLink = (input.learn_more_links || []).find(invalidLink)
+      if (malformedLink) return json({ ok: false, updated: [], skipped: [], warnings: [], errors: [compactError('INVALID_LEARN_MORE_LINK', 'Learn More links require plain display text in label and an HTTPS URL in url')] }, 400)
       const rates = await exchangeRates(fetchImpl, headers)
       const updated = [], skipped = [], warnings = [], errors = []
       for (const productId of ids) {
@@ -132,22 +144,26 @@ export async function handleMcpCatalogue(req, { authorize, fetchImpl = fetch, pr
         if (!tier || !Number.isFinite(tier.quantity) || tier.quantity <= 0 || !Number.isFinite(tier.production_lead_time_days) || tier.production_lead_time_days <= 0) {
           errors.push(compactError('INVALID_TIER', 'pricing_tier requires positive quantity and production_lead_time_days', productId)); continue
         }
-        const moq = Math.max(0, ...detail.components.map(c => Number(c.preferred_quote?.moq) || 0))
+        const moq = checks.preferred_supplier_moq
         if (moq > tier.quantity) warnings.push(compactError('MOQ_CONFLICT', `Preferred supplier MOQ is ${moq} while requested tier is ${tier.quantity}`, productId))
         const allInCost = checks.safe_to_publish ? totalUnitCostAtQty(detail.components, rates, tier.quantity) : null
         if (!checks.safe_to_publish || allInCost == null) warnings.push(compactError('NOT_READY_TO_PUBLISH', 'Preferred costs, exchange rates, and at least one tier must be complete before publishing', productId))
         const existingTier = detail.tiers.some(old => Number(old.quantity) === Number(tier.quantity))
         if (existingTier) warnings.push(compactError('DUPLICATE_PRICING_TIER', `A pricing tier already exists at quantity ${tier.quantity}`, productId))
         const requestedVideos = [...new Set(input.youtube_urls || [])]
-        const requestedLinks = [...new Map((input.learn_more_links || []).map(link => [link.url, link])).values()]
+        const existingLinks = detail.product.blog_links || []
+        const invalidExistingLinks = existingLinks.filter(invalidLink)
+        for (const link of invalidExistingLinks) warnings.push(compactError('INVALID_LEARN_MORE_LINK', 'Existing Learn More link has a non-HTTPS url or URL-shaped label and was not matched or repaired', productId))
+        const requestedLinks = [...new Map((input.learn_more_links || []).map(canonicalLink).map(link => [`${link.label}\u0000${link.url}`, link])).values()]
         if (requestedVideos.length !== (input.youtube_urls || []).length) warnings.push(compactError('DUPLICATE_VIDEO_IGNORED', 'Duplicate proposed video URLs were removed from the preview', productId))
         if (requestedLinks.length !== (input.learn_more_links || []).length) warnings.push(compactError('DUPLICATE_LINK_IGNORED', 'Duplicate proposed link URLs were removed from the preview', productId))
-        updated.push({ product_id: productId, name: detail.product.name || '', dry_run: true, catalogue: { status: input.status || detail.product.status || 'concept', visible: input.visible_in_catalogue ?? (detail.product.active !== false), videos_to_add: requestedVideos.filter(url => !(detail.product.videos || []).includes(url)), links_to_add: requestedLinks.filter(link => !(detail.product.blog_links || []).some(old => old.url === link.url)) }, pricing: { tier: { quantity: tier.quantity, lead_time_days: tier.production_lead_time_days, already_exists: existingTier }, all_in_cost_hkd: allInCost, default_price_hkd: allInCost == null ? null : Math.ceil(allInCost * DEFAULT_MARKUP), publish_requested: input.publish_prices === true, publish_enabled: false }, audit_preview: { service_principal: 'mcp-catalogue-pricing-service', requested_by: input.requested_by || 'unknown', action: 'prepare_catalogue_collection', dry_run: true, will_write: false }, readiness: checks })
+        updated.push({ product_id: productId, name: detail.product.name || '', dry_run: true, catalogue: { status: input.status || detail.product.status || 'concept', visible: input.visible_in_catalogue ?? (detail.product.active !== false), videos_to_add: requestedVideos.filter(url => !(detail.product.videos || []).includes(url)), links_to_add: requestedLinks.filter(link => !existingLinks.some(old => !invalidLink(old) && canonicalLink(old).label === link.label && canonicalLink(old).url === link.url)) }, pricing: { tier: { quantity: tier.quantity, lead_time_days: tier.production_lead_time_days, already_exists: existingTier }, all_in_cost_hkd: allInCost, default_price_hkd: allInCost == null ? null : Math.ceil(allInCost * DEFAULT_MARKUP), publish_requested: input.publish_prices === true, publish_enabled: false }, audit_preview: { service_principal: 'mcp-catalogue-pricing-service', requested_by: input.requested_by || 'unknown', action: 'prepare_catalogue_collection', dry_run: true, will_write: false }, readiness: checks })
       }
       return json({ ok: errors.length === 0, updated, skipped, warnings, errors })
     }
     throw new Error('Unsupported MCP operation')
   } catch (error) {
-    return json({ ok: false, updated: [], skipped: [], warnings: [], errors: [compactError('REQUEST_FAILED', error.message)] }, 400)
+    const code = error.message === 'UPSTREAM_READ_FAILED' ? 'UPSTREAM_READ_FAILED' : 'REQUEST_FAILED'
+    return json({ ok: false, updated: [], skipped: [], warnings: [], errors: [compactError(code, code === 'UPSTREAM_READ_FAILED' ? 'Catalogue read service was temporarily unavailable; retry the read.' : error.message)] }, 400)
   }
 }
