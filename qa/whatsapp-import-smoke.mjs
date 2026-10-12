@@ -64,10 +64,18 @@ const STUBS = {
     export const doc = (...parts) => parts.join('/')
     export const serverTimestamp = () => 'server-time'
     export const writeBatch = () => ({ set: () => {}, commit: async () => ({}) })
-    export const getDocs = async () => ({ docs: [{ id: 'archive1', data: () => ({
-      file: 'WhatsApp Chat - Mandy.zip', archive_key: 'business:WhatsApp Chat - Mandy.zip',
-      account: 'business', suggested_name: 'Mandy', message_count: 18, status: 'pending',
-    }) }] })
+    export const getDocs = async () => ({ docs: [
+      { id: 'archive1', data: () => ({
+        file: 'WhatsApp Chat - Mandy.zip', archive_key: 'business:WhatsApp Chat - Mandy.zip',
+        account: 'business', suggested_name: 'Mandy', message_count: 18, status: 'pending',
+      }) },
+      { id: 'archive2', data: () => ({
+        file: 'WhatsApp Chat - Alexandra.zip', archive_key: 'personal:WhatsApp Chat - Alexandra.zip',
+        account: 'personal', suggested_name: 'Alexandra', message_count: 120, status: 'imported',
+        mapping_type: 'customer', customer_id: 'c1', contact_id: 'c_abc123',
+        last_message_at: '2026-10-08T09:30:00.000Z', source_file_modified_at: '2026-10-09T02:15:00.000Z',
+      }) },
+    ] })
   `,
 }
 
@@ -130,6 +138,16 @@ async function check(viewport) {
   // The folder inbox and manual upload now share this one screen.
   await page.getByText('WhatsApp Chat - Mandy.zip').waitFor({ timeout: 5000 })
   const hasArchiveInbox = await page.getByRole('tab', { name: 'Archive inbox' }).getAttribute('aria-selected') === 'true'
+  const checkpointLayout = await page.locator('table').evaluate(table => {
+    const heads = [...table.querySelectorAll('thead th')]
+    const cells = [...table.querySelectorAll('tbody tr:first-child td')]
+    const bounds = elements => elements.map(el => {
+      const rect = el.getBoundingClientRect()
+      return { x: rect.x, y: rect.y, width: rect.width, display: getComputedStyle(el).display }
+    })
+    return { heads: bounds(heads), cells: bounds(cells), tableWidth: table.getBoundingClientRect().width, containerWidth: table.parentElement.getBoundingClientRect().width }
+  })
+  if (viewport.width >= 1280) await page.locator('section').filter({ hasText: 'Export checkpoints' }).first().screenshot({ path: '/private/tmp/whatsapp-checkpoints-desktop.png' })
   await page.getByRole('tab', { name: 'Manual upload & tools' }).click()
 
   // Migration review: scan -> long-name rows render.
@@ -160,6 +178,7 @@ async function check(viewport) {
     }
   })
   report.hasArchiveInbox = hasArchiveInbox
+  report.checkpointLayout = checkpointLayout
   await page.close()
   return report
 }
@@ -178,6 +197,9 @@ ok('mobile: archive inbox is the default integrated tab', mobile.hasArchiveInbox
 ok('desktop 1280px: no page-level horizontal scroll', !desktop.pageOverflows, `scrollW ${desktop.pageScrollW} vs clientW ${desktop.clientW}`)
 ok('desktop: no element pokes past the viewport', desktop.maxElementRight <= desktop.innerWidth + 1, `max right ${desktop.maxElementRight} vs ${desktop.innerWidth}`)
 ok('desktop: archive inbox is the default integrated tab', desktop.hasArchiveInbox)
+ok('checkpoint headers remain four aligned table cells', desktop.checkpointLayout.heads.length === 4 && desktop.checkpointLayout.heads.every((h, i, all) => h.display === 'table-cell' && Math.abs(h.y - all[0].y) < 1 && Math.abs(h.x - desktop.checkpointLayout.cells[i].x) < 1), JSON.stringify(desktop.checkpointLayout))
+ok('desktop checkpoint table fits its container', desktop.checkpointLayout.tableWidth <= desktop.checkpointLayout.containerWidth + 1, JSON.stringify(desktop.checkpointLayout))
+ok('mobile checkpoint table scrolls within its card', mobile.checkpointLayout.heads.length === 4 && mobile.checkpointLayout.tableWidth > mobile.checkpointLayout.containerWidth, JSON.stringify(mobile.checkpointLayout))
 ok('no console/page errors', errors.length === 0, errors.slice(0, 3).join(' | '))
 
 console.log(`\n${pass} passed, ${fail} failed`)

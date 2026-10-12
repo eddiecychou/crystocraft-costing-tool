@@ -68,13 +68,32 @@ function ArchiveCheckpoints({ rows, customers, contacts }) {
       return (lead ? contactName(lead) : '') || row.suggested_name
     }
     const customer = customers.find(item => item.id === row.customer_id)
-    if (row.mapping_type === 'group') return `${row.group_name || row.suggested_name}${customer?.company_name ? ` · ${customer.company_name}` : ''}`
+    if (row.mapping_type === 'group') {
+      const group = row.group_name || row.suggested_name
+      return [group, customer?.company_name !== group ? customer?.company_name : ''].filter(Boolean).join(' · ')
+    }
     const person = customer?.contacts?.find(item => item.id === row.contact_id)?.name
-    return [person || row.suggested_name, customer?.company_name].filter(Boolean).join(' · ')
+    const name = person || row.suggested_name
+    return [name, customer?.company_name !== name ? customer?.company_name : ''].filter(Boolean).join(' · ')
   }
   return <section className="space-y-4">
     <div><h2 className="eyebrow">Export checkpoints</h2><p className="text-sm text-ink-60 mt-1 max-w-3xl">In WhatsApp, check for messages after <span className="text-ink">Newest message saved</span>. Re-export only chats with newer activity; replacing the ZIP updates this checkpoint on the next Desktop sync.</p></div>
-    {rows.length === 0 ? <div className="card p-6 text-sm text-ink-60">Run “Sync WhatsApp Archives Now” once to record the current ZIP dates and newest saved messages.</div> : <div className="card overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead><tr className="border-b border-warm-grey">{['Conversation', 'Account', 'Newest message saved', 'ZIP placed or replaced', 'Last OC sync'].map(label => <th key={label} className="label px-4 py-3">{label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-b border-warm-grey last:border-b-0"><td className="px-4 py-3"><p className="text-sm text-ink">{targetName(row) || row.file}</p><p className="text-xs text-ink-60 mt-1">{row.message_count || 0} messages</p></td><td className="px-4 py-3 text-sm text-ink-60">{ACCOUNT_LABEL[row.account] || row.account}</td><td className="px-4 py-3 text-sm text-ink">{formatDateTime(row.last_message_at)}</td><td className="px-4 py-3 text-sm text-ink-60">{formatDateTime(row.source_file_modified_at)}</td><td className="px-4 py-3 text-sm text-ink-60">{formatDateTime(row.imported_at || row.updated_at)}</td></tr>)}</tbody></table></div>}
+    {rows.length === 0 ? <div className="card p-6 text-sm text-ink-60">Run “Sync WhatsApp Archives Now” once to record the current ZIP dates and newest saved messages.</div> : (
+      <div className="card max-w-full overflow-x-auto">
+        <table className="w-full min-w-[720px] table-fixed text-left">
+          <colgroup><col className="w-[35%]" /><col className="w-[22%]" /><col className="w-[22%]" /><col className="w-[21%]" /></colgroup>
+          <thead><tr className="border-b border-warm-grey">
+            {['Conversation', 'Newest message', 'ZIP file date', 'Last OC import'].map(label => <th key={label} scope="col" className="px-4 py-3 align-top"><span className="eyebrow">{label}</span></th>)}
+          </tr></thead>
+          <tbody>{rows.map(row => <tr key={row.id} className="border-b border-warm-grey last:border-b-0">
+            <td className="px-4 py-3 align-top"><p className="text-sm text-ink break-words">{targetName(row) || row.file}</p><p className="text-xs text-ink-60 mt-1">{ACCOUNT_LABEL[row.account] || row.account} · {row.message_count || 0} messages</p></td>
+            <td className="px-4 py-3 align-top text-sm text-ink">{formatDateTime(row.last_message_at)}</td>
+            <td className="px-4 py-3 align-top text-sm text-ink-60">{formatDateTime(row.source_file_modified_at)}</td>
+            <td className="px-4 py-3 align-top text-sm text-ink-60">{row.imported_at ? formatDateTime(row.imported_at) : 'Previously imported'}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+    )}
   </section>
 }
 
