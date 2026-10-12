@@ -28,7 +28,7 @@ const {
   parseWhatsAppExport, guessContactName, looksLikePhoneNumber, threadDocId,
   buildThreadDoc, messageFingerprint, normalizeAccount, resolveArchiveAccount, conversationThreadId,
   isLegacyThread, isMigratedThread, planMigration, analyzeImportOverlap,
-  carryForwardMedia, mergeThreadMessages, conversationGroupId,
+  carryForwardMedia, mergeThreadMessages, conversationGroupId, buildArchiveCheckpoint,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -240,6 +240,22 @@ const check = (name, cond, detail = '') => {
   check('group thread is NOT legacy (has account)', isLegacyThread(g) === false)
   const direct = buildThreadDoc({ zipFileName: 'x.zip', channel: 'WhatsApp Business', messages: msgs, account: 'WhatsApp Business', contactId: 'c_1' })
   check('direct thread defaults thread_type=direct, group_name=null', direct.thread_type === 'direct' && direct.group_name === null)
+}
+
+// ── archive export checkpoints ────────────────────────────────────────────
+{
+  const messages = [
+    { date: new Date('2026-10-01T01:00:00.000Z') },
+    { date: new Date('2026-10-08T09:30:00.000Z') },
+  ]
+  const checkpoint = buildArchiveCheckpoint({
+    zipFileName: 'WhatsApp Chat - Mandy Pong.zip', archiveKey: 'business:WhatsApp Chat - Mandy Pong.zip',
+    account: 'WhatsApp Business', messages, fileModifiedAt: new Date('2026-10-09T02:15:00.000Z'),
+    fileSize: 12345, sourceSignature: '123:12345',
+  })
+  check('archive checkpoint records the ZIP modified time', checkpoint.source_file_modified_at === '2026-10-09T02:15:00.000Z')
+  check('archive checkpoint records the newest message high-water mark', checkpoint.last_message_at === '2026-10-08T09:30:00.000Z')
+  check('archive checkpoint keeps account, count, size and signature', checkpoint.account === 'business' && checkpoint.message_count === 2 && checkpoint.source_file_size === 12345 && checkpoint.source_signature === '123:12345')
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

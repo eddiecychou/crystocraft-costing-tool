@@ -16,6 +16,7 @@
 //   ARCHIVE_DIR   — where the WhatsApp .zip files live (default ~/Whatsapp Archives)
 //   MANIFEST      — path to the manifest JSON (default scripts/whatsapp-import-manifest.json)
 //   SA_KEY_PATH   — firebase service-account JSON (default ./firebase-service-account.json)
+//   SYNC_STATE    — processed-file state JSON (default scripts/.whatsapp-sync-state.json)
 import { readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync, existsSync, statSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { join, dirname, basename, relative, sep } from 'path'
@@ -35,7 +36,7 @@ writeFileSync(modPath, src.replace(/^import .*\n/gm, ''))
 const {
   parseWhatsAppExport, buildThreadDoc, normalizeAccount, conversationThreadId,
   conversationGroupId, carryForwardMedia, analyzeImportOverlap, guessContactName,
-  isMigratedThread, resolveArchiveAccount,
+  isMigratedThread, resolveArchiveAccount, buildArchiveCheckpoint,
 } = await import(modPath)
 rmSync(dir, { recursive: true, force: true })
 
@@ -50,7 +51,7 @@ const db = getFirestore()
 const ARCHIVE_DIR = process.env.ARCHIVE_DIR || join(homedir(), 'Whatsapp Archives')
 const MANIFEST_PATH = process.env.MANIFEST || join(here, 'whatsapp-import-manifest.json')
 const DRY_RUN = process.argv.includes('--dry-run')
-const STATE_PATH = join(here, '.whatsapp-sync-state.json')
+const STATE_PATH = process.env.SYNC_STATE || join(here, '.whatsapp-sync-state.json')
 
 // Recursively collect .zip files.
 function findZips(root) {
@@ -91,6 +92,17 @@ function archiveKey(zipPath) {
   return `${archiveAccount(zipPath)}:${basename(zipPath)}`
 }
 
+const checkpointId = key => Buffer.from(key).toString('base64url')
+
+function checkpointTarget(entry, resolved) {
+  const target = { mapping_type: entry.type || 'customer' }
+  if (resolved.collectionName === 'customers') target.customer_id = resolved.parentId
+  if (resolved.collectionName === 'marketing_contacts') target.lead_id = resolved.parentId
+  if (resolved.contactId) target.contact_id = resolved.contactId
+  if (resolved.groupName) target.group_name = resolved.groupName
+  return target
+}
+
 // Parse one zip -> messages (or throw with a clear reason).
 async function parseZip(path) {
   const buf = readFileSync(path)
@@ -108,6 +120,8 @@ async function main() {
   // OC-managed decisions supplement the legacy manifest. An archive is never
   // guessed: only a human-approved mapping can move it out of the inbox.
   const saved = await db.collection('whatsapp_archive_mappings').get()
+  const checkpointSnap = await db.collection('whatsapp_archive_inbox').get()
+  const checkpoints = new Map(checkpointSnap.docs.map(item => [item.id, item.data()]))
   const byName = new Map((manifest.archives || []).map(a => [a.file, a]))
   const byArchiveKey = new Map()
   saved.forEach(s => {
@@ -134,19 +148,43 @@ async function main() {
     const sig = `${Math.round(st.mtimeMs)}:${st.size}`
     const accountFromFolder = archiveAccount(zipPath)
     const key = archiveKey(zipPath)
-    if (!DRY_RUN && (state[key] === sig || state[name] === sig)) { console.log(`SKIP (unchanged): ${name}`); skipped++; continue }
     const entry = byArchiveKey.get(key) || byName.get(name)
+    const id = checkpointId(key)
+    const previousCheckpoint = checkpoints.get(id)
+    const unchanged = state[key] === sig || state[name] === sig
+
+    // Older successful imports predate the checkpoint UI. Backfill their ZIP
+    // and message high-water times once, without rewriting the chat thread.
+    if (!DRY_RUN && unchanged && previousCheckpoint?.source_signature === sig) {
+      console.log(`SKIP (unchanged): ${name}`); skipped++; continue
+    }
+    if (!DRY_RUN && unchanged) {
+      const messages = await parseZip(zipPath).catch(() => [])
+      const checkpoint = buildArchiveCheckpoint({
+        zipFileName: name, archiveKey: key, account: accountFromFolder, messages,
+        fileModifiedAt: st.mtime, fileSize: st.size, sourceSignature: sig,
+      })
+      const target = entry ? checkpointTarget(entry, resolveTarget(entry)) : {}
+      await db.collection('whatsapp_archive_inbox').doc(id).set({
+        ...checkpoint, ...target,
+        status: entry ? (previousCheckpoint?.status === 'imported' ? 'imported' : 'tracked') : 'pending',
+        ...(previousCheckpoint?.discovered_at ? {} : { discovered_at: FieldValue.serverTimestamp() }),
+        updated_at: FieldValue.serverTimestamp(),
+      }, { merge: true })
+      console.log(`TRACK (unchanged): ${name}`); skipped++; continue
+    }
     if (!entry) {
       console.log(`SKIP (no manifest entry): ${name}`)
       if (!DRY_RUN) {
         const messages = await parseZip(zipPath).catch(() => [])
-        const id = Buffer.from(key).toString('base64url')
+        const checkpoint = buildArchiveCheckpoint({
+          zipFileName: name, archiveKey: key, account: accountFromFolder, messages,
+          fileModifiedAt: st.mtime, fileSize: st.size, sourceSignature: sig,
+        })
         await db.collection('whatsapp_archive_inbox').doc(id).set({
-          file: name, archive_key: key, account: accountFromFolder,
-          suggested_name: guessContactName(name), message_count: messages.length,
-          first_message_at: messages[0]?.date?.toISOString?.() || null,
-          last_message_at: messages.at(-1)?.date?.toISOString?.() || null,
-          status: 'pending', discovered_at: FieldValue.serverTimestamp(), updated_at: FieldValue.serverTimestamp(),
+          ...checkpoint, status: 'pending',
+          ...(previousCheckpoint?.discovered_at ? {} : { discovered_at: FieldValue.serverTimestamp() }),
+          updated_at: FieldValue.serverTimestamp(),
         }, { merge: true })
       }
       skipped++
@@ -191,11 +229,15 @@ async function main() {
       if (existing?.migrated_at) finalDoc.migrated_at = existing.migrated_at
       await ref.set(finalDoc)
       state[key] = sig
-      if (entry.archive_key) {
-        await db.collection('whatsapp_archive_inbox').doc(Buffer.from(entry.archive_key).toString('base64url')).set({
-          status: 'imported', imported_at: FieldValue.serverTimestamp(), updated_at: FieldValue.serverTimestamp(),
-        }, { merge: true })
-      }
+      const checkpoint = buildArchiveCheckpoint({
+        zipFileName: name, archiveKey: key, account, messages,
+        fileModifiedAt: st.mtime, fileSize: st.size, sourceSignature: sig,
+      })
+      await db.collection('whatsapp_archive_inbox').doc(id).set({
+        ...checkpoint,
+        ...checkpointTarget(entry, { collectionName, parentId, contactId, groupName }),
+        status: 'imported', imported_at: FieldValue.serverTimestamp(), updated_at: FieldValue.serverTimestamp(),
+      }, { merge: true })
 
       console.log(`${existing ? 'UPDATE' : 'IMPORT'} ${name} -> ${importId} (${messages.length} msgs, media skipped)`)
       if (existing) updated++; else imported++

@@ -114,6 +114,16 @@ transition, preserves the legacy filename-keyed sync state during migration,
 and keeps one Customers-page entry point. Build, 68 parser assertions, and 9
 responsive browser assertions pass; the rules compile in Firebase dry-run.
 
+The archive inbox now also carries an **Export checkpoints** ledger. Every new
+or replaced ZIP records two separate times: the file's own modified time
+(`source_file_modified_at`, when the export was placed/replaced) and the newest
+message inside it (`last_message_at`, the useful WhatsApp high-water mark).
+Staff can open WhatsApp, check whether a conversation has anything newer than
+that displayed message time, and re-export only the chats that changed. The
+daily/Desktop sync backfills checkpoints for previously imported unchanged
+archives without rewriting their thread documents. The first backfill recorded
+all 24 current ZIPs: 0 imported, 0 updated, 24 tracked/skipped, 0 failed.
+
 ## V8.17 — WhatsApp archive import becomes automatic; group chats; Dashboard inclusion (2026-10-03)
 
 ### 0. Same-day companion fix: two SEO control-plane defects (raised by DSH)

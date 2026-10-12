@@ -433,6 +433,13 @@ To import sooner, double-click `scripts/Sync WhatsApp Archives Now.command`,
 run `bash scripts/whatsapp-sync.sh`, or use
 `launchctl kickstart -k gui/$(id -u)/com.crystocraft.whatsapp-auto-import`.
 
+Each processed ZIP also has a compact record in `whatsapp_archive_inbox` for
+the OC's **Export checkpoints** table: `source_file_modified_at` records when
+the ZIP was placed/replaced, while `last_message_at` records the newest message
+inside it. On the first run after this feature was added, an unchanged ZIP is
+parsed once to backfill that checkpoint but its customer thread is not
+rewritten. Later unchanged runs skip it by `source_signature` as before.
+
 **Manual run / dry-run:**
 ```bash
 cd ~/Developer/costing-tool

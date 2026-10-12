@@ -271,6 +271,28 @@ export function buildThreadDoc({ zipFileName, channel, messages, account, contac
   }
 }
 
+// A compact, message-free checkpoint for the archive inbox. The ZIP modified
+// time answers "when did I last export this file?" while last_message_at is
+// the useful WhatsApp high-water mark: only re-export when the live chat has a
+// message newer than that. Keep this separate from the thread doc so the inbox
+// can show every tracked archive without querying every customer subcollection.
+export function buildArchiveCheckpoint({ zipFileName, archiveKey, account, messages = [], fileModifiedAt, fileSize, sourceSignature }) {
+  const dates = messages.map(message => message?.date instanceof Date ? message.date.getTime() : NaN).filter(Number.isFinite)
+  const modified = fileModifiedAt instanceof Date ? fileModifiedAt : new Date(fileModifiedAt)
+  return {
+    file: zipFileName,
+    archive_key: archiveKey,
+    account: normalizeAccount(account),
+    suggested_name: guessContactName(zipFileName),
+    message_count: messages.length,
+    first_message_at: dates.length ? new Date(Math.min(...dates)).toISOString() : null,
+    last_message_at: dates.length ? new Date(Math.max(...dates)).toISOString() : null,
+    source_file_modified_at: Number.isFinite(modified.getTime()) ? modified.toISOString() : null,
+    source_file_size: Number.isFinite(fileSize) ? fileSize : null,
+    source_signature: sourceSignature || null,
+  }
+}
+
 // A Storage object name has to avoid a handful of characters Firebase
 // rejects/mishandles (# [ ] * ?) — WhatsApp's own filenames never use
 // them in practice, but a customer's original filename (case with a

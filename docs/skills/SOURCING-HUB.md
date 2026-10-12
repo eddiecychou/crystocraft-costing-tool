@@ -131,6 +131,12 @@ unified importer):
   `transcribe-whatsapp-audio` (Deepgram); attachments preview inline via
   `WhatsAppAttachment.jsx`. (`ARCHITECTURE-RULES.md` §4c; memory
   `whatsapp-import-plan`.)
+  The same inbox includes a read-only **Export checkpoints** ledger. For every
+  tracked ZIP it shows the ZIP's placed/replaced time and the newest message
+  contained in that export. The newest-message time is the operator's manual
+  high-water mark: re-export a chat only when WhatsApp shows activity after
+  that time. Do not confuse the filesystem modified time with the message
+  watermark; both are deliberately retained and displayed.
 - **Alibaba — manual paste.** No export exists; buyer-seller chat is pasted as
   text and stored as `alibaba_threads/{id}`; summarized via
   `refresh-alibaba-summary`.
