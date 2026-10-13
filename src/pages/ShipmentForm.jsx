@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage, authHeader } from '../firebase'
+import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
   INCOTERMS, PAYMENT_TERMS, ORDER_CURRENCIES, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
   getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderLines, deleteOrder,
@@ -282,6 +283,10 @@ export default function ShipmentForm() {
       if (q.quote_type === 'uploaded') { setFromQuoteError('This quote has no product lines to convert — it\'s an uploaded document.'); return }
       const itemSnap = await getDocs(collection(db, 'client_quotes', fromQuoteId, 'items'))
       if (!alive) return
+      if (itemSnap.docs.some(d => hasIncompleteRangeLine(d.data()))) {
+        setFromQuoteError('A Gift Range line has no quantity or positive price. Complete the quote before converting it to a PI.')
+        return
+      }
       setHeader(h => ({
         ...h,
         customer_id: q.customer_id || h.customer_id,
@@ -290,32 +295,7 @@ export default function ShipmentForm() {
         uc_no: looksLikeUc(q.ref_no) ? q.ref_no.trim() : h.uc_no,
         notes: q.quote_no ? `Converted from Quote ${q.quote_no}` : h.notes,
       }))
-      const newLines = itemSnap.docs.map((d, i) => {
-        const it = d.data()
-        const tier = (it.tiers || [])[0] || { quantity: '', price: '' }
-        // A quote item added via QuoteDetail.jsx's "+ Custom Item" (is_custom,
-        // or legacy items with no product_id at all) isn't in the catalogue —
-        // carries over as an Ad-hoc line, same as this form's own manual
-        // Ad-hoc classification, rather than falsely claiming a catalogue match.
-        const isCatalogue = !it.is_custom && !!it.product_id
-        return {
-          line_no: i + 1,
-          item_code: '',
-          description: it.product_name || it.product_description || '',
-          qty_ordered: tier.quantity ?? '',
-          unit: it.product_unit || 'pcs',
-          unit_price: tier.price ?? '',
-          // A client_quotes line is a CORP-GIFT product (QuoteDetail's only
-          // picker reads `products/`), never a figurine — was mislabelled
-          // `range` + `range_products/`, so packing.js looked the id up in
-          // the figurine catalogue, found nothing, and silently fell back to
-          // 1 carton / no dims while still showing a green "matched" ✓.
-          line_type: isCatalogue ? 'corp_gift' : 'ad_hoc', packable: true,
-          match_status: isCatalogue ? 'matched' : 'manual',
-          matched_product_ref: isCatalogue ? { collection: 'products', id: it.product_id, name: it.product_name } : null,
-          line_image: it.custom_image || it.hero_image || null,
-        }
-      })
+      const newLines = itemSnap.docs.map((d, i) => quoteItemToOrderLine(d.data(), i))
       setLines(newLines)
       if (!newLines.length) setFromQuoteError('That quote has no product lines yet — add lines manually.')
     })()

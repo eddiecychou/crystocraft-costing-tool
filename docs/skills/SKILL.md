@@ -172,16 +172,16 @@ the fast path from a request to the exact code.
 - **Woo ↔ Finished Goods reconciliation** (Spec Phase 6, 2026-09-02): `b2c_stock` gets an optional one-time manual map to WooCommerce (`woo_sku`/`woo_product_id`/`woo_variation_id`, written by `setWooLink`). Match = manual link first, then exact normalised SKU. Most B2C products are Woo **variable products** with often-blank variation SKUs, so most rows link by hand. Read-only against Woo; FG→Woo push is a later phase (open owner decision).
 
 ### Client quotes
-- Pages: `Quotes.jsx`, `QuoteDetail.jsx`, `QuoteForm.jsx`, `RangeQuoteForm.jsx` · Components: `QuotePDF.jsx`, `QuoteExport.jsx`, `LineImagePicker.jsx`
-- Logic: `src/quotes.js`, `src/domain/customer.js` (owns `client_quotes`) · Edge fns: `process-quote`
-- Collections: `client_quotes/{id}` (+ `items`) — **admin-only, hard wall**. Quote items **snapshot** product data (margin column + per-customer pricing depend on the snapshot — `../plans/PRODUCT-VARIANTS-PLAN.md` §4).
+- Pages: `Quotes.jsx`, `QuoteDetail.jsx`, `QuoteForm.jsx`, `RangeQuoteForm.jsx` · Components: `QuoteProductPicker.jsx`, `QuotePDF.jsx`, `QuoteExport.jsx`, `LineImagePicker.jsx`
+- Logic: `src/quotes.js`, `src/rangeQuote.js` (Gift Range variant choice, safe price snapshot, PI mapping), `src/domain/customer.js` (owns `client_quotes`) · Edge fns: `process-quote`
+- Collections: `client_quotes/{id}` (+ `items`) — **quotes module; customer users excluded**. Quote items **snapshot** product data (margin column + per-customer pricing depend on the snapshot — `../plans/PRODUCT-VARIANTS-PLAN.md` §4). `product_collection` disambiguates `products` from `range_products`; old items without it are corporate gifts. Gift Range choices are exact variants/SKUs, use `ws_price_usd` converted by the quote's USD rate, and never copy wholesale price into internal cost. Missing quantity/price blocks export and PI conversion. Gift Range image uploads are quote-line-only, not writes to the figurine catalogue. Test: `qa/range-quote.test.mjs`, `qa/quote-picker-smoke.mjs`.
 
 ### Shipments / Proforma Invoice / packing / UC registry
 - Pages: `ShipmentForm.jsx`, `Shipments.jsx`, `Shipping.jsx`, `ProformaInvoicePrint.jsx`, `PackingListEditor.jsx`, `PackingListPrint.jsx`, `UcRegistry.jsx`
 - Logic: `src/shipping.js` (`normLine` — **strict whitelist**), `src/packing.js`, `src/mrp.js`, `src/ucRegistry.js`, `src/soNumber.js`, `src/pdfFilename.js` · Edge fns: `extract-pi`, `uc`
 - Component reserve panel (`OrderStockIssue.jsx` → `orderStock.js` → `mrp.computeRequirements`): a figurine line explodes via its Range BOM; a line whose `item_code` is itself a `range_components` code reserves that component 1:1 × qty (V8.15, **L-19**). A figurine line with no Range match / no BOM is a visible gap, never a silent drop.
 - A reserved (pre-production-in) line's qty is editable inline on all three panels (Component / Crystal / Packaging) — `adjustReservedLine` (`orderStock.js`) posts the reserve/release delta and rewrites the stored line; `EditableQty.jsx` is the cell (V8.15, `../plans/RESERVE-QTY-EDIT-AUDIT.md`).
-- Collections: `orders/{id}`, `packing_lists/{id}`, `uc_invoices/{id}`, `counters/uc_<yy>`+`so_<yy>`. An invoice needs a **UC number, not an SO**; "PI"=JES **SO**, "invoice"=**SI** (`CLAUDE.md`). Known bug: corp-gift lines tagged `range_products` on Convert-to-PI (`TECH-DEBT.md`).
+- Collections: `orders/{id}`, `packing_lists/{id}`, `uc_invoices/{id}`, `counters/uc_<yy>`+`so_<yy>`. An invoice needs a **UC number, not an SO**; "PI"=JES **SO**, "invoice"=**SI** (`CLAUDE.md`). Quote→PI conversion uses `quoteItemToOrderLine`: explicit Gift Range items become `range` with their SKU and `range_products` ref; corporate and legacy lines become `corp_gift` with `products` ref; custom items stay `ad_hoc`.
 
 ### Sales invoices & credit notes
 - Pages: `SalesInvoices.jsx`, `SalesInvoicePrint.jsx`, `CreditNotes.jsx`, `CreditNoteForm.jsx`, `CreditNotePrint.jsx`

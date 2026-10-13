@@ -19,6 +19,8 @@ import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { loadCustomerAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
+import { quoteItemKey, rangeQuoteItem, hasIncompleteRangeLine } from '../rangeQuote'
+import QuoteProductPicker from '../components/QuoteProductPicker'
 import { costToHKD } from '../costCurrency'
 import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle, Receipt } from 'lucide-react'
 
@@ -135,7 +137,7 @@ export default function QuoteDetail() {
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
       setItems(loaded)
       // Fetch live heroImage for each product so image updates are reflected
-      const productIds = [...new Set(loaded.map(i => i.product_id).filter(Boolean))]
+      const productIds = [...new Set(loaded.filter(i => i.product_collection !== 'range_products').map(i => i.product_id).filter(Boolean))]
       const entries = await Promise.all(
         productIds.map(async pid => {
           const pSnap = await getDoc(doc(db, 'products', pid))
@@ -265,6 +267,13 @@ export default function QuoteDetail() {
     }
 
     await Promise.all(products.map(async p => {
+      if (p.source === 'range_products') {
+        await addDoc(collection(db, 'client_quotes', id, 'items'), {
+          ...rangeQuoteItem(p, quoteCurrency, { HKD: 1, RMB: quote.rmb_to_hkd, USD: quote.usd_to_hkd, EUR: quote.eur_to_hkd }),
+          createdAt: serverTimestamp(),
+        })
+        return
+      }
       const [tierSnap, compSnap, ratesSnap] = await Promise.all([
         getDocs(query(collection(db, 'products', p.id, 'pricing_tiers'), orderBy('quantity'))),
         getDocs(collection(db, 'products', p.id, 'components')),
@@ -312,6 +321,7 @@ export default function QuoteDetail() {
 
       await addDoc(collection(db, 'client_quotes', id, 'items'), {
         product_id: p.id,
+        product_collection: 'products',
         product_name: p.name,
         product_category: p.category,
         product_description: p.description || '',
@@ -342,6 +352,7 @@ export default function QuoteDetail() {
 
   const quoteCurrency = quote.quote_currency || 'HKD'
   const quoteRates = { HKD: 1, RMB: quote.rmb_to_hkd || 1.09, USD: quote.usd_to_hkd || 7.78, EUR: quote.eur_to_hkd || 8.60 }
+  const incompleteRangeCount = items.filter(hasIncompleteRangeLine).length
 
   // Totals, one per tier POSITION across all items (2026-08-27) — not
   // customer-facing (that stays the opt-in "Include grand total on PDF"
@@ -475,7 +486,7 @@ export default function QuoteDetail() {
           >
             {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
           </select>
-          <button className="btn-secondary text-sm" onClick={() => setShowExport(true)}>Export</button>
+          <button className="btn-secondary text-sm" onClick={() => setShowExport(true)} disabled={incompleteRangeCount > 0}>Export</button>
           <button className="btn-secondary text-sm inline-flex items-center gap-1.5" onClick={handleDuplicate} disabled={duplicating}>
             {duplicating ? 'Copying…' : <><Copy size={14} />Duplicate</>}
           </button>
@@ -490,6 +501,10 @@ export default function QuoteDetail() {
             <Link to={`/shipments/${quote.converted_order_id}`} className="btn-secondary text-sm inline-flex items-center gap-1.5">
               <Receipt size={14} />View PI →
             </Link>
+          ) : incompleteRangeCount > 0 ? (
+            <button type="button" disabled className="btn-primary text-sm inline-flex items-center gap-1.5 opacity-50 cursor-not-allowed">
+              <Receipt size={14} />Convert to PI
+            </button>
           ) : (
             <Link to={`/shipments/new?from_quote=${id}`} className="btn-primary text-sm inline-flex items-center gap-1.5">
               <Receipt size={14} />Convert to PI
@@ -497,6 +512,7 @@ export default function QuoteDetail() {
           )}
           <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
+        {incompleteRangeCount > 0 && <p className="text-xs text-amber-700 mt-2">{incompleteRangeCount} Gift Range line{incompleteRangeCount === 1 ? '' : 's'} need a quantity and a positive price before export or conversion to PI.</p>}
       </div>
 
       {/* Items */}
@@ -521,7 +537,7 @@ export default function QuoteDetail() {
                     item={{ ...item, _quoteId: id }}
                     quoteCurrency={quoteCurrency}
                     customerId={quote.customer_id || null}
-                    heroImage={liveImages[item.product_id] ?? item.hero_image}
+                    heroImage={item.product_collection === 'range_products' ? item.hero_image : liveImages[item.product_id] ?? item.hero_image}
                     rates={quoteRates}
                     onTiersChange={tiers => handleTiersChange(item.id, tiers)}
                     onUnitChange={unit => handleUnitChange(item.id, unit)}
@@ -611,8 +627,8 @@ export default function QuoteDetail() {
 
       {/* Product Picker Modal */}
       {showProductPicker && (
-        <ProductPicker
-          existingIds={items.map(i => i.product_id)}
+        <QuoteProductPicker
+          existingKeys={items.map(quoteItemKey).filter(Boolean)}
           onAdd={handleAddProducts}
           onClose={() => setShowProductPicker(false)}
         />
@@ -621,7 +637,7 @@ export default function QuoteDetail() {
       {showExport && (
         <QuoteExport
           quote={quote}
-          items={items.map(i => ({ ...i, hero_image: liveImages[i.product_id] ?? i.hero_image }))}
+          items={items.map(i => ({ ...i, hero_image: i.product_collection === 'range_products' ? i.hero_image : liveImages[i.product_id] ?? i.hero_image }))}
           onClose={() => setShowExport(false)}
           onQuoteChange={patch => setQuote(q => ({ ...q, ...patch }))}
         />
@@ -745,6 +761,7 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
       {showImgPicker && (
         <ProductImagePicker
           productId={item.product_id}
+          productCollection={item.product_collection || 'products'}
           itemId={item.id}
           customerId={customerId}
           selectedUrl={item.custom_image}
@@ -773,7 +790,7 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
               <p className="font-medium text-sm text-ink">{item.product_name}</p>
             )}
             <p className="text-xs text-ink-60">
-              {item.is_custom ? <span className="text-amber-600">Custom item — not in catalogue</span> : item.product_category}
+              {item.is_custom ? <span className="text-amber-600">Custom item — not in catalogue</span> : item.product_collection === 'range_products' ? `Gift Range · ${item.product_category}` : item.product_category}
               {recurringCost != null && (
                 <span className="ml-2 text-ink-60">
                   · Cost: {currency} {recurringCost.toFixed(2)}
@@ -781,6 +798,9 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
                 </span>
               )}
             </p>
+            {item.product_collection === 'range_products' && (!tiers[0]?.quantity || !tiers[0]?.price) && (
+              <p className="text-xs text-amber-700 mt-1">Enter and review the quantity and price before export.</p>
+            )}
           </div>
           <button type="button" onClick={onRemove} className="text-red-400 hover:text-red-600 shrink-0"><X size={14} /></button>
         </div>
@@ -909,9 +929,10 @@ async function resizeToJpeg(file, maxPx = 2400, quality = 0.93) {
   return canvas.convertToBlob({ type: 'image/jpeg', quality })
 }
 
-function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSelect, onClear, onClose }) {
+function ProductImagePicker({ productId, productCollection, itemId, customerId, selectedUrl, onSelect, onClear, onClose }) {
   const [images, setImages] = useState([])
   const [loading, setLoading] = useState(true)
+  const [imageError, setImageError] = useState('')
   const [uploading, setUploading] = useState(false)
   const [tab, setTab] = useState('product')   // 'product' | 'brand'
   const [brandAssets, setBrandAssets] = useState([])
@@ -931,10 +952,23 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
   // go straight to "no images yet, upload one" below.
   useEffect(() => {
     if (!productId) { setImages([]); setLoading(false); return }
+    if (productCollection === 'range_products') {
+      getDoc(doc(db, 'range_products', productId))
+        .then(snap => {
+          const p = snap.data() || {}
+          const urls = [...(p.gallery || []).map(g => typeof g === 'string' ? g : g?.url),
+            ...(p.variants || []).map(v => v.image)].filter(Boolean)
+          setImages([...new Set(urls)].map((url, i) => ({ id: String(i), file_url: url })))
+        })
+        .catch(() => setImageError('Gift Range images could not be loaded.'))
+        .finally(() => setLoading(false))
+      return
+    }
     getDocs(query(collection(db, 'products', productId, 'images'), orderBy('sort_order')))
       .then(snap => { setImages(snap.docs.map(d => ({ id: d.id, ...d.data() }))) })
+      .catch(() => setImageError('Product images could not be loaded.'))
       .finally(() => setLoading(false))
-  }, [productId])
+  }, [productId, productCollection])
 
   // Customer brand images (spec §5.2). Admin picking sees ALL of this customer's
   // assets. Loaded once, the first time the Brand tab is opened.
@@ -973,7 +1007,7 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
       // straight to its own quote-item path and select it immediately as
       // that line's custom_image, rather than recording it in a
       // products/{id}/images subcollection that doesn't exist for it.
-      if (!productId) {
+      if (!productId || productCollection === 'range_products') {
         const path = `client_quotes/custom_items/${itemId}/${Date.now()}.jpg`
         const sRef = storageRef(storage, path)
         await uploadBytes(sRef, resized, { contentType: 'image/jpeg' })
@@ -1064,6 +1098,8 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
             </>
           ) : loading ? (
             <p className="text-sm text-ink-60 text-center py-8">Loading…</p>
+          ) : imageError ? (
+            <p className="text-sm text-red-600 text-center py-6">{imageError}</p>
           ) : images.length === 0 ? (
             <p className="text-sm text-ink-60 text-center py-6">{productId ? 'No images uploaded for this product yet.' : 'No image for this custom item yet.'}</p>
           ) : (
@@ -1109,86 +1145,8 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
             )}
           </div>
           <p className="text-xs text-ink-60">
-            {tab === 'brand' ? 'Curated on the Customer page' : productId ? 'New uploads saved to product' : 'Saved to this line only — not shared with the catalogue'}
+            {tab === 'brand' ? 'Curated on the Customer page' : productId && productCollection !== 'range_products' ? 'New uploads saved to product' : 'New uploads saved to this line only'}
           </p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ProductPicker({ existingIds, onAdd, onClose }) {
-  const [products, setProducts] = useState([])
-  const [selected, setSelected] = useState([])
-  const [search, setSearch]     = useState('')
-  const [loading, setLoading]   = useState(true)
-
-  useEffect(() => {
-    getDocs(query(collection(db, 'products'), orderBy('name'))).then(snap => {
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setLoading(false)
-    })
-  }, [])
-
-  const filtered = products.filter(p =>
-    !existingIds.includes(p.id) &&
-    (!search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.category?.toLowerCase().includes(search.toLowerCase()))
-  )
-
-  function toggle(p) {
-    setSelected(s => s.find(x => x.id === p.id) ? s.filter(x => x.id !== p.id) : [...s, p])
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-        <div className="p-4 border-b border-warm-grey">
-          <h2 className=" text-ink mb-3">Add Products to Quote</h2>
-          <input
-            type="text" placeholder="Search products…"
-            className="input" value={search}
-            onChange={e => setSearch(e.target.value)}
-            autoFocus
-          />
-        </div>
-
-        <div className="overflow-y-auto flex-1 p-2">
-          {loading ? (
-            <p className="text-sm text-ink-60 text-center py-8">Loading…</p>
-          ) : filtered.length === 0 ? (
-            <p className="text-sm text-ink-60 text-center py-8">No products found.</p>
-          ) : filtered.map(p => {
-            const isSelected = selected.find(x => x.id === p.id)
-            return (
-              <div
-                key={p.id}
-                onClick={() => toggle(p)}
-                className={`flex items-center gap-3 p-3 rounded-none cursor-pointer transition-colors ${isSelected ? 'bg-brand-50 border border-brand-200' : 'hover:bg-ivory border border-transparent'}`}
-              >
-                <div className="w-12 h-12 rounded-none bg-ivory-dark shrink-0 overflow-hidden flex items-center justify-center">
-                  {p.heroImage
-                    ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />
-                    : <Package size={18} strokeWidth={1.5} className="text-platinum" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-ink">{p.name}</p>
-                  <p className="text-xs text-ink-60">{p.category}</p>
-                </div>
-                {isSelected && <Check size={18} className="text-brand-600" />}
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="p-4 border-t border-warm-grey flex gap-3 justify-between items-center">
-          <p className="text-sm text-ink-60">{selected.length} selected</p>
-          <div className="flex gap-2">
-            <button className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn-primary" disabled={selected.length === 0} onClick={() => onAdd(selected)}>
-              Add {selected.length > 0 ? selected.length : ''} Product{selected.length !== 1 ? 's' : ''}
-            </button>
-          </div>
         </div>
       </div>
     </div>

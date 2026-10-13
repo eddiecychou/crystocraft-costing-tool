@@ -46,6 +46,12 @@ qa/*-preview-seeded.html
 qa/whatsapp-import-preview.js
 qa/whatsapp-import-preview.css
 qa/whatsapp-import-preview.html
+qa/quote-picker-preview.js
+qa/quote-picker-preview.css
+qa/quote-picker-preview.html
+qa/quote-detail-preview.js
+qa/quote-detail-preview.css
+qa/quote-detail-preview.html
 qa/*-VXBWXKA3*
 qa/*-????????.jpg
 qa/*-????????.png
