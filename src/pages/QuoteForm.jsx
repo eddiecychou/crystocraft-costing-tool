@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CURRENCIES } from '../constants'
-import { loadCustomers, primaryContact, contactAddress } from '../domain/customer'
+import { loadCustomers, primaryContact, contactAddress, CRM_CATEGORIES, RETAIL_TAG } from '../domain/customer'
 import ContactPicker from '../components/ContactPicker'
 
 const DEFAULT_RATES = { rmb_to_hkd: 1.09, usd_to_hkd: 7.78, eur_to_hkd: 8.60 }
@@ -14,6 +14,8 @@ export default function QuoteForm() {
 
   const [customers, setCustomers] = useState([])
   const [selectedCustomerId, setSelectedCustomerId] = useState(searchParams.get('customer_id') || '')
+  const [customerGroup, setCustomerGroup] = useState('b2b')
+  const [customerSearch, setCustomerSearch] = useState('')
 
   const todayISO = new Date().toISOString().split('T')[0]
 
@@ -48,8 +50,28 @@ export default function QuoteForm() {
   useEffect(() => {
     if (!selectedCustomerId) return
     const c = customers.find(c => c.id === selectedCustomerId)
-    if (c) prefillFromCustomer(c)
+    if (c) {
+      if (!CRM_CATEGORIES.includes(c.crm_category) && c.tags?.includes(RETAIL_TAG)) setCustomerGroup('b2c')
+      else if (!CRM_CATEGORIES.includes(c.crm_category)) setCustomerGroup('all')
+      prefillFromCustomer(c)
+    }
   }, [selectedCustomerId, customers])
+
+  const groupCounts = {
+    b2b: customers.filter(c => CRM_CATEGORIES.includes(c.crm_category)).length,
+    b2c: customers.filter(c => c.tags?.includes(RETAIL_TAG)).length,
+    all: customers.length,
+  }
+  const searchTerm = customerSearch.trim().toLocaleLowerCase()
+  const visibleCustomers = customers.filter(c => {
+    const inGroup = customerGroup === 'all' || (customerGroup === 'b2c'
+      ? c.tags?.includes(RETAIL_TAG) : CRM_CATEGORIES.includes(c.crm_category))
+    if (!inGroup) return false
+    return !searchTerm || [c.company_name, c.contact_name, c.erp_code,
+      ...(c.contacts || []).map(contact => contact.name)]
+      .some(value => String(value || '').toLocaleLowerCase().includes(searchTerm))
+  })
+  const selectedCustomer = customers.find(c => c.id === selectedCustomerId)
 
   // c comes from loadCustomers() — the canonical customer shape carries a
   // contacts[] list of real, separate people (domain/customer.js), not one
@@ -127,15 +149,40 @@ export default function QuoteForm() {
         <div className="card p-5 space-y-4">
           <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Client</p>
           <div>
-            <label className="label">Select Existing Customer</label>
-            <select className="input" value={selectedCustomerId} onChange={handleCustomerSelect}>
+            <label className="label" htmlFor="quote-customer">Select Existing Customer</label>
+            <div className="flex flex-wrap gap-2 mt-2 mb-3" role="group" aria-label="Customer type">
+              {[
+                { key: 'b2b', label: 'B2B' },
+                { key: 'b2c', label: 'B2C' },
+                { key: 'all', label: 'All' },
+              ].map(group => (
+                <button key={group.key} type="button" aria-pressed={customerGroup === group.key}
+                  onClick={() => { setCustomerGroup(group.key); setCustomerSearch('') }}
+                  className={`px-3 py-2 rounded-full text-sm border transition-colors focus-visible:ring-2 focus-visible:ring-brand-600 ${customerGroup === group.key
+                    ? 'bg-brand-600 text-white border-brand-600'
+                    : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory-dark'}`}>
+                  {group.label} <span className={customerGroup === group.key ? 'text-white/70' : 'text-ink-60'}>{groupCounts[group.key]}</span>
+                </button>
+              ))}
+            </div>
+            <input className="input mb-2" type="search" value={customerSearch}
+              onChange={e => setCustomerSearch(e.target.value)}
+              placeholder={`Search ${customerGroup === 'all' ? 'all customers' : customerGroup.toUpperCase() + ' customers'}…`}
+              aria-label="Search customers" />
+            <select id="quote-customer" className="input" value={selectedCustomerId} onChange={handleCustomerSelect}>
               <option value="">— Enter manually below —</option>
-              {customers.map(c => (
+              {selectedCustomer && !visibleCustomers.some(c => c.id === selectedCustomerId) && (
+                <option value={selectedCustomerId}>{selectedCustomer.company_name} · current selection</option>
+              )}
+              {visibleCustomers.map(c => (
                 <option key={c.id} value={c.id}>
                   {c.company_name}{c.contact_name ? ` · ${c.contact_name}` : ''}
                 </option>
               ))}
             </select>
+            {visibleCustomers.length === 0 && customers.length > 0 && (
+              <p className="text-xs text-ink-60 mt-1">No customers in this view match your search. Try All or a different name.</p>
+            )}
             <p className="text-xs text-ink-60 mt-1">
               Selecting a customer pre-fills the fields below.{' '}
               <Link to="/customers/new" className="text-brand-500 hover:underline" target="_blank">+ Add new customer</Link>
@@ -152,8 +199,8 @@ export default function QuoteForm() {
           <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Client Details</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Company / Client Name *</label>
-              <input className="input" value={form.client_name} onChange={set('client_name')} required placeholder="e.g. Manulife HK" />
+              <label className="label" htmlFor="quote-client-name">Company / Client Name *</label>
+              <input id="quote-client-name" className="input" value={form.client_name} onChange={set('client_name')} required placeholder="e.g. Manulife HK" />
             </div>
             <div>
               <label className="label">Quote Date</label>
