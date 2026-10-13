@@ -14,8 +14,23 @@ The second tool requires an existing supplier ID and both the `products` and
 component, and its preferred supplier quote in one atomic write. It does not
 create suppliers, upload images, set sales prices, calculate freight or margin,
 or activate the product. Quote terms and supplier cost belong in quote fields,
-never in catalogue descriptions. To add a quote to an existing product, use
-the Operation Center UI; the bundled tool only creates a new product.
+never in catalogue descriptions. The bundled creation tool only creates a new
+product. The separate `add_corp_gift_component_with_supplier_quote` tool adds
+one component and quote to an **existing inactive MCP Concept** product,
+without editing the product or its existing components. `search_suppliers`
+finds an existing supplier by English/Chinese company name or contact; neither
+tool creates a supplier.
+
+The add tool defaults to `dry_run: true`. A live call requires explicit user
+approval, `dry_run: false`, a UUID `request_id`, an existing product and
+supplier ID, and sourced component quantity/unit, specification, cost, MOQ and
+source notes. `CNY` is normalized to OC's `RMB`. The same request ID and
+identical content return the original component/quote after a timeout; changed
+content with that ID is rejected. The component, quote and append-only audit
+record are one Firestore commit with create-only preconditions. The audit names
+`mcp-product-writer-service` as service principal and `requested_by: unknown`;
+it does **not** claim to identify the human operator. No product, tier,
+published price or existing component is updated.
 
 ## Service identities (macOS)
 
@@ -37,8 +52,9 @@ explicit diagnostic fallback (`OC_PRODUCT_WRITER_AUTH=interactive`).
 
 Every later live MCP write will record both `service_principal` and optional
 `requested_by` session metadata in the append-only audit log. This first
-release performs no new writes, so no audit record is created during a read or
-dry run.
+release performs no new **catalogue-pricing** writes. The new component/quote
+tool creates its audit record atomically with the two new records when an
+approved live call is made; reads and dry runs create no audit record.
 
 The Keychain helper invokes Swift and may show a macOS Keychain permission
 prompt. No token or password is passed as a command-line argument, stored in
@@ -75,6 +91,17 @@ Supplier quotes use the Operation Center's accounting codes: `RMB`, `HKD`,
 Chinese yuan. The write endpoint defensively normalises legacy direct `CNY`
 requests to `RMB`, so it never stores `CNY` on a quote. Other currencies are
 rejected rather than being treated as a 1:1 HKD cost.
+
+## Source PDF — phase two
+
+The OC quote form already stores `attachments[]` on a supplier quote and
+uploads PDFs to Firebase Storage. This MCP release deliberately has **no**
+file-path, upload, or arbitrary URL argument. A safe follow-up needs a separate
+tool with PDF MIME/size checks, a quote-ownership check, a single constrained
+Storage destination under that quote, an authenticated upload, and a
+compare-and-set attachment update with retry cleanup. Review Storage rules and
+test orphan/duplicate handling before enabling it; meanwhile attach the PDF
+through the existing OC supplier-quote form.
 
 ## Scope and privacy limit
 

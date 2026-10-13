@@ -11,7 +11,7 @@ test('MCP server advertises the restricted writer, read, and dry-run tools', asy
   try {
     await client.connect(transport)
     const { tools } = await client.listTools()
-    assert.equal(tools.length, 6)
+    assert.equal(tools.length, 8)
     const draft = tools.find(tool => tool.name === 'create_corp_gift_product_draft')
     const bundle = tools.find(tool => tool.name === 'create_corp_gift_product_with_supplier_quote')
     assert.ok(draft)
@@ -19,6 +19,11 @@ test('MCP server advertises the restricted writer, read, and dry-run tools', asy
     for (const name of ['search_products', 'get_product', 'get_product_costing_readiness', 'prepare_catalogue_collection']) {
       assert.ok(tools.find(tool => tool.name === name), `${name} is advertised`)
     }
+    assert.ok(tools.find(tool => tool.name === 'search_suppliers'))
+    const add = tools.find(tool => tool.name === 'add_corp_gift_component_with_supplier_quote')
+    assert.ok(add)
+    assert.equal(add.inputSchema.properties.dry_run.type, 'boolean')
+    for (const blocked of ['active', 'status', 'selling_price', 'pricing_tier', 'attachments']) assert.equal(add.inputSchema.properties[blocked], undefined)
     assert.deepEqual(new Set(draft.inputSchema.required), new Set(['name', 'category', 'request_id']))
     assert.deepEqual(new Set(bundle.inputSchema.required), new Set(['name', 'category', 'request_id', 'component_name', 'supplier_id', 'unit_cost', 'unit_cost_currency']))
     assert.deepEqual(new Set(bundle.inputSchema.properties.unit_cost_currency.enum), new Set(['RMB', 'HKD', 'USD', 'EUR']))

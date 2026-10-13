@@ -30,7 +30,7 @@ the boundary. See `PROJECT-PLAN.md` V8.12 §2.
   - `products/{id}/images/{imageId}` — photos, screened per-customer via `branded_for_customer_id` vs the viewer's `sensitive` flag; staff (admin + production) see all unscreened. → `customers`.
   - `products/{id}/pricing_tiers/{tierId}` — tier pricing. Auth: portal read, **admin** write (hard wall — production never sees pricing).
   - `products/{id}/customer_prices/{priceUid}` — per-customer price overrides, keyed by uid. Auth: admin / self.
-  - `products/{id}/components/{componentId}` — BOM components. Auth: **staff** (V8.12).
+  - `products/{id}/components/{componentId}` — BOM components. Auth: **staff** (V8.12). The restricted `mcp-product-supply` writer only creates an `mcp_*` component on an existing inactive MCP Concept product, with its quote and audit in one commit; it never updates the product or an existing component.
     - `.../images/{imageId}` — component photos. Auth: staff.
     - `.../supplier_quotes/{quoteId}` — quotes for that component (see collection-group rule below). Auth: staff.
       - `.../attachments/{attachmentId}`. Auth: staff.
@@ -52,7 +52,7 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 - `client_quotes/{id}` (+ `items/{itemId}`) — Auth: **admin** (hard wall). Owned by `src/domain/customer.js` + `QuoteDetail.jsx`, `RangeQuoteForm.jsx`.
 - `credit_notes/{id}` — combined sales-return + credit-note working doc — the *posted* financial fact lives in Supabase (`credit-note.js`/`app_credit_note`, see API-REFERENCE.md), not here. Auth: **admin** (hard wall). Owned by `CreditNoteForm.jsx`, `CreditNotes.jsx`.
 - `portal_invitations/{id}` — SU-07A invite records, admin-**read-only** from the browser — the actual claim/approve write path bypasses rules entirely via the Admin SDK in `netlify/functions/portal-invite.js`. Owned by `PortalInvitations.jsx`.
-- `audit_logs/{id}` — **append-only** change trail. Auth: create = any internal login (`isStaff() || isFrontOffice()`), read = admin only, update/delete = never. Writers: `AccountEdit.jsx` logs account-role changes; `applyReviewedMarketingTagChange()` in `src/domain/marketingContact.js` writes `kind:'marketing_tag_cleanup'` snapshots containing the exact pre-change tag arrays in the same atomic batch as each reviewed rename/removal chunk. The latter is the rollback evidence for the JEV cleanup queue; successful UI status additionally requires reading every affected contact back. Neither writer updates or deletes audit rows.
+- `audit_logs/{id}` — **append-only** change trail. Auth: create = any internal login (`isStaff() || isFrontOffice()`), read = admin only, update/delete = never. Writers: `AccountEdit.jsx` logs account-role changes; `applyReviewedMarketingTagChange()` writes `kind:'marketing_tag_cleanup'` snapshots; `mcp-product-supply` atomically creates `kind:'mcp_supplier_quote'` with service principal, target IDs, request hash and server timestamp when adding a component/quote. The MCP audit records `requested_by:'unknown'` rather than impersonating a human. None of these writers updates or deletes audit rows.
 
 ## Customers & CRM
 

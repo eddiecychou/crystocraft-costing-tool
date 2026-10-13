@@ -7,6 +7,7 @@ import { CATEGORIES } from '../../src/productCategories.js'
 const endpoint = new URL('/api/create-corp-gift-product', process.env.OC_BASE_URL || 'https://portal.crystocraft.com')
 const quoteEndpoint = new URL('/api/create-corp-gift-product-with-quote', process.env.OC_BASE_URL || 'https://portal.crystocraft.com')
 const catalogueEndpoint = new URL('/api/mcp-catalogue', process.env.OC_BASE_URL || 'https://portal.crystocraft.com')
+const supplyEndpoint = new URL('/api/mcp-product-supply', process.env.OC_BASE_URL || 'https://portal.crystocraft.com')
 if (endpoint.protocol !== 'https:' && endpoint.hostname !== 'localhost') throw new Error('OC_BASE_URL must use HTTPS')
 
 const schema = {
@@ -53,6 +54,15 @@ export async function callCatalogue(op, input, { token = op === 'search_products
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(data.errors?.[0]?.message || `Operation Center returned HTTP ${response.status}`)
+  return data
+}
+
+export async function callProductSupply(op, input, { token = getIdToken, fetchImpl = fetch } = {}) {
+  const response = await fetchImpl(supplyEndpoint, {
+    method: 'POST', headers: { Authorization: `Bearer ${await token()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ op, input }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(`${data.error?.code || 'REQUEST_FAILED'}: ${data.error?.message || `Operation Center returned HTTP ${response.status}`}`)
   return data
 }
 
@@ -129,5 +139,26 @@ server.registerTool('prepare_catalogue_collection', {
   inputSchema: { product_ids: z.array(z.string().trim().min(1)).min(1).max(50), status: z.enum(['concept', 'sampled', 'active', 'retired']).optional(), visible_in_catalogue: z.boolean().optional(), youtube_urls: z.array(z.string().url()).optional(), learn_more_links: z.array(z.object({ label: z.string().trim().min(1).max(120), url: z.string().url() })).optional(), pricing_tier: z.object({ quantity: z.number().positive(), production_lead_time_days: z.number().positive() }), publish_prices: z.boolean().optional(), dry_run: z.literal(true) },
   annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
 }, async input => { try { return result(await callCatalogue('prepare_catalogue_collection', input)) } catch (error) { return toolFailure(error) } })
+
+server.registerTool('search_suppliers', {
+  title: 'Find an existing supplier',
+  description: 'Read-only lookup by company name, Chinese name or contact. Returns IDs for human/agent selection; never creates or guesses a supplier.',
+  inputSchema: { query: z.string().trim().min(2).max(80), limit: z.number().int().min(1).max(10).optional() },
+  annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+}, async input => { try { return result(await callProductSupply('search_suppliers', input)) } catch (error) { return toolFailure(error) } })
+
+server.registerTool('add_corp_gift_component_with_supplier_quote', {
+  title: 'Add component and supplier quote to existing Concept product',
+  description: 'Defaults to dry run. Uses an existing inactive MCP Concept product and existing supplier ID; atomically adds only one BOM component, one quote and an audit entry. Requires explicit approval before dry_run:false. Never changes product copy, visibility, selling price, tiers or existing components. Reuse the same request_id and content after a timeout.',
+  inputSchema: {
+    product_id: z.string().regex(/^mcp_[a-f0-9]{40}$/), supplier_id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+    component_name: z.string().trim().min(1).max(160), component_spec: z.string().trim().min(1).max(4000),
+    component_unit: z.enum(['pcs', 'set', 'pair', 'kg', 'g', 'm', 'box']), qty_per_product: z.number().int().min(1).max(1000),
+    unit_cost: z.number().finite().positive().max(10000000), unit_cost_currency: z.enum(['RMB', 'CNY', 'HKD', 'USD', 'EUR']),
+    moq: z.number().int().min(1).max(10000000), source_notes: z.string().trim().min(1).max(4000),
+    request_id: z.string().uuid(), dry_run: z.boolean().optional(),
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+}, async input => { try { return result(await callProductSupply('add_corp_gift_component_with_supplier_quote', input)) } catch (error) { return toolFailure(error) } })
 
 await server.connect(new StdioServerTransport())
