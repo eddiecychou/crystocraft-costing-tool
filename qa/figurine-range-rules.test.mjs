@@ -35,6 +35,12 @@ await env.withSecurityRulesDisabled(async context => {
 
 const service = env.authenticatedContext(uid, { figurine_range_writer: true }).firestore()
 const noClaim = env.authenticatedContext(uid).firestore()
+await check('general audit append denied for read-only service', assertFails(setDoc(doc(service, 'audit_logs/b0016-service-probe'), { action: 'probe' })))
+await check('service login stamp denied', assertFails(updateDoc(doc(service, `users/${uid}`), { last_login_at: 'probe', login_count: 1 })))
+await check('service scope update denied', assertFails(updateDoc(doc(service, `users/${uid}`), { service_scope: 'other' })))
+await check('service favourites write denied', assertFails(setDoc(doc(service, `favourites/${uid}`), { items: [] })))
+await check('service enquiry create denied', assertFails(setDoc(doc(service, 'enquiries/b0016-service-probe'), { uid })))
+await check('service customer design create denied', assertFails(setDoc(doc(service, 'customer_designs/b0016-service-probe'), { uid })))
 await check('exact reused C1 get allowed', assertSucceeds(getDoc(doc(service, 'range_components/rc_mv7xu3mmayc5g'))))
 await check('exact reused C1 quote list allowed for dedup', assertSucceeds(getDocs(collection(service, 'range_components/rc_mv7xu3mmayc5g/supplier_quotes'))))
 await check('no-claim reused C1 get denied', assertFails(getDoc(doc(noClaim, 'range_components/rc_mv7xu3mmayc5g'))))

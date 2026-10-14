@@ -1,0 +1,139 @@
+{
+  "checked_at": "2026-10-14T14:20:18.000Z",
+  "read_only": true,
+  "production_writes": 0,
+  "component_library_count": 840,
+  "exact_code_conflicts": [],
+  "legacy_code_records": [
+    {
+      "path": "range_components/rc_mv7xu3mmayc5g",
+      "code": "P-CF003-C1"
+    }
+  ],
+  "legacy_c1": {
+    "path": "range_components/rc_mv7xu3mmayc5g",
+    "exists": true,
+    "update_time": "2026-10-14T10:01:39.447Z",
+    "fields": {
+      "code": "P-CF003-C1",
+      "name": "mezuza水晶布",
+      "supplierId": "",
+      "preferred_quote_id": null,
+      "unit_cost": null,
+      "unit_cost_currency": null,
+      "tooling_sample_cost": null,
+      "stock_qty": null,
+      "reserved_qty": null,
+      "used_by": null
+    },
+    "child_counts": {}
+  },
+  "scans": [
+    {
+      "scope": "range_products",
+      "records": 293
+    },
+    {
+      "scope": "products",
+      "records": 141
+    },
+    {
+      "scope": "purchase_orders",
+      "records": 32
+    },
+    {
+      "scope": "orders",
+      "records": 122
+    },
+    {
+      "scope": "client_quotes",
+      "records": 26
+    },
+    {
+      "scope": "packing_lists",
+      "records": 14
+    },
+    {
+      "scope": "uc_invoices",
+      "records": 81
+    },
+    {
+      "scope": "credit_notes",
+      "records": 5
+    },
+    {
+      "scope": "catalogues",
+      "records": 5
+    },
+    {
+      "scope": "audit_logs",
+      "records": 38
+    },
+    {
+      "scope": "customer_designs",
+      "records": 1
+    },
+    {
+      "scope": "b2c_stock",
+      "records": 565
+    },
+    {
+      "scope": "campaign_templates",
+      "records": 1
+    },
+    {
+      "scope": "freight_quotes",
+      "records": 8
+    },
+    {
+      "scope": "outreach_topic_templates",
+      "records": 1
+    },
+    {
+      "scope": "pd_customer_brands",
+      "records": 3
+    },
+    {
+      "scope": "pd_generations",
+      "records": 10
+    },
+    {
+      "scope": "pd_products",
+      "records": 3
+    },
+    {
+      "scope": "pd_prompt_templates",
+      "records": 6
+    },
+    {
+      "scope": "range_colour_previews",
+      "records": 7
+    },
+    {
+      "scope": "range_components",
+      "records": 840
+    },
+    {
+      "scope": "collectionGroup:items",
+      "records": 146
+    },
+    {
+      "scope": "collectionGroup:lines",
+      "records": 1526
+    },
+    {
+      "scope": "collectionGroup:components",
+      "records": 230
+    },
+    {
+      "scope": "collectionGroup:supplier_quotes",
+      "records": 405
+    }
+  ],
+  "references": [],
+  "reference_count": 0,
+  "limitations": [
+    "Projected operational fields only; no external ERP, exports, offline spreadsheets or free-text customer communications scanned.",
+    "Snapshot audit, not a lock against later edits; repeat immediately before any approved migration."
+  ]
+}

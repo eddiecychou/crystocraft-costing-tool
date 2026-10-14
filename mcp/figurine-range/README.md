@@ -1,6 +1,15 @@
 # B0016 Figurine Gifts MCP (isolated, review-gated)
 
-## Latest implementation — 15 October 2026 (local, still disabled)
+## Latest implementation — 15 October 2026 (read/dry-run live, writes disabled)
+
+**Read-only rollout is now live (15 October):** dedicated modules-empty
+identity, narrow Firestore reads, deployed endpoint and `oc_figurine_range`
+Codex registration verified with an actual live FM dry run. All writes remain
+hard-disabled. C1 still has its original P-code; no B0016 records or prices
+were created. See [live rollout report](../../docs/plans/B0016-READ-ONLY-LIVE-ROLLOUT-2026-10-15.md)
+for the exact entrypoint, deployment and 29 unit / 165 emulator checks.
+Sections below describe the original pre-rollout state and historical plans;
+the live rollout report supersedes their deployment status and P-code plan.
 
 The actual prepare/create implementation now uses six exact `FM-CF003-*` codes
 and explicitly reuses C1 by in-place `P-CF003-C1` → `FM-CF003-C1` rename.
@@ -23,10 +32,9 @@ Crystal Fabric Mezuzah Case. It does not extend the Corporate Gift writer's
 permissions and does not create another `products/{id}` record. Its source is
 the existing hidden concept `products/mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd`.
 
-Current state: **local implementation only**. The endpoint, rules, identity and
-Codex registration are not live. The edge endpoint hard-codes
-`writesEnabled:false`, independent of `FIGURINE_MCP_WRITES_ENABLED`. Do not provision, enable writes,
-or call any create tool until Eddie approves the exact dry-run output.
+Current state: **read and dry-run live; writes disabled**. The edge endpoint
+hard-codes `writesEnabled:false`, independent of `FIGURINE_MCP_WRITES_ENABLED`.
+Do not enable writes or create catalogue records until Eddie separately approves.
 Phase-one rules also hard-deny B0016 service writes. An ID token can call
 Firestore directly, so the endpoint flag is not a sufficient security gate.
 

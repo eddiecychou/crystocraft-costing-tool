@@ -1,0 +1,791 @@
+{
+  "server": "/Users/eddie/.codex/mcp-runtime/b0016-f3bd1291/mcp/figurine-range/server.mjs",
+  "commit": "f3bd129106c902d985236ad00bf2be29a0651cf4",
+  "read_only": true,
+  "manifest": [
+    {
+      "name": "create_mezuzah_colour_bom",
+      "readOnlyHint": false,
+      "description": "LIVE WRITES HARD-DISABLED. Future atomic FM-code bundle explicitly renames only existing C1 from P-CF003-C1 to FM-CF003-C1, with fresh owner usage audit, private exact approval, audit and idempotent UUID. Requires approved dry-run hash and acknowledgement of pending supplier colour coverage. No screws/prices."
+    },
+    {
+      "name": "prepare_mezuzah_colour_bom",
+      "readOnlyHint": true,
+      "description": "DRY RUN ONLY. Fixed FM-B0016BY00-G plus six FM-CF003 colours; explicit in-place P-CF003-C1 to FM-CF003-C1 rename on the existing C1 ID, subject to fresh owner usage audit. One matching panel per SKU, no screws/prices. Live writes disabled."
+    },
+    {
+      "name": "search_range_designs",
+      "readOnlyHint": true,
+      "description": "Read-only search among B0016 designs by name/number or exact item code. Returns compact records."
+    },
+    {
+      "name": "get_range_design",
+      "readOnlyHint": true,
+      "description": "Read-only B0016 design summary and exact resolvable item codes."
+    },
+    {
+      "name": "prepare_mezuzah_range_design",
+      "readOnlyHint": true,
+      "description": "Read-only uniqueness check and exact six-variant preview. Requires dry_run:true; writes nothing."
+    },
+    {
+      "name": "create_mezuzah_range_design",
+      "readOnlyHint": false,
+      "description": "Owner-approved atomic create only after review. Writes disabled in phase one. Requires same UUID and payload on retries; no selling price is set."
+    },
+    {
+      "name": "prepare_mezuzah_range_components",
+      "readOnlyHint": true,
+      "description": "Read-only provenance check and component-code proposal; a separate privileged legacy-code audit is still required. Never transfers the corporate-gift BOM or selling price."
+    },
+    {
+      "name": "create_mezuzah_range_components",
+      "readOnlyHint": false,
+      "description": "Owner-approved atomic link of two range components and their quotes. Working costs remain internal; no finished-product price is calculated or published."
+    }
+  ],
+  "search": {
+    "ok": true,
+    "matches": [],
+    "count": 0,
+    "truncated": false
+  },
+  "dry_run": {
+    "ok": true,
+    "dry_run": true,
+    "will_write": false,
+    "blocked": true,
+    "live_writes_enabled": false,
+    "request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+    "request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+    "source_verified": true,
+    "plan_revision": "fm-cf003-v2",
+    "migration": {
+      "component_id": "rc_mv7xu3mmayc5g",
+      "from_code": "P-CF003-C1",
+      "to_code": "FM-CF003-C1",
+      "action": "rename_in_place_after_approval",
+      "performed": false,
+      "record_id_preserved": true
+    },
+    "approval_required": {
+      "path": "range_mcp_approvals/mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5",
+      "provisioned": false,
+      "service_can_write_approval": false,
+      "requires_actual_range_id": true,
+      "usage_review_max_age_minutes": 15,
+      "description": "Separate owner review must approve the exact FM component/quote/BOM/audit plan and typed C1 before/after rename snapshot. A zero-reference/conflict/child-record usage attestation, at most 15 minutes old and matching C1 updateTime, is mandatory. This dry run creates no approval."
+    },
+    "warnings": [
+      {
+        "code": "UNNAMED_BRAND_CODE",
+        "message": "B is used by existing B-series designs but is not in the named crystal-brand list."
+      },
+      {
+        "code": "UNNAMED_FORMAT_CODE",
+        "message": "000 is not in the named Range format list."
+      },
+      {
+        "code": "PLATING_REVIEW",
+        "message": "G is labelled Gold; reference photos may show other metal tones. Confirm the intended plating; no photo inference was made."
+      },
+      {
+        "code": "COLOUR_CODE_NOT_IN_LIBRARY",
+        "colour_code": "BK",
+        "message": "BK is absent from settings/crystal_colors; no name or taxonomy entry was invented."
+      },
+      {
+        "code": "COLOUR_CODE_NOT_IN_LIBRARY",
+        "colour_code": "MT",
+        "message": "MT is absent from settings/crystal_colors; no name or taxonomy entry was invented."
+      },
+      {
+        "code": "LEGACY_SKU_AUDIT_REQUIRED",
+        "message": "B0016 query and six claim IDs cannot prove that an older, differently numbered design does not reuse one of these SKUs. A privileged legacy-code audit is required before enabling writes."
+      },
+      {
+        "code": "LEGACY_COMPONENT_CODE_AUDIT_REQUIRED",
+        "message": "Fresh privileged audit must confirm all seven FM codes unused and zero legacy C1 references, child records, stock or reservations before rename."
+      },
+      {
+        "code": "SUPPLIER_COLOUR_COVERAGE_REVIEW",
+        "message": "Ryan source names do not map all six owner item-code colours. Proposed RMB 9 working costs are not confirmation of supplier colour availability."
+      },
+      {
+        "code": "PHASE_TWO_RULES_REQUIRED",
+        "message": "Atomic writer implemented locally. Live writes remain disabled in both endpoint configuration and Firestore rules; separate approval and release required."
+      }
+    ],
+    "conflicts": [],
+    "proposed": {
+      "range_id": "{approved_B0016_range_id}",
+      "needs_range_design_creation": true,
+      "new_components": 6,
+      "reused_components": 1,
+      "new_quotes": 7,
+      "records": [
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_m_f26fdfa69e4012b78e83",
+          "fields": {
+            "code": "FM-B0016BY00-G",
+            "name": "Mezuzah Metal Case",
+            "category": "Metal Part",
+            "plating_code": "G",
+            "notes": "",
+            "images": [],
+            "supplierId": "33VhLPOuBM46wcCmsb7B",
+            "supplierName": "Fei Hong Five Metals Wares Co Ltd",
+            "preferred_quote_id": "mcp_b0016_mq_f26fdfa69e4012b78e83",
+            "unit_cost": 11.3,
+            "unit_cost_currency": "RMB",
+            "tooling_sample_cost": 2912,
+            "tooling_sample_cost_currency": "RMB",
+            "volume_tiers": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_m_f26fdfa69e4012b78e83/supplier_quotes/mcp_b0016_mq_f26fdfa69e4012b78e83",
+          "fields": {
+            "supplier_id": "33VhLPOuBM46wcCmsb7B",
+            "unit_cost": 11.3,
+            "unit_cost_currency": "RMB",
+            "moq": 500,
+            "is_preferred": true,
+            "tooling_sample_cost": 2912,
+            "tooling_sample_cost_currency": "RMB",
+            "source_provenance": {
+              "product_id": "mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd",
+              "component_id": "mcp_a844ebe21ba90961027c",
+              "quote_id": "mcp_05752f5a8554c7a7d4bd"
+            },
+            "notes": "Metal case only; no screws. One-time RMB 2,912 fee, shared across colours.",
+            "supplier_name": "Fei Hong Five Metals Wares Co Ltd",
+            "volume_tiers": [],
+            "attachments": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_bk",
+          "fields": {
+            "name": "Mezuzah Crystal Fabric Panel BK",
+            "category": "",
+            "plating_code": "",
+            "notes": "",
+            "images": [],
+            "code": "FM-CF003-BK",
+            "supplierId": "D1SDoLIAc2aw6PdP76Xo",
+            "supplierName": "Donguan Yin Li Jewelry",
+            "preferred_quote_id": "mcp_b0016_fq_f26fdfa69e4012b78e83_bk",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "volume_tiers": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_bk/supplier_quotes/mcp_b0016_fq_f26fdfa69e4012b78e83_bk",
+          "fields": {
+            "supplier_id": "D1SDoLIAc2aw6PdP76Xo",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "moq": 100,
+            "is_preferred": true,
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "source_provenance": {
+              "product_id": "mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd",
+              "component_id": "mcp_4e4b6112f372269e30dcfb21ea53ca5f",
+              "quote_id": "mcp_49239ae8ae9de42b0d7f9986d60da702"
+            },
+            "crystal_code": "BK",
+            "source_unit_cost": 8.1,
+            "source_unit_cost_currency": "RMB",
+            "cost_basis": "owner_conservative",
+            "moq_scope": "per_colour",
+            "supplier_colour_confirmation": "pending",
+            "notes": "Fabric panel only; supplier coverage of this exact colour code requires confirmation. Assembly and packaging excluded.",
+            "supplier_name": "Donguan Yin Li Jewelry",
+            "volume_tiers": [],
+            "attachments": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_bl",
+          "fields": {
+            "name": "Mezuzah Crystal Fabric Panel BL",
+            "category": "",
+            "plating_code": "",
+            "notes": "",
+            "images": [],
+            "code": "FM-CF003-BL",
+            "supplierId": "D1SDoLIAc2aw6PdP76Xo",
+            "supplierName": "Donguan Yin Li Jewelry",
+            "preferred_quote_id": "mcp_b0016_fq_f26fdfa69e4012b78e83_bl",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "volume_tiers": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_bl/supplier_quotes/mcp_b0016_fq_f26fdfa69e4012b78e83_bl",
+          "fields": {
+            "supplier_id": "D1SDoLIAc2aw6PdP76Xo",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "moq": 100,
+            "is_preferred": true,
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "source_provenance": {
+              "product_id": "mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd",
+              "component_id": "mcp_4e4b6112f372269e30dcfb21ea53ca5f",
+              "quote_id": "mcp_49239ae8ae9de42b0d7f9986d60da702"
+            },
+            "crystal_code": "BL",
+            "source_unit_cost": 8.1,
+            "source_unit_cost_currency": "RMB",
+            "cost_basis": "owner_conservative",
+            "moq_scope": "per_colour",
+            "supplier_colour_confirmation": "pending",
+            "notes": "Fabric panel only; supplier coverage of this exact colour code requires confirmation. Assembly and packaging excluded.",
+            "supplier_name": "Donguan Yin Li Jewelry",
+            "volume_tiers": [],
+            "attachments": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "rename_code_and_cost_mirror_after_approval",
+          "path": "range_components/rc_mv7xu3mmayc5g",
+          "precondition_update_time": "2026-10-14T10:01:39.447097Z",
+          "old_code": "P-CF003-C1",
+          "new_code": "FM-CF003-C1",
+          "preserve_existing_fields": [
+            "name",
+            "notes",
+            "images",
+            "stock_qty",
+            "reserved_qty",
+            "movements",
+            "createdAt"
+          ],
+          "fields": {
+            "code": "FM-CF003-C1",
+            "supplierId": "D1SDoLIAc2aw6PdP76Xo",
+            "supplierName": "Donguan Yin Li Jewelry",
+            "preferred_quote_id": "mcp_b0016_fq_f26fdfa69e4012b78e83_c1",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "volume_tiers": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/rc_mv7xu3mmayc5g/supplier_quotes/mcp_b0016_fq_f26fdfa69e4012b78e83_c1",
+          "fields": {
+            "supplier_id": "D1SDoLIAc2aw6PdP76Xo",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "moq": 100,
+            "is_preferred": true,
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "source_provenance": {
+              "product_id": "mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd",
+              "component_id": "mcp_4e4b6112f372269e30dcfb21ea53ca5f",
+              "quote_id": "mcp_49239ae8ae9de42b0d7f9986d60da702"
+            },
+            "crystal_code": "C1",
+            "source_unit_cost": 8.1,
+            "source_unit_cost_currency": "RMB",
+            "cost_basis": "owner_conservative",
+            "moq_scope": "per_colour",
+            "supplier_colour_confirmation": "pending",
+            "notes": "Fabric panel only; supplier coverage of this exact colour code requires confirmation. Assembly and packaging excluded.",
+            "supplier_name": "Donguan Yin Li Jewelry",
+            "volume_tiers": [],
+            "attachments": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_mt",
+          "fields": {
+            "name": "Mezuzah Crystal Fabric Panel MT",
+            "category": "",
+            "plating_code": "",
+            "notes": "",
+            "images": [],
+            "code": "FM-CF003-MT",
+            "supplierId": "D1SDoLIAc2aw6PdP76Xo",
+            "supplierName": "Donguan Yin Li Jewelry",
+            "preferred_quote_id": "mcp_b0016_fq_f26fdfa69e4012b78e83_mt",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "volume_tiers": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_mt/supplier_quotes/mcp_b0016_fq_f26fdfa69e4012b78e83_mt",
+          "fields": {
+            "supplier_id": "D1SDoLIAc2aw6PdP76Xo",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "moq": 100,
+            "is_preferred": true,
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "source_provenance": {
+              "product_id": "mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd",
+              "component_id": "mcp_4e4b6112f372269e30dcfb21ea53ca5f",
+              "quote_id": "mcp_49239ae8ae9de42b0d7f9986d60da702"
+            },
+            "crystal_code": "MT",
+            "source_unit_cost": 8.1,
+            "source_unit_cost_currency": "RMB",
+            "cost_basis": "owner_conservative",
+            "moq_scope": "per_colour",
+            "supplier_colour_confirmation": "pending",
+            "notes": "Fabric panel only; supplier coverage of this exact colour code requires confirmation. Assembly and packaging excluded.",
+            "supplier_name": "Donguan Yin Li Jewelry",
+            "volume_tiers": [],
+            "attachments": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_pe",
+          "fields": {
+            "name": "Mezuzah Crystal Fabric Panel PE",
+            "category": "",
+            "plating_code": "",
+            "notes": "",
+            "images": [],
+            "code": "FM-CF003-PE",
+            "supplierId": "D1SDoLIAc2aw6PdP76Xo",
+            "supplierName": "Donguan Yin Li Jewelry",
+            "preferred_quote_id": "mcp_b0016_fq_f26fdfa69e4012b78e83_pe",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "volume_tiers": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_pe/supplier_quotes/mcp_b0016_fq_f26fdfa69e4012b78e83_pe",
+          "fields": {
+            "supplier_id": "D1SDoLIAc2aw6PdP76Xo",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "moq": 100,
+            "is_preferred": true,
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "source_provenance": {
+              "product_id": "mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd",
+              "component_id": "mcp_4e4b6112f372269e30dcfb21ea53ca5f",
+              "quote_id": "mcp_49239ae8ae9de42b0d7f9986d60da702"
+            },
+            "crystal_code": "PE",
+            "source_unit_cost": 8.1,
+            "source_unit_cost_currency": "RMB",
+            "cost_basis": "owner_conservative",
+            "moq_scope": "per_colour",
+            "supplier_colour_confirmation": "pending",
+            "notes": "Fabric panel only; supplier coverage of this exact colour code requires confirmation. Assembly and packaging excluded.",
+            "supplier_name": "Donguan Yin Li Jewelry",
+            "volume_tiers": [],
+            "attachments": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_vl",
+          "fields": {
+            "name": "Mezuzah Crystal Fabric Panel VL",
+            "category": "",
+            "plating_code": "",
+            "notes": "",
+            "images": [],
+            "code": "FM-CF003-VL",
+            "supplierId": "D1SDoLIAc2aw6PdP76Xo",
+            "supplierName": "Donguan Yin Li Jewelry",
+            "preferred_quote_id": "mcp_b0016_fq_f26fdfa69e4012b78e83_vl",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "volume_tiers": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_components/mcp_b0016_f_f26fdfa69e4012b78e83_vl/supplier_quotes/mcp_b0016_fq_f26fdfa69e4012b78e83_vl",
+          "fields": {
+            "supplier_id": "D1SDoLIAc2aw6PdP76Xo",
+            "unit_cost": 9,
+            "unit_cost_currency": "RMB",
+            "moq": 100,
+            "is_preferred": true,
+            "tooling_sample_cost": null,
+            "tooling_sample_cost_currency": "RMB",
+            "source_provenance": {
+              "product_id": "mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd",
+              "component_id": "mcp_4e4b6112f372269e30dcfb21ea53ca5f",
+              "quote_id": "mcp_49239ae8ae9de42b0d7f9986d60da702"
+            },
+            "crystal_code": "VL",
+            "source_unit_cost": 8.1,
+            "source_unit_cost_currency": "RMB",
+            "cost_basis": "owner_conservative",
+            "moq_scope": "per_colour",
+            "supplier_colour_confirmation": "pending",
+            "notes": "Fabric panel only; supplier coverage of this exact colour code requires confirmation. Assembly and packaging excluded.",
+            "supplier_name": "Donguan Yin Li Jewelry",
+            "volume_tiers": [],
+            "attachments": [],
+            "mcp_creator_uid": "mcp-figurine-range-service",
+            "mcp_range_id": "{approved_B0016_range_id}",
+            "mcp_request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "mcp_request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "mcp_audit_id": "mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5"
+          }
+        },
+        {
+          "action": "update_only_critical_components",
+          "path": "range_products/{approved_B0016_range_id}",
+          "fields": {
+            "critical_components": [
+              {
+                "id": "mcp_b0016_m_f26fdfa69e4012b78e83",
+                "code": "FM-B0016BY00-G",
+                "qty_per_unit": 1,
+                "plating_code": "G",
+                "all_variants": true
+              },
+              {
+                "id": "mcp_b0016_f_f26fdfa69e4012b78e83_bk",
+                "code": "FM-CF003-BK",
+                "qty_per_unit": 1,
+                "plating_code": "",
+                "all_variants": true,
+                "crystal_code": "BK"
+              },
+              {
+                "id": "mcp_b0016_f_f26fdfa69e4012b78e83_bl",
+                "code": "FM-CF003-BL",
+                "qty_per_unit": 1,
+                "plating_code": "",
+                "all_variants": true,
+                "crystal_code": "BL"
+              },
+              {
+                "id": "rc_mv7xu3mmayc5g",
+                "code": "FM-CF003-C1",
+                "qty_per_unit": 1,
+                "plating_code": "",
+                "all_variants": true,
+                "crystal_code": "C1"
+              },
+              {
+                "id": "mcp_b0016_f_f26fdfa69e4012b78e83_mt",
+                "code": "FM-CF003-MT",
+                "qty_per_unit": 1,
+                "plating_code": "",
+                "all_variants": true,
+                "crystal_code": "MT"
+              },
+              {
+                "id": "mcp_b0016_f_f26fdfa69e4012b78e83_pe",
+                "code": "FM-CF003-PE",
+                "qty_per_unit": 1,
+                "plating_code": "",
+                "all_variants": true,
+                "crystal_code": "PE"
+              },
+              {
+                "id": "mcp_b0016_f_f26fdfa69e4012b78e83_vl",
+                "code": "FM-CF003-VL",
+                "qty_per_unit": 1,
+                "plating_code": "",
+                "all_variants": true,
+                "crystal_code": "VL"
+              }
+            ]
+          }
+        },
+        {
+          "action": "create",
+          "path": "range_mcp_audit/mcp_range_f26fdfa69e4012b78e8386914945bb59d9395d7dea74ad05e8cc9b30c38446b5",
+          "fields": {
+            "action": "b0016_colour_bom",
+            "service_principal": "mcp-figurine-range-service",
+            "requested_by": "unknown",
+            "request_id": "bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a",
+            "request_hash": "6501aaff9dec64caf17d4376cafacf72f93061fb1ed684767196c787cacadaf2",
+            "range_id": "{approved_B0016_range_id}",
+            "source_product_id": "mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd",
+            "reused_component_id": "rc_mv7xu3mmayc5g",
+            "component_ids": [
+              "mcp_b0016_m_f26fdfa69e4012b78e83",
+              "mcp_b0016_f_f26fdfa69e4012b78e83_bk",
+              "mcp_b0016_f_f26fdfa69e4012b78e83_bl",
+              "rc_mv7xu3mmayc5g",
+              "mcp_b0016_f_f26fdfa69e4012b78e83_mt",
+              "mcp_b0016_f_f26fdfa69e4012b78e83_pe",
+              "mcp_b0016_f_f26fdfa69e4012b78e83_vl"
+            ],
+            "quote_ids": [
+              "mcp_b0016_mq_f26fdfa69e4012b78e83",
+              "mcp_b0016_fq_f26fdfa69e4012b78e83_bk",
+              "mcp_b0016_fq_f26fdfa69e4012b78e83_bl",
+              "mcp_b0016_fq_f26fdfa69e4012b78e83_c1",
+              "mcp_b0016_fq_f26fdfa69e4012b78e83_mt",
+              "mcp_b0016_fq_f26fdfa69e4012b78e83_pe",
+              "mcp_b0016_fq_f26fdfa69e4012b78e83_vl"
+            ],
+            "code_migration": {
+              "component_id": "rc_mv7xu3mmayc5g",
+              "from_code": "P-CF003-C1",
+              "to_code": "FM-CF003-C1"
+            }
+          }
+        }
+      ],
+      "critical_components": [
+        {
+          "id": "mcp_b0016_m_f26fdfa69e4012b78e83",
+          "code": "FM-B0016BY00-G",
+          "qty_per_unit": 1,
+          "plating_code": "G",
+          "all_variants": true
+        },
+        {
+          "id": "mcp_b0016_f_f26fdfa69e4012b78e83_bk",
+          "code": "FM-CF003-BK",
+          "qty_per_unit": 1,
+          "plating_code": "",
+          "all_variants": true,
+          "crystal_code": "BK"
+        },
+        {
+          "id": "mcp_b0016_f_f26fdfa69e4012b78e83_bl",
+          "code": "FM-CF003-BL",
+          "qty_per_unit": 1,
+          "plating_code": "",
+          "all_variants": true,
+          "crystal_code": "BL"
+        },
+        {
+          "id": "rc_mv7xu3mmayc5g",
+          "code": "FM-CF003-C1",
+          "qty_per_unit": 1,
+          "plating_code": "",
+          "all_variants": true,
+          "crystal_code": "C1"
+        },
+        {
+          "id": "mcp_b0016_f_f26fdfa69e4012b78e83_mt",
+          "code": "FM-CF003-MT",
+          "qty_per_unit": 1,
+          "plating_code": "",
+          "all_variants": true,
+          "crystal_code": "MT"
+        },
+        {
+          "id": "mcp_b0016_f_f26fdfa69e4012b78e83_pe",
+          "code": "FM-CF003-PE",
+          "qty_per_unit": 1,
+          "plating_code": "",
+          "all_variants": true,
+          "crystal_code": "PE"
+        },
+        {
+          "id": "mcp_b0016_f_f26fdfa69e4012b78e83_vl",
+          "code": "FM-CF003-VL",
+          "qty_per_unit": 1,
+          "plating_code": "",
+          "all_variants": true,
+          "crystal_code": "VL"
+        }
+      ],
+      "variant_mapping": [
+        {
+          "sku": "B0016-000-GBK",
+          "metal": "FM-B0016BY00-G",
+          "fabric": "FM-CF003-BK",
+          "component_ids": [
+            "mcp_b0016_m_f26fdfa69e4012b78e83",
+            "mcp_b0016_f_f26fdfa69e4012b78e83_bk"
+          ],
+          "quantity_each": 1
+        },
+        {
+          "sku": "B0016-000-GBL",
+          "metal": "FM-B0016BY00-G",
+          "fabric": "FM-CF003-BL",
+          "component_ids": [
+            "mcp_b0016_m_f26fdfa69e4012b78e83",
+            "mcp_b0016_f_f26fdfa69e4012b78e83_bl"
+          ],
+          "quantity_each": 1
+        },
+        {
+          "sku": "B0016-000-GC1",
+          "metal": "FM-B0016BY00-G",
+          "fabric": "FM-CF003-C1",
+          "component_ids": [
+            "mcp_b0016_m_f26fdfa69e4012b78e83",
+            "rc_mv7xu3mmayc5g"
+          ],
+          "quantity_each": 1
+        },
+        {
+          "sku": "B0016-000-GMT",
+          "metal": "FM-B0016BY00-G",
+          "fabric": "FM-CF003-MT",
+          "component_ids": [
+            "mcp_b0016_m_f26fdfa69e4012b78e83",
+            "mcp_b0016_f_f26fdfa69e4012b78e83_mt"
+          ],
+          "quantity_each": 1
+        },
+        {
+          "sku": "B0016-000-GPE",
+          "metal": "FM-B0016BY00-G",
+          "fabric": "FM-CF003-PE",
+          "component_ids": [
+            "mcp_b0016_m_f26fdfa69e4012b78e83",
+            "mcp_b0016_f_f26fdfa69e4012b78e83_pe"
+          ],
+          "quantity_each": 1
+        },
+        {
+          "sku": "B0016-000-GVL",
+          "metal": "FM-B0016BY00-G",
+          "fabric": "FM-CF003-VL",
+          "component_ids": [
+            "mcp_b0016_m_f26fdfa69e4012b78e83",
+            "mcp_b0016_f_f26fdfa69e4012b78e83_vl"
+          ],
+          "quantity_each": 1
+        }
+      ],
+      "screws": false,
+      "selling_price": null,
+      "price_publishing": false
+    }
+  },
+  "live_write_gate": {
+    "status": 403,
+    "error": "WRITES_DISABLED",
+    "valid_target_supplied": false
+  },
+  "direct_read_boundary": [
+    {
+      "label": "component-list",
+      "status": 403
+    },
+    {
+      "label": "unrelated-component",
+      "status": 403
+    },
+    {
+      "label": "unfiltered-design-list",
+      "status": 403
+    },
+    {
+      "label": "unrelated-supplier",
+      "status": 403
+    },
+    {
+      "label": "C1-ledger",
+      "status": 403
+    }
+  ],
+  "c1_after": {
+    "code": "P-CF003-C1",
+    "update_time": "2026-10-14T10:01:39.447097Z"
+  },
+  "verified_at": "2026-10-14T14:20:56.055Z"
+}

@@ -334,7 +334,7 @@ service cloud.firestore {
     }
     // Any internal login (used only where "one of our people" is enough).
     function isInternal() {
-      return isAdmin() || roleName() == 'staff';
+      return isAdmin() || (roleName() == 'staff' && request.auth.uid != 'mcp-figurine-range-service');
     }
 
     function validWhatsappArchiveMapping(data) {
@@ -396,6 +396,7 @@ service cloud.firestore {
       // role/status or its own modules (no privilege escalation).
       allow read: if isAdmin() || can('portal') || request.auth.uid == uid;
       allow create: if request.auth.uid == uid
+        && request.auth.uid != 'mcp-figurine-range-service'
         && request.resource.data.role == 'customer'
         && request.resource.data.status == 'pending'
         && request.resource.data.ws_discount_pct == 0
@@ -411,9 +412,11 @@ service cloud.firestore {
         // affectedKeys so it can't touch role/status/pricing, and can't be
         // broken by an unrelated odd field like the broad clause below could.
         || (request.auth.uid == uid
+            && request.auth.uid != 'mcp-figurine-range-service'
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['last_login_at', 'login_count']))
         || (request.auth.uid == uid
+            && request.auth.uid != 'mcp-figurine-range-service'
             && request.resource.data.role == resource.data.role
             && request.resource.data.status == resource.data.status
             && request.resource.data.get('modules', []) == resource.data.get('modules', [])
@@ -575,12 +578,12 @@ service cloud.firestore {
     }
 
     match /favourites/{uid} {
-      allow read, write: if request.auth.uid == uid || isAdmin();
+      allow read, write: if (request.auth.uid == uid && request.auth.uid != 'mcp-figurine-range-service') || isAdmin();
     }
 
     match /enquiries/{eid} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
@@ -593,8 +596,8 @@ service cloud.firestore {
     // Customizer saved designs — a customer owns their own designs; admin sees all.
     match /customer_designs/{designId} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && request.auth.uid != 'mcp-figurine-range-service' && resource.data.uid == request.auth.uid);
     }
 
     // Suppliers — supply-side.
