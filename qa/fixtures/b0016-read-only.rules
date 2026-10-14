@@ -1,0 +1,933 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isAdmin() {
+      return hasProfile() && profile().role == 'admin';
+    }
+
+    // ── V8.14 RBAC — flat staff role ─────────────────────────────────────
+    // Every account is admin | staff | customer. A `staff` account's access
+    // is EXACTLY the module keys in users/{uid}.modules[]. `can('<key>')`
+    // is the check every collection below uses. Keep the key list + this
+    // mapping in sync with src/access.js and RBAC-FLEX-PLAN.md §4.
+    //
+    // V8.14 flat model: a `staff` account's access is EXACTLY its modules[]
+    // list; `can(key)` is the only gate. Mirror of src/access.js.
+    function roleName() {
+      return hasProfile() ? profile().role : '';
+    }
+    function moduleList() {
+      return roleName() == 'staff'
+        ? (profile().get('modules', []) is list ? profile().get('modules', []) : [])
+        : [];
+    }
+    function can(m) {
+      return isAdmin() || (hasProfile() && (m in moduleList()));
+    }
+    // Dedicated B0016 MCP identity has no general OC modules. These narrow
+    // exceptions do not make it a figurine, products or supply staff user.
+    function isB0016Mcp() {
+      return signedIn()
+        && request.auth.uid == 'mcp-figurine-range-service'
+        && request.auth.token.figurine_range_writer == true
+        && hasProfile()
+        && profile().role == 'staff'
+        && profile().get('service_scope', '') == 'figurine-range-b0016'
+        && moduleList().size() == 0;
+    }
+    // Phase one is read/dry-run only. The service token can call Firestore
+    // directly, so an endpoint environment flag alone is not a write gate.
+    // A separately reviewed rules release must change this before live create.
+    function b0016WritesApproved() {
+      return false;
+    }
+    function b0016Codes(v) {
+      return v is list && v.size() == 6
+        && b0016Variant(v[0], 'B0016-000-GBK', 'BK')
+        && b0016Variant(v[1], 'B0016-000-GBL', 'BL')
+        && b0016Variant(v[2], 'B0016-000-GC1', 'C1')
+        && b0016Variant(v[3], 'B0016-000-GMT', 'MT')
+        && b0016Variant(v[4], 'B0016-000-GPE', 'PE')
+        && b0016Variant(v[5], 'B0016-000-GVL', 'VL');
+    }
+    function b0016Variant(v, sku, colour) {
+      return v == {
+        'brand_code': 'B', 'plating_code': 'G',
+        'crystal_code': colour, 'sku': sku, 'ws_price_usd': null
+      };
+    }
+    function b0016ItemCode(code) {
+      return code in [
+        'B0016-000-GBK', 'B0016-000-GBL', 'B0016-000-GC1',
+        'B0016-000-GMT', 'B0016-000-GPE', 'B0016-000-GVL'
+      ];
+    }
+    function b0016ClaimMatches(code, rangeId) {
+      let claim = getAfter(/databases/$(database)/documents/range_sku_claims/$(code)).data;
+      return claim.item_code == code && claim.range_id == rangeId
+        && claim.service_principal == request.auth.uid;
+    }
+    function b0016AllClaimsMatch(rangeId) {
+      return b0016ClaimMatches('B0016-000-GBK', rangeId)
+        && b0016ClaimMatches('B0016-000-GBL', rangeId)
+        && b0016ClaimMatches('B0016-000-GC1', rangeId)
+        && b0016ClaimMatches('B0016-000-GMT', rangeId)
+        && b0016ClaimMatches('B0016-000-GPE', rangeId)
+        && b0016ClaimMatches('B0016-000-GVL', rangeId);
+    }
+    function b0016ClaimVariantMatches(code, data) {
+      return data.design_no == '0016'
+        && data.mcp_creator_uid == request.auth.uid
+        && data.variants is list && data.variants.size() == 6
+        && ((code == 'B0016-000-GBK' && data.variants[0].sku == code)
+          || (code == 'B0016-000-GBL' && data.variants[1].sku == code)
+          || (code == 'B0016-000-GC1' && data.variants[2].sku == code)
+          || (code == 'B0016-000-GMT' && data.variants[3].sku == code)
+          || (code == 'B0016-000-GPE' && data.variants[4].sku == code)
+          || (code == 'B0016-000-GVL' && data.variants[5].sku == code));
+    }
+    function b0016RangeCreate(rangeId) {
+      return isB0016Mcp() && rangeId.matches('^mcp_range_[a-f0-9]{32}$')
+        && request.resource.data.keys().hasOnly([
+          'design_no', 'body_code', 'body_name', 'design_code', 'design_name',
+          'description', 'marketing_description', 'category', 'design_type',
+          'product_type', 'format_code', 'size', 'crystal_type', 'active',
+          'status', 'is_new', 'moq', 'lead_time_weeks', 'delivery_note',
+          'critical_components', 'packing', 'plating_stock',
+          'crystal_components', 'gallery', 'videos',
+          'video_url', 'blog_links', 'variants', 'mcp_creator_uid',
+          'mcp_request_id', 'mcp_request_hash', 'createdAt'
+        ])
+        && request.resource.data.design_no == '0016'
+        && request.resource.data.design_code == '0016'
+        && request.resource.data.design_name == 'CRYSTAL FABRIC MEZUZAH CASE'
+        && request.resource.data.format_code == '000'
+        && request.resource.data.active == false
+        && request.resource.data.status == 'concept'
+        && request.resource.data.critical_components.size() == 0
+        && request.resource.data.description == ''
+        && request.resource.data.marketing_description == ''
+        && request.resource.data.category == ''
+        && request.resource.data.product_type == ''
+        && request.resource.data.crystal_type == ''
+        && request.resource.data.design_type == 'Crystal Fabric'
+        && request.resource.data.moq == null
+        && request.resource.data.lead_time_weeks == null
+        && request.resource.data.delivery_note == ''
+        && request.resource.data.packing.size() == 0
+        && request.resource.data.plating_stock.size() == 0
+        && request.resource.data.crystal_components.size() == 0
+        && request.resource.data.gallery.size() == 0
+        && request.resource.data.blog_links.size() == 0
+        && request.resource.data.videos.size() == 0
+        && request.resource.data.video_url == ''
+        && b0016Codes(request.resource.data.variants)
+        && b0016AllClaimsMatch(rangeId)
+        && request.resource.data.mcp_creator_uid == request.auth.uid
+        && request.resource.data.mcp_request_hash.matches('^[a-f0-9]{64}$')
+        && request.resource.data.mcp_request_id.matches('^[a-f0-9-]{36}$');
+    }
+    function b0016RangeLink(rangeId) {
+      return isB0016Mcp() && rangeId.matches('^mcp_range_[a-f0-9]{32}$')
+        && resource.data.mcp_creator_uid == request.auth.uid
+        && resource.data.active == false && resource.data.status == 'concept'
+        && resource.data.design_no == '0016'
+        && resource.data.critical_components.size() == 0
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['critical_components'])
+        && request.resource.data.critical_components is list
+        && request.resource.data.critical_components.size() == 2
+        && request.resource.data.critical_components[0].id.matches('^mcp_b0016_m_[a-f0-9]{20}$')
+        && request.resource.data.critical_components[1].id.matches('^mcp_b0016_f_[a-f0-9]{20}$')
+        && request.resource.data.critical_components[0].keys().hasOnly(['id', 'code', 'qty_per_unit', 'plating_code', 'all_variants'])
+        && request.resource.data.critical_components[1].keys().hasOnly(['id', 'code', 'qty_per_unit', 'plating_code', 'all_variants'])
+        && request.resource.data.critical_components[0].code.matches('^[A-Z0-9][A-Z0-9-]{1,79}$')
+        && request.resource.data.critical_components[1].code.matches('^[A-Z0-9][A-Z0-9-]{1,79}$')
+        && request.resource.data.critical_components[0].qty_per_unit == 1
+        && request.resource.data.critical_components[1].qty_per_unit == 1
+        && request.resource.data.critical_components[0].plating_code == ''
+        && request.resource.data.critical_components[1].plating_code == ''
+        && request.resource.data.critical_components[0].all_variants == true
+        && request.resource.data.critical_components[1].all_variants == true
+        && b0016LinkedComponent(rangeId, request.resource.data.critical_components[0])
+        && b0016LinkedComponent(rangeId, request.resource.data.critical_components[1]);
+    }
+    function b0016LinkedComponent(rangeId, ref) {
+      let component = getAfter(/databases/$(database)/documents/range_components/$(ref.id)).data;
+      return component.code == ref.code && component.mcp_range_id == rangeId
+        && component.mcp_creator_uid == request.auth.uid
+        && component.preferred_quote_id is string
+        && getAfter(/databases/$(database)/documents/range_components/$(ref.id)/supplier_quotes/$(component.preferred_quote_id)).data.mcp_request_hash == component.mcp_request_hash;
+    }
+    function b0016ComponentCreate(componentId) {
+      return isB0016Mcp() && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}$')
+        && request.resource.data.code != 'FM-B0016BY00-G'
+        && !request.resource.data.code.matches('^(P|FM)-CF003-.*')
+        && request.resource.data.keys().hasOnly([
+          'code', 'name', 'category', 'plating_code', 'supplierId',
+          'supplierName', 'notes', 'images', 'unit_cost',
+          'unit_cost_currency', 'tooling_sample_cost',
+          'tooling_sample_cost_currency', 'volume_tiers',
+          'preferred_quote_id', 'preferred_supplier_name',
+          'mcp_creator_uid', 'mcp_request_id', 'mcp_request_hash', 'mcp_range_id', 'createdAt'
+        ])
+        && request.resource.data.code is string
+        && request.resource.data.code.matches('^[A-Z0-9][A-Z0-9-]{1,79}$')
+        && request.resource.data.unit_cost_currency == 'RMB'
+        && request.resource.data.plating_code == ''
+        && request.resource.data.notes == ''
+        && request.resource.data.images.size() == 0
+        && request.resource.data.volume_tiers.size() == 0
+        && request.resource.data.supplierName is string
+        && request.resource.data.supplierName.size() <= 160
+        && request.resource.data.mcp_creator_uid == request.auth.uid
+        && request.resource.data.mcp_range_id.matches('^mcp_range_[a-f0-9]{32}$')
+        && request.resource.data.mcp_request_hash.matches('^[a-f0-9]{64}$')
+        && getAfter(/databases/$(database)/documents/range_products/$(request.resource.data.mcp_range_id)).data.critical_components.hasAny([{
+          'id': componentId, 'code': request.resource.data.code,
+          'qty_per_unit': 1, 'plating_code': '', 'all_variants': true
+        }])
+        && getAfter(/databases/$(database)/documents/range_components/$(componentId)/supplier_quotes/$(request.resource.data.preferred_quote_id)).data.mcp_request_hash == request.resource.data.mcp_request_hash
+        && ((componentId.matches('^mcp_b0016_m_.*')
+              && request.resource.data.supplierId == '33VhLPOuBM46wcCmsb7B'
+              && request.resource.data.category == 'Metal Part'
+              && request.resource.data.unit_cost == 11.30
+              && request.resource.data.tooling_sample_cost == 2912)
+            || (componentId.matches('^mcp_b0016_f_.*')
+              && request.resource.data.supplierId == 'D1SDoLIAc2aw6PdP76Xo'
+              && request.resource.data.category == ''
+              && request.resource.data.unit_cost == 9.00
+              && request.resource.data.tooling_sample_cost == null));
+    }
+    function b0016QuoteCreate(componentId, quoteId) {
+      return isB0016Mcp()
+        && ((componentId.matches('^mcp_b0016_m_[a-f0-9]{20}$')
+             && quoteId.matches('^mcp_b0016_mq_[a-f0-9]{20}$')
+             && request.resource.data.supplier_id == '33VhLPOuBM46wcCmsb7B'
+             && request.resource.data.unit_cost == 11.30
+             && request.resource.data.moq == 500
+             && request.resource.data.tooling_sample_cost == 2912)
+           || (componentId.matches('^mcp_b0016_f_[a-f0-9]{20}$')
+             && quoteId.matches('^mcp_b0016_fq_[a-f0-9]{20}$')
+             && request.resource.data.supplier_id == 'D1SDoLIAc2aw6PdP76Xo'
+             && request.resource.data.unit_cost == 9.00
+             && request.resource.data.source_unit_cost == 8.10
+             && request.resource.data.moq == 100
+             && request.resource.data.tooling_sample_cost == null))
+        && request.resource.data.keys().hasOnly([
+          'supplier_id', 'supplier_name', 'unit_cost', 'unit_cost_currency',
+          'moq', 'tooling_sample_cost', 'tooling_sample_cost_currency',
+          'is_preferred', 'volume_tiers', 'attachments', 'notes',
+          'source_provenance', 'source_unit_cost',
+          'source_unit_cost_currency', 'cost_basis', 'mcp_creator_uid',
+          'mcp_request_id', 'mcp_request_hash', 'mcp_range_id', 'createdAt'
+        ])
+        && request.resource.data.unit_cost_currency == 'RMB'
+        && request.resource.data.is_preferred == true
+        && request.resource.data.attachments.size() == 0
+        && request.resource.data.volume_tiers.size() == 0
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1000
+        && request.resource.data.source_provenance.product_id == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
+        && ((componentId.matches('^mcp_b0016_m_.*')
+              && request.resource.data.source_provenance.component_id == 'mcp_a844ebe21ba90961027c'
+              && request.resource.data.source_provenance.quote_id == 'mcp_05752f5a8554c7a7d4bd')
+            || (componentId.matches('^mcp_b0016_f_.*')
+              && request.resource.data.source_provenance.component_id == 'mcp_4e4b6112f372269e30dcfb21ea53ca5f'
+              && request.resource.data.source_provenance.quote_id == 'mcp_49239ae8ae9de42b0d7f9986d60da702'))
+        && request.resource.data.mcp_creator_uid == request.auth.uid
+        && request.resource.data.mcp_range_id.matches('^mcp_range_[a-f0-9]{32}$')
+        && getAfter(/databases/$(database)/documents/range_components/$(componentId)).data.mcp_range_id == request.resource.data.mcp_range_id
+        && getAfter(/databases/$(database)/documents/range_components/$(componentId)).data.preferred_quote_id == quoteId
+        && getAfter(/databases/$(database)/documents/range_components/$(componentId)).data.mcp_request_hash == request.resource.data.mcp_request_hash;
+    }
+    // Seven-colour candidate: owner-approved exact plan is immutable to MCP.
+    // Both endpoint and false rules gate remain OFF. Approval grants no admin role.
+    function colourPlan(auditId) {
+      return get(/databases/$(database)/documents/range_mcp_approvals/$(auditId)).data;
+    }
+    function colourPlanValid(p) {
+      return isB0016Mcp() && p.service_principal == request.auth.uid
+        && p.expires_at is timestamp && p.expires_at > request.time
+        && p.expires_at <= request.time + duration.value(1, 'h') && p.approved == true
+        && p.usage_review.reference_count == 0 && p.usage_review.code_conflict_count == 0
+        && p.usage_review.child_record_count == 0
+        && p.usage_review.checked_at is timestamp && p.usage_review.checked_at <= request.time
+        && p.usage_review.checked_at >= request.time - duration.value(15, 'm');
+    }
+    function colourFreshAudit(d) {
+      let a = getAfter(/databases/$(database)/documents/range_mcp_audit/$(d.mcp_audit_id)).data;
+      return a.at == request.time && a.request_hash == d.mcp_request_hash;
+    }
+    function colourRangeLink(rangeId) {
+      let m = getAfter(/databases/$(database)/documents/range_components/$(request.resource.data.critical_components[0].id)).data;
+      let p = colourPlan(m.mcp_audit_id);
+      return colourPlanValid(p) && p.range_id == rangeId
+        && resource.data.active == false && resource.data.status == 'concept'
+        && resource.data.design_no == '0016' && resource.data.format_code == '000'
+        && resource.data.mcp_creator_uid == request.auth.uid
+        && resource.data.critical_components == []
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['critical_components'])
+        && request.resource.data.critical_components == p.refs && colourFreshAudit(m);
+    }
+    function colourComponentCreate(componentId) {
+      let d = request.resource.data;
+      let p = colourPlan(d.mcp_audit_id);
+      return colourPlanValid(p) && componentId != 'rc_mv7xu3mmayc5g'
+        && ((d.code == 'FM-B0016BY00-G' && componentId.matches('^mcp_b0016_m_[a-f0-9]{20}$'))
+          || (d.code == 'FM-CF003-BK' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_bk$'))
+          || (d.code == 'FM-CF003-BL' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_bl$'))
+          || (d.code == 'FM-CF003-MT' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_mt$'))
+          || (d.code == 'FM-CF003-PE' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_pe$'))
+          || (d.code == 'FM-CF003-VL' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_vl$')))
+        && d.diff(p.components[componentId]).affectedKeys().hasOnly(['createdAt'])
+        && d.createdAt == request.time && colourFreshAudit(d);
+    }
+    function colourC1Update(componentId) {
+      let d = request.resource.data;
+      let p = colourPlan(d.mcp_audit_id);
+      return componentId == 'rc_mv7xu3mmayc5g' && colourPlanValid(p)
+        && resource.data.code == 'P-CF003-C1' && d.code == 'FM-CF003-C1'
+        && resource.data.get('stock_qty', null) in [null, 0] && resource.data.get('reserved_qty', null) in [null, 0]
+        && resource.data.get('used_by', []) == [] && resource.data.get('unit_cost', null) == null
+        && resource.data.get('tooling_sample_cost', null) == null
+        && resource.data.get('supplierId', '') == '' && resource.data.get('preferred_quote_id', '') == ''
+        && p.audit.code_migration == {'component_id':componentId,'from_code':'P-CF003-C1','to_code':'FM-CF003-C1'}
+        && resource.data == p.c1_before && d == p.components[componentId]
+        && d.diff(resource.data).affectedKeys().hasOnly(['code','supplierId','supplierName','preferred_quote_id','unit_cost',
+          'unit_cost_currency','tooling_sample_cost','tooling_sample_cost_currency','volume_tiers',
+          'mcp_creator_uid','mcp_range_id','mcp_request_id','mcp_request_hash','mcp_audit_id'])
+        && colourFreshAudit(d);
+    }
+    function colourQuoteCreate(componentId, quoteId) {
+      let d = request.resource.data;
+      let p = colourPlan(d.mcp_audit_id);
+      let c = getAfter(/databases/$(database)/documents/range_components/$(componentId)).data;
+      return colourPlanValid(p) && p.quote_parents[quoteId] == componentId
+        && d.diff(p.quotes[quoteId]).affectedKeys().hasOnly(['createdAt'])
+        && (componentId == 'rc_mv7xu3mmayc5g' ? c == p.components[componentId]
+          : c.diff(p.components[componentId]).affectedKeys().hasOnly(['createdAt']) && c.createdAt == request.time)
+        && d.createdAt == request.time && colourFreshAudit(d);
+    }
+    // Every required quote is fresh; its own rule validates the component parent.
+    function colourAuditQuote(p, i) {
+      let q = getAfter(/databases/$(database)/documents/range_components/$(p.audit.component_ids[i])/supplier_quotes/$(p.audit.quote_ids[i])).data;
+      return q.createdAt == request.time && q.mcp_request_hash == p.audit.request_hash;
+    }
+    function colourAuditCreate(auditId) {
+      let p = colourPlan(auditId);
+      return colourPlanValid(p)
+        && request.resource.data.diff(p.audit).affectedKeys().hasOnly(['at'])
+        && request.resource.data.at == request.time
+        && getAfter(/databases/$(database)/documents/range_products/$(p.range_id)).data.critical_components == p.refs
+        && colourAuditQuote(p,0) && colourAuditQuote(p,1) && colourAuditQuote(p,2)
+        && colourAuditQuote(p,3) && colourAuditQuote(p,4) && colourAuditQuote(p,5) && colourAuditQuote(p,6);
+    }
+    // Any internal login (used only where "one of our people" is enough).
+    function isInternal() {
+      return isAdmin() || (roleName() == 'staff' && request.auth.uid != 'mcp-figurine-range-service');
+    }
+
+    function validWhatsappArchiveMapping(data) {
+      return data.keys().hasOnly([
+          'file', 'archive_key', 'channel', 'approved', 'approved_at',
+          'type', 'customerId', 'contactId', 'leadId', 'groupName'
+        ])
+        && data.keys().hasAll(['file', 'archive_key', 'channel', 'approved', 'approved_at', 'type'])
+        && data.file is string && data.file.size() > 0 && data.file.size() <= 300
+        && data.archive_key is string && data.archive_key.size() > 0 && data.archive_key.size() <= 340
+        && data.archive_key.matches('^(business|personal):.+')
+        && data.channel in ['WhatsApp Business', 'Personal WhatsApp']
+        && data.approved == true
+        && data.approved_at is timestamp
+        && data.type in ['customer', 'lead', 'group']
+        && ((data.type == 'customer'
+              && data.customerId is string && data.customerId.size() > 0 && data.customerId.size() <= 200
+              && data.contactId is string && data.contactId.size() > 0 && data.contactId.size() <= 200
+              && !('leadId' in data) && !('groupName' in data))
+            || (data.type == 'lead'
+              && data.leadId is string && data.leadId.size() > 0 && data.leadId.size() <= 200
+              && !('customerId' in data) && !('contactId' in data) && !('groupName' in data))
+            || (data.type == 'group'
+              && data.customerId is string && data.customerId.size() > 0 && data.customerId.size() <= 200
+              && data.groupName is string && data.groupName.size() > 0 && data.groupName.size() <= 200
+              && !('contactId' in data) && !('leadId' in data)));
+    }
+
+    function validWhatsappInboxDecision() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'mapping_type', 'mapped_at', 'updated_at'])
+        && resource.data.get('status', '') == 'pending'
+        && request.resource.data.status == 'mapped'
+        && request.resource.data.mapping_type in ['customer', 'lead', 'group']
+        && request.resource.data.mapped_at is timestamp
+        && request.resource.data.updated_at is timestamp;
+    }
+
+    function isApprovedCustomer() {
+      return hasProfile() && profile().role == 'customer' && profile().status == 'approved';
+    }
+    function canShop() {
+      return isAdmin() || isApprovedCustomer();
+    }
+    // A customer flagged "sensitive" on their customers/ record must never be
+    // shown a storefront product photo tagged "branded_for_customer_id" for a
+    // DIFFERENT customer. get() inside a rule reads the target doc's raw data
+    // regardless of its own read rule.
+    function viewerIsSensitive() {
+      return hasProfile()
+        && profile().get('customer_id', '') != ''
+        && exists(/databases/$(database)/documents/customers/$(profile().get('customer_id', '')))
+        && get(/databases/$(database)/documents/customers/$(profile().get('customer_id', ''))).data.get('sensitive', false) == true;
+    }
+
+    match /users/{uid} {
+      // `portal` module = view-only account roster (Portal → Login activity).
+      // update/delete stay admin-only — a staff account can never change a
+      // role/status or its own modules (no privilege escalation).
+      allow read: if isAdmin() || can('portal') || request.auth.uid == uid;
+      allow create: if request.auth.uid == uid
+        && request.auth.uid != 'mcp-figurine-range-service'
+        && request.resource.data.role == 'customer'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.ws_discount_pct == 0
+        // Same gap as the update rule below (see its comment) — a self-
+        // created doc must not be able to set its own customer_id either.
+        && request.resource.data.get('customer_id', '') == '';
+      // sensitive/erp_code/erp_code_shared are ADMIN-MIRRORED fields — a
+      // customer must never set these on their own doc (they gate branded-photo
+      // screening and the portal order-history data leak).
+      allow update: if isAdmin()
+        // A user stamping ONLY their own last-seen roster fields (authActivity.js
+        // stampLogin, fired from useAuthState's onAuthStateChanged). Keyed on
+        // affectedKeys so it can't touch role/status/pricing, and can't be
+        // broken by an unrelated odd field like the broad clause below could.
+        || (request.auth.uid == uid
+            && request.auth.uid != 'mcp-figurine-range-service'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['last_login_at', 'login_count']))
+        || (request.auth.uid == uid
+            && request.auth.uid != 'mcp-figurine-range-service'
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.get('modules', []) == resource.data.get('modules', [])
+            && request.resource.data.ws_discount_pct == resource.data.ws_discount_pct
+            && request.resource.data.get('pricing_group', '') == resource.data.get('pricing_group', '')
+            && request.resource.data.get('corp_markup_override', 0) == resource.data.get('corp_markup_override', 0)
+            && request.resource.data.get('sensitive', false) == resource.data.get('sensitive', false)
+            && request.resource.data.get('erp_code', '') == resource.data.get('erp_code', '')
+            && request.resource.data.get('erp_code_shared', false) == resource.data.get('erp_code_shared', false)
+            // FIXED 2026-09-28 (whole-repo review): customer_id was missing
+            // from this pinned list — every portal read (orders, brand
+            // assets, proposals, viewerIsSensitive()) scopes on THIS field,
+            // so a customer could re-point their own customer_id to another
+            // customer's doc ID and read that customer's order history,
+            // pricing and brand gallery. The comment above this block always
+            // claimed the linking fields were admin-only; this was the one
+            // that wasn't. See LESSONS-LEARNED.
+            && request.resource.data.get('customer_id', '') == resource.data.get('customer_id', ''));
+      allow delete: if isAdmin();
+    }
+
+    // Immutable, admin-only backups created atomically with a bulk copy write.
+    match /product_marketing_history/{backupId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /products/{productId} {
+      allow read: if canShop() || can('products') || can('quotes')
+        || (isB0016Mcp() && productId == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd');
+      allow write: if can('products');
+      // Storefront photos — screened per-viewer (viewerIsSensitive). A
+      // blank/unset branded_for is generic and always visible.
+      match /images/{imageId} {
+        allow read: if can('products') || can('quotes')
+          || (isApprovedCustomer()
+              && (resource.data.get('branded_for_customer_id', '') == ''
+                  || resource.data.get('branded_for_customer_id', '') == profile().get('customer_id', '')
+                  || !viewerIsSensitive()));
+        allow write: if can('products');
+      }
+      // Tier prices — margin data. Read by quote-builders; the cost-derived
+      // editor writes behind `pricing`.
+      match /pricing_tiers/{tierId} {
+        allow read: if canShop() || can('pricing') || can('quotes');
+        allow write: if can('pricing');
+      }
+      match /customer_prices/{priceUid} {
+        allow read: if request.auth.uid == priceUid || can('quotes') || can('customers');
+        allow write: if can('pricing');
+      }
+      // Product bill-of-materials + supplier quotes — supply data.
+      match /components/{componentId} {
+        allow read: if can('supply') || (isB0016Mcp()
+          && productId == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
+          && componentId in ['mcp_a844ebe21ba90961027c', 'mcp_4e4b6112f372269e30dcfb21ea53ca5f']);
+        allow write: if can('supply');
+        match /images/{imageId} {
+          allow read, write: if can('supply');
+        }
+        match /supplier_quotes/{quoteId} {
+          allow read: if can('supply') || (isB0016Mcp()
+            && productId == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
+            && ((componentId == 'mcp_a844ebe21ba90961027c' && quoteId == 'mcp_05752f5a8554c7a7d4bd')
+              || (componentId == 'mcp_4e4b6112f372269e30dcfb21ea53ca5f' && quoteId == 'mcp_49239ae8ae9de42b0d7f9986d60da702')));
+          allow write: if can('supply');
+          match /attachments/{attachmentId} {
+            allow read, write: if can('supply');
+          }
+        }
+      }
+    }
+
+    match /range_products/{rangeId} {
+      allow get, list: if canShop() || can('figurine') || can('quotes')
+        || (isB0016Mcp() && resource.data.design_no == '0016');
+      allow create: if can('figurine') || (b0016WritesApproved() && b0016RangeCreate(rangeId));
+      allow update: if can('figurine') || (b0016WritesApproved() && (b0016RangeLink(rangeId) || colourRangeLink(rangeId)));
+      allow delete: if can('figurine');
+      match /{allPaths=**} {
+        allow read: if canShop() || can('figurine') || can('quotes');
+        allow write: if can('figurine');
+      }
+    }
+
+    // Atomic claim documents make exact item-code ownership durable across
+    // simultaneous MCP requests. No storefront/customer read is granted.
+    match /range_sku_claims/{itemCode} {
+      allow get: if (isB0016Mcp() && b0016ItemCode(itemCode)) || can('figurine');
+      allow list: if can('figurine');
+      allow create: if b0016WritesApproved() && isB0016Mcp()
+        && b0016ItemCode(itemCode)
+        && request.resource.data.keys().hasOnly(['item_code', 'range_id', 'service_principal', 'createdAt'])
+        && request.resource.data.item_code == itemCode
+        && request.resource.data.range_id.matches('^mcp_range_[a-f0-9]{32}$')
+        && request.resource.data.service_principal == request.auth.uid
+        && b0016ClaimVariantMatches(itemCode,
+          getAfter(/databases/$(database)/documents/range_products/$(request.resource.data.range_id)).data);
+      allow update, delete: if false;
+    }
+    match /range_mcp_audit/{auditId} {
+      allow get: if isAdmin() || (isB0016Mcp() && auditId.matches('^mcp_range_[a-f0-9]{64}$')
+        && (!exists(/databases/$(database)/documents/range_mcp_audit/$(auditId)) || resource.data.service_principal == request.auth.uid));
+      allow list: if isAdmin();
+      allow create: if b0016WritesApproved() && isB0016Mcp()
+        && auditId.matches('^mcp_range_[a-f0-9]{64}$')
+        && request.resource.data.keys().hasOnly([
+          'action', 'service_principal', 'requested_by', 'request_id',
+          'request_hash', 'range_id', 'source_product_id',
+          'component_ids', 'quote_ids', 'at'
+        ])
+        && request.resource.data.action in [
+          'create_mezuzah_range_design', 'create_mezuzah_range_components'
+        ]
+        && request.resource.data.service_principal == request.auth.uid
+        && request.resource.data.source_product_id == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
+        && request.resource.data.request_hash.matches('^[a-f0-9]{64}$');
+      allow update, delete: if false;
+      allow create: if b0016WritesApproved() && colourAuditCreate(auditId);
+    }
+    // Private, short-lived exact plan. Only owner/admin can provision/revoke it;
+    // the service can fetch one plan by deterministic ID, never list or write.
+    match /range_mcp_approvals/{auditId} {
+      allow get: if isAdmin() || (isB0016Mcp() && auditId.matches('^mcp_range_[a-f0-9]{64}$')
+        && (!exists(/databases/$(database)/documents/range_mcp_approvals/$(auditId)) || resource.data.service_principal == request.auth.uid));
+      allow list, create, update, delete: if isAdmin();
+    }
+
+    // V8.8 Phase 1 colour-preview drafts — top-level so the canShop() wildcard
+    // above never grants a customer a read of an unreviewed draft.
+    match /range_colour_previews/{previewId} {
+      allow read, write: if isAdmin();
+    }
+
+    // `settings` mixes storefront config with internal cost data. Storefront
+    // reads are allow-listed to the customer-facing docs only; the cost docs
+    // (pricing_groups markup %, crystal_unit_costs) open to `pricing` / the
+    // supply side; everything else is the `settings` module (sensitive).
+    match /settings/{docId} {
+      allow read: if isAdmin()
+        || can('settings')
+        || (isB0016Mcp() && docId == 'crystal_colors')
+        || (canShop() && docId in [
+          'catalogue_band', 'exchange_rates', 'format_moq',
+          'front_page', 'productDefaults', 'quote_branding', 'crystal_colors',
+        ])
+        || (can('pricing') && docId in [
+          'pricing_groups', 'crystal_unit_costs', 'format_moq',
+          'component_categories', 'crystal_colors', 'exchange_rates',
+        ])
+        || (can('supply') && docId in [
+          'format_moq', 'crystal_unit_costs', 'component_categories',
+          'crystal_colors', 'exchange_rates',
+        ]);
+      allow write: if isAdmin()
+        || (can('settings') && docId != 'pricing_groups')
+        || (can('pricing') && docId in ['pricing_groups', 'crystal_unit_costs', 'component_categories'])
+        || (can('supply') && docId in ['crystal_unit_costs', 'component_categories', 'crystal_colors', 'format_moq']);
+    }
+
+    match /favourites/{uid} {
+      allow read, write: if (request.auth.uid == uid && request.auth.uid != 'mcp-figurine-range-service') || isAdmin();
+    }
+
+    match /enquiries/{eid} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Customizer product templates — read for shoppers, admin writes.
+    match /product_templates/{productId} {
+      allow read: if canShop();
+      allow write: if isAdmin();
+    }
+
+    // Customizer saved designs — a customer owns their own designs; admin sees all.
+    match /customer_designs/{designId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && request.auth.uid != 'mcp-figurine-range-service' && resource.data.uid == request.auth.uid);
+    }
+
+    // Suppliers — supply-side.
+    match /suppliers/{supplierId} {
+      allow read: if can('supply') || (isB0016Mcp()
+        && supplierId in ['33VhLPOuBM46wcCmsb7B', 'D1SDoLIAc2aw6PdP76Xo']);
+      allow write: if can('supply');
+      match /catalogs/{catalogId} {
+        allow read, write: if can('supply');
+      }
+      match /images/{imageId} {
+        allow read, write: if can('supply');
+      }
+      match /videos/{videoId} {
+        allow read, write: if can('supply');
+      }
+    }
+
+    // User-triggered browser captures from 1688. These retain source evidence
+    // for staff review only; they are not supplier quotes or catalogue items.
+    match /sourcing_captures/{captureId} {
+      allow read: if can('supply');
+      allow create: if can('supply')
+        && request.resource.data.captured_by_uid == request.auth.uid;
+      allow update: if can('supply')
+        && request.resource.data.captured_by_uid == resource.data.captured_by_uid;
+      allow delete: if false;
+    }
+    match /client_quotes/{quoteId} {
+      allow read, write: if can('quotes');
+      match /items/{itemId} {
+        allow read, write: if can('quotes');
+      }
+    }
+
+    // Supplier purchase orders — procurement records, supply-side.
+    match /purchase_orders/{poId} {
+      allow read, write: if can('supply');
+    }
+
+    // Credit Notes — goods-return + accounting doc. The posted financial fact
+    // lives in Postgres app_credit_note, reachable only via /api/credit-note.
+    match /credit_notes/{cnId} {
+      allow read, write: if can('credit_notes');
+    }
+
+    // SU-07A portal invitations — the claim/approve/resend/revoke logic runs
+    // server-side (portal-invite.js, Admin SDK, bypasses rules). This rule
+    // only blocks a browser from touching the collection directly.
+    match /portal_invitations/{invitationId} {
+      allow read: if isAdmin() || can('portal');
+      allow write: if isAdmin();
+    }
+
+    // Append-only audit trail (AccountEdit.jsx logs role/status/modules
+    // changes — the L-01 blind spot). Any internal login may append; only
+    // admin reads it back; nothing edits or deletes an entry.
+    match /audit_logs/{entryId} {
+      allow create: if isInternal();
+      allow read:   if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Owner-approved folder-import routing. These records hold archive names
+    // and CRM pointers only; the local sync script performs the import after
+    // an explicit inbox decision, never a fuzzy name match.
+    match /whatsapp_archive_inbox/{archiveId} {
+      allow read: if can('customers');
+      allow update: if can('customers') && validWhatsappInboxDecision();
+      allow create, delete: if false;
+    }
+    match /whatsapp_archive_mappings/{archiveId} {
+      allow read: if can('customers');
+      allow create, update: if can('customers')
+        && validWhatsappArchiveMapping(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Cached WooCommerce API pulls + the SEO control-plane stores. `woo` module.
+    match /woo_cache/{doc} {
+      allow read, write: if isAdmin() || can('woo');
+    }
+    match /seo_state/{doc} {
+      allow read, write: if isAdmin() || can('woo');
+    }
+    match /seo_state_history/{doc} {
+      allow read, create: if isAdmin() || can('woo');
+      allow update, delete: if false;
+      // Row chunks for a snapshot too large for one doc (created, never mutated).
+      match /chunks/{c} {
+        allow read, create: if isAdmin() || can('woo');
+        allow update, delete: if false;
+      }
+    }
+    match /seo_batches/{doc} {
+      allow read, update: if isAdmin() || can('woo');
+      allow create, delete: if false;
+    }
+
+    match /customers/{customerId} {
+      allow read, write: if can('customers');
+      match /enquiries/{enquiryId} {
+        allow read, write: if can('customers');
+      }
+      match /email_threads/{threadId} {
+        allow read, write: if can('customers');
+      }
+      match /whatsapp_threads/{threadId} {
+        allow read, write: if can('customers');
+      }
+      match /alibaba_threads/{threadId} {
+        allow read, write: if can('customers');
+      }
+      // Brand Gallery assets — a logged-in customer may read ONLY their own
+      // linked customer's non-internal assets.
+      match /assets/{assetId} {
+        allow read: if can('customers')
+          || (signedIn()
+              && profile().get('customer_id', '') == customerId
+              && resource.data.visibility != 'internal_only');
+        allow write: if can('customers');
+      }
+      // Proposal — customer read scoped to their own linked customer AND
+      // published only.
+      match /proposal/{docId} {
+        allow read: if can('customers')
+          || (isApprovedCustomer()
+              && profile().get('customer_id', '') != ''
+              && profile().get('customer_id', '') == customerId
+              && resource.data.status == 'published');
+        allow write: if can('customers');
+      }
+    }
+
+    // Marketing contacts (cleaned Mailchimp list + WP signups) — CRM data.
+    // Public signups are written server-side by /api/subscribe.
+    match /marketing_contacts/{contactId} {
+      allow read, write: if can('customers');
+      match /whatsapp_threads/{threadId} {
+        allow read, write: if can('customers');
+      }
+      match /alibaba_threads/{threadId} {
+        allow read, write: if can('customers');
+      }
+      match /email_threads/{threadId} {
+        allow read, write: if can('customers');
+      }
+      match /enquiries/{enquiryId} {
+        allow read, write: if can('customers');
+      }
+    }
+    // Marketing campaigns / templates / Daily Drafts.
+    match /marketing_campaigns/{campaignId} {
+      allow read, write: if can('marketing');
+    }
+    match /campaign_templates/{templateId} {
+      allow read, write: if can('marketing');
+    }
+    match /outreach_drafts/{draftId} {
+      allow read, write: if can('marketing');
+    }
+    match /draft_memory_rules/{ruleId} {
+      allow read, write: if can('marketing');
+    }
+    match /outreach_topic_templates/{templateId} {
+      allow read, write: if can('marketing');
+    }
+    // Collection-group query over every customer's/lead's enquiries subcollection.
+    match /{path=**}/enquiries/{enquiryId} {
+      allow read: if can('customers');
+    }
+    // Collection-group query over every customer's/lead's email_threads
+    // subcollection — added for the Dashboard "This Week" digest (V8.15),
+    // which needs to find which customers had new email across ALL of them
+    // at once, not one customer at a time.
+    match /{path=**}/email_threads/{threadId} {
+      allow read: if can('customers');
+    }
+    // Cached weekly digest (V8.15) — one singleton doc, regenerated on
+    // demand from the Dashboard, not written by anything else.
+    match /dashboard_cache/{docId} {
+      allow read, write: if can('customers');
+    }
+    // Collection-group query over supplier_quotes.
+    match /{path=**}/supplier_quotes/{quoteId} {
+      allow read, write: if can('supply');
+    }
+    match /catalogues/{catalogueId} {
+      allow read, write: if can('catalogues');
+      match /items/{itemId} {
+        allow read, write: if can('catalogues');
+      }
+    }
+    // Critical components master (metal parts) — supply-side.
+    match /range_components/{componentId} {
+      // One owner-selected reuse record. No list-all or write grant.
+      allow get: if isB0016Mcp() && componentId == 'rc_mv7xu3mmayc5g'
+        && resource.data.code in ['P-CF003-C1', 'FM-CF003-C1'];
+      allow get: if can('supply') || (isB0016Mcp()
+        && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}(_(bk|bl|mt|pe|vl))?$')
+        && (!exists(/databases/$(database)/documents/range_components/$(componentId)) || resource.data.mcp_creator_uid == request.auth.uid));
+      allow list: if can('supply');
+      allow create: if can('supply') || (b0016WritesApproved() && b0016ComponentCreate(componentId));
+      allow create: if b0016WritesApproved() && colourComponentCreate(componentId);
+      allow update: if b0016WritesApproved() && colourC1Update(componentId);
+      allow update, delete: if can('supply');
+      match /supplier_quotes/{quoteId} {
+        // Exact C1 child scope is needed to prevent duplicate supplier quotes.
+        allow read: if isB0016Mcp() && componentId == 'rc_mv7xu3mmayc5g'
+          && get(/databases/$(database)/documents/range_components/$(componentId)).data.code in ['P-CF003-C1', 'FM-CF003-C1'];
+        allow get: if can('supply') || (isB0016Mcp()
+          && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}(_(bk|bl|mt|pe|vl))?$')
+          && (!exists(/databases/$(database)/documents/range_components/$(componentId)/supplier_quotes/$(quoteId)) || resource.data.mcp_creator_uid == request.auth.uid));
+        allow list: if can('supply');
+        allow create: if can('supply') || (b0016WritesApproved() && b0016QuoteCreate(componentId, quoteId));
+        allow create: if b0016WritesApproved() && colourQuoteCreate(componentId, quoteId);
+        allow update, delete: if can('supply');
+      }
+      match /movements/{movementId} {
+        allow read, write: if can('supply');
+      }
+    }
+
+    // Crystal inventory + its append-only stock ledger — supply-side.
+    match /crystals/{crystalId} {
+      allow read, write: if can('supply');
+      match /movements/{movementId} {
+        allow read, write: if can('supply');
+      }
+    }
+
+    // Crystal Fabric Studio swatch notes — read opened to approved portal
+    // customers (designer matching an old Swarovski article no.) + the swatch
+    // module; editing behind `swatch`.
+    match /crystal_swatch_notes/{colorId} {
+      allow read: if isAdmin() || can('swatch') || isApprovedCustomer();
+      allow write: if isAdmin() || can('swatch');
+    }
+
+    // Packaging inventory — supply-side.
+    match /packaging/{packagingId} {
+      allow read, write: if can('supply');
+      match /movements/{movementId} {
+        allow read, write: if can('supply');
+      }
+    }
+
+    // B2C finished-goods stock — trading stock, supply-side (an inventory
+    // class on the Inventory + Components screens).
+    match /b2c_stock/{b2cId} {
+      allow read, write: if can('supply');
+      match /movements/{movementId} {
+        allow read, write: if can('supply');
+      }
+    }
+
+    // ---- Shipping & Logistics — `shipping` module, except a customer's own
+    // orders (portal order history) ------------------------------------------
+    match /orders/{orderId} {
+      allow read: if can('shipping')
+        || (isApprovedCustomer()
+            && profile().get('customer_id', '') != ''
+            && resource.data.get('customer_id', '') == profile().get('customer_id', ''));
+      allow write: if can('shipping');
+      match /{allPaths=**} {
+        allow read: if can('shipping')
+          || (isApprovedCustomer()
+              && profile().get('customer_id', '') != ''
+              && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id', '') == profile().get('customer_id', ''));
+        allow write: if can('shipping');
+      }
+    }
+    match /packing_lists/{plId} {
+      allow read, write: if can('shipping');
+      match /{allPaths=**} {
+        allow read, write: if can('shipping');
+      }
+    }
+    match /logistics_vendors/{vendorId} {
+      allow read, write: if can('shipping');
+    }
+    match /freight_quotes/{quoteId} {
+      allow read, write: if can('shipping');
+    }
+    match /freight_rfqs/{rfqId} {
+      allow read, write: if can('shipping');
+    }
+
+    // ---- UC# invoice registry — `uc` module ------------------------------
+    match /uc_invoices/{id} {
+      allow read, write: if can('uc');
+    }
+    // Atomic allocation counters (counters/uc_<yy>, so_<yy>, pu_<yy>).
+    // Supply may touch ONLY pu_* (numbering a new PO); the UC/SO counters
+    // belong to the quote flow.
+    match /counters/{name} {
+      allow read, write: if isAdmin()
+        || (can('supply') && name.matches('pu_[0-9]+'))
+        || (can('quotes') && name.matches('(uc|so)_[0-9]+'));
+    }
+
+    // ---- Product Design (folded into this app under /design/* in V8.16 —
+    // was a separate Next.js repo). Gated on the `product_design` module
+    // (admin, or a staff account granted it). Reuses this Firebase project;
+    // the pages now live in src/pages/pd/. `pd_` prefix is deliberate — this repo's
+    // own `products` would collide with costing-tool's existing catalogue
+    // collection of the same bare name (see L-90 — matched above at line
+    // ~92), so the Product Design entities get their own namespace instead
+    // of reading/writing live ops data. There is no pd_suppliers or
+    // pd_customers — Product Design reads this repo's own real `suppliers`
+    // and `customers` collections directly (admin already has read via
+    // `can('supply')`/`can('customers')` above) rather than keeping a
+    // separate freely-created copy; those two are managed here, not there.
+    // pd_customer_brands is genuinely new data this repo doesn't have (a
+    // customer's Visual Tokens for image generation), keyed by the real
+    // customer's own id. -----
+    match /pd_products/{id} {
+      allow read, write: if can('product_design');
+    }
+    match /pd_prompt_templates/{id} {
+      allow read, write: if can('product_design');
+    }
+    match /pd_generations/{id} {
+      allow read, write: if can('product_design');
+    }
+    match /pd_customer_brands/{customerId} {
+      allow read, write: if can('product_design');
+    }
+    match /pd_spec_sheet_templates/{id} {
+      allow read, write: if can('product_design');
+    }
+  }
+}

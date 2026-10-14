@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs'
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing'
 import { doc, setDoc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore'
 
-const source = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8')
+// Historical broad candidate regression; the live release is tested separately.
+const source = readFileSync(new URL('./fixtures/b0016-read-only.rules', import.meta.url), 'utf8')
 const needle = 'function b0016WritesApproved() {\n      return false;\n    }'
 if (!source.includes(needle)) throw new Error('Write gate shape changed; do not silently run this candidate test')
 const env = await initializeTestEnvironment({

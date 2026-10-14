@@ -5,7 +5,8 @@ import { doc, setDoc, getDoc, getDocs, collection, updateDoc, deleteDoc, writeBa
 import { prepareB0016ColourBom, B0016_REUSE_ID, approvalPlan } from '../netlify/edge-functions/lib/b0016ColourBom.js'
 import { identity, designDraft, ITEM_CODES, SOURCE_PARTS, SOURCE_PRODUCT_ID, RANGE_SERVICE_UID, usedSkus } from '../netlify/edge-functions/lib/mcpFigurineRange.js'
 
-const source = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8')
+// Historical false-gate candidate; exact live release has its own suite.
+const source = readFileSync(new URL('./fixtures/b0016-read-only.rules', import.meta.url), 'utf8')
 const needle = 'function b0016WritesApproved() {\n      return false;\n    }'
 if (!source.includes(needle)) throw Error('Live write gate must remain false')
 const range_id = 'mcp_range_' + 'd'.repeat(32), request_id = '70e51438-1e69-4ec1-a122-bd6e0621a023'

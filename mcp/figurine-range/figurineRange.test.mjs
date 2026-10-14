@@ -137,7 +137,7 @@ test('seven writer recovers lost successful response and rejects orphan output, 
   assert.equal(r.body.already_exists, true)
   const other = 'mcp_range_' + 'e'.repeat(32)
   f.puts(`range_products/${other}`, { ...designDraft(), mcp_creator_uid: RANGE_SERVICE_UID })
-  const ids = await identity('b0016_colour_bom', uuid, { range_id: other, metal_code: 'FM-B0016BY00-G', fabric_codes: ['BK','BL','C1','MT','PE','VL'].map(c => 'FM-CF003-' + c), reuse_component_id: B0016_REUSE_ID, plan_revision: 'fm-cf003-v2', legacy_c1_action: 'rename_in_place_after_approval' })
+  const ids = await identity('b0016_colour_bom', uuid, { range_id: other, metal_code: 'FM-B0016BY00-G', fabric_codes: ['BK','BL','C1','MT','PE','VL'].map(c => 'FM-CF003-' + c), reuse_component_id: B0016_REUSE_ID, plan_revision: 'fm-cf003-v3-source-notes', legacy_c1_action: 'rename_in_place_after_approval' })
   assert.equal((await f.call('create_mezuzah_colour_bom', { ...f.input, range_id: other, expected_preview_hash: ids.hash }, f.options)).body.error.code, 'DUPLICATE_REQUEST')
   const orphan = await colourFixture()
   const planned = orphan.preview.body.proposed.records[0]

@@ -3,7 +3,7 @@ export const B0016_COLOURS = ['BK', 'BL', 'C1', 'MT', 'PE', 'VL']
 export const B0016_METAL_CODE = 'FM-B0016BY00-G'
 export const B0016_REUSE_ID = 'rc_mv7xu3mmayc5g'
 export const B0016_FABRIC_CODES = B0016_COLOURS.map(code => `FM-CF003-${code}`)
-export const B0016_PLAN_REVISION = 'fm-cf003-v2'
+export const B0016_PLAN_REVISION = 'fm-cf003-v3-source-notes'
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value
 const equal = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b))
 
@@ -53,7 +53,7 @@ export async function prepareB0016ColourBom(input, ctx, api, retry = false) {
     tooling_sample_cost: kind === 'metal' ? 2912 : null,
     tooling_sample_cost_currency: 'RMB', source_provenance: sourceRef(kind),
     ...(colour ? { crystal_code: colour, source_unit_cost: 8.10, source_unit_cost_currency: 'RMB', cost_basis: 'owner_conservative', moq_scope: 'per_colour', supplier_colour_confirmation: 'pending' } : {}),
-    notes: kind === 'metal' ? 'Metal case only; no screws. One-time RMB 2,912 fee, shared across colours.' : 'Fabric panel only; supplier coverage of this exact colour code requires confirmation. Assembly and packaging excluded.',
+    notes: kind === 'metal' ? 'Metal case only; no screws. One-time RMB 2,912 fee, shared across colours.' : 'Fabric panel only. Supplier source price RMB 8.10 per panel; owner conservative working cost RMB 9.00 per panel. Supplier coverage of this exact colour code requires confirmation. Assembly and packaging excluded.',
     supplier_name: parts[kind].supplier.name || parts[kind].supplier.name_cn || '', volume_tiers: [], attachments: [], ...metadata,
   })
   const costMirror = (kind, quoteId) => ({ supplierId: api.SOURCE_PARTS[kind].supplier_id, supplierName: parts[kind].supplier.name || parts[kind].supplier.name_cn || '', preferred_quote_id: quoteId, unit_cost: kind === 'metal' ? 11.30 : 9.00, unit_cost_currency: 'RMB', tooling_sample_cost: kind === 'metal' ? 2912 : null, tooling_sample_cost_currency: 'RMB', volume_tiers: [] })

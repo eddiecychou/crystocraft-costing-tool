@@ -45,6 +45,7 @@ test('colour dry run proposes six creates and reuses exact C1 without touching i
  assert.equal(JSON.stringify([...f.docs]),before);assert.equal(r.proposed.screws,false);assert.equal(r.proposed.price_publishing,false)
  assert.equal(r.proposed.records.filter(v=>v.path.startsWith('range_products/'))[0].fields.unit_cost,undefined)
  assert.ok(r.proposed.records.filter(v=>v.path.includes('/supplier_quotes/')).every(v=>v.fields.source_provenance.product_id===SOURCE_PRODUCT_ID))
+ assert.ok(r.proposed.records.filter(v=>v.fields.crystal_code && v.path.includes('/supplier_quotes/')).every(v=>v.fields.source_unit_cost===8.1 && v.fields.unit_cost===9 && v.fields.notes.includes('RMB 8.10') && v.fields.notes.includes('RMB 9.00')))
  const again=await f.call();assert.equal(r.request_hash,again.request_hash);assert.deepEqual(r.proposed.records,again.proposed.records)
 })
 test('authentication, unknown fields, invalid UUID and non-dry run fail closed',async()=>{

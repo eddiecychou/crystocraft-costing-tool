@@ -5,12 +5,15 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { fileURLToPath } from 'node:url'
 import { readFileSync } from 'node:fs'
 
-test('release entrypoint and Firestore rules hard-disable live writes independently of environment', () => {
+test('release entrypoint and Firestore rules require exact expiring owner controls, not an environment write switch', () => {
   const endpoint = readFileSync(new URL('../../netlify/edge-functions/mcp-figurine-range.js', import.meta.url), 'utf8')
   const rules = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8')
-  assert.match(endpoint, /writesEnabled:\s*false/)
+  assert.match(endpoint, /handleB0016SetupRelease/)
   assert.doesNotMatch(endpoint, /Deno\.env\.get\(['"]FIGURINE_MCP_WRITES_ENABLED/)
-  assert.match(rules, /function b0016WritesApproved\(\)\s*\{\s*return false;/)
+  assert.match(rules, /function b0016WritesApproved\(\)\s*\{\s*let p = setupReleasePlan\(\)/)
+  assert.match(rules, /p\.approved == true/)
+  assert.match(rules, /p\.expires_at > request.time/)
+  assert.doesNotMatch(rules, /b0016WritesApproved\(\) && b0016ComponentCreate\(componentId\)/)
 })
 
 test('dedicated Figurine MCP starts and advertises only eight scoped tools', async () => {

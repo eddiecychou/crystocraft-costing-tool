@@ -49,7 +49,13 @@ service cloud.firestore {
     // directly, so an endpoint environment flag alone is not a write gate.
     // A separately reviewed rules release must change this before live create.
     function b0016WritesApproved() {
-      return false;
+      let p = setupReleasePlan();
+      return p.approved == true && p.service_principal == request.auth.uid
+        && p.expires_at is timestamp && p.expires_at > request.time
+        && p.expires_at <= request.time + duration.value(1, 'h');
+    }
+    function setupReleasePlan() {
+      return get(/databases/$(database)/documents/range_mcp_approvals/b0016_setup_release).data;
     }
     function b0016Codes(v) {
       return v is list && v.size() == 6
@@ -97,45 +103,13 @@ service cloud.firestore {
           || (code == 'B0016-000-GVL' && data.variants[5].sku == code));
     }
     function b0016RangeCreate(rangeId) {
-      return isB0016Mcp() && rangeId.matches('^mcp_range_[a-f0-9]{32}$')
-        && request.resource.data.keys().hasOnly([
-          'design_no', 'body_code', 'body_name', 'design_code', 'design_name',
-          'description', 'marketing_description', 'category', 'design_type',
-          'product_type', 'format_code', 'size', 'crystal_type', 'active',
-          'status', 'is_new', 'moq', 'lead_time_weeks', 'delivery_note',
-          'critical_components', 'packing', 'plating_stock',
-          'crystal_components', 'gallery', 'videos',
-          'video_url', 'blog_links', 'variants', 'mcp_creator_uid',
-          'mcp_request_id', 'mcp_request_hash', 'createdAt'
-        ])
-        && request.resource.data.design_no == '0016'
-        && request.resource.data.design_code == '0016'
-        && request.resource.data.design_name == 'CRYSTAL FABRIC MEZUZAH CASE'
-        && request.resource.data.format_code == '000'
-        && request.resource.data.active == false
-        && request.resource.data.status == 'concept'
-        && request.resource.data.critical_components.size() == 0
-        && request.resource.data.description == ''
-        && request.resource.data.marketing_description == ''
-        && request.resource.data.category == ''
-        && request.resource.data.product_type == ''
-        && request.resource.data.crystal_type == ''
-        && request.resource.data.design_type == 'Crystal Fabric'
-        && request.resource.data.moq == null
-        && request.resource.data.lead_time_weeks == null
-        && request.resource.data.delivery_note == ''
-        && request.resource.data.packing.size() == 0
-        && request.resource.data.plating_stock.size() == 0
-        && request.resource.data.crystal_components.size() == 0
-        && request.resource.data.gallery.size() == 0
-        && request.resource.data.blog_links.size() == 0
-        && request.resource.data.videos.size() == 0
-        && request.resource.data.video_url == ''
-        && b0016Codes(request.resource.data.variants)
-        && b0016AllClaimsMatch(rangeId)
-        && request.resource.data.mcp_creator_uid == request.auth.uid
-        && request.resource.data.mcp_request_hash.matches('^[a-f0-9]{64}$')
-        && request.resource.data.mcp_request_id.matches('^[a-f0-9-]{36}$');
+      let p = setupReleasePlan();
+      return isB0016Mcp() && rangeId == p.range_id
+        && request.resource.data.diff(p.design).affectedKeys().hasOnly(['createdAt'])
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/range_mcp_audit/$(p.design_audit_id)).data.request_hash == p.design.mcp_request_hash
+        && request.resource.data.active == false && request.resource.data.status == 'concept'
+        && b0016AllClaimsMatch(rangeId);
     }
     function b0016RangeLink(rangeId) {
       return isB0016Mcp() && rangeId.matches('^mcp_range_[a-f0-9]{32}$')
@@ -256,7 +230,11 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/range_mcp_approvals/$(auditId)).data;
     }
     function colourPlanValid(p) {
+      let release = setupReleasePlan();
       return isB0016Mcp() && p.service_principal == request.auth.uid
+        && p.range_id == release.range_id
+        && p.audit.request_id == release.bom_request_id
+        && p.audit.request_hash == release.bom_hash
         && p.expires_at is timestamp && p.expires_at > request.time
         && p.expires_at <= request.time + duration.value(1, 'h') && p.approved == true
         && p.usage_review.reference_count == 0 && p.usage_review.code_conflict_count == 0
@@ -491,10 +469,12 @@ service cloud.firestore {
     }
 
     match /range_products/{rangeId} {
+      allow get: if isB0016Mcp() && rangeId == setupReleasePlan().range_id
+        && !exists(/databases/$(database)/documents/range_products/$(rangeId));
       allow get, list: if canShop() || can('figurine') || can('quotes')
         || (isB0016Mcp() && resource.data.design_no == '0016');
       allow create: if can('figurine') || (b0016WritesApproved() && b0016RangeCreate(rangeId));
-      allow update: if can('figurine') || (b0016WritesApproved() && (b0016RangeLink(rangeId) || colourRangeLink(rangeId)));
+      allow update: if can('figurine') || (b0016WritesApproved() && colourRangeLink(rangeId));
       allow delete: if can('figurine');
       match /{allPaths=**} {
         allow read: if canShop() || can('figurine') || can('quotes');
@@ -511,6 +491,8 @@ service cloud.firestore {
         && b0016ItemCode(itemCode)
         && request.resource.data.keys().hasOnly(['item_code', 'range_id', 'service_principal', 'createdAt'])
         && request.resource.data.item_code == itemCode
+        && request.resource.data.range_id == setupReleasePlan().range_id
+        && request.resource.data.createdAt == request.time
         && request.resource.data.range_id.matches('^mcp_range_[a-f0-9]{32}$')
         && request.resource.data.service_principal == request.auth.uid
         && b0016ClaimVariantMatches(itemCode,
@@ -521,25 +503,30 @@ service cloud.firestore {
       allow get: if isAdmin() || (isB0016Mcp() && auditId.matches('^mcp_range_[a-f0-9]{64}$')
         && (!exists(/databases/$(database)/documents/range_mcp_audit/$(auditId)) || resource.data.service_principal == request.auth.uid));
       allow list: if isAdmin();
-      allow create: if b0016WritesApproved() && isB0016Mcp()
+      allow create: if request.resource.data.action == 'create_mezuzah_range_design'
+        && b0016WritesApproved() && isB0016Mcp()
         && auditId.matches('^mcp_range_[a-f0-9]{64}$')
         && request.resource.data.keys().hasOnly([
           'action', 'service_principal', 'requested_by', 'request_id',
           'request_hash', 'range_id', 'source_product_id',
           'component_ids', 'quote_ids', 'at'
         ])
-        && request.resource.data.action in [
-          'create_mezuzah_range_design', 'create_mezuzah_range_components'
-        ]
+        && request.resource.data.action == 'create_mezuzah_range_design'
+        && auditId == setupReleasePlan().design_audit_id
+        && request.resource.data.diff(setupReleasePlan().design_audit).affectedKeys().hasOnly(['at'])
+        && request.resource.data.at == request.time
+        && getAfter(/databases/$(database)/documents/range_products/$(setupReleasePlan().range_id)).data.mcp_request_hash == setupReleasePlan().design.mcp_request_hash
         && request.resource.data.service_principal == request.auth.uid
         && request.resource.data.source_product_id == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
         && request.resource.data.request_hash.matches('^[a-f0-9]{64}$');
       allow update, delete: if false;
-      allow create: if b0016WritesApproved() && colourAuditCreate(auditId);
+      allow create: if request.resource.data.action == 'b0016_colour_bom' && b0016WritesApproved() && colourAuditCreate(auditId);
     }
     // Private, short-lived exact plan. Only owner/admin can provision/revoke it;
     // the service can fetch one plan by deterministic ID, never list or write.
     match /range_mcp_approvals/{auditId} {
+      allow get: if isB0016Mcp() && auditId == 'b0016_setup_release'
+        && (!exists(/databases/$(database)/documents/range_mcp_approvals/$(auditId)) || resource.data.service_principal == request.auth.uid);
       allow get: if isAdmin() || (isB0016Mcp() && auditId.matches('^mcp_range_[a-f0-9]{64}$')
         && (!exists(/databases/$(database)/documents/range_mcp_approvals/$(auditId)) || resource.data.service_principal == request.auth.uid));
       allow list, create, update, delete: if isAdmin();
@@ -800,7 +787,7 @@ service cloud.firestore {
         && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}(_(bk|bl|mt|pe|vl))?$')
         && (!exists(/databases/$(database)/documents/range_components/$(componentId)) || resource.data.mcp_creator_uid == request.auth.uid));
       allow list: if can('supply');
-      allow create: if can('supply') || (b0016WritesApproved() && b0016ComponentCreate(componentId));
+      allow create: if can('supply');
       allow create: if b0016WritesApproved() && colourComponentCreate(componentId);
       allow update: if b0016WritesApproved() && colourC1Update(componentId);
       allow update, delete: if can('supply');
@@ -812,7 +799,7 @@ service cloud.firestore {
           && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}(_(bk|bl|mt|pe|vl))?$')
           && (!exists(/databases/$(database)/documents/range_components/$(componentId)/supplier_quotes/$(quoteId)) || resource.data.mcp_creator_uid == request.auth.uid));
         allow list: if can('supply');
-        allow create: if can('supply') || (b0016WritesApproved() && b0016QuoteCreate(componentId, quoteId));
+        allow create: if can('supply');
         allow create: if b0016WritesApproved() && colourQuoteCreate(componentId, quoteId);
         allow update, delete: if can('supply');
       }

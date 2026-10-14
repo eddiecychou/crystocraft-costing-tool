@@ -2,6 +2,24 @@
 
 ## Latest implementation — 15 October 2026 (read/dry-run live, writes disabled)
 
+**Owner-approved setup release:** the endpoint and rules now support only
+the exact expiring private B0016 setup controls, not an environment write flag.
+The older two-component writer is disabled. Default/missing/revoked controls
+deny every service write; the owner-authorized setup window is closed after
+verification. This supersedes historical hard-false-gate descriptions below.
+33 unit/MCP, 183 emulator assertions and production build passed on the
+promoted release. Current execution scope is the end-to-end approval plan.
+
+**End-to-end release preparation:** owner requested completion of the inactive
+six-SKU design and seven-component FM BOM. An approval-bound endpoint helper,
+pure candidate rules generator, read-only exact-plan preparation, allow-listed
+owner-control provisioner (dry-run default) and scoped read-only verifier are
+prepared locally. No production gate or record changed. Source-price notes now
+explicitly retain RMB 8.10 alongside RMB 9 working cost (plan revision v3).
+33 unit/MCP, 183 emulator assertions and 12 seeded browser checks pass.
+One combined production release/live-write approval is still required:
+[exact scope and sequence](../../docs/plans/B0016-END-TO-END-APPROVAL-2026-10-15.md).
+
 **Read-only rollout is now live (15 October):** dedicated modules-empty
 identity, narrow Firestore reads, deployed endpoint and `oc_figurine_range`
 Codex registration verified with an actual live FM dry run. All writes remain
