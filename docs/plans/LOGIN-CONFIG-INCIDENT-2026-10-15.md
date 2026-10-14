@@ -32,3 +32,17 @@ profile, rule or catalogue changes are part of this repair.
 Owner explicitly approved deployment and main push in chat. Work is isolated in
 `/private/tmp/costing-b0016-colour-bom`; the dirty original checkout is untouched.
 No Firestore rules deployment is required.
+
+## Live result
+
+- Repair commit `d1529ffc6b71d1b20cdbd037ba0ab3e64bb45791` pushed to main.
+- Netlify production deploy `6acf9efeb53b9a665648a027` published successfully.
+- Actual served `/assets/index-ByR7q_UL.js` passes configuration validation;
+  read-only Firebase probe returns HTTP 200, replacing the previous HTTP 400.
+- Refreshing the user's Chrome OC tab restored `/dashboard`, showing
+  `eddie@uart.com.hk` and the admin-only Settings/Portal/system navigation.
+  This verifies authenticated admin session restoration and data loading.
+  No password was read, entered, reset or changed; fresh password-entry sign-in
+  was not separately tested.
+- A build with missing client configuration was deliberately tested and blocked
+  before bundling. Original dirty checkout remains untouched.
