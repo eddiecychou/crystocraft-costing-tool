@@ -133,6 +133,11 @@ the fast path from a request to the exact code.
 - Collections: `products/{id}` (+ `images`, `pricing_tiers` **admin-only**, `customer_prices`, `components/…/supplier_quotes`); `product_marketing_history/{runId}_{productId}` (admin-only, immutable backup)
 - Notes: corp-gift pricing card is **hidden from `production`**; per-customer price = `customer_prices/{uid}`; tier markup formula = `settings/pricing_groups` (admin-only, hard wall). `blog_links[]` (V8.16, 2026-09-22) — always-public "Learn More" links, same shape/pattern as `videos[]`: `BlogLinksEditor.jsx` in the admin form, rendered on `src/customer/CorporateDetail.jsx` right next to the videos block. MCP drafts have `active:false` and are absent from the shop listing, but current Firestore rules still allow approved customers to read their product docs directly; do not treat these as confidential. The catalogue MCP's first release is explicitly read/dry-run only: no new tool can activate a product, change a tier, or publish customer prices until a real-record review approves the live phase.
 
+### Catalogue — Figurine Gifts B0016 MCP (local prototype, not deployed)
+- The separate `mcp/figurine-range/` server and `/api/mcp-figurine-range` path are restricted to the Crystal Fabric Mezuzah Case B0016. Read its README before touching the manifest, service identity, rules or source data.
+- `range_products` holds one inactive Concept design with six explicit variants; `range_components` holds two separate preferred supplier quotes and the range product holds only BOM references. Never copy the Corporate Gift BOM shape or its HKD 62 selling price. The Corporate Gift Concept remains unchanged source provenance.
+- `B`, `000`, plating `G`, and any missing colour-library codes are review findings, not permission to alter codes or taxonomies. All live writes require a separate owner approval, dedicated modules-empty service identity, idempotent UUID, audit and phase-two write enablement.
+
 ### Catalogue — Figurine / Range (Crystocraft's own crystal line)
 - Pages: `Range.jsx`, `RangeForm.jsx`, `RangeCosting.jsx`, `RangeComponentForm.jsx`, `CatalogueBand.jsx`
 - Logic: `src/rangeCosting.js`, `src/rangeSku.js`, `src/newArrivals.js`, `src/frontPageFeatured.js`, `src/colourPreviewApi.js`

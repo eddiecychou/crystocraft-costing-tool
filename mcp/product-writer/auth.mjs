@@ -9,6 +9,7 @@ const serviceAccountPath = fileURLToPath(new URL('../../firebase-service-account
 export const projectId = process.env.OC_FIREBASE_PROJECT_ID || 'crystocraft-costing'
 export const serviceUid = 'mcp-product-writer-service'
 export const pricingServiceUid = 'mcp-catalogue-pricing-service'
+export const rangeServiceUid = 'mcp-figurine-range-service'
 
 export function apiKey() {
   const key = process.env.OC_FIREBASE_API_KEY
@@ -57,8 +58,8 @@ const serviceCached = new Map()
 export async function getServiceIdToken(principal = 'catalogue') {
   const cachedService = serviceCached.get(principal)
   if (cachedService && cachedService.expires > Date.now()) return cachedService.token
-  const uid = principal === 'pricing' ? pricingServiceUid : serviceUid
-  const customToken = await getAuth(serviceApp()).createCustomToken(uid, { product_writer: principal === 'catalogue', catalogue_pricing: principal === 'pricing' })
+  const uid = principal === 'pricing' ? pricingServiceUid : principal === 'range' ? rangeServiceUid : serviceUid
+  const customToken = await getAuth(serviceApp()).createCustomToken(uid, { product_writer: principal === 'catalogue', catalogue_pricing: principal === 'pricing', figurine_range_writer: principal === 'range' })
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${encodeURIComponent(apiKey())}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: customToken, returnSecureToken: true }),
   })
@@ -74,3 +75,4 @@ export function getIdToken() {
   return process.env.OC_PRODUCT_WRITER_AUTH === 'interactive' ? getInteractiveIdToken() : getServiceIdToken()
 }
 export function getPricingIdToken() { return getServiceIdToken('pricing') }
+export function getRangeIdToken() { return getServiceIdToken('range') }

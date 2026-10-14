@@ -34,6 +34,173 @@ service cloud.firestore {
     function can(m) {
       return isAdmin() || (hasProfile() && (m in moduleList()));
     }
+    // Dedicated B0016 MCP identity has no general OC modules. These narrow
+    // exceptions do not make it a figurine, products or supply staff user.
+    function isB0016Mcp() {
+      return signedIn()
+        && request.auth.uid == 'mcp-figurine-range-service'
+        && request.auth.token.figurine_range_writer == true
+        && hasProfile()
+        && profile().role == 'staff'
+        && profile().get('service_scope', '') == 'figurine-range-b0016'
+        && moduleList().size() == 0;
+    }
+    function b0016Codes(v) {
+      return v is list && v.size() == 6
+        && b0016Variant(v[0], 'B0016-000-GBK', 'BK')
+        && b0016Variant(v[1], 'B0016-000-GBL', 'BL')
+        && b0016Variant(v[2], 'B0016-000-GC1', 'C1')
+        && b0016Variant(v[3], 'B0016-000-GMT', 'MT')
+        && b0016Variant(v[4], 'B0016-000-GPE', 'PE')
+        && b0016Variant(v[5], 'B0016-000-GVL', 'VL');
+    }
+    function b0016Variant(v, sku, colour) {
+      return v is map && v.keys().hasOnly([
+          'brand_code', 'brand_name', 'plating_code', 'plating_name',
+          'crystal_code', 'crystal_name', 'description', 'running_no',
+          'sku', 'ws_price_usd', 'stock_finished', 'packaging',
+          'engraving', 'image', 'crystal_colors', 'colour_images'
+        ])
+        && v.sku == sku && v.brand_code == 'B'
+        && v.plating_code == 'G' && v.crystal_code == colour
+        && v.running_no == '' && v.ws_price_usd == null
+        && v.description == '' && v.crystal_colors.size() == 0
+        && v.colour_images.size() == 0 && v.image == ''
+        && v.packaging == '' && v.engraving == ''
+        && v.stock_finished == null;
+    }
+    function b0016RangeCreate(rangeId) {
+      return isB0016Mcp() && rangeId.matches('^mcp_range_[a-f0-9]{32}$')
+        && request.resource.data.keys().hasOnly([
+          'design_no', 'body_code', 'body_name', 'design_code', 'design_name',
+          'description', 'marketing_description', 'category', 'design_type',
+          'product_type', 'format_code', 'size', 'crystal_type', 'active',
+          'status', 'is_new', 'moq', 'lead_time_weeks', 'delivery_note',
+          'critical_components', 'packing', 'plating_stock',
+          'crystal_components', 'gallery', 'videos',
+          'video_url', 'blog_links', 'variants', 'mcp_creator_uid',
+          'mcp_request_id', 'mcp_request_hash', 'createdAt'
+        ])
+        && request.resource.data.design_no == '0016'
+        && request.resource.data.design_code == '0016'
+        && request.resource.data.design_name == 'CRYSTAL FABRIC MEZUZAH CASE'
+        && request.resource.data.format_code == '000'
+        && request.resource.data.active == false
+        && request.resource.data.status == 'concept'
+        && request.resource.data.critical_components.size() == 0
+        && request.resource.data.description == ''
+        && request.resource.data.marketing_description == ''
+        && request.resource.data.category == ''
+        && request.resource.data.product_type == ''
+        && request.resource.data.crystal_type == ''
+        && request.resource.data.design_type == 'Crystal Fabric'
+        && request.resource.data.moq == null
+        && request.resource.data.lead_time_weeks == null
+        && request.resource.data.delivery_note == ''
+        && request.resource.data.packing.size() == 0
+        && request.resource.data.plating_stock.size() == 0
+        && request.resource.data.crystal_components.size() == 0
+        && request.resource.data.gallery.size() == 0
+        && request.resource.data.blog_links.size() == 0
+        && request.resource.data.videos.size() == 0
+        && request.resource.data.video_url == ''
+        && b0016Codes(request.resource.data.variants)
+        && request.resource.data.mcp_creator_uid == request.auth.uid
+        && request.resource.data.mcp_request_hash.matches('^[a-f0-9]{64}$')
+        && request.resource.data.mcp_request_id.matches('^[a-f0-9-]{36}$');
+    }
+    function b0016RangeLink(rangeId) {
+      return isB0016Mcp() && rangeId.matches('^mcp_range_[a-f0-9]{32}$')
+        && resource.data.mcp_creator_uid == request.auth.uid
+        && resource.data.active == false && resource.data.status == 'concept'
+        && resource.data.design_no == '0016'
+        && resource.data.critical_components.size() == 0
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['critical_components'])
+        && request.resource.data.critical_components is list
+        && request.resource.data.critical_components.size() == 2
+        && request.resource.data.critical_components[0].id.matches('^mcp_b0016_m_[a-f0-9]{20}$')
+        && request.resource.data.critical_components[1].id.matches('^mcp_b0016_f_[a-f0-9]{20}$')
+        && request.resource.data.critical_components[0].keys().hasOnly(['id', 'code', 'qty_per_unit', 'plating_code', 'all_variants'])
+        && request.resource.data.critical_components[1].keys().hasOnly(['id', 'code', 'qty_per_unit', 'plating_code', 'all_variants'])
+        && request.resource.data.critical_components[0].code.matches('^[A-Z0-9][A-Z0-9-]{1,79}$')
+        && request.resource.data.critical_components[1].code.matches('^[A-Z0-9][A-Z0-9-]{1,79}$')
+        && request.resource.data.critical_components[0].qty_per_unit == 1
+        && request.resource.data.critical_components[1].qty_per_unit == 1
+        && request.resource.data.critical_components[0].plating_code == ''
+        && request.resource.data.critical_components[1].plating_code == ''
+        && request.resource.data.critical_components[0].all_variants == true
+        && request.resource.data.critical_components[1].all_variants == true;
+    }
+    function b0016ComponentCreate(componentId) {
+      return isB0016Mcp() && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}$')
+        && request.resource.data.keys().hasOnly([
+          'code', 'name', 'category', 'plating_code', 'supplierId',
+          'supplierName', 'notes', 'images', 'unit_cost',
+          'unit_cost_currency', 'tooling_sample_cost',
+          'tooling_sample_cost_currency', 'volume_tiers',
+          'preferred_quote_id', 'preferred_supplier_name',
+          'mcp_creator_uid', 'mcp_request_id', 'mcp_request_hash', 'createdAt'
+        ])
+        && request.resource.data.code is string
+        && request.resource.data.code.matches('^[A-Z0-9][A-Z0-9-]{1,79}$')
+        && request.resource.data.unit_cost_currency == 'RMB'
+        && request.resource.data.plating_code == ''
+        && request.resource.data.notes == ''
+        && request.resource.data.images.size() == 0
+        && request.resource.data.volume_tiers.size() == 0
+        && request.resource.data.supplierName is string
+        && request.resource.data.supplierName.size() <= 160
+        && request.resource.data.mcp_creator_uid == request.auth.uid
+        && request.resource.data.mcp_request_hash.matches('^[a-f0-9]{64}$')
+        && ((componentId.matches('^mcp_b0016_m_.*')
+              && request.resource.data.supplierId == '33VhLPOuBM46wcCmsb7B'
+              && request.resource.data.category == 'Metal Part'
+              && request.resource.data.unit_cost == 11.30
+              && request.resource.data.tooling_sample_cost == 2912)
+            || (componentId.matches('^mcp_b0016_f_.*')
+              && request.resource.data.supplierId == 'D1SDoLIAc2aw6PdP76Xo'
+              && request.resource.data.category == ''
+              && request.resource.data.unit_cost == 9.00
+              && request.resource.data.tooling_sample_cost == null));
+    }
+    function b0016QuoteCreate(componentId, quoteId) {
+      return isB0016Mcp()
+        && ((componentId.matches('^mcp_b0016_m_[a-f0-9]{20}$')
+             && quoteId.matches('^mcp_b0016_mq_[a-f0-9]{20}$')
+             && request.resource.data.supplier_id == '33VhLPOuBM46wcCmsb7B'
+             && request.resource.data.unit_cost == 11.30
+             && request.resource.data.moq == 500
+             && request.resource.data.tooling_sample_cost == 2912)
+           || (componentId.matches('^mcp_b0016_f_[a-f0-9]{20}$')
+             && quoteId.matches('^mcp_b0016_fq_[a-f0-9]{20}$')
+             && request.resource.data.supplier_id == 'D1SDoLIAc2aw6PdP76Xo'
+             && request.resource.data.unit_cost == 9.00
+             && request.resource.data.source_unit_cost == 8.10
+             && request.resource.data.moq == 100
+             && request.resource.data.tooling_sample_cost == null))
+        && request.resource.data.keys().hasOnly([
+          'supplier_id', 'supplier_name', 'unit_cost', 'unit_cost_currency',
+          'moq', 'tooling_sample_cost', 'tooling_sample_cost_currency',
+          'is_preferred', 'volume_tiers', 'attachments', 'notes',
+          'source_provenance', 'source_unit_cost',
+          'source_unit_cost_currency', 'cost_basis', 'mcp_creator_uid',
+          'mcp_request_id', 'mcp_request_hash', 'createdAt'
+        ])
+        && request.resource.data.unit_cost_currency == 'RMB'
+        && request.resource.data.is_preferred == true
+        && request.resource.data.attachments.size() == 0
+        && request.resource.data.volume_tiers.size() == 0
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1000
+        && request.resource.data.source_provenance.product_id == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
+        && ((componentId.matches('^mcp_b0016_m_.*')
+              && request.resource.data.source_provenance.component_id == 'mcp_a844ebe21ba90961027c'
+              && request.resource.data.source_provenance.quote_id == 'mcp_05752f5a8554c7a7d4bd')
+            || (componentId.matches('^mcp_b0016_f_.*')
+              && request.resource.data.source_provenance.component_id == 'mcp_4e4b6112f372269e30dcfb21ea53ca5f'
+              && request.resource.data.source_provenance.quote_id == 'mcp_49239ae8ae9de42b0d7f9986d60da702'))
+        && request.resource.data.mcp_creator_uid == request.auth.uid;
+    }
     // Any internal login (used only where "one of our people" is enough).
     function isInternal() {
       return isAdmin() || roleName() == 'staff';
@@ -144,7 +311,8 @@ service cloud.firestore {
     }
 
     match /products/{productId} {
-      allow read: if canShop() || can('products') || can('quotes');
+      allow read: if canShop() || can('products') || can('quotes')
+        || (isB0016Mcp() && productId == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd');
       allow write: if can('products');
       // Storefront photos — screened per-viewer (viewerIsSensitive). A
       // blank/unset branded_for is generic and always visible.
@@ -168,12 +336,19 @@ service cloud.firestore {
       }
       // Product bill-of-materials + supplier quotes — supply data.
       match /components/{componentId} {
-        allow read, write: if can('supply');
+        allow read: if can('supply') || (isB0016Mcp()
+          && productId == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
+          && componentId in ['mcp_a844ebe21ba90961027c', 'mcp_4e4b6112f372269e30dcfb21ea53ca5f']);
+        allow write: if can('supply');
         match /images/{imageId} {
           allow read, write: if can('supply');
         }
         match /supplier_quotes/{quoteId} {
-          allow read, write: if can('supply');
+          allow read: if can('supply') || (isB0016Mcp()
+            && productId == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
+            && ((componentId == 'mcp_a844ebe21ba90961027c' && quoteId == 'mcp_05752f5a8554c7a7d4bd')
+              || (componentId == 'mcp_4e4b6112f372269e30dcfb21ea53ca5f' && quoteId == 'mcp_49239ae8ae9de42b0d7f9986d60da702')));
+          allow write: if can('supply');
           match /attachments/{attachmentId} {
             allow read, write: if can('supply');
           }
@@ -182,12 +357,47 @@ service cloud.firestore {
     }
 
     match /range_products/{rangeId} {
-      allow read: if canShop() || can('figurine') || can('quotes');
-      allow write: if can('figurine');
+      allow read: if canShop() || can('figurine') || can('quotes') || isB0016Mcp();
+      allow create: if can('figurine') || b0016RangeCreate(rangeId);
+      allow update: if can('figurine') || b0016RangeLink(rangeId);
+      allow delete: if can('figurine');
       match /{allPaths=**} {
         allow read: if canShop() || can('figurine') || can('quotes');
         allow write: if can('figurine');
       }
+    }
+
+    // Atomic claim documents make exact item-code ownership durable across
+    // simultaneous MCP requests. No storefront/customer read is granted.
+    match /range_sku_claims/{itemCode} {
+      allow read: if isB0016Mcp() || can('figurine');
+      allow create: if isB0016Mcp()
+        && itemCode in [
+          'B0016-000-GBK', 'B0016-000-GBL', 'B0016-000-GC1',
+          'B0016-000-GMT', 'B0016-000-GPE', 'B0016-000-GVL'
+        ]
+        && request.resource.data.keys().hasOnly(['item_code', 'range_id', 'service_principal', 'createdAt'])
+        && request.resource.data.item_code == itemCode
+        && request.resource.data.range_id.matches('^mcp_range_[a-f0-9]{32}$')
+        && request.resource.data.service_principal == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /range_mcp_audit/{auditId} {
+      allow read: if isAdmin() || isB0016Mcp();
+      allow create: if isB0016Mcp()
+        && auditId.matches('^mcp_range_[a-f0-9]{64}$')
+        && request.resource.data.keys().hasOnly([
+          'action', 'service_principal', 'requested_by', 'request_id',
+          'request_hash', 'range_id', 'source_product_id',
+          'component_ids', 'quote_ids', 'at'
+        ])
+        && request.resource.data.action in [
+          'create_mezuzah_range_design', 'create_mezuzah_range_components'
+        ]
+        && request.resource.data.service_principal == request.auth.uid
+        && request.resource.data.source_product_id == 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
+        && request.resource.data.request_hash.matches('^[a-f0-9]{64}$');
+      allow update, delete: if false;
     }
 
     // V8.8 Phase 1 colour-preview drafts — top-level so the canShop() wildcard
@@ -203,6 +413,7 @@ service cloud.firestore {
     match /settings/{docId} {
       allow read: if isAdmin()
         || can('settings')
+        || (isB0016Mcp() && docId == 'crystal_colors')
         || (canShop() && docId in [
           'catalogue_band', 'exchange_rates', 'format_moq',
           'front_page', 'productDefaults', 'quote_branding', 'crystal_colors',
@@ -246,7 +457,9 @@ service cloud.firestore {
 
     // Suppliers — supply-side.
     match /suppliers/{supplierId} {
-      allow read, write: if can('supply');
+      allow read: if can('supply') || (isB0016Mcp()
+        && supplierId in ['33VhLPOuBM46wcCmsb7B', 'D1SDoLIAc2aw6PdP76Xo']);
+      allow write: if can('supply');
       match /catalogs/{catalogId} {
         allow read, write: if can('supply');
       }
@@ -435,9 +648,13 @@ service cloud.firestore {
     }
     // Critical components master (metal parts) — supply-side.
     match /range_components/{componentId} {
-      allow read, write: if can('supply');
+      allow read: if can('supply') || isB0016Mcp();
+      allow create: if can('supply') || b0016ComponentCreate(componentId);
+      allow update, delete: if can('supply');
       match /supplier_quotes/{quoteId} {
-        allow read, write: if can('supply');
+        allow read: if can('supply') || (isB0016Mcp() && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}$'));
+        allow create: if can('supply') || b0016QuoteCreate(componentId, quoteId);
+        allow update, delete: if can('supply');
       }
       match /movements/{movementId} {
         allow read, write: if can('supply');

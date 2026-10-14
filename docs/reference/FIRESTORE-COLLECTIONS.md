@@ -35,6 +35,9 @@ the boundary. See `PROJECT-PLAN.md` V8.12 §2.
     - `.../supplier_quotes/{quoteId}` — quotes for that component (see collection-group rule below). Auth: staff.
       - `.../attachments/{attachmentId}`. Auth: staff.
 - `range_products/{id}` (+ all subpaths above, mirrored) — catalogue ranges/families. Auth: portal read, **staff** write (V8.12 — production has full figurine access incl. costing, which writes here). Owned by `Range.jsx`, `RangeForm.jsx`.
+  - Proposed B0016 MCP exception (**not deployed**): the dedicated modules-empty Figurine service may create only an inactive Concept `mcp_range_*` design with six exact item codes, then update only its `critical_components` once. No supplier cost, note, or price belongs in this customer-readable document; `active:false` does not block a direct-ID customer read.
+- `range_sku_claims/{itemCode}` — proposed B0016-only atomic uniqueness claims, one for each of the six exact item codes. MCP create-only; no customer read, update or delete. Existing `range_products` are scanned before claiming because older designs have no claim documents.
+- `range_mcp_audit/{id}` — proposed append-only Figurine MCP audit. Records service principal, action, source/target IDs, request UUID/hash and server timestamp; `requested_by` is `unknown` when no reliable human session metadata exists. Admin and dedicated service read; no update/delete.
 - `range_colour_previews/{id}` — V8.8 unreviewed colour-preview drafts, deliberately a separate top-level collection so `range_products`' portal-read wildcard can't leak drafts. Auth: admin only.
 - `settings/{docId}` — mixed config. *portal-readable* allowlist: `catalogue_band`, `exchange_rates`, `format_moq`, `front_page`, `productDefaults`, `quote_branding`, `crystal_colors`. *staff* (production, V8.12) read+write: `format_moq`, `crystal_unit_costs`, `component_categories`, `crystal_colors`; production also reads `exchange_rates`. **admin-only:** `pricing_groups` (customer markup table — hard wall), plus anything not listed. Owned by `Settings.jsx`, `FrontPageConfig.jsx`, `PricingTiers.jsx`, the Components hub.
 - `favourites/{uid}` — a customer's saved-product list. Auth: self or admin.
@@ -89,6 +92,7 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 
 - `catalogues/{id}` (+ `items/{itemId}`) — Auth: **admin** only. Owned by `Catalogues.jsx`, `CatalogueForm.jsx`, `CataloguePreview.jsx`.
 - `range_components/{id}` — component costing for ranges. Auth: **staff** (V8.12).
+  - Proposed B0016 MCP exception (**not deployed**): only two narrowly shaped component creates with matching nested preferred `supplier_quotes`; Feihong RMB 11.30/MOQ 500 and RMB 2,912 one-time metal fee, Ryan RMB 8.10 source versus RMB 9.00 working/MOQ 100 per colour. No MCP update/delete or customer read. The preferred quote amounts are denormalized onto the component for `rangeCosting.js` and not counted twice.
   - `.../supplier_quotes/{quoteId}` — covered by the collection-group rule above. Auth: staff.
   - `.../movements/{movementId}` — append-only stock ledger (V7.13a) — see the inventory pattern below. Auth: staff.
 
