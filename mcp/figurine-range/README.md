@@ -2,6 +2,16 @@
 
 ## Latest implementation — 15 October 2026 (read/dry-run live, writes disabled)
 
+**B0016 live setup completed and write window closed:** one inactive Concept
+design, six exact variants, seven FM components and seven preferred quotes
+were created through the scoped MCP under the owner's approved exact release.
+C1 renamed in place with its ID/other fields preserved; source Corporate Gift
+and prices unchanged. Both private controls are now revoked, and the live
+endpoint rejects further create requests with `WRITES_DISABLED`. Idempotent
+retries returned the original IDs. Current record, release and evidence:
+[completion report](../../docs/plans/B0016-LIVE-SETUP-COMPLETE-2026-10-15.md).
+This completion supersedes historical "no B0016 records" statements below.
+
 **Owner-approved setup release:** the endpoint and rules now support only
 the exact expiring private B0016 setup controls, not an environment write flag.
 The older two-component writer is disabled. Default/missing/revoked controls

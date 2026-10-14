@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "range_id": "mcp_range_70a2cc0a0ba82d0e75206c989d28800e",
+  "edit_url": "https://portal.crystocraft.com/range/mcp_range_70a2cc0a0ba82d0e75206c989d28800e",
+  "variants": 6,
+  "components": 7,
+  "quotes": 7,
+  "variant_mapping": [
+    {
+      "item_code": "B0016-000-GBK",
+      "component_codes": [
+        "FM-B0016BY00-G",
+        "FM-CF003-BK"
+      ]
+    },
+    {
+      "item_code": "B0016-000-GBL",
+      "component_codes": [
+        "FM-B0016BY00-G",
+        "FM-CF003-BL"
+      ]
+    },
+    {
+      "item_code": "B0016-000-GC1",
+      "component_codes": [
+        "FM-B0016BY00-G",
+        "FM-CF003-C1"
+      ]
+    },
+    {
+      "item_code": "B0016-000-GMT",
+      "component_codes": [
+        "FM-B0016BY00-G",
+        "FM-CF003-MT"
+      ]
+    },
+    {
+      "item_code": "B0016-000-GPE",
+      "component_codes": [
+        "FM-B0016BY00-G",
+        "FM-CF003-PE"
+      ]
+    },
+    {
+      "item_code": "B0016-000-GVL",
+      "component_codes": [
+        "FM-B0016BY00-G",
+        "FM-CF003-VL"
+      ]
+    }
+  ],
+  "c1_id_preserved": true,
+  "source_concept_unchanged": true,
+  "active": false,
+  "selling_price_published": false,
+  "screws": false,
+  "read_only": true
+}
