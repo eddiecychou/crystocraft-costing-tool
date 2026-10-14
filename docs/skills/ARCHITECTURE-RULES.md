@@ -446,6 +446,12 @@ later edited.
 
 ## 7. Verify & deploy playbook
 
+**MANDATORY for every app release:** follow `RELEASE-WORKFLOW.md`. Fresh admin
+AND approved-customer login must pass on the exact candidate and again on current
+production, with role routing, data loading, access separation and refresh.
+Missing account access is BLOCKED, never skipped. A key probe or restored session
+is not fresh-login evidence. Record both roles before declaring completion.
+
 **Firebase login is a release gate (15 Oct 2026 incident).** Never feed masked
 `netlify env:get` / connector secret values into a local build. Vite now validates
 all six public Firebase fields and rejects masked/placeholder keys and the wrong

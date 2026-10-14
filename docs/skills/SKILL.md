@@ -66,6 +66,7 @@ wins on *facts*; skill wins on *rules and lessons*.
 | File | Governs | Read before |
 |---|---|---|
 | **`SKILL.md`** (this) | Overview, stack, feature-area router, session start | Every session |
+| **`RELEASE-WORKFLOW.md`** | Required candidate + production fresh admin/customer login gates and evidence | Every app release, including MCP-only/manual deploys |
 | **`ARCHITECTURE-RULES.md`** | Hard boundaries: isolation, RBAC, data lifecycles, snapshots, verify/deploy | Any change to auth, rules, roles, or cross-collection data |
 | **`MARKETING-WORKFLOW.md`** | Daily Drafts, campaigns, blog→WordPress/SEO, image retouch ("Artgen") | Touching outreach, content, or product-image editing |
 | **`WRITING-STYLE.md`** | Eddie's actual writing voice — tone, sentence structure, vocabulary, anti-AI-cliché list, imitation examples — derived from real sent mail | Generating any Daily Draft, customer reply, or other outbound copy meant to read as Eddie's own |
@@ -113,7 +114,8 @@ Persistent AI memory: `~/.claude/projects/-Users-eddie-Developer-costing-tool/me
    relevant skill file.
 3. Version/cycle: `src/appInfo.js` (`APP_VERSION`). Bump at cycle **start**, not
    close (`LESSONS-LEARNED.md`).
-4. Before any deploy: `ARCHITECTURE-RULES.md` §Verify-&-Deploy. Before telling
+4. Before any deploy: `ARCHITECTURE-RULES.md` §Verify-&-Deploy and
+   **`RELEASE-WORKFLOW.md`** (both fresh role sign-ins, never silently skipped). Before telling
    the user to install anything: `../reference/LOCAL-TOOLS.md`.
 5. Optional orientation aid: a Graphify code graph exists at `../../graphify-out/`
    (`graphify query "<question>"`, `graphify explain "<symbol>"` — not wired

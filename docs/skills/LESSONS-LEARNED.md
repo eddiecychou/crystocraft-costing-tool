@@ -17,6 +17,10 @@
   the actual served bundle key after release and have the owner verify password
   sign-in. Do not reset passwords or rewrite roles speculatively. This is NOT
   L-01's old self-heal demotion. Evidence: `../plans/LOGIN-CONFIG-INCIDENT-2026-10-15.md`.
+  **Owner-required gate:** `RELEASE-WORKFLOW.md` now requires fresh admin AND
+  approved-customer sign-ins on candidate/current production, role/data/access/
+  refresh checks and per-role evidence. Missing access is BLOCKED, not SKIP. The
+  earlier restored-admin-session evidence alone does not meet this stronger gate.
 
 > Every significant failure and its **verified permanent fix**, code-linked.
 > Read this before "fixing" anything that feels familiar. **After any new

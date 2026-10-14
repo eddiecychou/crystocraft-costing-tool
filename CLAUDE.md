@@ -23,6 +23,10 @@ of record, one function at a time.
 
 ## The documents, in reading order
 
+**Every release must follow `docs/skills/RELEASE-WORKFLOW.md`: fresh admin AND
+customer sign-in on candidate and production, with per-role evidence.** Build/MCP
+tests, a valid API key or a restored admin session alone do not close a release.
+
 | File | What it holds |
 |---|---|
 | `docs/skills/SKILL.md` | **Master router + skill index.** Feature-area index (pages ↔ logic ↔ edge fns ↔ collections ↔ spec), stack, session-start. Start here to locate anything. |

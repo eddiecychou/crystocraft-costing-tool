@@ -1,5 +1,13 @@
 # Rendering a PDF to look at it
 
+> **Every release:** first follow
+> [`RELEASE-WORKFLOW.md`](../docs/skills/RELEASE-WORKFLOW.md). Run
+> `node --test qa/firebase-login-config.test.mjs`, the production build, and
+> `node scripts/verify-deployed-login.mjs <release-https-url>` on candidate and
+> production. Those commands do not authenticate users: fresh admin AND approved
+> customer sign-ins, role/data/access/refresh checks and per-role evidence remain
+> mandatory. Missing authorized account access is BLOCKED, never PASS.
+
 This Mac has no permanent Node, so PDF layout used to be changed blind: parse
 with esbuild, push, and let the owner find the breakage. That cost three bad
 deploys on the catalogue in one evening — overlapping rows, then a worse mess,
