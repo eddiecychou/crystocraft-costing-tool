@@ -1,5 +1,9 @@
 # B0016 final colour-BOM dry-run review
 
+> **Superseded for creation:** the owner corrected fabric codes to
+> `FM-CF003-BK/BL/C1/MT/PE/VL`. This P-code report/JSON is historical evidence,
+> not an approval or replayable plan. Use [the revised FM migration review](B0016-FM-CODE-MIGRATION-REVIEW-2026-10-14.md).
+
 Status: local code + read-only live data verification. **Zero production writes;
 no push, deployment, service provisioning or price publication.**
 

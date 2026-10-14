@@ -2,7 +2,8 @@
 export const B0016_COLOURS = ['BK', 'BL', 'C1', 'MT', 'PE', 'VL']
 export const B0016_METAL_CODE = 'FM-B0016BY00-G'
 export const B0016_REUSE_ID = 'rc_mv7xu3mmayc5g'
-export const B0016_FABRIC_CODES = B0016_COLOURS.map(code => `P-CF003-${code}`)
+export const B0016_FABRIC_CODES = B0016_COLOURS.map(code => `FM-CF003-${code}`)
+export const B0016_PLAN_REVISION = 'fm-cf003-v2'
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value
 const equal = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b))
 
@@ -14,12 +15,14 @@ export async function prepareB0016ColourBom(input, ctx, api, retry = false) {
     if (typeof name !== 'string' || !name.trim() || name.length > 160) throw new Error('SOURCE_SUPPLIER_INVALID: supplier display name must be nonempty and at most 160 characters')
   }
   const existing = await api.get(ctx, `range_components/${B0016_REUSE_ID}`)
-  if (!existing || existing.code !== 'P-CF003-C1') throw new Error('REUSE_COMPONENT_CHANGED: reviewed P-CF003-C1 record is missing or has changed code')
+  if (!existing || existing.code !== (retry ? 'FM-CF003-C1' : 'P-CF003-C1')) throw new Error('REUSE_COMPONENT_CHANGED: exact C1 code does not match the expected pre-rename/retry state')
   // Do not replace an operator's independently assigned supplier/cost/quote.
   if (!retry && (existing.supplierId || existing.unit_cost != null || existing.preferred_quote_id || existing.tooling_sample_cost != null || existing.volume_tiers?.length))
     throw new Error('REUSE_COMPONENT_NEEDS_REVIEW: existing C1 already has supplier/cost/preferred quote data; no automatic overwrite')
   const quotes = await api.listReuseQuotes(ctx)
   if (!retry && quotes.length) throw new Error('REUSE_QUOTE_NEEDS_REVIEW: existing C1 supplier quotes require review before adding another')
+  if (!retry && ((existing.stock_qty != null && existing.stock_qty !== 0) || (existing.reserved_qty != null && existing.reserved_qty !== 0) || existing.used_by?.length))
+    throw new Error('C1_USAGE_REVIEW_REQUIRED: stock, reservations or usage hints block in-place rename')
   const designPreview = await api.designPreview(ctx, { item_codes: api.ITEM_CODES })
   let range = null
   if (input.range_id) {
@@ -31,6 +34,7 @@ export async function prepareB0016ColourBom(input, ctx, api, retry = false) {
   const identity = await api.identity('b0016_colour_bom', request_id, {
     range_id: input.range_id || null, metal_code: B0016_METAL_CODE,
     fabric_codes: B0016_FABRIC_CODES, reuse_component_id: B0016_REUSE_ID,
+    plan_revision: B0016_PLAN_REVISION, legacy_c1_action: 'rename_in_place_after_approval',
   })
   const range_id = input.range_id || '{approved_B0016_range_id}'
   const metadata = { mcp_creator_uid: api.RANGE_SERVICE_UID, mcp_range_id: range_id, mcp_request_id: request_id, mcp_request_hash: identity.hash, mcp_audit_id: identity.audit_id }
@@ -57,17 +61,18 @@ export async function prepareB0016ColourBom(input, ctx, api, retry = false) {
   records.push({ action: 'create', path: `range_components/${identity.metal_id}/supplier_quotes/${identity.metal_quote_id}`, fields: quote('metal') })
   B0016_COLOURS.forEach((colour, i) => {
     const reuse = i === 2
-    records.push({ action: reuse ? 'update_cost_mirror_only_after_approval' : 'create', path: `range_components/${ids[i]}`, ...(reuse ? { precondition_update_time: existing.updateTime, preserve_existing_fields: ['code', 'name', 'notes', 'images', 'stock_qty', 'reserved_qty', 'movements', 'createdAt'] } : {}), fields: { ...(!reuse ? { code: B0016_FABRIC_CODES[i], name: `Mezuzah Crystal Fabric Panel ${colour}`, category: '', plating_code: '', notes: '', images: [] } : {}), ...costMirror('fabric', quoteIds[i]), ...metadata } })
+    records.push({ action: reuse ? 'rename_code_and_cost_mirror_after_approval' : 'create', path: `range_components/${ids[i]}`, ...(reuse ? { precondition_update_time: existing.updateTime, old_code: 'P-CF003-C1', new_code: 'FM-CF003-C1', preserve_existing_fields: ['name', 'notes', 'images', 'stock_qty', 'reserved_qty', 'movements', 'createdAt'] } : {}), fields: { ...(!reuse ? { name: `Mezuzah Crystal Fabric Panel ${colour}`, category: '', plating_code: '', notes: '', images: [] } : {}), code: B0016_FABRIC_CODES[i], ...costMirror('fabric', quoteIds[i]), ...metadata } })
     records.push({ action: 'create', path: `range_components/${ids[i]}/supplier_quotes/${quoteIds[i]}`, fields: quote('fabric', colour) })
   })
   records.push({ action: 'update_only_critical_components', path: `range_products/${range_id}`, precondition_update_time: range?.updateTime, fields: { critical_components: refs } })
-  records.push({ action: 'create', path: `range_mcp_audit/${identity.audit_id}`, fields: { action: 'b0016_colour_bom', service_principal: api.RANGE_SERVICE_UID, requested_by: 'unknown', request_id, request_hash: identity.hash, range_id, source_product_id: api.SOURCE_PRODUCT_ID, reused_component_id: B0016_REUSE_ID, component_ids: [identity.metal_id, ...ids], quote_ids: [identity.metal_quote_id, ...quoteIds] } })
+  records.push({ action: 'create', path: `range_mcp_audit/${identity.audit_id}`, fields: { action: 'b0016_colour_bom', service_principal: api.RANGE_SERVICE_UID, requested_by: 'unknown', request_id, request_hash: identity.hash, range_id, source_product_id: api.SOURCE_PRODUCT_ID, reused_component_id: B0016_REUSE_ID, component_ids: [identity.metal_id, ...ids], quote_ids: [identity.metal_quote_id, ...quoteIds], code_migration: { component_id: B0016_REUSE_ID, from_code: 'P-CF003-C1', to_code: 'FM-CF003-C1' } } })
   return {
     ok: true, dry_run: true, will_write: false, blocked: true, live_writes_enabled: false,
-    request_id, request_hash: identity.hash, source_verified: true,
-    approval_required: { path: `range_mcp_approvals/${identity.audit_id}`, provisioned: false, service_can_write_approval: false, requires_actual_range_id: !range, description: 'Separate owner review must approve the exact private component/quote/BOM/audit plan and current C1 snapshot, with a short expiry and fresh legacy-code/quote audit. This dry run creates no approval.' },
+    request_id, request_hash: identity.hash, source_verified: true, plan_revision: B0016_PLAN_REVISION,
+    migration: { component_id: B0016_REUSE_ID, from_code: 'P-CF003-C1', to_code: 'FM-CF003-C1', action: 'rename_in_place_after_approval', performed: false, record_id_preserved: true },
+    approval_required: { path: `range_mcp_approvals/${identity.audit_id}`, provisioned: false, service_can_write_approval: false, requires_actual_range_id: !range, usage_review_max_age_minutes: 15, description: 'Separate owner review must approve the exact FM component/quote/BOM/audit plan and typed C1 before/after rename snapshot. A zero-reference/conflict/child-record usage attestation, at most 15 minutes old and matching C1 updateTime, is mandatory. This dry run creates no approval.' },
     warnings: [...designPreview.warnings,
-      { code: 'LEGACY_COMPONENT_CODE_AUDIT_REQUIRED', message: 'Privileged all-catalogue scan must confirm six new codes remain unused and C1 is this exact existing record.' },
+      { code: 'LEGACY_COMPONENT_CODE_AUDIT_REQUIRED', message: 'Fresh privileged audit must confirm all seven FM codes unused and zero legacy C1 references, child records, stock or reservations before rename.' },
       { code: 'SUPPLIER_COLOUR_COVERAGE_REVIEW', message: 'Ryan source names do not map all six owner item-code colours. Proposed RMB 9 working costs are not confirmation of supplier colour availability.' },
       { code: 'PHASE_TWO_RULES_REQUIRED', message: 'Atomic writer implemented locally. Live writes remain disabled in both endpoint configuration and Firestore rules; separate approval and release required.' }],
     conflicts: designPreview.conflicts.filter(row => row.range_id !== input.range_id),
@@ -84,7 +89,7 @@ export async function createB0016ColourBom(input, ctx, api) {
   if (!/^[a-f0-9]{64}$/.test(input.expected_preview_hash || '')) throw new Error('PREVIEW_REQUIRED: supply the exact approved dry-run request_hash')
   if (input.acknowledge_supplier_colour_pending !== true) throw new Error('REVIEW_REQUIRED: supplier colour coverage remains pending; explicitly acknowledge before creation')
   const request_id = api.requestId(input.request_id)
-  const ids = await api.identity('b0016_colour_bom', request_id, { range_id: input.range_id, metal_code: B0016_METAL_CODE, fabric_codes: B0016_FABRIC_CODES, reuse_component_id: B0016_REUSE_ID })
+  const ids = await api.identity('b0016_colour_bom', request_id, { range_id: input.range_id, metal_code: B0016_METAL_CODE, fabric_codes: B0016_FABRIC_CODES, reuse_component_id: B0016_REUSE_ID, plan_revision: B0016_PLAN_REVISION, legacy_c1_action: 'rename_in_place_after_approval' })
   if (ids.hash !== input.expected_preview_hash) throw new Error('PREVIEW_MISMATCH: preview is for different content/range')
   const priorAudit = await api.get(ctx, `range_mcp_audit/${ids.audit_id}`)
   if (priorAudit && priorAudit.request_hash !== ids.hash) throw new Error('DUPLICATE_REQUEST: UUID already used for different content')
@@ -108,6 +113,11 @@ export async function createB0016ColourBom(input, ctx, api) {
     || !Number.isFinite(Date.parse(approval.expires_at))
     || Object.entries(expectedApproval).some(([key, value]) => !equal(approval[key], value)))
     throw new Error('OWNER_PLAN_APPROVAL_REQUIRED: owner must separately approve this exact private plan, C1 snapshot, and code audit; service cannot approve itself')
+  const review = approval.usage_review
+  if (!review || review.reference_count !== 0 || review.code_conflict_count !== 0 || review.child_record_count !== 0
+    || review.c1_update_time !== c1.updateTime || !Number.isFinite(Date.parse(review.checked_at))
+    || Date.parse(review.checked_at) > Date.now() || Date.now() - Date.parse(review.checked_at) > 15 * 60 * 1000)
+    throw new Error('C1_USAGE_REVIEW_REQUIRED: exact owner plan needs a fresh zero-reference/conflict/child-record audit matching the current C1 snapshot')
   // Detect partial/orphaned output before issuing any write.
   for (const record of records.filter(record => record.action === 'create')) {
     if (await api.get(ctx, record.path)) throw new Error('INCOMPLETE_PRIOR_REQUEST: planned ID exists without matching audit; review required')

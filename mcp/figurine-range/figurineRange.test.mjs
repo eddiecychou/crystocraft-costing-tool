@@ -81,12 +81,12 @@ test('exact B0016 codes and customer-readable draft contain no supplier cost or 
 async function colourFixture() {
   const f = fixture(), range_id = 'mcp_range_' + 'd'.repeat(32)
   f.puts(`range_products/${range_id}`, { ...designDraft(), mcp_creator_uid: RANGE_SERVICE_UID, customer_note: 'preserve' })
-  f.puts(`range_components/${B0016_REUSE_ID}`, { code: 'P-CF003-C1', name: 'mezuza水晶布', notes: 'preserve', images: ['photo'], stock_qty: 12, reserved_qty: 2, createdAt: 'old' })
+  f.puts(`range_components/${B0016_REUSE_ID}`, { code: 'P-CF003-C1', name: 'mezuza水晶布', notes: 'preserve', images: ['photo'], stock_qty: 0, reserved_qty: 0, createdAt: 'old' })
   const preview = await f.call('prepare_mezuzah_colour_bom', { range_id, request_id: uuid, dry_run: true })
   assert.equal(preview.body.ok, true)
   const input = { range_id, request_id: uuid, dry_run: false, approved: true, expected_preview_hash: preview.body.request_hash, acknowledge_supplier_colour_pending: true }
   const auditId = preview.body.proposed.records.at(-1).path.split('/')[1]
-  f.puts(`range_mcp_approvals/${auditId}`, { ...approvalPlan(preview.body, data(f.docs.get(`range_components/${B0016_REUSE_ID}`)), RANGE_SERVICE_UID), approved: true, expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() })
+  f.puts(`range_mcp_approvals/${auditId}`, { ...approvalPlan(preview.body, data(f.docs.get(`range_components/${B0016_REUSE_ID}`)), RANGE_SERVICE_UID), approved: true, expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), usage_review: { reference_count: 0, code_conflict_count: 0, child_record_count: 0, c1_update_time: '2026-10-14T00:00:00Z', checked_at: new Date().toISOString() } })
   return { ...f, input, preview, options: { writesEnabled: true, legacyCodeAuditCertified: true } }
 }
 test('seven writer gates, strict inputs and dry-run remain write-free', async () => {
@@ -116,8 +116,8 @@ test('seven writer atomic rejection then success, exact C1 preservation, audit, 
   const first = await f.call('create_mezuzah_colour_bom', f.input, f.options)
   assert.equal(first.body.created, true); assert.equal(f.commits.at(-1).length, 16)
   const c1 = data(f.docs.get(`range_components/${B0016_REUSE_ID}`))
-  assert.equal(c1.code, 'P-CF003-C1'); assert.equal(c1.name, 'mezuza水晶布'); assert.equal(c1.stock_qty, 12)
-  assert.equal(c1.reserved_qty, 2); assert.equal(c1.createdAt, 'old'); assert.equal(c1.notes, 'preserve'); assert.deepEqual(c1.images, ['photo'])
+  assert.equal(c1.code, 'FM-CF003-C1'); assert.equal(c1.name, 'mezuza水晶布'); assert.equal(c1.stock_qty, 0)
+  assert.equal(c1.reserved_qty, 0); assert.equal(c1.createdAt, 'old'); assert.equal(c1.notes, 'preserve'); assert.deepEqual(c1.images, ['photo'])
   assert.equal(c1.unit_cost, 9)
   const range = data(f.docs.get(`range_products/${f.input.range_id}`))
   assert.equal(range.customer_note, 'preserve'); assert.equal(range.active, false); assert.equal(range.status, 'concept')
@@ -137,7 +137,7 @@ test('seven writer recovers lost successful response and rejects orphan output, 
   assert.equal(r.body.already_exists, true)
   const other = 'mcp_range_' + 'e'.repeat(32)
   f.puts(`range_products/${other}`, { ...designDraft(), mcp_creator_uid: RANGE_SERVICE_UID })
-  const ids = await identity('b0016_colour_bom', uuid, { range_id: other, metal_code: 'FM-B0016BY00-G', fabric_codes: ['BK','BL','C1','MT','PE','VL'].map(c => 'P-CF003-' + c), reuse_component_id: B0016_REUSE_ID })
+  const ids = await identity('b0016_colour_bom', uuid, { range_id: other, metal_code: 'FM-B0016BY00-G', fabric_codes: ['BK','BL','C1','MT','PE','VL'].map(c => 'FM-CF003-' + c), reuse_component_id: B0016_REUSE_ID, plan_revision: 'fm-cf003-v2', legacy_c1_action: 'rename_in_place_after_approval' })
   assert.equal((await f.call('create_mezuzah_colour_bom', { ...f.input, range_id: other, expected_preview_hash: ids.hash }, f.options)).body.error.code, 'DUPLICATE_REQUEST')
   const orphan = await colourFixture()
   const planned = orphan.preview.body.proposed.records[0]
@@ -148,6 +148,35 @@ test('seven writer recovers lost successful response and rejects orphan output, 
   changed.puts(`range_components/${B0016_REUSE_ID}`, { ...old, unit_cost: 10 })
   assert.equal((await changed.call('create_mezuzah_colour_bom', changed.input, changed.options)).body.error.code, 'REUSE_COMPONENT_NEEDS_REVIEW')
   assert.equal(changed.commits.length, 0)
+})
+
+test('FM writer blocks missing/stale/nonzero usage attestations, mismatched snapshots and stock hints without commits', async () => {
+  for (const change of ['missing','stale','references','conflict','children','snapshot','stock','used_by']) {
+    const f = await colourFixture(), path = [...f.docs.keys()].find(p => p.startsWith('range_mcp_approvals/'))
+    const approval = data(f.docs.get(path))
+    if (change === 'missing') delete approval.usage_review
+    if (change === 'stale') approval.usage_review.checked_at = new Date(Date.now() - 16 * 60 * 1000).toISOString()
+    if (change === 'references') approval.usage_review.reference_count = 1
+    if (change === 'conflict') approval.usage_review.code_conflict_count = 1
+    if (change === 'children') approval.usage_review.child_record_count = 1
+    if (change === 'snapshot') approval.usage_review.c1_update_time = 'different'
+    if (change === 'stock' || change === 'used_by') {
+      const old = data(f.docs.get(`range_components/${B0016_REUSE_ID}`))
+      f.puts(`range_components/${B0016_REUSE_ID}`, { ...old, ...(change === 'stock' ? { stock_qty: 1 } : { used_by: ['other'] }) })
+    }
+    f.puts(path, approval)
+    assert.equal((await f.call('create_mezuzah_colour_bom', f.input, f.options)).body.error.code, 'C1_USAGE_REVIEW_REQUIRED')
+    assert.equal(f.commits.length, 0)
+  }
+})
+test('FM dry run uses exact codes and explicit old/new rename; superseded P preview cannot pass the write gate', async () => {
+  const f = await colourFixture(), p = f.preview.body
+  assert.deepEqual(p.proposed.critical_components.map(r => r.code), ['FM-B0016BY00-G', ...['BK','BL','C1','MT','PE','VL'].map(c => 'FM-CF003-' + c)])
+  assert.equal(p.proposed.records[6].old_code, 'P-CF003-C1'); assert.equal(p.proposed.records[6].new_code, 'FM-CF003-C1')
+  assert.deepEqual(p.proposed.records.find(r => r.path.startsWith('range_products/')).fields.critical_components, p.proposed.critical_components)
+  const old = await identity('b0016_colour_bom', f.input.request_id, { range_id: f.input.range_id, metal_code: 'FM-B0016BY00-G', fabric_codes: ['BK','BL','C1','MT','PE','VL'].map(c => 'P-CF003-' + c), reuse_component_id: B0016_REUSE_ID })
+  assert.equal((await f.call('create_mezuzah_colour_bom', { ...f.input, expected_preview_hash: old.hash }, f.options)).body.error.code, 'PREVIEW_MISMATCH')
+  assert.equal(f.commits.length, 0)
 })
 
 test('dry run checks uniqueness and reports B/000/G and missing colour taxonomy without writes', async () => {

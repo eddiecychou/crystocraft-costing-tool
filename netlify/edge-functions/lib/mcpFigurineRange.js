@@ -272,7 +272,7 @@ async function designOperation(op, input, ctx) {
 }
 
 async function componentOperation(op, input, ctx) {
-  if (op === 'create_mezuzah_range_components' && (input.metal_component_code === 'FM-B0016BY00-G' || /^P-CF003-/.test(input.fabric_component_code || '')))
+  if (op === 'create_mezuzah_range_components' && (input.metal_component_code === 'FM-B0016BY00-G' || /^(P|FM)-CF003-/.test(input.fabric_component_code || '')))
     return fail('COLOUR_BOM_REVIEW_REQUIRED', 'Use prepare_mezuzah_colour_bom. The legacy two-component create cannot represent six colour-specific panels; no write is allowed.', 409)
   const range_id = id(input.range_id, 'range_id')
   if (!/^mcp_range_[a-f0-9]{32}$/.test(range_id)) return fail('INVALID_RANGE_ID', 'Only a Range design created by this B0016 workflow is supported')
@@ -407,6 +407,6 @@ export async function handleMcpFigurineRange(req, { authorize, fetchImpl = fetch
     return await componentOperation(body.op, input, ctx)
   } catch (error) {
     const code = String(error.message).split(':')[0]
-    return fail(['READ_FAILED', 'SEARCH_LIMIT', 'SOURCE_PRODUCT_INVALID', 'SOURCE_QUOTE_CHANGED', 'SOURCE_SUPPLIER_INVALID', 'REUSE_COMPONENT_CHANGED', 'REUSE_COMPONENT_NEEDS_REVIEW', 'REUSE_QUOTE_NEEDS_REVIEW', 'RANGE_NOT_B0016', 'BOM_NOT_EMPTY', 'APPROVAL_REQUIRED', 'WRITES_DISABLED', 'LEGACY_COMPONENT_CODE_AUDIT_REQUIRED', 'INVALID_RANGE_ID', 'PREVIEW_REQUIRED', 'REVIEW_REQUIRED', 'PREVIEW_MISMATCH', 'DUPLICATE_REQUEST', 'INCOMPLETE_PRIOR_REQUEST', 'DUPLICATE_ITEM_CODE', 'ATOMIC_WRITE_UNCONFIRMED', 'ATOMIC_WRITE_FAILED', 'PERMISSION_DENIED', 'WRITE_VERIFICATION_FAILED', 'OWNER_PLAN_APPROVAL_REQUIRED'].includes(code) ? code : 'INVALID_REQUEST', error.message, code === 'READ_FAILED' ? 502 : ['WRITES_DISABLED', 'PERMISSION_DENIED'].includes(code) ? 403 : 400)
+    return fail(['READ_FAILED', 'SEARCH_LIMIT', 'SOURCE_PRODUCT_INVALID', 'SOURCE_QUOTE_CHANGED', 'SOURCE_SUPPLIER_INVALID', 'REUSE_COMPONENT_CHANGED', 'REUSE_COMPONENT_NEEDS_REVIEW', 'REUSE_QUOTE_NEEDS_REVIEW', 'C1_USAGE_REVIEW_REQUIRED', 'RANGE_NOT_B0016', 'BOM_NOT_EMPTY', 'APPROVAL_REQUIRED', 'WRITES_DISABLED', 'LEGACY_COMPONENT_CODE_AUDIT_REQUIRED', 'INVALID_RANGE_ID', 'PREVIEW_REQUIRED', 'REVIEW_REQUIRED', 'PREVIEW_MISMATCH', 'DUPLICATE_REQUEST', 'INCOMPLETE_PRIOR_REQUEST', 'DUPLICATE_ITEM_CODE', 'ATOMIC_WRITE_UNCONFIRMED', 'ATOMIC_WRITE_FAILED', 'PERMISSION_DENIED', 'WRITE_VERIFICATION_FAILED', 'OWNER_PLAN_APPROVAL_REQUIRED'].includes(code) ? code : 'INVALID_REQUEST', error.message, code === 'READ_FAILED' ? 502 : ['WRITES_DISABLED', 'PERMISSION_DENIED'].includes(code) ? 403 : 400)
   }
 }

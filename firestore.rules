@@ -171,7 +171,7 @@ service cloud.firestore {
     function b0016ComponentCreate(componentId) {
       return isB0016Mcp() && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}$')
         && request.resource.data.code != 'FM-B0016BY00-G'
-        && !request.resource.data.code.matches('^P-CF003-.*')
+        && !request.resource.data.code.matches('^(P|FM)-CF003-.*')
         && request.resource.data.keys().hasOnly([
           'code', 'name', 'category', 'plating_code', 'supplierId',
           'supplierName', 'notes', 'images', 'unit_cost',
@@ -258,7 +258,11 @@ service cloud.firestore {
     function colourPlanValid(p) {
       return isB0016Mcp() && p.service_principal == request.auth.uid
         && p.expires_at is timestamp && p.expires_at > request.time
-        && p.expires_at <= request.time + duration.value(1, 'h') && p.approved == true;
+        && p.expires_at <= request.time + duration.value(1, 'h') && p.approved == true
+        && p.usage_review.reference_count == 0 && p.usage_review.code_conflict_count == 0
+        && p.usage_review.child_record_count == 0
+        && p.usage_review.checked_at is timestamp && p.usage_review.checked_at <= request.time
+        && p.usage_review.checked_at >= request.time - duration.value(15, 'm');
     }
     function colourFreshAudit(d) {
       let a = getAfter(/databases/$(database)/documents/range_mcp_audit/$(d.mcp_audit_id)).data;
@@ -279,6 +283,12 @@ service cloud.firestore {
       let d = request.resource.data;
       let p = colourPlan(d.mcp_audit_id);
       return colourPlanValid(p) && componentId != 'rc_mv7xu3mmayc5g'
+        && ((d.code == 'FM-B0016BY00-G' && componentId.matches('^mcp_b0016_m_[a-f0-9]{20}$'))
+          || (d.code == 'FM-CF003-BK' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_bk$'))
+          || (d.code == 'FM-CF003-BL' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_bl$'))
+          || (d.code == 'FM-CF003-MT' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_mt$'))
+          || (d.code == 'FM-CF003-PE' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_pe$'))
+          || (d.code == 'FM-CF003-VL' && componentId.matches('^mcp_b0016_f_[a-f0-9]{20}_vl$')))
         && d.diff(p.components[componentId]).affectedKeys().hasOnly(['createdAt'])
         && d.createdAt == request.time && colourFreshAudit(d);
     }
@@ -286,8 +296,14 @@ service cloud.firestore {
       let d = request.resource.data;
       let p = colourPlan(d.mcp_audit_id);
       return componentId == 'rc_mv7xu3mmayc5g' && colourPlanValid(p)
+        && resource.data.code == 'P-CF003-C1' && d.code == 'FM-CF003-C1'
+        && resource.data.get('stock_qty', null) in [null, 0] && resource.data.get('reserved_qty', null) in [null, 0]
+        && resource.data.get('used_by', []) == [] && resource.data.get('unit_cost', null) == null
+        && resource.data.get('tooling_sample_cost', null) == null
+        && resource.data.get('supplierId', '') == '' && resource.data.get('preferred_quote_id', '') == ''
+        && p.audit.code_migration == {'component_id':componentId,'from_code':'P-CF003-C1','to_code':'FM-CF003-C1'}
         && resource.data == p.c1_before && d == p.components[componentId]
-        && d.diff(resource.data).affectedKeys().hasOnly(['supplierId','supplierName','preferred_quote_id','unit_cost',
+        && d.diff(resource.data).affectedKeys().hasOnly(['code','supplierId','supplierName','preferred_quote_id','unit_cost',
           'unit_cost_currency','tooling_sample_cost','tooling_sample_cost_currency','volume_tiers',
           'mcp_creator_uid','mcp_range_id','mcp_request_id','mcp_request_hash','mcp_audit_id'])
         && colourFreshAudit(d);
@@ -776,7 +792,7 @@ service cloud.firestore {
     match /range_components/{componentId} {
       // One owner-selected reuse record. No list-all or write grant.
       allow get: if isB0016Mcp() && componentId == 'rc_mv7xu3mmayc5g'
-        && resource.data.code == 'P-CF003-C1';
+        && resource.data.code in ['P-CF003-C1', 'FM-CF003-C1'];
       allow get: if can('supply') || (isB0016Mcp()
         && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}(_(bk|bl|mt|pe|vl))?$')
         && (!exists(/databases/$(database)/documents/range_components/$(componentId)) || resource.data.mcp_creator_uid == request.auth.uid));
@@ -788,7 +804,7 @@ service cloud.firestore {
       match /supplier_quotes/{quoteId} {
         // Exact C1 child scope is needed to prevent duplicate supplier quotes.
         allow read: if isB0016Mcp() && componentId == 'rc_mv7xu3mmayc5g'
-          && get(/databases/$(database)/documents/range_components/$(componentId)).data.code == 'P-CF003-C1';
+          && get(/databases/$(database)/documents/range_components/$(componentId)).data.code in ['P-CF003-C1', 'FM-CF003-C1'];
         allow get: if can('supply') || (isB0016Mcp()
           && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}(_(bk|bl|mt|pe|vl))?$')
           && (!exists(/databases/$(database)/documents/range_components/$(componentId)/supplier_quotes/$(quoteId)) || resource.data.mcp_creator_uid == request.auth.uid));

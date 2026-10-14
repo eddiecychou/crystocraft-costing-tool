@@ -3,13 +3,14 @@ import { readFileSync } from 'node:fs'
 import { initializeApp, cert, deleteApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { handleMcpFigurineRange, ITEM_CODES, SOURCE_PRODUCT_ID, SOURCE_PARTS, RANGE_SERVICE_UID, encode, usedSkus, designDraft } from '../netlify/edge-functions/lib/mcpFigurineRange.js'
-import { B0016_REUSE_ID, B0016_FABRIC_CODES, B0016_METAL_CODE } from '../netlify/edge-functions/lib/b0016ColourBom.js'
+import { B0016_REUSE_ID, B0016_METAL_CODE, B0016_FABRIC_CODES } from '../netlify/edge-functions/lib/b0016ColourBom.js'
+import { auditFmMigration } from './audit-b0016-fm-migration.mjs'
 
 if (!process.env.SA_KEY_PATH) throw Error('Supply an existing owner credential path, not a new service identity')
 const key = JSON.parse(readFileSync(process.env.SA_KEY_PATH, 'utf8'))
 if (key.project_id !== 'crystocraft-costing') throw Error('Unexpected project')
 const app = initializeApp({credential:cert(key)},'b0016-final-read-only-preview')
-const request_id = '70e51438-1e69-4ec1-a122-bd6e0621a023'
+const request_id = 'bb6eb474-882d-4c4e-9e5e-daf5ca1b7a2a'
 try {
  const db=getFirestore(app)
  const [designs,components]=await Promise.all([db.collection('range_products').select('design_no','design_code','format_code','variants','finishes').get(),db.collection('range_components').select('code','name').get()])
@@ -36,7 +37,12 @@ try {
    const d=await db.doc(path).get();return d.exists?Response.json(fsDoc(d)):new Response('{}',{status:404})
  }
  const response=await handleMcpFigurineRange(new Request('https://portal.crystocraft.com/api/mcp-figurine-range',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'prepare_mezuzah_colour_bom',input:{request_id,dry_run:true}})}),{projectId:'crystocraft-costing',fetchImpl,writesEnabled:false,authorize:async()=>({ok:true,uid:RANGE_SERVICE_UID,role:'staff'})})
- const result=await response.json()
- if(!response.ok||writeAttempts||result.will_write!==false)throw Error(JSON.stringify(result))
- console.log(JSON.stringify({mode:'Local implemented preparation handler using scoped read-only owner bridge; NOT deployed MCP or production-RBAC verification',read_only:true,production_writes:0,scan:{range_products:designs.size,range_components:components.size},legacy_audit:{component_conflicts:collisions,sku_conflicts:skuCollisions,certification_written:false},proposed_design:designDraft(),...result},null,2))
+ const original=await response.json()
+ if(!response.ok||writeAttempts||original.will_write!==false)throw Error(JSON.stringify(original))
+ const usageAudit=await auditFmMigration(db)
+ const result=original
+ result.migration.usage_audit_checked_at=usageAudit.checked_at
+ result.migration.downstream_references=usageAudit.references
+ result.migration.audit_clear=usageAudit.reference_count===0 && usageAudit.exact_code_conflicts.length===0
+ console.log(JSON.stringify({mode:'Local revised FM exact-plan preparation using read-only owner bridge; NOT deployed MCP or write authorization',read_only:true,production_writes:0,scan:{range_products:designs.size,range_components:components.size},legacy_audit:{component_conflicts:collisions,sku_conflicts:skuCollisions,certification_written:false},usage_audit:usageAudit,proposed_design:designDraft(),...result},null,2))
 }finally{await deleteApp(app)}

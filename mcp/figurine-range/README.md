@@ -1,5 +1,23 @@
 # B0016 Figurine Gifts MCP (isolated, review-gated)
 
+## Latest implementation — 15 October 2026 (local, still disabled)
+
+The actual prepare/create implementation now uses six exact `FM-CF003-*` codes
+and explicitly reuses C1 by in-place `P-CF003-C1` → `FM-CF003-C1` rename.
+Both write gates remain false. Candidate rules permit only that exact transition
+in the atomic bundle, with a fresh owner usage proof (15-minute maximum age)
+and private typed exact before/after approval; no general Admin/module access.
+29 unit/MCP, 159 emulator and 12 seeded browser checks passed. No actual rename
+or record/approval creation occurred. The v1 discussion below is historical.
+See [final FM writer review](../../docs/plans/B0016-FM-WRITER-REVIEW-2026-10-15.md).
+
+> **Owner code correction, awaiting revised-plan approval:** required fabric
+> codes are `FM-CF003-BK/BL/C1/MT/PE/VL`, not the v1 P-codes below. The v1
+> writer and manifest are still disabled and must NOT be enabled or replayed.
+> The local revised read-only plan proposes explicit C1 code migration after
+> usage/conflict audit, without granting any code-change permission.
+> See [FM migration review](../../docs/plans/B0016-FM-CODE-MIGRATION-REVIEW-2026-10-14.md).
+
 This is a **separate stdio MCP server and Firebase service identity** for the
 Crystal Fabric Mezuzah Case. It does not extend the Corporate Gift writer's
 permissions and does not create another `products/{id}` record. Its source is

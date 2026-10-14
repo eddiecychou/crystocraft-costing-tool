@@ -13,7 +13,7 @@ const uuid = '70e51438-1e69-4ec1-a122-bd6e0621a023'
 function fixture() {
   const docs = new Map(), calls = []
   docs.set(`products/${SOURCE_PRODUCT_ID}`,{active:false,status:'concept'})
-  docs.set(`range_components/${B0016_REUSE_ID}`,{code:'P-CF003-C1',name:'mezuza水晶布',stock_qty:12,notes:'Owner notes',images:['owner-photo']})
+  docs.set(`range_components/${B0016_REUSE_ID}`,{code:'P-CF003-C1',name:'mezuza水晶布',stock_qty:0,notes:'Owner notes',images:['owner-photo']})
   docs.set('settings/crystal_colors',{colors:[]})
   for(const [kind,part] of Object.entries(SOURCE_PARTS)){
     const path=`products/${SOURCE_PRODUCT_ID}/components/${part.component_id}`
