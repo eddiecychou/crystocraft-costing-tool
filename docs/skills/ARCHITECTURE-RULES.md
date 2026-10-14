@@ -446,6 +446,17 @@ later edited.
 
 ## 7. Verify & deploy playbook
 
+**Firebase login is a release gate (15 Oct 2026 incident).** Never feed masked
+`netlify env:get` / connector secret values into a local build. Vite now validates
+all six public Firebase fields and rejects masked/placeholder keys and the wrong
+project on every build. An isolated worktree must receive verified public client
+configuration from an authorized source, not masked CLI output. After deployment,
+inspect the actual served bundle and call Firebase `accounts:createAuthUri` with
+that bundled key and the portal continue URL; require HTTP 200. This read-only
+probe proves the key works, NOT that a user's password works. Then ask the owner
+to verify normal sign-in with their own password. Never reset a password or
+rewrite `users/{uid}` just because the login page reports an error. See L-61.
+
 **Before pushing anything the change actually touches** (exact commands in
 `../../qa/README.md`):
 

@@ -5,6 +5,7 @@ import { auth, db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
 import { applyForAccount, applyForAccountGoogle } from '../portalInviteApi'
 import logo from '../assets/logo.png'
+import { loginErrorMessage } from '../loginError'
 
 const googleProvider = new GoogleAuthProvider()
 
@@ -26,13 +27,13 @@ export default function Login() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      await signInWithEmailAndPassword(auth, email.trim(), password)
       // Stamping login moved to useAuthState.js's onAuthStateChanged listener
       // (2026-08-27) — it fires for a restored/persisted session too, not
       // just a fresh interactive sign-in like this one, so it's the one
       // place that actually covers "customer is using the portal."
-    } catch {
-      setError('Invalid email or password.')
+    } catch (err) {
+      setError(loginErrorMessage(err))
     } finally {
       setLoading(false)
     }

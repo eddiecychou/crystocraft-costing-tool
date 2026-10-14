@@ -1,5 +1,23 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## L-61 · A masked build key broke login and was reported as a bad password
+
+- **Symptom (15 Oct 2026):** Eddie could not sign in after the B0016 app release.
+  The page said "Invalid email or password" although the original enabled Auth
+  account and approved admin profile were intact.
+- **Root cause:** a manual isolated-worktree build consumed Netlify CLI's masked
+  Firebase API key. The served bundle had a 20-character mask; Firebase returned
+  HTTP 400 `API key not valid`. A blanket Login catch mislabelled configuration
+  failure as credential failure. MCP/emulator/build checks did not test app Auth.
+- **Permanent fix:** `vite.config.js` calls `scripts/firebase-build-config.mjs`
+  for every build and fails closed on masked/missing/placeholder/malformed keys
+  or a wrong OC project. `src/loginError.js` distinguishes configuration errors
+  without enumerating accounts. Eleven regression tests cover these cases.
+  **MUST NOT** build from masked secret getters. **MUST** probe Firebase using
+  the actual served bundle key after release and have the owner verify password
+  sign-in. Do not reset passwords or rewrite roles speculatively. This is NOT
+  L-01's old self-heal demotion. Evidence: `../plans/LOGIN-CONFIG-INCIDENT-2026-10-15.md`.
+
 > Every significant failure and its **verified permanent fix**, code-linked.
 > Read this before "fixing" anything that feels familiar. **After any new
 > incident, add an entry** — this file is how the same mistake stops being made

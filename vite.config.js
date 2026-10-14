@@ -1,8 +1,13 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
+import { validateFirebaseBuildConfig } from './scripts/firebase-build-config.mjs'
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react-swc'
 
-export default defineConfig({
+export default defineConfig(({ command, mode }) => {
+  if (command === 'build') {
+    validateFirebaseBuildConfig({ ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env })
+  }
+  return {
   plugins: [react()],
   // `@` → src. Added for the Product Design pages ported in from the
   // standalone Next.js app (V8.16), which import as `@/lib/...`, `@/types/...`,
@@ -23,4 +28,5 @@ export default defineConfig({
   // login. With the pages lazy() (App.jsx / Storefront.jsx) Rollup's own
   // splitting keeps those libs in async chunks that only load when a page
   // that needs them is opened.
+  }
 })
