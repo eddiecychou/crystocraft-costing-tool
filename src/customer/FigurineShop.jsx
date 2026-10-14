@@ -12,6 +12,7 @@ import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 import CardImageCarousel from '../components/CardImageCarousel'
+import useCataloguePagination from '../hooks/useCataloguePagination'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 // Normalise a design number the same way designGroupKey does (strip leading zeros).
@@ -122,6 +123,8 @@ export default function FigurineShop({ profile }) {
     })
   }, [items, coll, search, cat, statusFilter, designFilter, formatFilter])
 
+  const { visible, count: visibleCount, loadMore } = useCataloguePagination(filtered, 'fs-page', JSON.stringify([search, cat, statusFilter, designFilter, formatFilter, coll?.id || null]), 'fs-last-id')
+
   // After returning from a product detail, scroll the last-opened card back into
   // view so you can carry on browsing where you left off (not jump to the top).
   useEffect(() => {
@@ -130,7 +133,7 @@ export default function FigurineShop({ profile }) {
     if (!lastId) return
     const el = document.getElementById(`fig-card-${lastId}`)
     if (el) { el.scrollIntoView({ block: 'center' }); sessionStorage.removeItem('fs-last-id') }
-  }, [loading, filtered])
+  }, [loading, filtered, visibleCount])
 
   const formatName = formatLabels[formatFilter] || FORMAT_LABEL[formatFilter] || `Format ${formatFilter}`
   const clearMoqFilter = () => {
@@ -211,7 +214,7 @@ export default function FigurineShop({ profile }) {
         </div>
       ) : (
         <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-          {filtered.map(s => (
+          {visible.map(s => (
             <Link key={s.id} id={`fig-card-${s.id}`} to={`/shop/figurine/${s.id}`}
               onClick={() => sessionStorage.setItem('fs-last-id', s.id)}
               className="mosaic-tile flex flex-col group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
@@ -247,6 +250,13 @@ export default function FigurineShop({ profile }) {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+      {visible.length < filtered.length && (
+        <div className="flex justify-center mt-6">
+          <button type="button" className="btn-secondary min-h-[44px]" onClick={loadMore}>
+            Load more ({filtered.length - visible.length} remaining)
+          </button>
         </div>
       )}
     </div>

@@ -976,6 +976,21 @@ a boundary, also update `ARCHITECTURE-RULES.md`; if it's worth recalling across
 sessions, add an auto-memory. Then note it in the Change Log.
 
 
+## L-60 · A thumbnail helper alone does not guarantee a fast catalogue
+
+- **Symptom.** Some catalogue images became slow or disappeared after editing;
+  Figurine grids did heavy work even before scrolling.
+- **Root cause.** Zero-age Firebase source metadata caused repeat validation,
+  WordPress originals bypassed the helper, and all 293 Figurine cards rendered.
+  Gallery replacements/deletions also left legacy cached main-image URLs stale.
+- **Fix.** Private one-day caching on scoped catalogue uploads and an admin
+  preview/apply metadata repair; gallery and main-image mirrors updated in one
+  batch (including legacy URL matches); WordPress-upload WebP delivery; 24-card
+  Figurine pagination with return-position restoration. Never delete the old
+  photo before the record update succeeds. Measure transferred bytes, headers,
+  request latency and rendered-card counts separately. Seeded QA proves failure
+  handling, not production timing. Details: `../plans/CATALOGUE-IMAGE-PERFORMANCE-2026-10-14.md`.
+
 ## L-57 · Marketplace capture is evidence capture, not catalogue ingestion
 
 - **Symptom.** 1688 listings were slow to transcribe: browser access can be incomplete or blocked, and screenshots caused staff to manually retype facts before a candidate could enter the sourcing workflow.

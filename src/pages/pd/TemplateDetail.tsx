@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useParams, useNavigate } from "react-router-dom";
-import { collection, addDoc, doc, getDocs, updateDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, doc, getDocs, updateDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { getTemplate, deleteTemplate, duplicateTemplate } from "@/lib/firestore/promptTemplates";
@@ -21,6 +21,7 @@ import type { Generation } from "@/types/generation";
 import BrandQuickView from "@/components/BrandQuickView";
 import JsonHierarchyView from "@/components/JsonHierarchyView";
 import { imageDownloadUrl } from "@/imageDownloadUrl";
+import { catalogueUploadMetadata, productHeroPatch } from "@/catalogueImagePolicy";
 
 const STATUS_BADGE: Record<PromptTemplate["status"], string> = {
   draft: "badge-sampled",
@@ -126,14 +127,17 @@ export default function TemplateDetailPage() {
 
       const path = `products/${productRef.id}/images/${Date.now()}_1.jpg`;
       const sRef = storageRef(storage, path);
-      await uploadBytes(sRef, blob, { contentType: blob.type || "image/jpeg" });
+      await uploadBytes(sRef, blob, catalogueUploadMetadata(path, blob.type || "image/jpeg"));
       const url = await getDownloadURL(sRef);
-      await addDoc(collection(db, "products", productRef.id, "images"), {
+      const image = {
         file_url: url, storage_path: path, file_name: `generation-${g.id}.jpg`,
         type: "hero", orientation: "square", caption: template.name,
-        visibility: "internal", sort_order: 0, uploaded_at: serverTimestamp(),
-      });
-      await updateDoc(doc(db, "products", productRef.id), { heroImage: url });
+        visibility: "internal", is_hero: true, sort_order: 0, uploaded_at: serverTimestamp(),
+      };
+      const batch = writeBatch(db);
+      batch.set(doc(collection(db, "products", productRef.id, "images")), image);
+      batch.update(productRef, productHeroPatch(image));
+      await batch.commit();
       await updateGeneration(g.id, { linkedProduct: { type: "corp_gift", id: productRef.id, name: name.trim() } });
 
       navigate(`/products/${productRef.id}`);
@@ -197,23 +201,24 @@ export default function TemplateDetailPage() {
         const existingSnap = await getDocs(imagesRef);
         const path = `products/${product.id}/images/${Date.now()}_${pickerGen.id}.jpg`;
         const sRef = storageRef(storage, path);
-        await uploadBytes(sRef, blob, { contentType: blob.type || "image/jpeg" });
+        await uploadBytes(sRef, blob, catalogueUploadMetadata(path, blob.type || "image/jpeg"));
         const url = await getDownloadURL(sRef);
-        await addDoc(imagesRef, {
+        const image = {
           file_url: url, storage_path: path, file_name: `generation-${pickerGen.id}.jpg`,
           type: "hero", orientation: "square", caption: template.name,
-          visibility: "internal", sort_order: existingSnap.size, uploaded_at: serverTimestamp(),
-        });
-        if (existingSnap.empty) {
-          await updateDoc(doc(db, "products", product.id), { heroImage: url });
-        }
+          visibility: "internal", is_hero: existingSnap.empty, sort_order: existingSnap.size, uploaded_at: serverTimestamp(),
+        };
+        const batch = writeBatch(db);
+        batch.set(doc(imagesRef), image);
+        if (existingSnap.empty) batch.update(doc(db, "products", product.id), productHeroPatch(image));
+        await batch.commit();
         await updateGeneration(pickerGen.id, { linkedProduct: { type: "corp_gift", id: product.id, name: product.name } });
         await refreshGenerations();
         setPickerGen(null);
       } else {
         const path = `range_products/${product.id}/${Date.now()}-generation-${pickerGen.id}.jpg`;
         const sRef = storageRef(storage, path);
-        await uploadBytes(sRef, blob, { contentType: blob.type || "image/jpeg" });
+        await uploadBytes(sRef, blob, catalogueUploadMetadata(path, blob.type || "image/jpeg"));
         const url = await getDownloadURL(sRef);
         const params = new URLSearchParams({ addGalleryUrl: url, addGalleryCaption: template.name });
         // Marked "linked" the moment it's handed off, even though it only

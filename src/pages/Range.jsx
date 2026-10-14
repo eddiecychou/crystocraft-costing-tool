@@ -13,6 +13,7 @@ import { useComponents, buildableFromComponents } from '../criticalComponents'
 import ErpProductImport from '../components/ErpProductImport'
 import RangeCatalogueExport from '../components/RangeCatalogueExport'
 import CardImageCarousel from '../components/CardImageCarousel'
+import useCataloguePagination from '../hooks/useCataloguePagination'
 
 const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
 const STATUS_META = Object.fromEntries(RANGE_STATUSES.map(s => [s.value, s]))
@@ -201,19 +202,6 @@ export default function Range() {
     }
   }), [products, compLib])
 
-  // After returning from a product edit, scroll the last-opened card back into
-  // view instead of resetting to the top of the list.
-  useEffect(() => {
-    if (loading) return
-    const lastId = sessionStorage.getItem('range-last-id')
-    if (!lastId) return
-    const el = document.getElementById(`range-card-${lastId}`)
-    if (el) {
-      el.scrollIntoView({ block: 'center' })
-      sessionStorage.removeItem('range-last-id')
-    }
-  }, [loading, products])
-
   const categories = useMemo(() => [...new Set(items.map(s => s.design_type).filter(Boolean))].sort(), [items])
   const productTypes = useMemo(() => [...new Set(items.map(s => s.product_type).filter(Boolean))].sort(), [items])
 
@@ -232,6 +220,14 @@ export default function Range() {
     // keeps the Firestore design_code order within each brand-priority group.
     .sort((a, b) => a.sortRank - b.sortRank),
   [items, search, cat, ptype, status, stockOnly])
+
+  const { visible, count: visibleCount, loadMore } = useCataloguePagination(filtered, 'rf-page', JSON.stringify([search, cat, ptype, status, stockOnly]), 'range-last-id')
+  useEffect(() => {
+    if (loading) return
+    const lastId = sessionStorage.getItem('range-last-id')
+    const el = lastId && document.getElementById(`range-card-${lastId}`)
+    if (el) { el.scrollIntoView({ block: 'center' }); sessionStorage.removeItem('range-last-id') }
+  }, [loading, products, visibleCount])
 
   const statusCounts = useMemo(() => ({
     all: items.length,
@@ -337,7 +333,14 @@ export default function Range() {
         <div className="text-center py-20 text-ink-60">No products match your filters.</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-          {filtered.map(s => <ProductCard key={s.id} s={s} colorLookup={colorLookup} />)}
+          {visible.map(s => <ProductCard key={s.id} s={s} colorLookup={colorLookup} />)}
+        </div>
+      )}
+      {visible.length < filtered.length && (
+        <div className="flex justify-center mt-6">
+          <button type="button" className="btn-secondary min-h-[44px]" onClick={loadMore}>
+            Load more ({filtered.length - visible.length} remaining)
+          </button>
         </div>
       )}
     </div>

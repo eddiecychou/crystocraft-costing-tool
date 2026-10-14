@@ -23,7 +23,8 @@ export default function CardImageCarousel({ images, alt, fallback, imgClassName 
 
   if (!count) return fallback
 
-  const originalUrl = images[index].url
+  // A refreshed gallery can remove the currently selected slide.
+  const originalUrl = images[Math.min(index, count - 1)].url
   const optimizedUrl = cardImageUrl(originalUrl)
   const src = originalFallbacks[originalUrl] ? originalUrl : optimizedUrl
   const handleImageError = () => {
@@ -65,7 +66,10 @@ export default function CardImageCarousel({ images, alt, fallback, imgClassName 
   return (
     <div className="relative w-full h-full group"
          onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <img src={src} alt={alt || ''} loading="lazy" decoding="async" onError={handleImageError}
+      <img src={src}
+           srcSet={src !== originalUrl ? `${cardImageUrl(originalUrl, 320)} 320w, ${optimizedUrl} 640w` : undefined}
+           sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
+           alt={alt || ''} loading="lazy" decoding="async" onError={handleImageError}
            className={`w-full h-full select-none ${imgClassName}`} draggable={false} />
 
       {count > 1 && (

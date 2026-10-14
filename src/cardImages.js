@@ -15,3 +15,12 @@ export function buildCardImages(gallery = [], heroImage = null) {
   if (images.length) return images
   return heroImage ? [{ url: heroImage, caption: '' }] : []
 }
+
+// Call with an already screened, storefront-visible gallery. A cached URL
+// cannot override visibility or a live gallery; keep legacy cache-only records.
+export function customerMainImage(visibleGallery, product, sensitive = false) {
+  const chosen = visibleGallery.find(i => i.file_url === product.heroImage)
+  if (chosen) return chosen.file_url
+  if (visibleGallery.length) return visibleGallery.find(i => i.is_hero)?.file_url || visibleGallery[0].file_url
+  return !sensitive && product.heroImage_visibility !== 'internal' ? product.heroImage || null : null
+}

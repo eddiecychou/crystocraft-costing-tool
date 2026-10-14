@@ -129,7 +129,7 @@ export default function CorporateShop({ profile }) {
 
   const imagesFor = p => sensitive
     ? (safeImagesByProductId[p.id] || [])
-    : (p.heroImage ? [{ url: p.heroImage, caption: '' }] : [])
+    : (p.heroImage && p.heroImage_visibility !== 'internal' ? [{ url: p.heroImage, caption: '' }] : [])
   const imageFor = p => imagesFor(p)[0]?.url || ''
 
   const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))].sort(), [products])
