@@ -12,6 +12,7 @@ import SchemaAudit from './SchemaAudit'
 import BankAccounts from './BankAccounts'
 import ComponentCodeAudit from './ComponentCodeAudit'
 import MarketingCopyBulk from './MarketingCopyBulk'
+import CatalogueImageMaintenance from './CatalogueImageMaintenance'
 import { useRole } from '../access'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
@@ -43,6 +44,7 @@ const PRODUCT_TABS = [
   { v: 'categories', label: 'Bulk Categories' },
   { v: 'video',      label: 'Bulk Video' },
   { v: 'marketing-copy', label: 'Marketing Copy', adminOnly: true },
+  { v: 'image-maintenance', label: 'Image Maintenance', adminOnly: true },
   { v: 'defaults',   label: 'Defaults' },
 ]
 
@@ -129,6 +131,7 @@ export default function Settings() {
             )}
             {productTab === 'defaults' && <ProductDefaults />}
             {productTab === 'marketing-copy' && role === 'admin' && <MarketingCopyBulk embedded />}
+            {productTab === 'image-maintenance' && role === 'admin' && <CatalogueImageMaintenance />}
           </div>
         </div>
       )}

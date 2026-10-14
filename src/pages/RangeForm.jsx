@@ -11,6 +11,7 @@ import {
   normGallery, normVideos, normBlogLinks, MARKETING_DESC_MAXLEN,
 } from '../constants'
 import { resizeToJpeg } from '../imageResize'
+import { catalogueUploadMetadata } from '../catalogueImagePolicy'
 import { enhanceProductImage } from '../enhanceImage'
 import ManualAdjust from '../components/ManualAdjust'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
@@ -819,7 +820,7 @@ export default function RangeForm() {
     const baseName = file.name.replace(/[^\w.\-]/g, '_').replace(/\.[^.]+$/, '')
     const ext = type === 'image/jpeg' ? 'jpg' : (file.name.split('.').pop() || 'bin')
     const path = `range_products/${docId}/${Date.now()}-${baseName}.${ext}`
-    await uploadBytes(storageRef(storage, path), blob, { contentType: type })
+    await uploadBytes(storageRef(storage, path), blob, catalogueUploadMetadata(path, type || 'application/octet-stream'))
     return getDownloadURL(storageRef(storage, path))
   }
 

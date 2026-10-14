@@ -3,6 +3,7 @@ import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, collect
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from './firebase'
 import { enhanceProductImage } from './enhanceImage'
+import { catalogueUploadMetadata } from './catalogueImagePolicy'
 
 // V8.8 Phase 1 — one-SKU crystal-colour preview experiment. See
 // docs/specs/Range_Colour_Preview_Spec.md. Reuses the existing Gemini recolor endpoint
@@ -98,7 +99,7 @@ export async function generateColourPreview({
     catch { data = await enhanceProductImage(sourceImageUrl, recolor) }
     const blob = await (await fetch(`data:${data.mimeType || 'image/png'};base64,${data.image}`)).blob()
     const path = `range_products/${docId}/colour_previews/${id}.jpg`
-    await uploadBytes(storageRef(storage, path), blob, { contentType: blob.type || 'image/png' })
+    await uploadBytes(storageRef(storage, path), blob, catalogueUploadMetadata(path, blob.type || 'image/png'))
     const generatedImageUrl = await getDownloadURL(storageRef(storage, path))
     await updateDoc(ref, { status: 'success', generatedImageUrl, updatedAt: serverTimestamp() })
     return { id, generatedImageUrl }
@@ -182,7 +183,7 @@ export async function uploadColourPreview({
     'upload', Date.now().toString(36),
   ].join('__')
   const path = `range_products/${docId}/colour_previews/${id}.jpg`
-  await uploadBytes(storageRef(storage, path), file, { contentType: file.type || 'image/jpeg' })
+  await uploadBytes(storageRef(storage, path), file, catalogueUploadMetadata(path, file.type || 'image/jpeg'))
   const generatedImageUrl = await getDownloadURL(storageRef(storage, path))
   await setDoc(doc(db, COLLECTION, id), {
     docId, variantIndex, sourceImageUrl: '',

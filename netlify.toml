@@ -9,6 +9,7 @@
   remote_images = [
     'https://firebasestorage\.googleapis\.com/.*',
     'https://storage\.googleapis\.com/.*',
+    'https://(?:www\.)?crystocraft\.com/wp-content/uploads/.*',
   ]
 
 # Regular Node Lambda functions — distinct from netlify/edge-functions/

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { collection, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { storage, db } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
 import {
@@ -16,6 +16,7 @@ import { enhanceProductImage } from '../enhanceImage'
 import ManualAdjust from './ManualAdjust'
 import { useT } from '../i18n'
 import { imageDownloadUrl } from '../imageDownloadUrl'
+import { catalogueUploadMetadata, isCurrentHero, productHeroPatch } from '../catalogueImagePolicy'
 
 // Sample both images at 150×150 and count pixels that were clearly coloured in
 // the original but became near-white in the enhanced version — that's colour loss.
@@ -109,7 +110,12 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
   }
 
   async function handleVisibilityChange(visibility) {
-    await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { visibility })
+    const batch = writeBatch(db)
+    batch.update(doc(db, ...firestorePath.split('/'), img.id), { visibility })
+    if (img.is_hero && /^products\/[^/]+\/images$/.test(firestorePath)) {
+      batch.update(doc(db, ...firestorePath.split('/').slice(0, -1)), { heroImage_visibility: visibility })
+    }
+    await batch.commit()
   }
 
   // Which client's branding appears in this photo, if any. Drives the
@@ -118,16 +124,18 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
   // image tagged for a DIFFERENT customer. Blank = generic, visible to everyone.
   async function handleBrandedForChange(customerId) {
     const value = customerId || null
-    await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { branded_for_customer_id: value })
+    const batch = writeBatch(db)
+    batch.update(doc(db, ...firestorePath.split('/'), img.id), { branded_for_customer_id: value })
     // If this image is ALREADY the hero, the product doc's own mirror
     // (heroImage_branded_for_customer_id — see ProductDetail.jsx's
     // handleHeroChange) would otherwise go stale: re-tagging an existing hero
     // doesn't naturally re-trigger a hero pick. firestorePath is
     // "products/{id}/images"; its parent is the product doc itself.
-    if (img.is_hero) {
+    if (img.is_hero && /^products\/[^/]+\/images$/.test(firestorePath)) {
       const parentPath = firestorePath.split('/').slice(0, -1)
-      await updateDoc(doc(db, ...parentPath), { heroImage_branded_for_customer_id: value })
+      batch.update(doc(db, ...parentPath), { heroImage_branded_for_customer_id: value })
     }
+    await batch.commit()
   }
 
   const vis = imageVisibility(img)
@@ -294,6 +302,15 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   const [recolorPrompt, setRecolorPrompt] = useState('')
   const [editTab, setEditTab]             = useState('ai')  // 'ai' | 'adjust'
 
+  const productParent = /^products\/[^/]+\/images$/.test(firestorePath)
+    ? doc(db, ...firestorePath.split('/').slice(0, -1)) : null
+  function mirrorHero(batch, image) {
+    if (productParent && onHeroChange) batch.update(productParent, productHeroPatch(image))
+  }
+  async function notifyHero(image) {
+    if (onHeroChange) await onHeroChange(image?.file_url || null, image, { persisted: !!productParent })
+  }
+
   // Lightbox prev/next (bug-fix pack D-02) — this only had a single-image
   // view with no way to page through the rest of the gallery.
   const lightboxIdx = lightbox ? images.findIndex(i => i.id === lightbox.id) : -1
@@ -353,10 +370,11 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       const { blob: outBlob, orientation } = await resizeToJpeg(file)
       const path = `${storagePath}/${Date.now()}_${++fileIdRef.current}.jpg`
       const sRef = storageRef(storage, path)
-      await uploadBytes(sRef, outBlob, { contentType: 'image/jpeg' })
+      await uploadBytes(sRef, outBlob, catalogueUploadMetadata(path))
       const url = await getDownloadURL(sRef)
       const old = enh.img
-      await updateDoc(doc(db, ...firestorePath.split('/'), old.id), {
+      const batch = writeBatch(db)
+      batch.update(doc(db, ...firestorePath.split('/'), old.id), {
         file_url: url, storage_path: path, orientation,
         // Provenance for the AI edit that produced this file — which prompt
         // version/model, and whether it warned of a reframe or colour loss.
@@ -366,8 +384,12 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
           reframed: !!enh.reframed, color_warning: !!enh.colorWarning, enhanced_at: serverTimestamp(),
         },
       })
+      const selected = onHeroChange && isCurrentHero(old, heroUrl)
+      const replacement = { ...old, file_url: url, storage_path: path }
+      if (selected) mirrorHero(batch, replacement)
+      await batch.commit()
+      if (selected) await notifyHero(replacement)
       try { if (old.storage_path) await deleteObject(storageRef(storage, old.storage_path)) } catch {}
-      if (onHeroChange && old.is_hero) onHeroChange(url)
       closeEditor()
     } catch (err) {
       setEnh(e => ({ ...e, busy: false, error: err.message }))
@@ -383,7 +405,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       const { blob: outBlob, orientation } = await resizeToJpeg(file)
       const path = `${storagePath}/${Date.now()}_${++fileIdRef.current}.jpg`
       const sRef = storageRef(storage, path)
-      await uploadBytes(sRef, outBlob, { contentType: 'image/jpeg' })
+      await uploadBytes(sRef, outBlob, catalogueUploadMetadata(path))
       const url = await getDownloadURL(sRef)
       // Copy metadata from the original, but without hero status
       const old = enh.img
@@ -417,9 +439,10 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         const { blob, orientation } = await resizeToJpeg(file)
         const path = `${storagePath}/${Date.now()}_${++fileIdRef.current}.jpg`
         const sRef = storageRef(storage, path)
-        await uploadBytes(sRef, blob, { contentType: 'image/jpeg' })
+        await uploadBytes(sRef, blob, catalogueUploadMetadata(path))
         const url = await getDownloadURL(sRef)
-        await addDoc(collection(db, ...firestorePath.split('/')), {
+        const firstHero = !!onHeroChange && images.length === 0 && i === 0
+        const image = {
           file_url: url,
           storage_path: path,
           file_name: file.name,
@@ -428,9 +451,15 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
           caption: '',
           // New corporate uploads start hidden from customers until reviewed.
           ...(showVisibility ? { visibility: 'internal' } : {}),
+          is_hero: firstHero,
           sort_order: images.length + i,
           uploaded_at: serverTimestamp(),
-        })
+        }
+        const batch = writeBatch(db)
+        batch.set(doc(collection(db, ...firestorePath.split('/'))), image)
+        if (firstHero) mirrorHero(batch, image)
+        await batch.commit()
+        if (firstHero) await notifyHero(image)
       }))
     } finally {
       setUploading(false)
@@ -461,21 +490,28 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   }
 
   async function handleDelete(image) {
+    const batch = writeBatch(db)
+    batch.delete(doc(db, ...firestorePath.split('/'), image.id))
+    const selected = onHeroChange && isCurrentHero(image, heroUrl)
+    const next = images.find(i => i.id !== image.id) || null
+    if (selected) {
+      if (next) batch.update(doc(db, ...firestorePath.split('/'), next.id), { is_hero: true })
+      mirrorHero(batch, next)
+    }
+    await batch.commit()
+    if (selected) await notifyHero(next)
     try {
       if (image.storage_path) await deleteObject(storageRef(storage, image.storage_path))
     } catch {}
-    await deleteDoc(doc(db, ...firestorePath.split('/'), image.id))
-    if (onHeroChange && image.is_hero) onHeroChange(images.find(i => i.id !== image.id)?.file_url || null)
     setConfirmDelete(null)
   }
 
   async function setAsHero(image) {
-    await Promise.all(
-      images.map(img =>
-        updateDoc(doc(db, ...firestorePath.split('/'), img.id), { is_hero: img.id === image.id })
-      )
-    )
-    if (onHeroChange) onHeroChange(image.file_url)
+    const batch = writeBatch(db)
+    images.forEach(img => batch.update(doc(db, ...firestorePath.split('/'), img.id), { is_hero: img.id === image.id }))
+    mirrorHero(batch, image)
+    await batch.commit()
+    await notifyHero(image)
   }
 
   async function handleDragEnd(event) {

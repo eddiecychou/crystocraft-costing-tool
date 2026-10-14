@@ -6,7 +6,7 @@ test('Firebase card images use a bounded Netlify thumbnail', () => {
   const original = 'https://firebasestorage.googleapis.com/v0/b/demo/o/products%2Fphoto.jpg?alt=media&token=a&b'
   const result = cardImageUrl(original)
   assert.match(result, /^\/\.netlify\/images\?url=/)
-  assert.match(result, /&w=640&q=72$/)
+  assert.match(result, /&w=640&fm=webp&q=72$/)
   assert.equal(new URLSearchParams(result.split('?')[1]).get('url'), original)
 })
 
@@ -17,4 +17,11 @@ test('Google Storage card images use the image CDN', () => {
 test('unknown and malformed image URLs are left alone', () => {
   assert.equal(cardImageUrl('https://www.crystocraft.com/photo.jpg'), 'https://www.crystocraft.com/photo.jpg')
   assert.equal(cardImageUrl('not a url'), 'not a url')
+})
+
+test('only public WordPress upload paths are optimized', () => {
+  const url = 'https://www.crystocraft.com/wp-content/uploads/2026/01/photo.jpg'
+  assert.match(cardImageUrl(url, 320), /&w=320&fm=webp&q=72$/)
+  assert.equal(cardImageUrl('https://www.crystocraft.com/wp-admin/photo.jpg'), 'https://www.crystocraft.com/wp-admin/photo.jpg')
+  assert.equal(cardImageUrl('http://www.crystocraft.com/wp-content/uploads/photo.jpg'), 'http://www.crystocraft.com/wp-content/uploads/photo.jpg')
 })

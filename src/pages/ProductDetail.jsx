@@ -10,6 +10,7 @@ import { Star, X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { useCan } from '../access'
 import { RETAIL_TAG } from '../domain/customer'
+import { productHeroPatch } from '../catalogueImagePolicy'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -81,14 +82,13 @@ export default function ProductDetail() {
   // approved customer can read it straight off the product document, sensitive
   // or not. Mirroring the chosen image's own branded_for_customer_id here lets
   // the storefront (CorporateShop.jsx / CorporateDetail.jsx) hide it for a
-  // sensitive viewer without needing its own extra read. Stale if someone
-  // later changes the ALREADY-hero image's own tag without re-picking it —
-  // known gap, not yet closed.
-  async function handleHeroChange(url) {
-    const chosen = images.find(im => im.file_url === url)
-    const heroImage_branded_for_customer_id = chosen?.branded_for_customer_id || null
-    await updateDoc(doc(db, 'products', id), { heroImage: url, heroImage_branded_for_customer_id })
-    setProduct(p => ({ ...p, heroImage: url, heroImage_branded_for_customer_id }))
+  // sensitive viewer without needing its own extra read. ImageGallery keeps
+  // the mirror atomic with image replacement, selection, deletion and retagging.
+  async function handleHeroChange(url, image, { persisted = false } = {}) {
+    const chosen = image || images.find(im => im.file_url === url)
+    const patch = productHeroPatch(chosen ? { ...chosen, file_url: url } : url ? { file_url: url } : null)
+    if (!persisted) await updateDoc(doc(db, 'products', id), patch)
+    setProduct(p => ({ ...p, ...patch }))
   }
 
   async function toggleField(field, value) {

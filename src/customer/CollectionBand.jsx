@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { cardImageUrl } from '../cardImageUrl'
 import { useCollections, useBandSettings, visibleCollections, collectionProducts, accentOf } from '../catalogueCollections'
 
 // Customer-facing "Shop by…" band. Augments the grid — never gates it (spec §1).
@@ -36,7 +37,7 @@ export default function CollectionBand({ catalogue, products, active, onApply })
             return (
               <button key={c.id} onClick={() => onApply(c)}
                       className={`group relative aspect-square rounded-none overflow-hidden text-left ${on ? 'ring-2 ring-inset ring-ink' : ''}`}>
-                <img src={c.custom_url} alt="" loading="lazy"
+                <img src={cardImageUrl(c.custom_url)} alt="" loading="lazy" decoding="async"
                      className="block w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
                 <div className="absolute inset-x-0 bottom-0 px-2.5 py-2"
                      style={{ background: `linear-gradient(to top, rgba(${rgb},${op}), rgba(${rgb},0))` }}>
@@ -54,7 +55,7 @@ export default function CollectionBand({ catalogue, products, active, onApply })
                     style={{ background: ac.tile }}>
               <div className="w-full h-full flex items-center justify-center pb-7">
                 {image
-                  ? <img src={image} alt="" className="w-[72%] h-[72%] object-contain transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+                  ? <img src={cardImageUrl(image)} alt="" className="w-[72%] h-[72%] object-contain transition-transform duration-300 group-hover:scale-105" loading="lazy" decoding="async" />
                   : <span className="text-2xl font-medium" style={{ color: ac.ink }}>{(c.title || '?').slice(0, 1)}</span>}
               </div>
               <div className="absolute inset-x-0 bottom-0 px-2.5 py-2" style={{ background: ac.tile }}>

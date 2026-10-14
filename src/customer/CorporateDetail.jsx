@@ -13,6 +13,7 @@ import { engineTypeOf, engineAvailable, engineLabel } from '../customizerEngines
 import { screenSensitiveImages } from '../sensitiveImages'
 import ImageLightbox from '../components/ImageLightbox'
 import { imageDownloadUrl } from '../imageDownloadUrl'
+import { customerMainImage } from '../cardImages'
 
 // Forces a real "Save As" instead of opening the image in-tab — same proxy
 // BrandPortalPage.jsx already uses for customer downloads (a plain
@@ -79,9 +80,8 @@ export default function CorporateDetail({ profile }) {
   // do this). If the hero's URL isn't in the (already-filtered) `images`,
   // it was blocked — same derivation as before, just no longer trusting the
   // rule to have done the filtering; the filter already ran client-side.
-  const heroBlocked = !!(profile?.sensitive && p.heroImage && !images.some(im => im.file_url === p.heroImage))
   const visibleImages = images.filter(im => im.file_url && isStorefrontVisible(im))
-  const displayHero = heroBlocked ? (visibleImages[0]?.file_url || null) : (p.heroImage || null)
+  const displayHero = customerMainImage(visibleImages, p, profile?.sensitive)
 
   // Show all storefront-visible images except whichever one is the hero.
   const gallery = visibleImages.filter(im => im.file_url !== displayHero)
