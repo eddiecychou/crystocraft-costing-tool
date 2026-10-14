@@ -42,11 +42,19 @@ import { resolveRef } from './criticalComponents'
 import { DEFAULT_MARKUP } from './pricing'
 import { resolveCrystalCost } from './crystalCosting'
 import { costToHKD } from './costCurrency'
+import { bomRefApplies, colourScope } from './rangeBomScope'
 
 const toHKD = (amount, currency, rates) =>
   costToHKD(amount, currency, rates) ?? 0
 
 const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
+
+function requireColourSelection(refs, lib, variant) {
+  if (!refs.some(colourScope)) return
+  if (!variant?.crystal_code) throw new Error('BOM_VARIANT_REQUIRED: select an explicit colour before costing')
+  const selected = refs.filter(r => colourScope(r) && bomRefApplies(r, resolveRef(r, lib), variant))
+  if (!selected.length) throw new Error('BOM_COLOUR_COMPONENT_MISSING: no component is linked for this colour')
+}
 
 // Unit cost of one component at an order quantity, honouring its volume tiers.
 export function componentCostAtQty(component, orderQty) {
@@ -67,13 +75,12 @@ export function componentCostAtQty(component, orderQty) {
 // always apply — they are shared parts (bodies, NFC chips, boxes, etc.).
 export function componentsCostHKD(product, lib, rates, orderQty, variant = null) {
   const refs = Array.isArray(product?.critical_components) ? product.critical_components : []
-  const platCode = variant ? (variant.plating_code || '').trim().toUpperCase() : null
+  requireColourSelection(refs, lib, variant)
   return refs.reduce((sum, r) => {
     const c = resolveRef(r, lib)
     // Plating scope: `all_variants` forces shared; else ref override, else the
     // component's own plating (Decision 2). '' ⇒ applies to every variant.
-    const refPlat = r.all_variants ? '' : (r.plating_code || c?.plating_code || '').trim().toUpperCase()
-    if (platCode !== null && refPlat && refPlat !== platCode) return sum
+    if (variant && !bomRefApplies(r, c, variant)) return sum
     const unit = componentCostAtQty(c, orderQty)
     if (unit == null) return sum
     return sum + toHKD(unit, c.unit_cost_currency, rates) * perUnit(r)
@@ -149,11 +156,10 @@ export function variantAdderHKD(product, rates, variant, crystalLib) {
 // across plating variants that each carry their own tooling cost.
 export function toolingHKD(product, lib, rates, variant = null) {
   const refs = Array.isArray(product?.critical_components) ? product.critical_components : []
-  const platCode = variant ? (variant.plating_code || '').trim().toUpperCase() : null
+  requireColourSelection(refs, lib, variant)
   return refs.reduce((sum, r) => {
     const c = resolveRef(r, lib)
-    const refPlat = r.all_variants ? '' : (r.plating_code || c?.plating_code || '').trim().toUpperCase()
-    if (platCode !== null && refPlat && refPlat !== platCode) return sum
+    if (variant && !bomRefApplies(r, c, variant)) return sum
     if (!c || !c.tooling_sample_cost) return sum
     return sum + toHKD(c.tooling_sample_cost, c.tooling_sample_cost_currency, rates)
   }, 0)

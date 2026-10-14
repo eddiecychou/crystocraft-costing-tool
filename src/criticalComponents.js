@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { numOrNull, trimUpper, result, addError, addWarning, addInfo, merge } from './domain/validation'
+import { bomRefApplies, colourScope, scopedVariants } from './rangeBomScope'
 
 // Critical Components Library — promoted from a single settings doc-array to a
 // proper per-document collection so it scales to hundreds of parts, each with
@@ -499,9 +500,8 @@ export function refScopePlating(ref, lib) {
   return (ref?.plating_code || resolveRef(ref, lib)?.plating_code || '').trim().toUpperCase()
 }
 // Does this ref apply to a finished piece of the given SKU plating?
-export function refApplies(ref, lib, skuPlating) {
-  const p = refScopePlating(ref, lib)
-  return !p || (!!skuPlating && p === String(skuPlating).trim().toUpperCase())
+export function refApplies(ref, lib, skuPlating, skuColour = '') {
+  return bomRefApplies(ref, resolveRef(ref, lib), { plating_code: skuPlating, crystal_code: skuColour })
 }
 
 const refPlating = (r, lib) => refScopePlating(r, lib)
@@ -553,6 +553,53 @@ export function buildableFromComponents(product, lib) {
     let q = Infinity, code = null
     for (const r of list) { const m = canMakeOf(r); if (!m) continue; if (m.n < q) { q = m.n; code = m.code } }
     return { q, code }
+  }
+
+  if (refs.some(colourScope)) {
+    // Allocate from real shared pools once, rather than summing a repeated
+    // shared metal stock ceiling across colours. B0016 has one plating; this
+    // conservative allocator never overstates stock for more complex BOMs.
+    const remaining = new Map(lib.map(c => [c.id || c.code, availableOf(c)]))
+    const byVariant = {}, bottleneckByVariant = {}
+    const byPlating = {}, bottleneckByPlating = {}
+    let qty = 0, bottleneck = null, unbounded = false
+    for (const variant of scopedVariants(product)) {
+      const applicable = refs.filter(r => refApplies(r, lib, variant.plating_code, variant.crystal_code))
+      if (!applicable.some(colourScope)) continue
+      let n = Infinity, driver = null, potential = Infinity, potentialDriver = null
+      const demand = new Map()
+      let missing = false
+      for (const r of applicable) {
+        const c = resolveRef(r, lib)
+        if (!c) { missing = true; break }
+        const key = c.id || c.code
+        const lt = Number(c.lead_time_weeks)
+        if (lt > 0 && lt < FAST_LEAD_WEEKS) continue
+        demand.set(key, { c, qty: (demand.get(key)?.qty || 0) + perUnit(r) })
+      }
+      for (const [key, d] of demand) {
+        const independent = Math.floor(availableOf(d.c) / d.qty)
+        if (independent < potential) { potential = independent; potentialDriver = d.c.code }
+        const possible = Math.floor((remaining.get(key) || 0) / d.qty)
+        if (possible < n) { n = possible; driver = d.c.code }
+      }
+      const count = missing ? 0 : Number.isFinite(n) ? Math.max(0, n) : null
+      const key = `${variant.plating_code}|${variant.crystal_code}`
+      // Per-colour availability is an alternative, not leftover stock after
+      // another colour's allocation. Only the aggregate consumes shared pools.
+      byVariant[key] = missing ? 0 : Number.isFinite(potential) ? potential : null
+      bottleneckByVariant[key] = potentialDriver
+      const plating = variant.plating_code
+      byPlating[plating] = count == null || byPlating[plating] === null ? null : (byPlating[plating] || 0) + count
+      bottleneckByPlating[plating] = driver
+      if (count != null) {
+        qty += count
+        for (const [key, d] of demand) remaining.set(key, remaining.get(key) - count * d.qty)
+      }
+      else unbounded = true
+      if (driver) bottleneck = driver
+    }
+    return { qty: unbounded ? null : qty, bottleneck, byVariant, bottleneckByVariant, byPlating, bottleneckByPlating }
   }
 
   // Fast path / unchanged behaviour: no plating-specific parts ⇒ one shared group.
@@ -616,6 +663,18 @@ export function makeLeadWeeks(product, lib, { defaultPartsLeadWeeks = PARTS_LEAD
       if (w == null || lw > w) { w = lw; code = c.code }
     }
     return { w, code }
+  }
+
+  if (refs.some(colourScope)) {
+    let best = null, driver = null
+    for (const variant of scopedVariants(product)) {
+      const applicable = refs.filter(r => refApplies(r, lib, variant.plating_code, variant.crystal_code))
+      if (!applicable.some(colourScope)) continue
+      const uncovered = longestUncovered(applicable)
+      const weeks = uncovered.w == null ? 0 : uncovered.w
+      if (best == null || weeks < best) { best = weeks; driver = uncovered.code }
+    }
+    return best === 0 ? { weeks: null, driver: null } : { weeks: best, driver }
   }
 
   const platings = platingsTagged(refs, lib)
@@ -769,6 +828,8 @@ export function validateCriticalRef(ref, lib) {
         `component "${label}" has qty_per_unit ${ref.qty_per_unit} (must be > 0)`)
   }
   const rp = trimUpper(ref?.plating_code)
+  if (ref?.crystal_code != null && (typeof ref.crystal_code !== 'string' || !/^[A-Z0-9]{1,12}$/.test(trimUpper(ref.crystal_code))))
+    addError(r, 'rangeproduct.criticalcomponent.colour_invalid', 'crystal_code', 'Colour scope must be an explicit uppercase colour code')
   if (rp && !VALID_PLATINGS.includes(rp))
     addWarning(r, 'rangeproduct.criticalcomponent.plating_invalid', 'plating_code',
       `component ref plating "${ref.plating_code}" invalid`)
@@ -784,7 +845,7 @@ export function validateCriticalRefs(refs, lib) {
   for (const ref of list) {
     const base = trimUpper(ref?.code) || ref?.id || ''
     if (!base) continue
-    const key = `${base}|${trimUpper(ref?.plating_code)}`
+    const key = `${base}|${trimUpper(ref?.plating_code)}|${colourScope(ref)}`
     seen.set(key, (seen.get(key) || 0) + 1)
     if (seen.get(key) === 2)
       addWarning(dup, 'rangeproduct.criticalcomponent.duplicate_pair', 'critical_components',

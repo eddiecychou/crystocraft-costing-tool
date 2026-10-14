@@ -11,6 +11,7 @@ import {
   normGallery, normVideos, normBlogLinks, MARKETING_DESC_MAXLEN,
 } from '../constants'
 import { resizeToJpeg } from '../imageResize'
+import { serializedColourScope } from '../rangeBomScope'
 import { enhanceProductImage } from '../enhanceImage'
 import ManualAdjust from '../components/ManualAdjust'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
@@ -678,7 +679,7 @@ export default function RangeForm() {
           lead_time_weeks: d.lead_time_weeks ?? '',
           delivery_note: d.delivery_note || '',
           critical_components: Array.isArray(d.critical_components)
-            ? d.critical_components.map(r => ({ _uid: refUid(), id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1, plating_code: (r.plating_code || '').toUpperCase(), all_variants: !!r.all_variants }))
+            ? d.critical_components.map(r => ({ _uid: refUid(), id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1, plating_code: (r.plating_code || '').toUpperCase(), all_variants: !!r.all_variants, ...serializedColourScope(r) }))
             : [],
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery,
@@ -1009,6 +1010,7 @@ export default function RangeForm() {
             qty_per_unit: Math.max(1, intNum(r.qty_per_unit) || 1),
             plating_code: (r.plating_code || '').trim().toUpperCase(),
             all_variants: !!r.all_variants,
+            ...serializedColourScope(r),
           }
         })
         .filter(r => r.id || r.code),

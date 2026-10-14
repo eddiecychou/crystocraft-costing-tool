@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { colourScope, scopedVariants } from '../rangeBomScope'
 import { useParams, Link } from 'react-router-dom'
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -287,9 +288,17 @@ export default function RangeCosting() {
   // When any part is plating-specific, a single "sum of all parts" is wrong (a
   // Chrome piece never also uses the Gold part) — show a per-plating subtotal.
   const hasPlatingParts = refs.some(refPlatOf)
-  const compCostHKD = componentsCostHKD(draft, lib, rates, 1)
+  const hasColourParts = refs.some(colourScope)
+  const b0016PriceBlocked = product?.design_no === '0016' && product?.format_code === '000'
+  const colourVariants = hasColourParts ? scopedVariants(draft) : []
+  const summaryVariant = hasColourParts ? colourVariants[0] : null
+  const colourSubtotal = v => {
+    try { return `HKD ${componentsCostHKD(draft, lib, rates, 1, v).toFixed(2)}` }
+    catch { return 'Unavailable — review colour BOM' }
+  }
+  const compCostHKD = hasColourParts ? null : componentsCostHKD(draft, lib, rates, 1)
   const extraHKD = extraLinesHKD(draft, rates)
-  const toolHKD = toolingHKD(draft, lib, rates)
+  const toolHKD = (() => { try { return toolingHKD(draft, lib, rates, summaryVariant) } catch { return null } })()
   const markup = productMarkup(draft)
   const tiers = serialize(state).tiers
   const qtyCols = tiers.length ? tiers.map(t => t.quantity) : [1]
@@ -320,6 +329,7 @@ export default function RangeCosting() {
   const removeTier = i => setState(s => ({ ...s, tiers: s.tiers.filter((_, j) => j !== i) }))
 
   async function save({ publish } = {}) {
+    if (publish && b0016PriceBlocked) { setMsg('Error: B0016 finished-product pricing is not approved; assembly and packaging remain unresolved.'); return }
     setSaving(true); setMsg(null)
     try {
       const costing = serialize(state)
@@ -391,7 +401,13 @@ export default function RangeCosting() {
                 </div>
               )
             })}
-            {hasPlatingParts && platings.length ? (
+            {hasColourParts ? (
+              <>
+                {colourVariants.map(v => <div key={`${v.plating_code}-${v.crystal_code}`} className="py-2.5 flex items-center justify-between border-t border-warm-grey"><p className="text-sm font-semibold text-ink-80">{v.plating_code} · {v.crystal_code} component subtotal</p><p className="text-sm font-bold text-ink">{colourSubtotal(v)}</p></div>)}
+                <p className="pt-2 text-2xs text-ink-60">Each colour uses its matching fabric panel only. Shared metal is counted once per piece.</p>
+                {!colourVariants.length && <p role="alert" className="text-sm text-red-700">Colour-specific BOM has no resolvable variant; costing is unavailable.</p>}
+              </>
+            ) : hasPlatingParts && platings.length ? (
               <>
                 {platings.map(p => (
                   <div key={p.code} className="py-2.5 flex items-center justify-between border-t border-warm-grey">
@@ -562,7 +578,7 @@ export default function RangeCosting() {
       </div>
 
       {/* Per-variant cost + sell table */}
-      <div className="card p-5 mb-5">
+      {b0016PriceBlocked ? <div className="card p-5 mb-5"><h2 className="text-sm text-ink-80 mb-2">Finished-product pricing unavailable</h2><p className="text-sm text-ink-60">B0016 component costs are provisional. Assembly and packaging remain unresolved. No finished-product selling price is calculated or published.</p></div> : <div className="card p-5 mb-5">
         <h2 className="text-sm text-ink-80 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup, USD)</span></h2>
         <p className="text-xs text-ink-60 mb-3">All-in cost = components + extras + plating adder + crystal cost (+ tooling amortised). Sell = ⌈cost × markup⌉. Converted from HKD at {rates.USD} HKD/USD.</p>
         <div className="overflow-x-auto -mx-5 px-5">
@@ -613,7 +629,7 @@ export default function RangeCosting() {
           {' · '}<Link to="/settings" className="text-brand-500 hover:underline">Update rates</Link>
           {toolHKD > 0 && <> · Tooling USD {(toolHKD / (rates.USD || 7.78)).toFixed(2)} amortised over qty</>}
         </p>
-      </div>
+      </div>}
 
       {/* Actions */}
       <div className="card p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
@@ -624,7 +640,7 @@ export default function RangeCosting() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => save()} disabled={saving} className="btn-secondary text-sm">{saving ? 'Saving…' : 'Save costing'}</button>
-          <button onClick={() => save({ publish: true })} disabled={saving} className="btn-primary text-sm">{saving ? 'Saving…' : 'Save & publish'}</button>
+          <button onClick={() => save({ publish: true })} disabled={saving || b0016PriceBlocked} className="btn-primary text-sm">{saving ? 'Saving…' : 'Save & publish'}</button>
         </div>
         {msg && <p className={`w-full text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
       </div>

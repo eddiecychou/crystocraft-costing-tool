@@ -157,17 +157,19 @@ export function computeRequirements({ lines = [], products = [], lib = [], cryst
     if (!refs.length) { warnings.push({ item_code: l.item_code || '', order, reason: `no critical components on ${label}` }); continue }
 
     const plating = platingFromItemCode(l.item_code)
+    const colour = colourFromItemCode(l.item_code)
+    if (!colour && refs.some(r => r.crystal_code)) warnings.push({ item_code: l.item_code || '', order, reason: `colour not determined — colour-specific parts not counted for ${label}` })
     // Refs scoped to a specific plating (alternatives). `all_variants` / shared
     // parts have scope '' and always apply, so they are excluded here.
-    const scoped = refs.filter(r => refScopePlating(r, lib))
+    const scoped = refs.filter(r => refScopePlating(r, lib) || r.crystal_code)
     if (!plating && scoped.length) {
       warnings.push({ item_code: l.item_code || '', order, reason: `plating not determined — plating-specific parts not counted for ${label}` })
     }
 
     let matchedScoped = false
     for (const ref of refs) {
-      if (!refApplies(ref, lib, plating)) continue
-      if (refScopePlating(ref, lib)) matchedScoped = true
+      if (!refApplies(ref, lib, plating, colour)) continue
+      if (refScopePlating(ref, lib) || ref.crystal_code) matchedScoped = true
       const comp = resolveRef(ref, lib)
       if (!comp || !comp.code) { warnings.push({ item_code: l.item_code || '', order, reason: `component ${ref.code || ref.id || '?'} not found` }); continue }
       bump(comp, qty * perUnit(ref), label)

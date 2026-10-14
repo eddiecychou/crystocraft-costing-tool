@@ -1,6 +1,7 @@
 import { buildRangeSku, enumerateRangeSkus } from '../../../src/rangeSku.js'
 import { RANGE_CRYSTAL_BRANDS, RANGE_FORMAT_CODES, RANGE_PLATINGS } from '../../../src/constants.js'
 import { readLimitedJson } from './corpGiftDraft.js'
+import { prepareB0016ColourBom, createB0016ColourBom, B0016_REUSE_ID } from './b0016ColourBom.js'
 
 export const RANGE_SERVICE_UID = 'mcp-figurine-range-service'
 export const SOURCE_PRODUCT_ID = 'mcp_a844ebe21ba90961027c05752f5a8554c7a7d4bd'
@@ -15,9 +16,11 @@ const fail = (code, message, status = 400) => json({ ok: false, error: { code, m
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const ID_RE = /^[A-Za-z0-9_-]{1,128}$/
 const CODE_RE = /^[A-Z0-9][A-Z0-9-]{1,79}$/
-const OPS = new Set(['search_range_designs', 'get_range_design', 'prepare_mezuzah_range_design', 'create_mezuzah_range_design', 'prepare_mezuzah_range_components', 'create_mezuzah_range_components'])
-const WRITE_OPS = new Set(['create_mezuzah_range_design', 'create_mezuzah_range_components'])
+const OPS = new Set(['search_range_designs', 'get_range_design', 'prepare_mezuzah_range_design', 'create_mezuzah_range_design', 'prepare_mezuzah_range_components', 'create_mezuzah_range_components', 'prepare_mezuzah_colour_bom', 'create_mezuzah_colour_bom'])
+const WRITE_OPS = new Set(['create_mezuzah_range_design', 'create_mezuzah_range_components', 'create_mezuzah_colour_bom'])
 const ALLOWED = {
+  create_mezuzah_colour_bom: ['range_id', 'request_id', 'dry_run', 'approved', 'expected_preview_hash', 'acknowledge_supplier_colour_pending'],
+  prepare_mezuzah_colour_bom: ['range_id', 'request_id', 'dry_run'],
   search_range_designs: ['query', 'item_code', 'limit'],
   get_range_design: ['range_id'],
   prepare_mezuzah_range_design: ['item_codes', 'dry_run'],
@@ -82,11 +85,12 @@ export async function identity(op, request_id, payload) {
 
 export function designDraft(item_codes = ITEM_CODES) {
   exactCodes(item_codes)
+  // RangeForm hydrates omitted optional display fields when the concept is
+  // opened. Keep this initial customer-readable variant map exact and small:
+  // Firestore can validate all six maps without exceeding its rule budget.
   const variants = ITEM_CODES.map(sku => ({
-    brand_code: 'B', brand_name: '', plating_code: 'G', plating_name: 'Gold',
-    crystal_code: sku.slice(-2), crystal_name: '', description: '', running_no: '', sku,
-    ws_price_usd: null, stock_finished: null, packaging: '', engraving: '', image: '',
-    crystal_colors: [], colour_images: {},
+    brand_code: 'B', plating_code: 'G', crystal_code: sku.slice(-2), sku,
+    ws_price_usd: null,
   }))
   const product = {
     design_no: '0016', body_code: '', body_name: '', design_code: '0016',
@@ -128,25 +132,42 @@ async function get(ctx, path) {
   if (!response.ok) throw new Error(`READ_FAILED:${path}:${response.status}`)
   return fromDoc(await response.json())
 }
-async function list(ctx, path, cap = 1000) {
-  const rows = []; let pageToken = ''
-  while (true) {
-    const url = new URL(`https://firestore.googleapis.com/v1/${root(ctx.projectId)}/${path}`)
-    url.searchParams.set('pageSize', '100')
-    if (pageToken) url.searchParams.set('pageToken', pageToken)
-    const response = await ctx.fetchImpl(url, { headers: { Authorization: ctx.token } })
-    if (!response.ok) throw new Error(`READ_FAILED:${path}:${response.status}`)
-    const data = await response.json()
-    rows.push(...(data.documents || []).map(fromDoc))
-    if (rows.length > cap) throw new Error('SEARCH_LIMIT:Catalogue is too large for a complete uniqueness check')
-    pageToken = data.nextPageToken || ''
-    if (!pageToken) return rows
-  }
+async function listB0016Designs(ctx) {
+  const response = await ctx.fetchImpl(`https://firestore.googleapis.com/v1/${root(ctx.projectId)}:runQuery`, {
+    method: 'POST', headers: { Authorization: ctx.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery: {
+      from: [{ collectionId: 'range_products' }],
+      where: { fieldFilter: { field: { fieldPath: 'design_no' }, op: 'EQUAL', value: encode('0016') } },
+      limit: 1000,
+    } }),
+  })
+  if (!response.ok) throw new Error(`READ_FAILED:range_products/B0016:${response.status}`)
+  const rows = (await response.json()).filter(row => row.document).map(row => fromDoc(row.document))
+  if (rows.length >= 1000) throw new Error('SEARCH_LIMIT:B0016 result is too large to certify')
+  return rows
 }
 async function commit(ctx, writes) {
   return ctx.fetchImpl(`https://firestore.googleapis.com/v1/${root(ctx.projectId)}:commit`, {
     method: 'POST', headers: { Authorization: ctx.token, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }),
   })
+}
+async function commitPlan(ctx, records) {
+  const base = root(ctx.projectId)
+  return commit(ctx, records.map(record => {
+    const name = `${base}/${record.path}`
+    if (record.action === 'create') return record.path.startsWith('range_mcp_audit/') ? audit(name, record.fields) : create(name, record.fields)
+    if (!record.precondition_update_time) throw new Error('PRECONDITION_REQUIRED: updateTime required for existing records')
+    return { update: { name, fields: fields(record.fields) }, updateMask: { fieldPaths: Object.keys(record.fields) }, currentDocument: { updateTime: record.precondition_update_time } }
+  }))
+}
+
+async function listReuseQuotes(ctx) {
+  const response = await ctx.fetchImpl(`https://firestore.googleapis.com/v1/${root(ctx.projectId)}/range_components/${B0016_REUSE_ID}/supplier_quotes?pageSize=20`, { headers: { Authorization: ctx.token } })
+  if (response.status === 404) return []
+  if (!response.ok) throw new Error(`READ_FAILED:existing C1 quotes:${response.status}`)
+  const result = await response.json()
+  if (result.nextPageToken) throw new Error('REUSE_QUOTE_NEEDS_REVIEW: too many existing C1 quotes')
+  return result.documents || []
 }
 const create = (name, data) => ({ update: { name, fields: fields(data) }, currentDocument: { exists: false }, updateTransforms: [{ fieldPath: 'createdAt', setToServerValue: 'REQUEST_TIME' }] })
 const audit = (name, data) => ({ update: { name, fields: fields(data) }, currentDocument: { exists: false }, updateTransforms: [{ fieldPath: 'at', setToServerValue: 'REQUEST_TIME' }] })
@@ -173,16 +194,31 @@ function conflictRows(products) {
 
 async function designPreview(ctx, input) {
   const draft = designDraft(input.item_codes)
-  const [products, colours] = await Promise.all([list(ctx, 'range_products'), get(ctx, 'settings/crystal_colors')])
+  const [products, colours, claims] = await Promise.all([
+    listB0016Designs(ctx), get(ctx, 'settings/crystal_colors'),
+    Promise.all(ITEM_CODES.map(async item_code => ({ item_code, claim: await get(ctx, `range_sku_claims/${item_code}`) }))),
+  ])
   const conflicts = conflictRows(products)
+  for (const { item_code, claim } of claims) if (claim && !conflicts.some(row => row.item_code === item_code)) conflicts.push({ item_code, range_id: claim.range_id, reason: 'ORPHANED_OR_MISMATCHED_SKU_CLAIM' })
   const colorCodes = (colours?.colors || []).map(c => c.code)
-  const warnings = reviewWarnings(colorCodes)
+  const warnings = [...reviewWarnings(colorCodes), { code: 'LEGACY_SKU_AUDIT_REQUIRED', message: 'B0016 query and six claim IDs cannot prove that an older, differently numbered design does not reuse one of these SKUs. A privileged legacy-code audit is required before enabling writes.' }]
   return { draft, products, conflicts, warnings, colour_library_codes: colorCodes }
 }
 
 async function getDesign(ctx, range_id) {
   const product = await get(ctx, `range_products/${id(range_id, 'range_id')}`)
   return product && { range_id: product.id, design_no: product.design_no, design_name: product.design_name, active: product.active, status: product.status, item_codes: usedSkus(product), critical_components: product.critical_components || [] }
+}
+
+async function completeDesignRetry(ctx, ids, request_id, existing) {
+  if (!existing || existing.mcp_request_hash !== ids.hash || existing.mcp_request_id !== request_id) return false
+  const [claims, oldAudit] = await Promise.all([
+    Promise.all(ITEM_CODES.map(code => get(ctx, `range_sku_claims/${code}`))),
+    get(ctx, `range_mcp_audit/${ids.audit_id}`),
+  ])
+  return Boolean(oldAudit && oldAudit.range_id === ids.range_id && oldAudit.request_hash === ids.hash
+    && ITEM_CODES.every((code, index) => claims[index]?.item_code === code
+      && claims[index]?.range_id === ids.range_id && usedSkus(existing).includes(code)))
 }
 
 async function designOperation(op, input, ctx) {
@@ -195,6 +231,9 @@ async function designOperation(op, input, ctx) {
     const existing = await get(ctx, `range_products/${ids.range_id}`)
     if (existing) {
       if (existing.mcp_request_hash !== ids.hash || existing.mcp_request_id !== request_id) return fail('DUPLICATE_REQUEST', 'UUID was already used with different content', 409)
+      if (!await completeDesignRetry(ctx, ids, request_id, existing)) {
+        return fail('INCOMPLETE_PRIOR_REQUEST', 'Existing design, six SKU claims and audit do not agree; inspect before retrying', 409)
+      }
       return json({ ok: true, created: false, already_exists: true, range_id: ids.range_id, edit_url: `${ctx.origin}/range/${ids.range_id}`, item_codes: ITEM_CODES, audit_ref: `range_mcp_audit/${ids.audit_id}` })
     }
   }
@@ -215,6 +254,7 @@ async function designOperation(op, input, ctx) {
   if (input.dry_run !== false || input.approved !== true) return fail('APPROVAL_REQUIRED', 'Live create requires dry_run:false and approved:true after review of the exact preview', 409)
   if (!ctx.writesEnabled) return fail('WRITES_DISABLED', 'Figurine MCP writes are disabled until owner-approved deployment/configuration', 403)
   if (conflicts.length) return fail('DUPLICATE_ITEM_CODE', `Existing Range item code conflict: ${conflicts.map(x => x.item_code).join(', ')}`, 409)
+  if (!ctx.legacyCodeAuditCertified) return fail('LEGACY_SKU_AUDIT_REQUIRED', 'A separately authorized legacy SKU audit must be certified before live create', 409)
   const acknowledged = input.acknowledge_warnings
   const required = [...new Set(warnings.map(w => w.code))]
   if (!Array.isArray(acknowledged) || required.some(code => !acknowledged.includes(code)) || acknowledged.some(code => !required.includes(code))) return fail('REVIEW_REQUIRED', `Acknowledge exactly these warning codes after owner review: ${required.join(', ')}`, 409)
@@ -225,13 +265,15 @@ async function designOperation(op, input, ctx) {
   const response = await commit(ctx, writes)
   if (!response.ok) {
     const retry = await get(ctx, `range_products/${ids.range_id}`)
-    if (retry?.mcp_request_hash === ids.hash && retry?.mcp_request_id === request_id) return json({ ok: true, created: false, already_exists: true, range_id: ids.range_id, edit_url: `${ctx.origin}/range/${ids.range_id}`, item_codes: ITEM_CODES, audit_ref: `range_mcp_audit/${ids.audit_id}` })
+    if (await completeDesignRetry(ctx, ids, request_id, retry)) return json({ ok: true, created: false, already_exists: true, range_id: ids.range_id, edit_url: `${ctx.origin}/range/${ids.range_id}`, item_codes: ITEM_CODES, audit_ref: `range_mcp_audit/${ids.audit_id}` })
     return fail(response.status === 403 ? 'PERMISSION_DENIED' : 'ATOMIC_WRITE_FAILED', 'No design or code claim was created; review permissions/conflicts and retry with the same UUID', response.status === 403 ? 403 : 409)
   }
   return json({ ok: true, created: true, already_exists: false, range_id: ids.range_id, edit_url: `${ctx.origin}/range/${ids.range_id}`, item_codes: ITEM_CODES, audit_ref: `range_mcp_audit/${ids.audit_id}` }, 201)
 }
 
 async function componentOperation(op, input, ctx) {
+  if (op === 'create_mezuzah_range_components' && (input.metal_component_code === 'FM-B0016BY00-G' || /^P-CF003-/.test(input.fabric_component_code || '')))
+    return fail('COLOUR_BOM_REVIEW_REQUIRED', 'Use prepare_mezuzah_colour_bom. The legacy two-component create cannot represent six colour-specific panels; no write is allowed.', 409)
   const range_id = id(input.range_id, 'range_id')
   if (!/^mcp_range_[a-f0-9]{32}$/.test(range_id)) return fail('INVALID_RANGE_ID', 'Only a Range design created by this B0016 workflow is supported')
   const range = await get(ctx, `range_products/${range_id}`)
@@ -252,7 +294,17 @@ async function componentOperation(op, input, ctx) {
         get(ctx, `range_components/${ids.fabric_id}/supplier_quotes/${ids.fabric_quote_id}`),
         get(ctx, `range_mcp_audit/${ids.audit_id}`),
       ])
-      if (!oldMetalQuote || !oldFabricQuote || !oldAudit || !(range.critical_components || []).some(ref => ref.id === ids.metal_id) || !(range.critical_components || []).some(ref => ref.id === ids.fabric_id)) return fail('INCOMPLETE_PRIOR_REQUEST', 'Prior records do not form a complete atomic result; inspect before retrying', 409)
+      const linked = range.critical_components || []
+      if (!oldMetalQuote || !oldFabricQuote || !oldAudit
+        || oldMetal.mcp_range_id !== range_id || oldFabric.mcp_range_id !== range_id
+        || oldMetal.preferred_quote_id !== ids.metal_quote_id || oldFabric.preferred_quote_id !== ids.fabric_quote_id
+        || oldMetalQuote.mcp_range_id !== range_id || oldFabricQuote.mcp_range_id !== range_id
+        || oldMetalQuote.mcp_request_hash !== ids.hash || oldFabricQuote.mcp_request_hash !== ids.hash
+        || oldAudit.range_id !== range_id || oldAudit.request_hash !== ids.hash
+        || !linked.some(ref => ref.id === ids.metal_id && ref.code === oldMetal.code)
+        || !linked.some(ref => ref.id === ids.fabric_id && ref.code === oldFabric.code)) {
+        return fail('INCOMPLETE_PRIOR_REQUEST', 'Prior component, quote, BOM link and audit records disagree; inspect before retrying', 409)
+      }
       return json({ ok: true, created: false, already_exists: true, range_id, component_ids: [ids.metal_id, ids.fabric_id], quote_ids: [ids.metal_quote_id, ids.fabric_quote_id], audit_ref: `range_mcp_audit/${ids.audit_id}` })
     }
   }
@@ -261,8 +313,8 @@ async function componentOperation(op, input, ctx) {
   if (!metal_code || !fabric_code) warnings.push({ code: 'COMPONENT_CODES_REQUIRED', message: 'Both range component/ERP codes require owner review; none was invented.' })
   if ((range.critical_components || []).length) warnings.push({ code: 'BOM_NOT_EMPTY', message: 'Range design already has linked components; automatic linking is blocked.' })
   if (metal_code && fabric_code && metal_code === fabric_code) return fail('DUPLICATE_COMPONENT_CODE', 'Metal and fabric components must have different codes', 409)
-  const existing = await list(ctx, 'range_components', 3000)
-  const duplicate = existing.filter(c => c.code === metal_code || c.code === fabric_code).map(c => ({ code: c.code, component_id: c.id }))
+  const duplicate = []
+  warnings.push({ code: 'LEGACY_COMPONENT_CODE_AUDIT_REQUIRED', message: 'The scoped service cannot scan unrelated supplier-cost records. An authorized staff audit must clear both proposed component codes before live create is enabled.' })
   const proposed = {
     range_link: { range_id, field: 'critical_components', refs: ['metal', 'fabric'].map(kind => ({ kind, qty_per_unit: 1, all_variants: true })) },
     metal: { code: metal_code, supplier_id: SOURCE_PARTS.metal.supplier_id, unit_cost: 11.30, currency: 'RMB', moq: 500, one_time_sample_mould: 2912, screws_included: false, source_quote: `products/${SOURCE_PRODUCT_ID}/components/${SOURCE_PARTS.metal.component_id}/supplier_quotes/${SOURCE_PARTS.metal.quote_id}` },
@@ -274,16 +326,17 @@ async function componentOperation(op, input, ctx) {
     warnings, conflicts: duplicate, source_verified: true,
     proposed: { ...proposed, records: [
       { path: `range_products/${range_id}`, action: 'update_only_critical_components', fields: ['critical_components'] },
-      { path: 'range_components/{deterministic_metal_id}', fields: ['code', 'name', 'supplierId', 'unit_cost', 'unit_cost_currency', 'tooling_sample_cost', 'preferred_quote_id', 'mcp_request_id', 'mcp_request_hash'] },
+      { path: 'range_components/{deterministic_metal_id}', fields: ['code', 'name', 'supplierId', 'unit_cost', 'unit_cost_currency', 'tooling_sample_cost', 'preferred_quote_id', 'mcp_range_id', 'mcp_request_id', 'mcp_request_hash'] },
       { path: 'range_components/{deterministic_metal_id}/supplier_quotes/{deterministic_quote_id}', fields: ['supplier_id', 'unit_cost', 'moq', 'tooling_sample_cost', 'source_provenance', 'notes'] },
-      { path: 'range_components/{deterministic_fabric_id}', fields: ['code', 'name', 'supplierId', 'unit_cost', 'unit_cost_currency', 'preferred_quote_id', 'mcp_request_id', 'mcp_request_hash'] },
+      { path: 'range_components/{deterministic_fabric_id}', fields: ['code', 'name', 'supplierId', 'unit_cost', 'unit_cost_currency', 'preferred_quote_id', 'mcp_range_id', 'mcp_request_id', 'mcp_request_hash'] },
       { path: 'range_components/{deterministic_fabric_id}/supplier_quotes/{deterministic_quote_id}', fields: ['supplier_id', 'source_unit_cost', 'unit_cost', 'moq', 'source_provenance', 'notes'] },
       { path: 'range_mcp_audit/{deterministic_audit_id}', fields: ['action', 'service_principal', 'requested_by', 'source_product_id', 'component_ids', 'quote_ids'] },
     ] },
   })
   if (input.dry_run !== false || input.approved !== true) return fail('APPROVAL_REQUIRED', 'Live component linking requires dry_run:false and approved:true after review', 409)
   if (!ctx.writesEnabled) return fail('WRITES_DISABLED', 'Figurine MCP writes are disabled until owner-approved deployment/configuration', 403)
-  if (warnings.length || duplicate.length) return fail('REVIEW_REQUIRED', 'Component codes are missing or already used; resolve before creating records', 409)
+  if (!metal_code || !fabric_code || duplicate.length) return fail('REVIEW_REQUIRED', 'Component codes are missing or already used; resolve before creating records', 409)
+  if (!ctx.legacyCodeAuditCertified) return fail('LEGACY_COMPONENT_CODE_AUDIT_REQUIRED', 'A separately authorized legacy component-code audit must be certified before live create', 409)
   if ((range.critical_components || []).length) return fail('BOM_NOT_EMPTY', 'Range design already has components; review manually before linking', 409)
   const base = root(ctx.projectId)
   const refs = [
@@ -296,7 +349,7 @@ async function componentOperation(op, input, ctx) {
     unit_cost: cost, unit_cost_currency: 'RMB', tooling_sample_cost: tooling,
     tooling_sample_cost_currency: 'RMB', volume_tiers: [], preferred_quote_id: quoteId,
     preferred_supplier_name: supplier.name || supplier.name_cn || '',
-    mcp_creator_uid: RANGE_SERVICE_UID, mcp_request_id: request_id, mcp_request_hash: ids.hash,
+    mcp_creator_uid: RANGE_SERVICE_UID, mcp_range_id: range_id, mcp_request_id: request_id, mcp_request_hash: ids.hash,
   })
   const quote = (name, supplier, cost, moq, tooling, sourcePart, extra = {}) => create(name, {
     supplier_id: supplier.id, supplier_name: supplier.name || supplier.name_cn || '',
@@ -304,7 +357,7 @@ async function componentOperation(op, input, ctx) {
     tooling_sample_cost_currency: 'RMB', is_preferred: true, volume_tiers: [], attachments: [],
     notes: sourcePart === 'metal' ? 'Feihong metal case only. M3 screws quoted separately, excluded. One-time sample/mould fees recorded on this component only.' : 'Ryan crystal fabric panel only. RMB 8.10 source quotation; RMB 9.00 owner-approved conservative working cost. MOQ 100 per colour. Assembly and packaging excluded.',
     source_provenance: { product_id: SOURCE_PRODUCT_ID, component_id: SOURCE_PARTS[sourcePart].component_id, quote_id: SOURCE_PARTS[sourcePart].quote_id },
-    ...extra, mcp_creator_uid: RANGE_SERVICE_UID, mcp_request_id: request_id, mcp_request_hash: ids.hash,
+    ...extra, mcp_creator_uid: RANGE_SERVICE_UID, mcp_range_id: range_id, mcp_request_id: request_id, mcp_request_hash: ids.hash,
   })
   const writes = [
     { update: { name: `${base}/range_products/${range_id}`, fields: fields({ critical_components: refs }) }, updateMask: { fieldPaths: ['critical_components'] }, currentDocument: { updateTime: range.updateTime } },
@@ -319,7 +372,7 @@ async function componentOperation(op, input, ctx) {
   return json({ ok: true, created: true, already_exists: false, range_id, component_ids: [ids.metal_id, ids.fabric_id], quote_ids: [ids.metal_quote_id, ids.fabric_quote_id], audit_ref: `range_mcp_audit/${ids.audit_id}` }, 201)
 }
 
-export async function handleMcpFigurineRange(req, { authorize, fetchImpl = fetch, projectId, writesEnabled = false }) {
+export async function handleMcpFigurineRange(req, { authorize, fetchImpl = fetch, projectId, writesEnabled = false, legacyCodeAuditCertified = false }) {
   if (req.method !== 'POST') return fail('METHOD_NOT_ALLOWED', 'POST required', 405)
   const auth = await authorize(req)
   if (!auth.ok) return auth.response || fail('PERMISSION_DENIED', 'Service identity required', 403)
@@ -336,9 +389,12 @@ export async function handleMcpFigurineRange(req, { authorize, fetchImpl = fetch
     bool(input.approved, 'approved')
     if (body.op.startsWith('prepare_') && input.dry_run !== true) throw new Error('Preparation requires dry_run:true')
     if (WRITE_OPS.has(body.op) && input.dry_run !== false && input.dry_run !== undefined) throw new Error('dry_run must be false for an approved create')
-    const ctx = { fetchImpl, projectId, token: req.headers.get('authorization'), origin: new URL(req.url).origin, writesEnabled }
+    const ctx = { fetchImpl, projectId, token: req.headers.get('authorization'), origin: new URL(req.url).origin, writesEnabled, legacyCodeAuditCertified }
+    const colourApi = { requestId, source, get, designPreview, listReuseQuotes, identity, id, usedSkus, ITEM_CODES, RANGE_SERVICE_UID, SOURCE_PRODUCT_ID, SOURCE_PARTS, commitPlan }
+    if (body.op === 'prepare_mezuzah_colour_bom') return json(await prepareB0016ColourBom(input, ctx, colourApi))
+    if (body.op === 'create_mezuzah_colour_bom') return json(await createB0016ColourBom(input, ctx, colourApi))
     if (body.op === 'search_range_designs') {
-      const products = await list(ctx, 'range_products')
+      const products = await listB0016Designs(ctx)
       const query = String(input.query || '').trim().toLowerCase()
       const item = input.item_code ? String(input.item_code).trim().toUpperCase() : ''
       const limit = input.limit == null ? 20 : Number(input.limit)
@@ -351,6 +407,6 @@ export async function handleMcpFigurineRange(req, { authorize, fetchImpl = fetch
     return await componentOperation(body.op, input, ctx)
   } catch (error) {
     const code = String(error.message).split(':')[0]
-    return fail(['READ_FAILED', 'SEARCH_LIMIT', 'SOURCE_PRODUCT_INVALID', 'SOURCE_QUOTE_CHANGED'].includes(code) ? code : 'INVALID_REQUEST', error.message, code === 'READ_FAILED' ? 502 : 400)
+    return fail(['READ_FAILED', 'SEARCH_LIMIT', 'SOURCE_PRODUCT_INVALID', 'SOURCE_QUOTE_CHANGED', 'SOURCE_SUPPLIER_INVALID', 'REUSE_COMPONENT_CHANGED', 'REUSE_COMPONENT_NEEDS_REVIEW', 'REUSE_QUOTE_NEEDS_REVIEW', 'RANGE_NOT_B0016', 'BOM_NOT_EMPTY', 'APPROVAL_REQUIRED', 'WRITES_DISABLED', 'LEGACY_COMPONENT_CODE_AUDIT_REQUIRED', 'INVALID_RANGE_ID', 'PREVIEW_REQUIRED', 'REVIEW_REQUIRED', 'PREVIEW_MISMATCH', 'DUPLICATE_REQUEST', 'INCOMPLETE_PRIOR_REQUEST', 'DUPLICATE_ITEM_CODE', 'ATOMIC_WRITE_UNCONFIRMED', 'ATOMIC_WRITE_FAILED', 'PERMISSION_DENIED', 'WRITE_VERIFICATION_FAILED', 'OWNER_PLAN_APPROVAL_REQUIRED'].includes(code) ? code : 'INVALID_REQUEST', error.message, code === 'READ_FAILED' ? 502 : ['WRITES_DISABLED', 'PERMISSION_DENIED'].includes(code) ? 403 : 400)
   }
 }
