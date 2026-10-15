@@ -80,4 +80,41 @@ with `carousel-candidate-admin.png` and `carousel-candidate-customer.png`.
 The measurement fixture is pinned to pre-optimization revision `e7713ec0`
 (overridable with CAROUSEL_BASE_REF) so its baseline remains reproducible after
 the optimization commit. This fixture-only adjustment does not change the app.
-No Firestore/Storage rules changes are required. Production verification pending.
+No Firestore/Storage rules changes are required.
+
+Production deploy `6ad05fb6471f701bdc4dd851`, commit
+`a6b890d83a10dbf9fdd7318959ae8139992b89f4`, published 15 October 2026
+16:08 AEDT. Verification completed around 16:41 AEDT. Both production hostnames
+serve `/assets/index-CPvOoILc.js`; Firebase configuration probes return HTTP 200.
+Build marker: V8.18 · 15 Oct, 16:08.
+
+Fresh password admin sign-in PASS on portal.crystocraft.com in private Chrome:
+QA identity, dashboard data, Settings navigation and 140-product catalogue load.
+Full repeatable two-role gate used the site's production hostname
+https://ua-product-manager.netlify.app, which serves the same current deployment
+and bundle, with explicit sign-out between roles. This keeps the owner's working
+portal.crystocraft.com session intact. IAB again returned a connection error;
+Chrome authenticated successfully without account/configuration changes.
+
+- Admin PASS: claude-qa@crystocraft.com; dashboard routing and data, Settings
+  navigation, 140-product catalogue, reported pillow's decoded arrow swap,
+  product detail with admin sections, refresh retains admin shell; no captured
+  runtime errors.
+- Customer PASS: customer-qa@crystocraft.com; /shop routing and isolated QA company,
+  corporate catalogue and reported pillow's decoded arrow swap, detail loads
+  without admin/internal sections, refresh retains customer shell, direct /settings
+  redirects to /shop; no captured runtime errors. Signed out after verification.
+
+Both arrow swaps changed the image source, finished with naturalWidth > 0 and
+aria-busy=false, and stayed on the catalogue URL. A separate check on
+portal.crystocraft.com/products also passes on the updated build using the owner's
+existing session (not counted as fresh login proof). Screenshots:
+`/private/tmp/v818-evidence/carousel-production-admin.png`,
+`carousel-production-customer.png`, and `carousel-portal-admin.png`.
+
+The complete local suite is 28 passing tests (17 carousel/source/gallery plus
+11 Firebase configuration), full src/netlify no-undef lint passes, guarded
+production build passes. No production product, price, image or access-rule
+writes were used. No Firebase rules deployment. First uncached images can still
+wait on the network; the optimization moves neighbouring downloads before the
+click and retains the last loaded photo during a cold download.
