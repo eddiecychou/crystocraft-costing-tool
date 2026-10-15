@@ -30,6 +30,7 @@
 //     endpoint: `wc/v3/products/3194`,
 //     payload: { meta_data: [{ key: '_yoast_wpseo_title', value: '…' }] },
 //     expectedFields: ['meta._yoast_wpseo_title'],
+//     expectedBefore: { 'meta._yoast_wpseo_title': 'Reviewed old title' },
 //     invalidateYoastIndexable: ({id, endpoint}) => deleteYoastIndexable({id, endpoint, runWpCli}),
 //   })
 //   if (!r.verified) { alert(r); STOP }   // r.drift lists what else moved;
@@ -93,6 +94,23 @@ function payloadPaths(payload) {
 }
 
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+
+// JSON serialisation is not layout content: PHP escapes slashes and Unicode.
+// Only Elementor JSON gets semantic comparison; authored HTML/text stays exact.
+// Sort object keys recursively, preserve array order and every authored value.
+export function comparableField(path, value) {
+  if (path !== 'meta._elementor_data') return value
+  let tree = value
+  if (typeof tree === 'string') {
+    try { tree = JSON.parse(tree) } catch { return value }
+  }
+  if (!Array.isArray(tree)) return value // malformed/primitive data is never repaired
+  const canonical = v => Array.isArray(v) ? v.map(canonical)
+    : v && typeof v === 'object'
+      ? Object.fromEntries(Object.keys(v).sort().map(k => [k, canonical(v[k])])) : v
+  return JSON.stringify(canonical(tree))
+}
+const sameField = (path, a, b) => same(comparableField(path, a), comparableField(path, b))
 const yoastWrite = payload => payloadPaths(payload).some(path => /^meta\._yoast_wpseo_/.test(path))
 const failure = (error, extra = {}) => ({
   ok: false, verified: false, noop: false, unlanded: [], error, ...extra,
@@ -104,7 +122,7 @@ function fingerprint(entity, fields) {
   const fp = {}
   for (const f of fields) {
     let v = get(entity, f)
-    if (f === 'meta._elementor_data' || /_elementor_data$/.test(f)) v = v == null ? null : hash32(v)
+    if (f === 'meta._elementor_data' || /_elementor_data$/.test(f)) v = v == null ? null : hash32(comparableField('meta._elementor_data', v))
     else if (f === 'categories' && Array.isArray(v)) v = v.map(c => c.id ?? c).sort().join(',')
     else if (Array.isArray(v)) v = JSON.stringify(v)
     else if (v && typeof v === 'object') v = JSON.stringify(v)
@@ -125,7 +143,7 @@ function variationHash(entity) {
   return entity.variations.map(v => `${v.id}:${v.price ?? ''}:${v.stock_status ?? ''}`).sort().join('|')
 }
 
-export async function safeWrite({ get: getFn, put: putFn, invalidateYoastIndexable, id, endpoint, payload, expectedFields = [], allowVariationChange = false }) {
+export async function safeWrite({ get: getFn, put: putFn, invalidateYoastIndexable, id, endpoint, payload, expectedFields = [], expectedBefore, allowVariationChange = false }) {
   if (typeof getFn !== 'function' || typeof putFn !== 'function') {
     return failure('safeWrite needs get() and put() functions')
   }
@@ -139,6 +157,16 @@ export async function safeWrite({ get: getFn, put: putFn, invalidateYoastIndexab
   try { before = await getFn(id) } catch (e) { return failure(`pre-read failed: ${e?.message || e}`) }
   if (!before || typeof before !== 'object') return failure('pre-read returned no entity')
 
+  // Optional reviewed raw field snapshot. DSH must supply this for every
+  // update to reject stale approvals before put(), not merely inspect afterwards.
+  if (expectedBefore !== undefined) {
+    if (!expectedBefore || typeof expectedBefore !== 'object' || Array.isArray(expectedBefore)
+        || !Object.keys(expectedBefore).length) return failure('expectedBefore must be a non-empty field snapshot')
+    const stale = Object.entries(expectedBefore)
+      .filter(([field, value]) => value === undefined || !sameField(field, value, get(before, field)))
+      .map(([field]) => field)
+    if (stale.length) return failure('reviewed source changed before write: ' + stale.join(', '), { stale })
+  }
   const beforeFp = fingerprint(before, watch)
   const beforeVarH = variationHash(before)
 
@@ -179,14 +207,14 @@ export async function safeWrite({ get: getFn, put: putFn, invalidateYoastIndexab
   // already-correct field could pass merely because it was not "asked" to move.
   //
   //   landed    — the value differs after the write
-  //   unlanded  — after is not EXACTLY the supplied value (even if it moved)
+  //   unlanded  — after is not the supplied value (Elementor JSON compares structurally)
   //   noop      — declared fields, and nothing moved at all
   //
   // With an empty payload, there is no stated intent and no no-op alarm.
   const intended = paths
   const moved = (f) => JSON.stringify(beforeFp[f]) !== JSON.stringify(afterFp[f])
   const landed = intended.filter(moved)
-  const unlanded = intended.filter(f => get(payload, f) !== undefined && !same(get(payload, f), get(after, f)))
+  const unlanded = intended.filter(f => get(payload, f) !== undefined && !sameField(f, get(payload, f), get(after, f)))
   const noop = intended.length > 0 && landed.length === 0
   let invalidateError = null
   if (!writeErr && drift.length === 0 && unlanded.length === 0 && yoastWrite(payload)) {

@@ -1075,3 +1075,21 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | 2026-10-03 | Added L-47 — DSH verified defect 1 fixed and defect 2 only *partially*: the "render is not the body" fix had a fourth call site (`payloadText()`, feeding `brand_terms_preserved` / `wrong_language_chars` / `placeholder_markers`) and `contentString()` still fell back to `.rendered` when `.raw` was absent — which is the default for `wpEntity()` without `context=edit`, so the fallback silently restored the old behaviour. `contentString` is now `.raw`-only (absent → '' → check skips), `payloadText` routes objects through it, and the `before.content` workaround is dropped. `validate-payload.test.mjs` 49 → 55, the six new assertions verified to fail against the pre-fix validator. `validate-payload.mjs` re-fingerprinted (`3bf6c751c578`). |
 | 2026-10-09 | Expanded L-58 with the live corrective action and full supplier-quote audit: the one stored `CNY` quote was saved as `RMB`; the complete 100-record collection-group review found no remaining legacy `CNY` unit or tooling values. The tooling equality query required a new index, so the review deliberately used the existing two-page result set rather than creating production infrastructure for a one-off audit. |
 | 2026-10-11 | Added L-59 after the archive-inbox rollout exposed four wrong-account duplicate WhatsApp threads. The Business/Personal folder is now authoritative, mapping disagreement is a hard failure, and verified subset duplicates are preserved as hidden tombstones rather than blindly merged. |
+
+## L-63 · JSON encoding is not layout drift; pending snapshots can become stale
+
+**Symptom:** DSH reported four successful Elementor saves as verified:false,
+and obsolete pending layouts could later undo newer approved edits.
+**Cause:** safeWrite compared serialized JSON bytes (PHP escaped slashes/Unicode);
+the queue allowed overlapping same-entity work without supersession.
+**Fix:** Parse/canonicalise only valid Elementor arrays for per-field comparison
+and fingerprints; keep authored values/array order and exact non-layout text.
+DSH passes the reviewed raw target snapshot as expectedBefore to abort stale
+updates before PUT. Batch creation rejects active same-entity collisions and
+atomically supersedes only explicitly named overlapping unexecuted pending
+batches. Replacements need new approval. Review transactions reject stale
+decisions; poll/result cannot revive superseded work. Missing page Yoast REST
+registration is separate and remains a real unlanded-field failure.
+**Verification:** qa/seo-write-safety.test.mjs reproduces slash/Unicode differences,
+wrong values, real drift, ignored Yoast, pre-write abort, queue policy and the
+actual injected transaction helper. No historical batch results are relabelled.

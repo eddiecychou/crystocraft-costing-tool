@@ -449,12 +449,16 @@ DSH stays the sole WordPress writer but goes through this loop:
    confirmed no-layout evidence (see `seo-control-plane/README.md`). Reasoned
    per-item exceptions retain original failures and still require human approval.
    A pass with `skipped > 0` remains partial, not a full validation (L-48).
-3. **Batch + human approval.** POST the batch to `/api/seo-batch`
+3. **Batch + human approval.** Combine same-entity edits; overlapping active batches
+   are rejected. Use batch.supersedes only for unexecuted pending work, with a fresh
+   replacement and approval (seo-control-plane/README.md). POST the batch to `/api/seo-batch`
    (`op:'create'`, Bearer `SEO_BATCH_SECRET`). The owner approves/rejects
    per-item at `/seo-review` against a real `before → after` diff, then "Send
    to DSH". An item with an empty/absent `payload` is rejected 400 — nothing to
    write.
-4. **Execute through `safeWrite`.** `op:'poll'` for approved batches; every
+4. **Execute through `safeWrite`.** DSH supplies expectedBefore from the reviewed
+   raw target snapshot; a stale source stops before PUT. Elementor read-back
+   compares parsed JSON, preserving real changes while ignoring PHP escaping. `op:'poll'` for approved batches; every
    write goes through `seo-control-plane/safe-write.mjs` — it aborts the batch
    if any field outside `expectedFields` drifts (B52 variation-price wipe), and
    it reports `verified:false` + `noop:true` when **none** of them moved, i.e.

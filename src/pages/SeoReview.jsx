@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, doc, onSnapshot, query, orderBy, limit, updateDoc } from 'firebase/firestore'
+import { collection, doc, onSnapshot, query, orderBy, limit, runTransaction } from 'firebase/firestore'
 import { db } from '../firebase'
 import SeoValidationDetails from '../components/SeoValidationDetails'
 import { ClipboardCheck, Check, X, AlertTriangle, CircleSlash, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
@@ -14,6 +14,7 @@ const STATUS_BADGE = {
   pending_review: 'bg-amber-50 text-amber-700',
   approved: 'bg-sky-50 text-sky-700',
   rejected: 'bg-ivory text-ink-70',
+  superseded: 'bg-ivory text-ink-70',
   executed: 'bg-green-50 text-green-700',
   partial: 'bg-red-50 text-red-600',
 }
@@ -61,12 +62,25 @@ export default function SeoReview() {
   }, [])
 
   const sel = useMemo(() => batches.find(b => b.id === selId) || batches[0] || null, [batches, selId])
-  const editable = sel?.status === 'pending_review'
+  const editable = sel?.status === 'pending_review' && !sel?.superseded_by
 
   async function setItems(items, extra = {}) {
     if (!sel) return
     setBusy(true); setErr('')
-    try { await updateDoc(doc(db, 'seo_batches', sel.id), { items, ...extra }) }
+    try {
+      await runTransaction(db, async tx => {
+        const ref = doc(db, 'seo_batches', sel.id)
+        const current = await tx.get(ref)
+        if (!current.exists() || current.data().status !== 'pending_review' || current.data().superseded_by) {
+          throw new Error('This batch is no longer awaiting review. Reload the queue.')
+        }
+        // Avoid overwriting another reviewer's decisions from a stale screen.
+        if (JSON.stringify(current.data().items) !== JSON.stringify(sel.items)) {
+          throw new Error('Review decisions changed. Reload the queue before continuing.')
+        }
+        tx.update(ref, { items, ...extra })
+      })
+    }
     catch (e) { setErr(e.message || 'Write failed.') }
     finally { setBusy(false) }
   }
@@ -148,6 +162,12 @@ export default function SeoReview() {
                   </div>
                   <span className={`text-2xs px-2 py-1 rounded-full ${STATUS_BADGE[sel.status] || 'bg-ivory text-ink-70'}`}>{sel.status}</span>
                 </div>
+                {sel.superseded_by && <p className="text-sm text-amber-700 mt-2">
+                  Superseded by batch {sel.superseded_by}. This batch cannot be released.
+                </p>}
+                {sel.supersedes?.length > 0 && <p className="text-xs text-ink-60 mt-2">
+                  Replaces pending batches: {sel.supersedes.join(', ')}
+                </p>}
                 {editable && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     <button onClick={() => bulk('approve', true)} disabled={busy}

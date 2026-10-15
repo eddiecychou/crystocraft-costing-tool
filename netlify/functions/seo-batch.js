@@ -19,7 +19,7 @@
 // items so the structure/parity/brand checks can run.
 //
 // Ops (POST JSON):
-//   { op: 'create', batch: { note, items: [{ id, kind, lang, endpoint,
+//   { op: 'create', batch: { note, supersedes?: ['pendingBatchId'], items: [{ id, kind, lang, endpoint,
 //         summary, payload, before, source, validation,
 //         expectedNewIds?, appendOnly?, acceptPreexistingOverCap?, allow?: [{check, why}] }] } }
 //       -> { id, failed_validation, skipped_validation, mismatches: [itemIndex] }
@@ -42,6 +42,7 @@
 import { initAdminApp } from './lib/firebaseAdmin.js'
 import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 import { timingSafeEqual } from 'node:crypto'
+import { supersedesIds, storeQueuedBatch, releaseBatch, QueueConflict } from './lib/seoBatchSafety.js'
 // The OC re-runs the code gate server-side on every incoming batch — DSH's
 // self-reported `validation` is kept as `dsh_validation` for audit, but the
 // authoritative result the reviewer sees (and that `poll` enforces) is this
@@ -189,7 +190,15 @@ export default async function handler(req) {
       failed_validation: failed,
       items: outItems,
     }
-    const ref = await col.add(doc)
+    let supersedes
+    try { supersedes = supersedesIds(body.batch.supersedes) }
+    catch (e) { return json({ error: e.message }, 400) }
+    const ref = col.doc()
+    try {
+      await storeQueuedBatch(getFirestore(), col, ref, doc, supersedes)
+    } catch (e) {
+      return json({ error: e.message, conflicts: e.conflicts || [] }, e instanceof QueueConflict ? 409 : 500)
+    }
     // `skipped_validation` counts items whose OC gate could not run every
     // applicable check (no `source`, or a source body without `.raw`). They are
     // NOT failures — but `failed_validation: 0` on its own must never be read as
@@ -209,19 +218,7 @@ export default async function handler(req) {
     // Hard gate: an item can be approved in the UI but still have failed the
     // OC code gate — never release those for execution. Downgrade the
     // decision to 'blocked' so DSH's `decision === 'approve'` filter skips it.
-    const batches = snap.docs.map((d) => {
-      const b = { id: d.id, ...d.data() }
-      let blocked = 0
-      b.items = (b.items || []).map((it) => {
-        if (it.decision === 'approve' && it.validation?.passed === false) {
-          blocked++
-          return { ...it, decision: 'blocked', block_reason: 'failed OC validation — not released' }
-        }
-        return it
-      })
-      if (blocked) b.blocked_count = blocked
-      return b
-    })
+    const batches = snap.docs.map(d => releaseBatch({ ...d.data(), id: d.id })).filter(Boolean)
     return json({ batches })
   }
 
@@ -237,6 +234,8 @@ export default async function handler(req) {
     const ref = col.doc(String(body.id))
     const d = await ref.get()
     if (!d.exists) return json({ error: 'not found' }, 404)
+    if (d.data().superseded_by || d.data().status === 'superseded') return json({ error: 'Batch is superseded; results cannot reactivate it' }, 409)
+    if (!['approved', 'partial', 'executed'].includes(d.data().status)) return json({ error: 'Batch was not released for execution' }, 409)
     const byIndex = new Map(body.results.map(r => [r.index, r]))
     // `verified` is kept as an explicit boolean when DSH sends one, and null
     // when it doesn't (an older DSH — fall back to `ok` for it rather than

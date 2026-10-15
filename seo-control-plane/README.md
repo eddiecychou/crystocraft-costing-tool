@@ -31,7 +31,7 @@ ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-16) |
 |---|---|
 | `validate-payload.mjs` | `713ceb69fd16` |
-| `safe-write.mjs` | `8e4d16f4f195` |
+| `safe-write.mjs` | `b9f18f27f404` |
 | `yoast-indexable.mjs` | `28eba647fe55` |
 
 Regenerate with
@@ -326,3 +326,39 @@ to WordPress. Run `npm run test:seo-control-plane` for validator, write verifica
 batch guards, first-layout/exception and review-component tests.
 
 First layouts also require a non-empty node array, valid Elementor node types, widget types and unique IDs (`first_layout_structure`); this integrity check cannot be overridden.
+
+## Elementor read-back and stale queue protection — 16 October follow-up
+
+Elementor values are parsed and compared structurally in read-back, drift and
+no-op detection. PHP slash/Unicode escaping and object-key order do not change
+the tree; array order and authored values still matter. Malformed data is not
+repaired, and ordinary text/HTML still compares exactly. A genuine ignored
+Yoast field still fails verification even when the layout landed.
+
+DSH must re-vendor **safe-write.mjs** and its standalone test, run vendor sync
+for every active directory, and wire **expectedBefore** to the exact reviewed
+RAW target-field snapshot. Example:
+`expectedBefore: { 'meta._elementor_data': reviewedRawLayout }`.
+Do not use a layout hash, rendered body, a newly fetched value in place of the
+reviewed value, or the English source for a translated target. If it differs
+from the pre-write GET, the wrapper stops BEFORE PUT. Omission remains
+backward-compatible, so this protection is not active until DSH passes it.
+
+Queue creation now returns **409 conflicts:[batchIds]** if an active pending or
+approved batch targets the same existing entity. Combine same-entity edits into
+one item. To withdraw unexecuted pending work, submit:
+`{op:'create',batch:{supersedes:['oldBatchId'],note,items}}`.
+Replacement creation and old-batch supersession are atomic. Superseding applies
+to the WHOLE old batch; carry forward every still-wanted change in the fresh
+reviewed payload. Only overlapping pending-review batches with no results can
+be superseded. Approved/in-flight, executed and partial batches cannot be
+withdrawn this way. A replacement always requires fresh human approval.
+Superseded batches keep payloads, decisions and audit linkage; they never poll
+for execution even if an obsolete client changes their status. Do not run
+previously polled/cached work: poll immediately before execution and use the
+reviewed-value preflight. Results cannot revive superseded or unreleased work.
+
+No existing production batch was changed by implementing these guards. Older
+pending batches still need human rejection or explicit replacement after release.
+See docs/plans/ELEMENTOR-READBACK-QUEUE-FOLLOWUP-2026-10-16.md for the handoff
+and the separate WordPress page-Yoast prerequisite.

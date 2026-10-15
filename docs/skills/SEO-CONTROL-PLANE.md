@@ -125,7 +125,8 @@ DSH ops (POST JSON):
 ```
 {
   created_by: 'dsh', created_at, note, item_count,
-  status: 'pending_review' | 'approved' | 'rejected' | 'executed' | 'partial',
+  status: 'pending_review' | 'approved' | 'rejected' | 'executed' | 'partial' | 'superseded',
+  supersedes: [], superseded_by?, superseded_at?,
   items: [{
     index, id, kind, lang, endpoint, summary,
     payload,                                       // exact WP write body
@@ -326,3 +327,22 @@ failure. Reasons are mandatory. Missing layout evidence, invalid JSON and unlink
 translation publication cannot be excepted. Human approval, before/after backups,
 read-back verification and DSH-only WordPress execution are unchanged. Exact
 contract, vendor fingerprints and producer handoff: `seo-control-plane/README.md`.
+
+### 16 October follow-up: layout serialization, supersession and stale snapshots
+
+Shared safeWrite now compares parsed Elementor JSON for requested values and
+layout fingerprints. Slash/Unicode escaping and object key order are ignored;
+array order, real values and ordinary HTML/text remain exact. DSH re-vendors it
+and passes the reviewed raw target snapshot as expectedBefore before each update.
+Missing expectedBefore remains backward-compatible, not proof of stale-write safety.
+
+Batch create accepts optional batch.supersedes (up to 20 unique batch IDs).
+A serialisable transaction rejects same-entity pending/approved collisions with
+409, supersedes only overlapping unexecuted pending batches and creates a fresh
+pending replacement. Superseded originals retain payload/decisions/results and
+record superseded_by/at; replacements record supersedes. Poll excludes them
+regardless of a stale status change. Review decisions use a transaction to refuse
+a changed/non-pending/superseded batch. Results reject superseded/unreleased work.
+Existing stale batches are NOT migrated or automatically rejected.
+Details and DSH rollout: ../../seo-control-plane/README.md, and
+../plans/ELEMENTOR-READBACK-QUEUE-FOLLOWUP-2026-10-16.md.
