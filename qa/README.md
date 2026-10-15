@@ -1,3 +1,33 @@
+# Automated product search regressions
+
+```sh
+npm ci
+npm run test:product-search
+```
+
+The suite renders the actual admin Figurine Gifts / Corp Gifts and customer
+Figurine Gifts / Corporate Gifts pages in JSDOM. Firebase, pricing feeds and
+image/export widgets use local fixtures; the production search predicates,
+React row keys, category/status filters, URL constraints, storage, visibility
+screening and pagination run unchanged. No Firebase credentials are required;
+network calls and data writes fail the test.
+
+Coverage includes repeated/case-insensitive queries, clearing, no matches,
+duplicate names/design codes/SKUs, searching beyond the first page, pagination
+reset, delayed data loading with valid saved filters, obsolete saved categories,
+restored searches on remount, new products entering a live search, status and
+URL design/format constraints, and sensitive-customer image restrictions.
+React errors (including duplicate-key warnings) fail the suite. Existing quote
+variant identity/price and filter tests run in the same command.
+
+`npm run build` runs this suite first through `prebuild`, so failed search checks
+stop a normal application build/deploy, including Netlify Git deployments.
+A standalone GitHub Actions workflow could not be installed with the current
+git token (GitHub requires the additional `workflow` permission). No account
+permissions were changed. The suite checks component behavior, not visual layout,
+real login or Firebase rules;
+release verification below remains required when publishing an app.
+
 # Rendering a PDF to look at it
 
 > **Every release:** first follow
