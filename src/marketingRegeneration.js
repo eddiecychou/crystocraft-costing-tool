@@ -1,8 +1,8 @@
-import { doc, getDocFromServer, runTransaction, serverTimestamp } from 'firebase/firestore'
+import { collection, onSnapshot, doc, getDocFromServer, getDocsFromServer, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db, authHeader } from './firebase'
-import { TARGET_IDS } from './marketingRegenerationList'
+import { MAX_COPY_CHARS } from './marketingCopyReview'
+export { MAX_COPY_CHARS } from './marketingCopyReview'
 
-export const MAX_COPY_CHARS = 300
 export const JOB_KEY = 'oc-marketing-regeneration-v1'
 export const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -24,7 +24,6 @@ export function saveJob(job) {
 }
 
 export async function readTarget(id) {
-  if (!TARGET_IDS.includes(id)) throw new Error('Product is outside the 114-item allowlist.')
   const snap = await getDocFromServer(doc(db, 'products', id))
   if (!snap.exists()) throw new Error('Product no longer exists.')
   return { id, ...snap.data() }
@@ -45,7 +44,6 @@ export async function generatePreview(product, instructions = '') {
 }
 
 export async function applyApproved(id, entry, runId) {
-  if (!TARGET_IDS.includes(id)) throw new Error('Product is outside the 114-item allowlist.')
   if (!entry.approved || entry.status !== 'previewed') throw new Error('This preview has not been approved.')
   if ((entry.guidance || '').trim() !== (entry.instructionsApplied || '')) throw new Error('Rewrite with the current instructions before approving.')
   if (!entry.after?.trim() || entry.after.length > MAX_COPY_CHARS) throw new Error('New copy is empty or over 300 characters.')
@@ -76,18 +74,14 @@ export async function applyApproved(id, entry, runId) {
   return reread.marketing_description.length
 }
 
-export async function verifyTargets(onProgress = () => {}) {
-  const results = []
-  // Serial reads avoid a burst of 114 concurrent requests and make errors explicit.
-  for (const id of TARGET_IDS) {
-    try {
-      const product = await readTarget(id)
-      const copy = product.marketing_description || ''
-      results.push({ id, name: product.name || id, chars: copy.length, hasCopy: Boolean(copy.trim()), overLimit: copy.length > MAX_COPY_CHARS })
-    } catch (error) {
-      results.push({ id, name: id, chars: 0, hasCopy: false, overLimit: false, error: error.message })
-    }
-    onProgress(results.length)
-  }
-  return results
+export function watchReviewProducts(onProducts, onError) {
+  // No orderBy: products without createdAt must also be included.
+  return onSnapshot(collection(db, 'products'), snapshot => {
+    onProducts(snapshot.docs.map(d => ({ ...d.data(), id: d.id })))
+  }, onError)
+}
+
+export async function verifyTargets() {
+  const snapshot = await getDocsFromServer(collection(db, 'products'))
+  return snapshot.docs.map(d => ({ ...d.data(), id: d.id }))
 }

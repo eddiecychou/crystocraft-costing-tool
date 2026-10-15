@@ -87,6 +87,37 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.18 — Live catalogue marketing copy review (2026-10-15)
+
+Replaced the historical 114-ID workbook scope with an admin-only live subscription
+on the full `products` collection, without an ordered-field filter. All statuses
+and products without `createdAt` are included; newly created products appear
+while the page is open. Bulk generation also starts with a fresh server scan.
+
+Separate filters/counts show Needs copy, Awaiting approval, Approved, Already
+compliant, Saved, and Failed. Compliance means non-empty copy at <=300 characters,
+not AI/content verification. Bulk generation leaves compliant saved copy alone;
+individual rewrites remain available. Historical browser run IDs, previews and
+approval progress are retained under the same storage key. Changed saved copy
+blocks stale preview approval; transaction conflict checks remain authoritative.
+
+Every save still needs individual approval and unchanged rewrite instructions,
+creates the immutable previous/replacement backup and updates copy atomically,
+then re-reads the saved value. Retry IDs remain idempotent. Failure messages
+and retry/return-to-review actions remain visible. Catalogue read failures pause
+review actions rather than presenting cached results as a successful full scan.
+
+Validation: 10 domain/transaction tests pass; 22 seeded browser checks pass
+(11 each at true 375px and 1280px content widths), including live additions,
+legacy previews, retry, approval and backup. Mobile/desktop screenshots inspected.
+Changed-file no-undef lint and production Vite build pass (existing chunk-size
+warning only). Fixtures replace Firebase/AI, so this is not a live Firebase, AI
+or fresh-login test. See `tests/marketingCopyReview.test.mjs`,
+`tests/marketingCopyTransaction.test.mjs`, and `qa/marketing-copy-smoke.mjs`.
+Release preparation uses an isolated checkout based on latest main. The original
+dirty checkout is preserved. No rules changes are needed. Follow the two-role
+login gate; final release evidence is recorded separately in docs/plans/.
+
 ## V8.17 follow-up — WhatsApp archive inbox (2026-10-11)
 
 The daily local archive importer now records unknown ZIPs in an OC review inbox
