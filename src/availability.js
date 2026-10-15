@@ -324,3 +324,11 @@ export function productAvailability(product, lib, { defaultPartsLeadWeeks = PART
   return { promise, customerPromise, status: availStatus, leadWeeks, finished, buildable, bottleneck, byPlating, bottleneckByPlating, effectiveMoq }
 }
 
+
+// The same input normalization for browser-admin and server projections.
+export const availabilityComponent = c => ({
+  code:(c.code || '').trim().toUpperCase(),
+  plating_code:(c.plating_code || '').trim().toUpperCase(),
+  stock_qty:numOrNull(c.stock_qty), reserved_qty:numOrNull(c.reserved_qty),
+  lead_time_weeks:numOrNull(c.lead_time_weeks),
+})

@@ -1,4 +1,4 @@
-import { productAvailability, buildableFromComponents, resolveRef } from '../../../src/availability.js'
+import { productAvailability, buildableFromComponents, resolveRef, availabilityComponent } from '../../../src/availability.js'
 
 const headers = { 'Content-Type':'application/json', 'Cache-Control':'private, no-store' }
 const json = (data,status=200) => new Response(JSON.stringify(data), {status,headers})
@@ -7,6 +7,7 @@ const quantities = values => Object.fromEntries(Object.entries(values || {}).map
 
 // Explicit projection: no component object, supplier, price, bottleneck or part code.
 export function projectAvailability(product, components, defaults, now = () => new Date()) {
+  components = components.map(c=>({id:c.id,...availabilityComponent(c)}))
   const refs = Array.isArray(product.critical_components) ? product.critical_components : []
   if (refs.some(ref => !resolveRef(ref, components))) return {
     verified:false, buildable:null, finished:null, byPlating:{}, byVariant:{}, leadWeeks:null,

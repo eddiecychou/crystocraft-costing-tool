@@ -58,3 +58,9 @@ test('selected finish lead time does not borrow the available finish delivery es
  assert.equal(out.finishAvailability.G.buildable,10);assert.equal(out.finishAvailability.G.leadWeeks,2)
  assert.doesNotMatch(JSON.stringify(out),/PRIVATE|SECRET/)
 })
+
+test('string stock and reserved quantities normalize exactly like admin inputs',()=>{
+ const input=parts.map(c=>({...c,stock_qty:String(c.stock_qty),reserved_qty:String(c.reserved_qty||0)}))
+ const actual=projectAvailability(product,input,{},now),expected=projectAvailability(product,parts,{},now)
+ assert.deepEqual(actual,expected)
+})

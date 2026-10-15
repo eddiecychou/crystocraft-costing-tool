@@ -6,7 +6,7 @@ import {
 import { db } from './firebase'
 import { numOrNull, trimUpper, result, addError, addWarning, addInfo, merge } from './domain/validation'
 import { colourScope } from './rangeBomScope'
-import { resolveRef } from './availability'
+import { resolveRef, availabilityComponent } from './availability'
 export { componentMap, componentById, resolveRef, refScopePlating, refApplies, availableOf, buildableFromComponents, makeLeadWeeks, finishedStockOf, productAvailability } from './availability'
 
 // Critical Components Library — promoted from a single settings doc-array to a
@@ -38,22 +38,18 @@ const normVolumeTiers = tiers => (Array.isArray(tiers) ? tiers : [])
 
 // Normalise a raw record (form or Firestore) into the canonical shape.
 export const normComponent = c => ({
-  code: (c.code || '').trim().toUpperCase(),
+  ...availabilityComponent(c),
   name: (c.name || '').trim(),
   category: (c.category || '').trim(),
   // Plating this component belongs to (G/C/R/A/…); blank = shared across every
   // plating (bodies, NFC chips, gift boxes). A product ref may still override,
   // but normally plating is a property of the component (gold/chrome are distinct
   // ERP item codes with distinct cost). See Procurement spec §0.2 Decision 2.
-  plating_code: (c.plating_code || '').trim().toUpperCase(),
   supplierId: c.supplierId || '',
   supplierName: (c.supplierName || '').trim(),
   notes: (c.notes || '').trim(),
   images: Array.isArray(c.images) ? c.images.filter(Boolean) : [],
-  stock_qty: numOrNull(c.stock_qty),
-  reserved_qty: numOrNull(c.reserved_qty),   // allocated to confirmed orders (ledger-owned)
   reorder_point: numOrNull(c.reorder_point), // reorder when available ≤ this (0 = only when negative)
-  lead_time_weeks: numOrNull(c.lead_time_weeks),
   // Product item codes that use this part as their main component — a display
   // hint stamped by the stock-list import (the canonical BOM link lives on the
   // product's critical_components). Not written by the component editor.
