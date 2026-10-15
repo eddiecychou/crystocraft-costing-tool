@@ -249,7 +249,7 @@ export default function Range() {
   if (!loading && products.length === 0) {
     return (
       <div className="p-4 md:p-6 max-w-xl">
-        <h1 className="text-xl md:text-2xl mb-4">Figurine Gifts</h1>
+        <h1 className="text-xl md:text-2xl mb-4">Crystocraft Range</h1>
         <div className="card p-6">
           <p className="text-sm text-ink-80 mb-1">No figurine products in the database yet.</p>
           <p className="text-sm text-ink-60 mb-4">
@@ -279,7 +279,7 @@ export default function Range() {
 
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-1">
         <div>
-          <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
+          <h1 className="text-xl md:text-2xl">Crystocraft Range</h1>
           <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {items.length} products · {totalSkus} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>

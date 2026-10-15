@@ -209,7 +209,7 @@ export default function FigurineDetail({ profile }) {
   return (
     <div>
       <Link to="/shop/figurine" className="inline-flex items-center gap-1 text-sm text-ink-60 hover:text-ink mb-4">
-        <ArrowLeft size={15} /> Back to Figurine Gifts
+        <ArrowLeft size={15} /> Back to Crystocraft Range
       </Link>
       <div className="grid md:grid-cols-2 gap-6">
         <div className="card overflow-hidden bg-white aspect-square flex items-center justify-center relative group">

@@ -1211,7 +1211,7 @@ export default function ShipmentForm() {
                           <input className="input py-1.5 text-sm w-24 sm:w-28" type="number" step="0.01" value={l.unit_price ?? ''} onChange={e => setLine(i, { unit_price: e.target.value })} placeholder="Unit price" />
                           {l.matched_product_ref && (
                             <span className="inline-flex items-center gap-1 text-xs text-green-700 truncate max-w-full"
-                              title={l.matched_product_ref.name ? undefined : 'This product has no Description set in Figurine Gifts'}>
+                              title={l.matched_product_ref.name ? undefined : 'This product has no Description set in Crystocraft Range'}>
                               <CheckCircle2 size={13} /> {l.matched_product_ref.name || 'matched (no name set)'}
                             </span>
                           )}

@@ -149,7 +149,7 @@ export default function ImportImages() {
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <Link to="/range" className="inline-flex items-center gap-1 text-sm text-ink-60 hover:text-ink mb-4">
-        <ArrowLeft size={15} /> Back to Figurine Gifts
+        <ArrowLeft size={15} /> Back to Crystocraft Range
       </Link>
       <h1 className="text-xl md:text-2xl mb-1">Import Images from WordPress</h1>
       <p className="text-sm text-ink-60 mb-4">

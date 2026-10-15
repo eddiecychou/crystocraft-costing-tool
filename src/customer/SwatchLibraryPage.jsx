@@ -14,7 +14,7 @@ import { useCart } from './store'
 // a rendered image, so this page never shows a price.
 //
 // "Request a sample" adds a `type: 'swatch_sample'` line to the SAME
-// enquiry cart Corporate/Figurine Gifts use (useCart, store.jsx) rather
+// enquiry cart Corporate/Crystocraft Range use (useCart, store.jsx) rather
 // than submitting straight to Firestore on its own — owner, 2026-08-11:
 // tried it and it "doesn't go to the enquiry tab" the way adding a product
 // does. Review/submit/combine-with-other-items now all go through the

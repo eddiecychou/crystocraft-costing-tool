@@ -27,7 +27,7 @@ const nav = [
   { to: '/dashboard',  label: 'Dashboard',     short: 'Home',     Icon: LayoutDashboard, primary: true, module: 'dashboard' },
 
   { group: 'Catalogue' },
-  { to: '/range',      label: 'Figurine Gifts',short: 'Figurine', Icon: Gem, primary: true, module: 'figurine' },
+  { to: '/range',      label: 'Crystocraft Range',short: 'Range', Icon: Gem, primary: true, module: 'figurine' },
   { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true, module: 'products' },
   { to: '/swatch-library', label: 'Swatch Library', short: 'Swatches', Icon: Sparkles, module: 'swatch' },
   { to: '/design/products', label: 'Product Design', short: 'Design', Icon: Palette, module: 'product_design' },

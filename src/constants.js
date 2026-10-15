@@ -183,7 +183,7 @@ export const COMPONENT_IMAGE_TYPES = [
   { value: 'reference', label: 'Reference' },
 ]
 
-// Figurine Gifts (Crystocraft Range) taxonomy
+// Crystocraft Range taxonomy
 export const RANGE_DESIGN_TYPES = [
   'Angel', 'Bird & Animal', 'Butterfly', 'Fairy', 'Garden', 'Heart',
   'Hobby & Sport', 'Religious', 'Seasonal',

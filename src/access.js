@@ -23,7 +23,7 @@ import { createContext, useContext } from 'react'
 export const MODULE_GROUPS = [
   { group: 'Catalogue', keys: [
     { key: 'products',    label: 'Corp Gifts' },
-    { key: 'figurine',    label: 'Figurine Gifts (catalogue + costing)' },
+    { key: 'figurine',    label: 'Crystocraft Range (catalogue + costing)' },
     { key: 'swatch',      label: 'Swatch Library' },
     { key: 'catalogues',  label: 'Printed Catalogues' },
     { key: 'product_design', label: 'Product Design — brand mockups + spec sheets' },

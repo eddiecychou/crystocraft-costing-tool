@@ -25,9 +25,9 @@ export const pillarsSection = {
 export const pillars = [
   {
     key: 'figurine',
-    title: 'Figurine Gifts',
+    title: 'Crystocraft Range',
     description: 'Collectible designs and wholesale gifts for every occasion.',
-    ctaLabel: 'Browse Figurines',
+    ctaLabel: 'Browse Crystocraft Range',
     to: '/shop/figurine',
     metadata: 'Collectible & gift designs',
   },

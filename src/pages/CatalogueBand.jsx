@@ -10,7 +10,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import { ChevronUp, ChevronDown, Pencil, Trash2, Plus, X } from 'lucide-react'
 
-const CATALOGUES = [{ key: 'range', label: 'Figurine Gifts' }, { key: 'corp_gift', label: 'Corporate Gifts' }]
+const CATALOGUES = [{ key: 'range', label: 'Crystocraft Range' }, { key: 'corp_gift', label: 'Corporate Gifts' }]
 const blank = cat => ({ catalogue: cat, title: '', subtitle: '', type: 'filter', filter_value: '', product_ids: [], smart_rule: 'new_in', accent: 'teal', image_mode: 'template', custom_url: '', title_color: 'white', overlay_color: 'black', overlay_opacity: 0.55, active: true })
 
 export default function CatalogueBand() {

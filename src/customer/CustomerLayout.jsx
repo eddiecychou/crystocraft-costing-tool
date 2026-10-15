@@ -40,7 +40,7 @@ export default function CustomerLayout({ children, profile }) {
   }
   const nav = [
     { to: '/shop', label: 'Home', short: 'Home', Icon: Home, end: true },
-    { to: '/shop/figurine', label: 'Figurine Gifts', short: 'Figurines', Icon: Gem },
+    { to: '/shop/figurine', label: 'Crystocraft Range', short: 'Range', Icon: Gem },
     { to: '/shop/corporate', label: 'Corporate Gifts', short: 'Corporate', Icon: Package },
     // Grouped right after Corporate Gifts (owner request) — related content,
     // and only shown once we know the customer actually has something in it.

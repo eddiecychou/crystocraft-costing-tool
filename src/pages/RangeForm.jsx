@@ -1004,7 +1004,7 @@ export default function RangeForm() {
   }
 
   if (fetching) return <LoadingBar />
-  if (!form) return <div className="p-6 text-ink-60">Product not found. <Link to="/range" className="text-brand-600">Back to Figurine Gifts</Link></div>
+  if (!form) return <div className="p-6 text-ink-60">Product not found. <Link to="/range" className="text-brand-600">Back to Crystocraft Range</Link></div>
 
   // 3-digit designs allow a 2-letter prefix (brand + body); 4-digit allow 1 letter.
   const brandMax = form.design_no.replace(/\D/g, '').length <= 3 ? 2 : 1
@@ -1023,7 +1023,7 @@ export default function RangeForm() {
     <div className="p-4 md:p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="eyebrow mb-1">Figurine Gifts {productCode && `· ${productCode}`}</p>
+          <p className="eyebrow mb-1">Crystocraft Range {productCode && `· ${productCode}`}</p>
           <h1 className="text-xl md:text-2xl">{isNew ? 'New Product' : 'Edit Product'}</h1>
         </div>
         <div className="flex items-center gap-2">
@@ -1673,7 +1673,7 @@ export default function RangeForm() {
                         {libColors.length === 0 ? (
                           <p className="text-2xs text-ink-60">
                             No colours in the library yet — add them in <Link to="/components" className="text-brand-600 hover:underline">Components</Link>,
-                            or run “Collapse colours” on the Figurine Gifts list.
+                            or run “Collapse colours” on the Crystocraft Range list.
                           </p>
                         ) : (() => {
                           const sel = Array.isArray(v.crystal_colors) ? v.crystal_colors : []

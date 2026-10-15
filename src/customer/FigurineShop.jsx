@@ -155,7 +155,7 @@ export default function FigurineShop({ profile }) {
       {loading && <LoadingBar />}
       <div className="mb-5">
         <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Catalogue</p>
-        <h1 className="text-2xl md:text-3xl text-ink">Figurine Gifts</h1>
+        <h1 className="text-2xl md:text-3xl text-ink">Crystocraft Range</h1>
         <p className="text-sm text-ink-60 mt-0.5">{filtered.length} designs</p>
       </div>
       {!designFilter && !formatFilter && (

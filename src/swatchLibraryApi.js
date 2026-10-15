@@ -8,7 +8,7 @@
 //
 // The Phase 2b "request a sample" CTA does NOT submit here directly — it
 // adds a `type: 'swatch_sample'` line to the same enquiry cart (store.jsx's
-// useCart) Corporate/Figurine Gifts use, so it goes through the existing
+// useCart) Corporate/Crystocraft Range use, so it goes through the existing
 // /shop/enquiry review-and-send flow (EnquiryPage.jsx) like every other
 // product. First version submitted straight to Firestore on its own; owner,
 // 2026-08-11: it didn't show up under the portal's Enquiry tab the way

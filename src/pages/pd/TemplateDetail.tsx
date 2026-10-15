@@ -98,7 +98,7 @@ export default function TemplateDetailPage() {
   // material. Eddie, 2026-09-20: "it doesn't do anything now... it needs to
   // have a button to add new to corporate gift or figurine product." So
   // this now creates a REAL product in the `products` (Corp Gifts) or
-  // `range_products` (Figurine Gifts) collection instead, seeded with this
+  // `range_products` (Crystocraft Range) collection instead, seeded with this
   // generation's image, then hands off to that catalogue's own edit page —
   // ProductForm/RangeForm — for the rest (category, price, components…),
   // which this page has no business collecting.
@@ -148,7 +148,7 @@ export default function TemplateDetailPage() {
     }
   }
 
-  // Figurine Gifts (range_products) are a much deeper shape than a corp
+  // Crystocraft Range (range_products) are a much deeper shape than a corp
   // gift — per-variant crystal/plating fields, packing, a plating stock
   // pool — that this page has no context to fill in correctly, and a
   // generic Product Design photo doesn't map onto any single one of those
