@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert'
-import { rangeQuoteChoices, quoteItemKey, rangeQuoteItem, hasIncompleteRangeLine, quoteItemToOrderLine } from '../src/rangeQuote.js'
+import { rangeQuoteChoices, quoteItemKey, rangeQuoteItem, hasIncompleteRangeLine, quoteItemToOrderLine, rangeQuoteSubtitle } from '../src/rangeQuote.js'
 
 const product = {
   id: 'R1', description: 'Butterfly Freestand', design_type: 'Butterflies', moq: 100,
@@ -49,3 +49,17 @@ assert.equal(designOnly.sku, '')
 assert.equal(designOnly.variantIndex, null)
 assert.equal(rangeQuoteItem(designOnly, 'HKD', { USD: 7.8 }).tiers[0].price, '')
 console.log('range quote: assertions passed')
+
+// Legacy catalogue fallback names must not reappear in the quote subtitle.
+for (const category of ['Figurine Gifts', 'Figurine Range', 'Gift Range', 'Crystocraft Range', ' gift range ', '', null])
+  assert.equal(rangeQuoteSubtitle(category), 'Crystocraft Range')
+assert.equal(rangeQuoteSubtitle('Angels'), 'Crystocraft Range · Angels')
+assert.equal(rangeQuoteSubtitle('Gift Range Special Edition'), 'Crystocraft Range · Gift Range Special Edition')
+
+for(const category of ['Figurine Gifts','Figurine Range','Gift Range']) {
+ const oldProduct={id:'legacy-category',description:'Original product wording',category}
+ const choice=rangeQuoteChoices(oldProduct)[0]
+ assert.equal(choice.category,'Crystocraft Range')
+ assert.equal(choice.name,'Original product wording')
+ assert.equal(oldProduct.category,category,'Picker must not mutate the source record')
+}

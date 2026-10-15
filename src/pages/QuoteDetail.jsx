@@ -19,7 +19,7 @@ import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { loadCustomerAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
-import { quoteItemKey, rangeQuoteItem, hasIncompleteRangeLine } from '../rangeQuote'
+import { quoteItemKey, rangeQuoteItem, hasIncompleteRangeLine, rangeQuoteSubtitle } from '../rangeQuote'
 import QuoteProductPicker from '../components/QuoteProductPicker'
 import { costToHKD } from '../costCurrency'
 import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle, Receipt } from 'lucide-react'
@@ -790,7 +790,7 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
               <p className="font-medium text-sm text-ink">{item.product_name}</p>
             )}
             <p className="text-xs text-ink-60">
-              {item.is_custom ? <span className="text-amber-600">Custom item — not in catalogue</span> : item.product_collection === 'range_products' ? `Crystocraft Range · ${item.product_category}` : item.product_category}
+              {item.is_custom ? <span className="text-amber-600">Custom item — not in catalogue</span> : item.product_collection === 'range_products' ? rangeQuoteSubtitle(item.product_category) : item.product_category}
               {recurringCost != null && (
                 <span className="ml-2 text-ink-60">
                   · Cost: {currency} {recurringCost.toFixed(2)}

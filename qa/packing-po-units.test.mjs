@@ -176,3 +176,26 @@ for(const lang of ['en','zh'])test(`PO saved line remarks survive PDF/Excel with
   await evidence(`po-tier-${lang}`,host,bytes)
  })}finally{fixture.po.lines=original}
 })
+
+test('packing PDF and Excel exclude legacy catalogue metadata and preserve product text',async()=>{
+ const originalCartons=fixture.cartons
+ const item={order_line_id:'l0',item_code:'D0009-001-C',description:'Crystocraft Range sample',product_category:'Figurine Gifts',catalogue:'Gift Range',qty:10,unit:'pair',tier_remarks:'Original tier remark'}
+ fixture.cartons=[{...originalCartons[0],contents:[item]}]
+ try{await withPage('packing',async host=>{
+  assert.match(host.textContent,/Crystocraft Range sample/);assert.doesNotMatch(host.textContent,/Figurine Gifts|Gift Range/)
+  const {wb}=await excel(host),ws=wb.getWorksheet('Packing List')
+  assert.equal(ws.getCell('D10').value,item.description);assert.equal(ws.getCell('E10').value,10);assert.equal(ws.getCell('F10').value,'pair');assert.equal(ws.getCell('H10').value,20);assert.equal(ws.getCell('Q10').value,item.tier_remarks)
+  assert.doesNotMatch(JSON.stringify(ws.model),/Figurine Gifts|Gift Range/)
+ })}finally{fixture.cartons=originalCartons}
+})
+for(const lang of ['en','zh'])test(`PO PDF and Excel exclude legacy catalogue metadata and preserve product text (${lang})`,async()=>{
+ const original=fixture.po.lines
+ fixture.po.lines=[{code:'D0009-001-C',description:'Crystocraft Range sample',product_category:'Figurine Gifts',catalogue:'Gift Range',qty:10,unit:'pair',unit_price:20,tier_remarks:'Original tier remark'}]
+ try{await withPage('po',async host=>{
+  if(lang==='zh')await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='简体中文').click())
+  assert.match(host.textContent,/Crystocraft Range sample/);assert.doesNotMatch(host.textContent,/Figurine Gifts|Gift Range/)
+  const {wb}=await excel(host,lang==='zh'?'下载 Excel':'Download Excel'),ws=wb.getWorksheet('Purchase Order')
+  assert.equal(ws.getCell('B12').value,'Crystocraft Range sample');assert.equal(ws.getCell('C12').value,10);assert.equal(ws.getCell('D12').value,'pair');assert.equal(ws.getCell('F12').value,200);assert.equal(ws.getCell('G12').value,'Original tier remark')
+  assert.doesNotMatch(JSON.stringify(ws.model),/Figurine Gifts|Gift Range/)
+ })}finally{fixture.po.lines=original}
+})

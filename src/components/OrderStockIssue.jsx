@@ -233,7 +233,7 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                   <div>
                     {preview.missing?.length > 0 && <p>{preview.missing.length} BOM part(s) not in the component ledger — won’t be reserved: {preview.missing.map(m => m.code).join(', ')}.</p>}
-                    {preview.unmatched?.length > 0 && <p>{preview.unmatched.length} figurine line(s) not matched to the Range — no BOM to reserve.</p>}
+                    {preview.unmatched?.length > 0 && <p>{preview.unmatched.length} Crystocraft Range line(s) not matched to a product — no BOM to reserve.</p>}
                   </div>
                 </div>
               )}

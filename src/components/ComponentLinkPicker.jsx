@@ -61,7 +61,7 @@ export default function ComponentLinkPicker({ onPick, onClose }) {
           <input autoFocus type="text" className="input w-full text-sm" placeholder={t('Search component or product…')}
                  value={search} onChange={e => setSearch(e.target.value)} />
           <div className="flex gap-1 mt-3 border-b border-warm-grey">
-            {[['corp', 'Corp Gift'], ['range', 'Figurine']].map(([k, label]) => (
+            {[['corp', 'Corp Gift'], ['range', 'Crystocraft Range']].map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
                 className={`px-3 py-1.5 text-sm font-medium -mb-px border-b-2 ${tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
                 {t(label)} {k === 'corp' ? (corp ? `(${corpFiltered.length})` : '…') : `(${rangeFiltered.length})`}

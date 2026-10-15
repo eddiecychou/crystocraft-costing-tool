@@ -126,3 +126,12 @@ test('missing and whitespace-only tier remarks leave blank cells without changin
  assert.equal(ws.getCell('E9').value,80);assert.equal(ws.getCell('F10').value,85)
  assert.equal(ws.getCell('E9').numFmt,'General" pcs"')
 })
+
+test('quote Excel keeps product text and excludes legacy catalogue category metadata',async()=>{
+ const item={product_name:'Crystocraft Range sample',product_description:'Original product description',product_category:'Figurine Gifts',product_collection:'range_products',product_unit:'pair',tiers:[{quantity:10,price:20,remarks:'Original tier remark'}]}
+ const {ws}=await exportWorkbook([item])
+ assert.equal(ws.getCell('C9').value,item.product_name);assert.equal(ws.getCell('D9').value,item.product_description)
+ assert.equal(ws.getCell('E9').value,10);assert.equal(ws.getCell('E9').numFmt,'General" pair"');assert.equal(ws.getCell('F9').value,20);assert.equal(ws.getCell('G9').value,'Original tier remark')
+ assert.doesNotMatch(JSON.stringify(ws.model),/Figurine Gifts/)
+ assert.equal(item.product_category,'Figurine Gifts')
+})

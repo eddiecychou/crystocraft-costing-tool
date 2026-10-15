@@ -8,6 +8,17 @@ const rangeChoiceKey = (id, sku, index) =>
 
 const imageUrl = image => typeof image === 'string' ? image : image?.url || ''
 
+// Catalogue aliases were saved as fallback categories on older quote items.
+// Normalize only this display subtitle; preserve saved snapshots and free text.
+function rangeCategoryLabel(category) {
+  const detail = String(category ?? '').trim()
+  return /^(?:figurine gifts|figurine range|gift range|crystocraft range)$/i.test(detail) ? 'Crystocraft Range' : detail
+}
+export function rangeQuoteSubtitle(category) {
+  const detail = rangeCategoryLabel(category)
+  return `Crystocraft Range${detail && detail !== 'Crystocraft Range' ? ` · ${detail}` : ''}`
+}
+
 export function rangeQuoteChoices(product) {
   const variants = Array.isArray(product.variants) && product.variants.length
     ? product.variants
@@ -32,7 +43,7 @@ export function rangeQuoteChoices(product) {
       sku,
       name,
       detail: detail || (variant ? `Variant ${index + 1}` : 'No variant / SKU'),
-      category: product.design_type || product.category || product.product_type || 'Crystocraft Range',
+      category: rangeCategoryLabel(product.design_type || product.category || product.product_type || 'Crystocraft Range'),
       description: product.description || '',
       image: imageUrl(variant?.image) || galleryImage,
       usdPrice: variant?.ws_price_usd,

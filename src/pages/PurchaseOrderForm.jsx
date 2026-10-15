@@ -471,7 +471,7 @@ export default function PurchaseOrderForm() {
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">
                       <Link2 size={12} />
                       <span className="truncate max-w-[220px]">{ln.linked.label || t('Linked component')}</span>
-                      <span className="text-brand-400">· {ln.linked.type === 'range' ? t('Figurine') : t('Corp')}</span>
+                      <span className="text-brand-400">· {ln.linked.type === 'range' ? t('Crystocraft Range') : t('Corp')}</span>
                       <button type="button" onClick={() => updateLine(ln._uid, { linked: null })}
                               className="text-brand-400 hover:text-red-500" title={t('Unlink')}><X size={12} /></button>
                     </span>

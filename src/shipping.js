@@ -66,7 +66,7 @@ export const noInvoiceReasonOf = v => NO_INVOICE_REASONS.find(r => r.value === v
 // Line classification (reconciliation). `non_product` = charge/service, excluded
 // from packing. Everything else is packable.
 export const LINE_TYPES = [
-  { value: 'range',       label: 'Figurine',  packable: true,  style: 'bg-indigo-50 text-indigo-700' },
+  { value: 'range',       label: 'Crystocraft Range',  packable: true,  style: 'bg-indigo-50 text-indigo-700' },
   { value: 'corp_gift',   label: 'Corp Gift', packable: true,  style: 'bg-sky-50 text-sky-700' },
   { value: 'ad_hoc',      label: 'Ad-hoc',    packable: true,  style: 'bg-amber-50 text-amber-700' },
   { value: 'non_product', label: 'Charge',    packable: false, style: 'bg-ivory-dark text-ink-60' },
@@ -577,7 +577,7 @@ export function validateOrderLine(line) {
   if (l.line_type === 'range') {
     if (!l.matched_product_ref && l.match_status !== 'manual')
       addWarning(r, 'orderline.range.match_missing', 'matched_product_ref',
-        `${label}: figurine line not matched to a product`)
+        `${label}: Crystocraft Range line not matched to a product`)
     if (!platingOf(l.item_code))
       addInfo(r, 'orderline.range.plating_unresolved', 'item_code',
         `${label}: plating not resolved from item code`)

@@ -96,3 +96,11 @@ test('real PDF renderer wraps multiline and long tier remarks across a multipage
  assert.equal(buffer.subarray(0,5).toString(),'%PDF-');assert.ok(buffer.length>1000)
  if(process.env.QUOTE_TIER_REMARKS_EVIDENCE)await writeFile(process.env.QUOTE_TIER_REMARKS_EVIDENCE,buffer)
 })
+
+test('quote PDF keeps product text and excludes legacy catalogue category metadata',()=>{
+ const item={product_name:'Crystocraft Range sample',product_description:'Original product description',product_category:'Figurine Gifts',product_collection:'range_products',product_unit:'pair',tiers:[{quantity:10,price:20,remarks:'Original tier remark'}]}
+ const output=texts(QuotePDF({quote,items:[item]}))
+ for(const value of [item.product_name,item.product_description,'10 pair','20.00','200.00','Original tier remark'])assert.ok(output.includes(value),value)
+ assert.ok(!output.includes('Figurine Gifts'))
+ assert.equal(item.product_category,'Figurine Gifts','Export must not mutate the saved snapshot')
+})

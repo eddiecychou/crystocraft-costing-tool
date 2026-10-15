@@ -38,7 +38,7 @@ const stubs={
 }
 before(async()=>{
  scratch=await mkdtemp(join(tmpdir(),'oc-invoice-units-'))
- await build({stdin:{contents:`export {default as pi} from './src/pages/ProformaInvoicePrint.jsx';export {default as sales} from './src/pages/SalesInvoicePrint.jsx';export {default as customer} from './src/customer/CustomerInvoicePrint.jsx'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'invoice-network-boundaries',setup(b){
+ await build({stdin:{contents:`export {default as pi} from './src/pages/ProformaInvoicePrint.jsx';export {default as sales} from './src/pages/SalesInvoicePrint.jsx';export {default as customer} from './src/customer/CustomerInvoicePrint.jsx';export {LINE_TYPES,lineTypeOf,isPackable} from './src/shipping.js'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'invoice-network-boundaries',setup(b){
   b.onResolve({filter:/^(react(?:\/.*)?|exceljs|lucide-react)$/},a=>({path:require.resolve(a.path),external:true}))
   b.onResolve({filter:/react-router-dom/},()=>({path:'router',namespace:'mock'}))
   b.onResolve({filter:/firebase\/firestore/},()=>({path:'firestore',namespace:'mock'}))
@@ -149,4 +149,22 @@ for(const kind of ['pi','sales'])test(`${kind}: long tier remarks wrap and formu
  const original=fixture.lines;const note='=HYPERLINK("https://example.invalid")\n'+('獨立禮盒及紙套 '.repeat(40)).trim()
  fixture.lines=[{id:'long',line_no:1,description:'Long remarks',qty_ordered:2,unit:'pair',unit_price:20,tier_remarks:note}]
  try{await withPage(kind,async host=>{assert.equal(host.querySelector('.tier-remarks').textContent,note);const {ws}=await workbook(host);assert.equal(ws.getCell('G7').value,note);assert.equal(typeof ws.getCell('G7').value,'string');assert.ok(ws.getRow(7).height>180);assert.equal(ws.getCell('F7').value,40)})}finally{fixture.lines=original}
+})
+
+for(const kind of ['pi','sales','customer'])test(`${kind}: PDF and Excel exclude legacy catalogue metadata and preserve product text`,async()=>{
+ const original=fixture.lines
+ fixture.lines=[{id:'range-name',line_no:1,item_code:'D0009-001-C',description:'Crystocraft Range sample',product_category:'Figurine Gifts',catalogue:'Gift Range',line_type:'range',qty_ordered:10,unit:'pair',unit_price:20,tier_remarks:'Original tier remark'}]
+ try{await withPage(kind,async host=>{
+  assert.match(host.textContent,/Crystocraft Range sample/);assert.doesNotMatch(host.textContent,/Figurine Gifts|Gift Range/)
+  const {ws}=await workbook(host)
+  assert.equal(ws.getCell('B7').value,'Crystocraft Range sample');assert.equal(ws.getCell('C7').value,10);assert.equal(ws.getCell('D7').value,'pair');assert.equal(ws.getCell('F7').value,200);assert.equal(ws.getCell('G7').value,'Original tier remark')
+  assert.doesNotMatch(JSON.stringify(ws.model),/Figurine Gifts|Gift Range/)
+ })}finally{fixture.lines=original}
+})
+
+test('invoice classification uses Crystocraft Range without changing saved type or packing behavior',()=>{
+ assert.equal(pages.lineTypeOf('range').label,'Crystocraft Range')
+ assert.equal(pages.lineTypeOf('range').value,'range')
+ assert.equal(pages.isPackable('range'),true)
+ assert.equal(pages.isPackable('non_product'),false)
 })
