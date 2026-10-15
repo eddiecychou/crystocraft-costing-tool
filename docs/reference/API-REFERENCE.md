@@ -130,3 +130,16 @@ When adding a new edge function: add its `[[edge_functions]]` block to
 `netlify.toml` (see `LOCAL-TOOLS.md`/`draftMemory.js`'s V8.10 review for what
 happens when that step gets skipped), and add one line here in the right
 feature area — name, route, one-line purpose, auth posture, caller.
+
+## Customer availability — Node function
+
+`/api/customer-availability` (`netlify/functions/customer-availability.js`, POST
+`{productId}`) verifies an unrevoked Firebase ID token and the current user profile
+(admin or approved customer), checks storefront publication, then reads only the
+product's referenced components with the server Admin SDK. Uses the same pure
+`src/availability.js` calculation as admin. Returns an explicit allowlist of
+stock/buildable quantities, finish/colour limits, customer-safe promise and lead
+weeks; never component/supplier records, costs, bottleneck codes or stock ledgers.
+Private/no-store, bounded IDs/body/component count, read-only, generic errors.
+Called by `src/hooks/useCustomerAvailability.js` for FigurineDetail, refreshing
+on focus and every 30s while visible. Firestore customer permissions unchanged.

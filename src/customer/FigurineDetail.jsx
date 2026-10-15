@@ -16,8 +16,7 @@ import { RANGE_FORMAT_CODES } from '../constants'
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 import LoadingBar from '../components/LoadingBar'
 import VideoEmbed from '../components/VideoEmbed'
-import { customerProductAvailability } from '../customerAvailability'
-import { useProductDefaults } from '../useProductDefaults'
+import useCustomerAvailability from '../hooks/useCustomerAvailability'
 import ImageLightbox from '../components/ImageLightbox'
 import { imageDownloadUrl } from '../imageDownloadUrl'
 
@@ -49,7 +48,7 @@ export default function FigurineDetail({ profile }) {
   const lookup = useMemo(() => colorMap(libColors), [libColors])
   const cart = useCart()
   const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
-  const prodDefaults = useProductDefaults()
+  const { availability: avail, loading: availabilityLoading, retry: retryAvailability } = useCustomerAvailability(id)
   const cur = profile?.base_currency || 'USD'
   const factor = wsPriceFactor(profile)
 
@@ -60,7 +59,7 @@ export default function FigurineDetail({ profile }) {
   useEffect(() => {
     if (!p || p.status !== 'stock') return
     const vars = docVariants(p)
-    const av = customerProductAvailability(p, prodDefaults)
+    const av = avail
     if (!av?.byPlating || !Object.keys(av.byPlating).length) return
     const isOut = v => {
       const pc = (v?.plating_code || '').trim().toUpperCase()
@@ -70,7 +69,7 @@ export default function FigurineDetail({ profile }) {
       const next = vars.findIndex(v => !isOut(v))
       if (next >= 0) setFinishIdx(next)
     }
-  }, [p, prodDefaults, finishIdx])
+  }, [p, avail, finishIdx])
 
   if (p === undefined) return <LoadingBar />
   if (p === null) return <NotFound />
@@ -116,7 +115,6 @@ export default function FigurineDetail({ profile }) {
     ? selVariant.crystal_colors : colorCodes
   const needsColor = colorCodes.length > 0
   const colorValid = !!color && finishColors.includes(color)
-  const canAdd = !needsColor || colorValid
   // In-cart status reflects the specific selected SKU (plating + colour).
   const inCart = cart?.has({
     type: 'figurine', id: p.id,
@@ -131,7 +129,6 @@ export default function FigurineDetail({ profile }) {
   // Last-stock / concept / retired: no MOQ; active (Made to Order): use the product moq field.
   const moq = (isLastStock || isConcept || isRetired) ? 0 : (Number(p.moq) || 0)
   // Always compute availability — drives both the promise text and last-stock caps.
-  const avail = customerProductAvailability(p, prodDefaults)
   const selPlating = (selVariant.plating_code || '').trim().toUpperCase()
   // Per-plating buildable: used for last-stock caps and variant availability chips.
   const platBuildable = p2 => {
@@ -144,14 +141,18 @@ export default function FigurineDetail({ profile }) {
   const hasByPlating = avail?.byPlating && Object.keys(avail.byPlating).length > 0
   const selBuildable = hasByPlating
     ? (avail.byPlating[selPlating] ?? 0)
-    : (avail?.buildable ?? Infinity)
-  const hasSelStock = !isLastStock && Number.isFinite(selBuildable) && selBuildable > 0   // MTO product with parts on hand for this plating
+    : (avail?.buildable ?? 0)
+  const hasColourLimits = Object.keys(avail?.byVariant || {}).length > 0
+  const selectedLimit = hasColourLimits && color ? (avail.byVariant[`${selPlating}|${String(color).trim().toUpperCase()}`] ?? 0) : selBuildable
+  const hasSelStock = !isLastStock && Number.isFinite(selectedLimit) && selectedLimit > 0   // MTO product with parts on hand for this plating
   // Effective order mode: last-stock always uses stock (pcs); MTO uses the toggle.
   // Concept/retired have no stock and no MOQ — plain optional pcs input.
   const effectiveMode = (isLastStock || isConcept || isRetired) ? 'stock' : (hasSelStock ? orderMode : 'mto')
-  const maxPcs = (isConcept || isRetired) ? Infinity : ((isLastStock || effectiveMode === 'stock') ? selBuildable : Infinity)
+  const maxPcs = (isConcept || isRetired) ? Infinity : ((isLastStock || effectiveMode === 'stock') ? selectedLimit : Infinity)
   const maxCartons = ppc > 0 ? Math.floor(maxPcs / ppc) : maxPcs
   const pcs = effectiveMode === 'stock' ? stockPcs : (ppc > 0 ? cartons * ppc : cartons)
+  const canAdd = (!needsColor || colorValid) && !availabilityLoading && !!avail && (!isLastStock || avail.verified)
+    && (!Number.isFinite(maxPcs) || (pcs > 0 && pcs <= maxPcs))
   // MOQ applies across every variation AND format of this design (same body /
   // design number — freestand, music box, bible, …), so include any pieces of
   // the same design already sitting in the enquiry cart.
@@ -225,7 +226,8 @@ export default function FigurineDetail({ profile }) {
               <div className="mb-2">
                 <span className={`badge ${st.cls}`}>{st.label}</span>
                 <p className="text-xs text-ink-60 mt-1">
-                  {avail?.customerPromise || avail?.promise || st.tip}
+                  {availabilityLoading ? 'Checking availability…' : (avail?.customerPromise || 'Availability temporarily unavailable. Please retry.')}
+                  {!availabilityLoading && !avail && <button type="button" className="ml-2 underline" onClick={retryAvailability}>Retry availability</button>}
                 </p>
               </div>
             )
@@ -318,7 +320,7 @@ export default function FigurineDetail({ profile }) {
                 <div className="flex rounded-none border border-ivory-dark overflow-hidden mb-3 text-xs">
                   <button type="button" onClick={() => { setOrderMode('stock'); setStockPcs(1) }}
                     className={`flex-1 px-3 py-2 min-h-[40px] text-left transition-colors ${effectiveMode === 'stock' ? 'bg-brand-50 text-brand-700 font-medium' : 'hover:bg-ivory text-ink-60'}`}>
-                    From stock · <span className="font-medium">{selBuildable} pcs available</span> · any qty · fast
+                    From stock · <span className="font-medium">{selectedLimit} pcs available</span> · any qty · fast
                   </button>
                   <button type="button" onClick={() => { setOrderMode('mto'); setCartons(1) }}
                     className={`flex-1 px-3 py-2 min-h-[40px] text-left border-l border-ivory-dark transition-colors ${effectiveMode === 'mto' ? 'bg-brand-50 text-brand-700 font-medium' : 'hover:bg-ivory text-ink-60'}`}>
@@ -337,7 +339,7 @@ export default function FigurineDetail({ profile }) {
                     <>
                       <button type="button" onClick={() => setStockPcs(n => Math.max(1, n - 1))}
                         className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
-                      <input type="number" min="1" max={maxPcs > 0 ? maxPcs : undefined} value={stockPcs}
+                      <input type="number" min="1" max={Number.isFinite(maxPcs) && maxPcs > 0 ? maxPcs : undefined} value={stockPcs}
                         onChange={e => setStockPcs(Math.min(maxPcs, Math.max(1, Math.floor(Number(e.target.value) || 1))))}
                         className="w-16 text-center text-sm py-2 outline-none border-x border-ivory-dark" />
                       <button type="button" onClick={() => setStockPcs(n => Math.min(maxPcs, n + 1))}
