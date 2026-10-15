@@ -137,3 +137,15 @@ $ESB src/main.jsx --bundle --outdir=/tmp/bundlecheck --loader:.js=jsx \
 ```
 
 Run both before pushing anything that touches imports.
+
+# Quote PDF units
+
+`npm run test:quote-pdf` checks the actual PDF component for every selectable unit,
+per-tier quantity labels, legacy pcs fallback and unchanged monetary totals, then
+renders a mixed-unit PDF using the real renderer and local brand fonts. It runs
+in prebuild and GitHub Actions. To keep a local sample for visual inspection:
+
+```sh
+QUOTE_PDF_EVIDENCE=/tmp/quote-units.pdf npm run test:quote-pdf
+pdftoppm -scale-to 1400 -png /tmp/quote-units.pdf /tmp/quote-units
+```

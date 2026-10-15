@@ -45,7 +45,7 @@ const fmtDate = d =>
   (d ? new Date(d) : new Date()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
 // Column widths (content area ≈ 531pt on A4 with 32pt side padding)
-const W = { num: 16, photo: 72, product: 104, desc: 155, qty: 38, price: 68, amount: 78 }
+const W = { num: 16, photo: 72, product: 104, desc: 131, qty: 62, price: 68, amount: 78 }
 
 const s = StyleSheet.create({
   // paddingBottom raised from 44 (2026-08-27) — the fixed footer below
@@ -245,7 +245,7 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
                 ) : null}
               </View>
               <View style={s.qtyCell}>
-                {tiers.map((t, k) => <Text key={k} style={[s.qtyText, s.tierLine]}>{t.quantity ?? ''}</Text>)}
+                {tiers.map((t, k) => <Text key={k} style={[s.qtyText, s.tierLine]}>{`${t.quantity ?? ''} ${item.product_unit || 'pcs'}`.trim()}</Text>)}
               </View>
               <View style={s.priceCell}>
                 {tiers.map((t, k) => (

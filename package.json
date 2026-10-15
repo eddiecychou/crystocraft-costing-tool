@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:product-search": "node --test qa/catalogue-search.test.mjs qa/quote-product-search.test.mjs qa/range-quote.test.mjs qa/catalogue-filter.test.mjs",
-    "prebuild": "npm run test:product-search"
+    "prebuild": "npm run test:product-search && npm run test:quote-pdf",
+    "test:quote-pdf": "node --test qa/quote-pdf-units.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
