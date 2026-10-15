@@ -142,6 +142,7 @@ export default function FigurineDetail({ profile }) {
   const selBuildable = hasByPlating
     ? (avail.byPlating[selPlating] ?? 0)
     : (avail?.buildable ?? 0)
+  const selectedAvailability = (color && avail?.variantAvailability?.[`${selPlating}|${String(color).trim().toUpperCase()}`]) || avail?.finishAvailability?.[selPlating] || avail
   const hasColourLimits = Object.keys(avail?.byVariant || {}).length > 0
   const selectedLimit = hasColourLimits && color ? (avail.byVariant[`${selPlating}|${String(color).trim().toUpperCase()}`] ?? 0) : selBuildable
   const hasSelStock = !isLastStock && Number.isFinite(selectedLimit) && selectedLimit > 0   // MTO product with parts on hand for this plating
@@ -226,7 +227,7 @@ export default function FigurineDetail({ profile }) {
               <div className="mb-2">
                 <span className={`badge ${st.cls}`}>{st.label}</span>
                 <p className="text-xs text-ink-60 mt-1">
-                  {availabilityLoading ? 'Checking availability…' : (avail?.customerPromise || 'Availability temporarily unavailable. Please retry.')}
+                  {availabilityLoading ? 'Checking availability…' : (selectedAvailability?.customerPromise || 'Availability temporarily unavailable. Please retry.')}
                   {!availabilityLoading && !avail && <button type="button" className="ml-2 underline" onClick={retryAvailability}>Retry availability</button>}
                 </p>
               </div>

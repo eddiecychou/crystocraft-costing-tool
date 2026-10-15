@@ -19,7 +19,7 @@ test('short parts use procurement plus assembly lead time, without leaking bottl
 test('response allowlist strips all costs, suppliers, bottlenecks and raw inventory records',()=>{
  const out=JSON.stringify(projectAvailability(product,parts,{},now))
  assert.doesNotMatch(out,/SECRET|PRIVATE|supplier|unit_cost|bottleneck|reserved_qty|stock_qty/)
- assert.deepEqual(Object.keys(JSON.parse(out)).sort(),['verified','status','buildable','finished','byPlating','byVariant','leadWeeks','effectiveMoq','customerPromise','checkedAt'].sort())
+ assert.deepEqual(Object.keys(JSON.parse(out)).sort(),['finishAvailability','variantAvailability','verified','status','buildable','finished','byPlating','byVariant','leadWeeks','effectiveMoq','customerPromise','checkedAt'].sort())
 })
 test('missing component cannot inflate availability or produce a false fast promise',()=>{
  const out=projectAvailability(product,parts.slice(1),{},now)
@@ -49,4 +49,12 @@ test('colour-specific quantities preserve shared-pool limits without publishing 
  const out=projectAvailability(p,lib,{},now)
  assert.equal(out.buildable,10);assert.equal(out.byVariant['C|RED'],8);assert.equal(out.byVariant['C|BLUE'],7)
  assert.doesNotMatch(JSON.stringify(out),/INTERNAL/)
+})
+
+test('selected finish lead time does not borrow the available finish delivery estimate',()=>{
+ const p={...product,status:'active'},lib=parts.map(c=>c.id==='chrome'?{...c,stock_qty:0,lead_time_weeks:7}:c)
+ const out=projectAvailability(p,lib,{},now)
+ assert.equal(out.finishAvailability.C.buildable,0);assert.equal(out.finishAvailability.C.leadWeeks,9)
+ assert.equal(out.finishAvailability.G.buildable,10);assert.equal(out.finishAvailability.G.leadWeeks,2)
+ assert.doesNotMatch(JSON.stringify(out),/PRIVATE|SECRET/)
 })

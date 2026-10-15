@@ -13,9 +13,25 @@ export function projectAvailability(product, components, defaults, now = () => n
     customerPromise:'Availability and lead time need confirmation. Please contact us.', checkedAt:now().toISOString(),
   }
   const av = productAvailability(product, components, defaults)
+  const summary = p => {
+    const value = productAvailability(p, components, defaults)
+    return { buildable:finite(value.buildable), leadWeeks:finite(value.leadWeeks), customerPromise:value.customerPromise }
+  }
+  const variants = Array.isArray(product.variants) ? product.variants : []
+  const finishAvailability = {}, variantAvailability = {}
+  for (const v of variants) {
+    const plating = String(v.plating_code || '').trim().toUpperCase()
+    const finishVariants = variants.filter(x=>String(x.plating_code || '').trim().toUpperCase()===plating)
+    if (!Object.hasOwn(finishAvailability, plating)) finishAvailability[plating] = summary({...product,variants:finishVariants})
+    for(const raw of (v.crystal_colors?.length ? v.crystal_colors : [v.crystal_code])) {
+      if(!raw) continue
+      const colour=String(raw).trim().toUpperCase(),key=`${plating}|${colour}`
+      variantAvailability[key] = summary({...product,variants:finishVariants.map(x=>({...x,crystal_code:colour,crystal_colors:[colour]}))})
+    }
+  }
   const scoped = buildableFromComponents(product, components)
   return {
-    verified:true, status:av.status, buildable:finite(av.buildable), finished:finite(av.finished),
+    verified:true, status:av.status, finishAvailability, variantAvailability, buildable:finite(av.buildable), finished:finite(av.finished),
     byPlating:quantities(av.byPlating), byVariant:quantities(scoped.byVariant),
     leadWeeks:finite(av.leadWeeks), effectiveMoq:finite(av.effectiveMoq),
     customerPromise:av.customerPromise, checkedAt:now().toISOString(),
