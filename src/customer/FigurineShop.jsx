@@ -1,3 +1,4 @@
+import useCatalogueFilter from '../hooks/useCatalogueFilter'
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -32,11 +33,11 @@ function docVariants(p) {
 export default function FigurineShop({ profile }) {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [filtersReady, setFiltersReady] = useState(false)
   // Filters persist across a detail visit (sessionStorage) so returning to the
   // catalogue keeps your search/category/status instead of resetting.
   const [search, setSearch] = useState(() => sessionStorage.getItem('fs-search') || '')
-  const [cat, setCat] = useState(() => sessionStorage.getItem('fs-cat') || '')
-  const [statusFilter, setStatusFilter] = useState(() => sessionStorage.getItem('fs-status') || '')   // '' = all lifecycle statuses
+  const [statusFilter, setStatusFilter] = useCatalogueFilter('fs-status', RANGE_STATUSES.filter(s => s.value !== 'retired').map(s => s.value), true)   // '' = all lifecycle statuses
   const [coll, setColl] = useState(null)   // applied Shop-by collection
   const [params, setParams] = useSearchParams()
   const { labels: formatLabels } = useFormatMoq()
@@ -52,6 +53,7 @@ export default function FigurineShop({ profile }) {
       // Only show active/published designs to customers — retired (fully sold
       // out, no re-run) is dropped, mirroring the corp-gift shop's treatment.
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.active !== false && p.status !== 'retired'))
+      setFiltersReady(true)
       setLoading(false)
     }, () => setLoading(false))
   }, [])
@@ -98,6 +100,7 @@ export default function FigurineShop({ profile }) {
   }), [products, rates, cur, factor])
 
   const categories = useMemo(() => [...new Set(items.map(s => s.design_type).filter(Boolean))].sort(), [items])
+  const [cat, setCat] = useCatalogueFilter('fs-cat', categories, filtersReady)
   const filtered = useMemo(() => {
     // A Shop-by collection narrows (and, for manual, orders) the base set.
     const base = coll ? collectionProducts(coll, items, 'range') : items

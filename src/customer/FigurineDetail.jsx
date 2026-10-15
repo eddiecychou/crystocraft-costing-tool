@@ -16,7 +16,7 @@ import { RANGE_FORMAT_CODES } from '../constants'
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 import LoadingBar from '../components/LoadingBar'
 import VideoEmbed from '../components/VideoEmbed'
-import { useComponents, productAvailability } from '../criticalComponents'
+import { customerProductAvailability } from '../customerAvailability'
 import { useProductDefaults } from '../useProductDefaults'
 import ImageLightbox from '../components/ImageLightbox'
 import { imageDownloadUrl } from '../imageDownloadUrl'
@@ -49,7 +49,6 @@ export default function FigurineDetail({ profile }) {
   const lookup = useMemo(() => colorMap(libColors), [libColors])
   const cart = useCart()
   const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
-  const { components: compLib } = useComponents()
   const prodDefaults = useProductDefaults()
   const cur = profile?.base_currency || 'USD'
   const factor = wsPriceFactor(profile)
@@ -61,7 +60,7 @@ export default function FigurineDetail({ profile }) {
   useEffect(() => {
     if (!p || p.status !== 'stock') return
     const vars = docVariants(p)
-    const av = productAvailability(p, compLib, prodDefaults)
+    const av = customerProductAvailability(p, prodDefaults)
     if (!av?.byPlating || !Object.keys(av.byPlating).length) return
     const isOut = v => {
       const pc = (v?.plating_code || '').trim().toUpperCase()
@@ -71,7 +70,7 @@ export default function FigurineDetail({ profile }) {
       const next = vars.findIndex(v => !isOut(v))
       if (next >= 0) setFinishIdx(next)
     }
-  }, [p, compLib, finishIdx])
+  }, [p, prodDefaults, finishIdx])
 
   if (p === undefined) return <LoadingBar />
   if (p === null) return <NotFound />
@@ -132,7 +131,7 @@ export default function FigurineDetail({ profile }) {
   // Last-stock / concept / retired: no MOQ; active (Made to Order): use the product moq field.
   const moq = (isLastStock || isConcept || isRetired) ? 0 : (Number(p.moq) || 0)
   // Always compute availability — drives both the promise text and last-stock caps.
-  const avail = productAvailability(p, compLib, prodDefaults)
+  const avail = customerProductAvailability(p, prodDefaults)
   const selPlating = (selVariant.plating_code || '').trim().toUpperCase()
   // Per-plating buildable: used for last-stock caps and variant availability chips.
   const platBuildable = p2 => {
@@ -145,8 +144,8 @@ export default function FigurineDetail({ profile }) {
   const hasByPlating = avail?.byPlating && Object.keys(avail.byPlating).length > 0
   const selBuildable = hasByPlating
     ? (avail.byPlating[selPlating] ?? 0)
-    : (avail?.buildable ?? 0)
-  const hasSelStock = !isLastStock && selBuildable > 0   // MTO product with parts on hand for this plating
+    : (avail?.buildable ?? Infinity)
+  const hasSelStock = !isLastStock && Number.isFinite(selBuildable) && selBuildable > 0   // MTO product with parts on hand for this plating
   // Effective order mode: last-stock always uses stock (pcs); MTO uses the toggle.
   // Concept/retired have no stock and no MOQ — plain optional pcs input.
   const effectiveMode = (isLastStock || isConcept || isRetired) ? 'stock' : (hasSelStock ? orderMode : 'mto')
@@ -329,7 +328,7 @@ export default function FigurineDetail({ profile }) {
               )}
               <p className="label mb-1.5">
                 {effectiveMode === 'stock'
-                  ? <>Quantity <span className="normal-case text-ink-60">· pcs{isLastStock ? ` (max ${maxPcs})` : (isConcept || isRetired) ? ' · optional' : ''}</span></>
+                  ? <>Quantity <span className="normal-case text-ink-60">· pcs{isLastStock && Number.isFinite(maxPcs) ? ` (max ${maxPcs})` : (isConcept || isRetired) ? ' · optional' : ''}</span></>
                   : <>Quantity {ppc > 0 && <span className="normal-case text-ink-60">· {ppc} pcs/carton</span>}</>}
               </p>
               <div className="flex items-center gap-3 flex-wrap">

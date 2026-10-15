@@ -1,3 +1,4 @@
+import useCatalogueFilter from '../hooks/useCatalogueFilter'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { collection, query, orderBy, onSnapshot, doc, getDoc, getDocs } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
@@ -60,9 +61,9 @@ async function resolveSafeImages(productId, heroImage, profile) {
 export default function CorporateShop({ profile }) {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [filtersReady, setFiltersReady] = useState(false)
   // Filters persist across a detail visit so returning keeps your search/category.
   const [search, setSearch] = useState(() => sessionStorage.getItem('cs-search') || '')
-  const [cat, setCat] = useState(() => sessionStorage.getItem('cs-cat') || '')
   const [coll, setColl] = useState(null)
   const [visibleCount, setVisibleCount] = useState(() => Number(sessionStorage.getItem('cs-visible')) || PAGE_SIZE)
   const filtersMounted = useRef(false)
@@ -79,6 +80,7 @@ export default function CorporateShop({ profile }) {
           // New-tagged products first (C0), then alphabetical.
           .sort((a, b) => newFirst(a, b) || (a.name || '').localeCompare(b.name || ''))
       )
+      setFiltersReady(true)
       setLoading(false)
     }, () => setLoading(false))
   }, [profile?.sensitive, profile?.customer_id])
@@ -133,6 +135,7 @@ export default function CorporateShop({ profile }) {
   const imageFor = p => imagesFor(p)[0]?.url || ''
 
   const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))].sort(), [products])
+  const [cat, setCat] = useCatalogueFilter('cs-cat', categories, filtersReady)
   // Light list the Shop-by band can render image tiles from.
   const bandItems = useMemo(() => products.map(p => ({
     id: p.id, category: p.category || '', is_new: !!p.is_new, image: imageFor(p), name: p.name || '',

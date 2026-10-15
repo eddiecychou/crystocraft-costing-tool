@@ -1,3 +1,4 @@
+import useCatalogueFilter from '../hooks/useCatalogueFilter'
 import { useState, useEffect, useRef } from 'react'
 import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -15,8 +16,8 @@ export default function Products() {
   const [products, setProducts] = useState([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]         = useState(() => sessionStorage.getItem('pf-search') || '')
-  const [filterCat, setFilterCat]   = useState(() => sessionStorage.getItem('pf-cat')    || '')
-  const [filterStatus, setFilterStatus] = useState(() => sessionStorage.getItem('pf-status') || '')
+  const [filterCat, setFilterCat]   = useCatalogueFilter('pf-cat', CATEGORIES, true)
+  const [filterStatus, setFilterStatus] = useCatalogueFilter('pf-status', PRODUCT_STATUSES.map(s => s.value), true)
   const [visibleCount, setVisibleCount] = useState(() => Number(sessionStorage.getItem('pf-visible')) || PAGE_SIZE)
   const filtersMounted = useRef(false)
 

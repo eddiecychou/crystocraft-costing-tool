@@ -1,3 +1,4 @@
+import useCatalogueFilter from '../hooks/useCatalogueFilter'
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
@@ -45,10 +46,9 @@ function docVariants(p) {
 export default function Range() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [filtersReady, setFiltersReady] = useState(false)
   const [search, setSearch]     = useState(() => sessionStorage.getItem('rf-search') || '')
-  const [cat, setCat]           = useState(() => sessionStorage.getItem('rf-cat')    || '')
-  const [ptype, setPtype]       = useState(() => sessionStorage.getItem('rf-ptype')  || '')
-  const [status, setStatus]     = useState(() => sessionStorage.getItem('rf-status') || 'all')
+  const [status, setStatus]     = useCatalogueFilter('rf-status', RANGE_STATUSES.map(s => s.value), true, 'all')
   const [stockOnly, setStockOnly] = useState(() => sessionStorage.getItem('rf-stock') === '1')
   const [seeding, setSeeding] = useState(false)
   const { colors: libColors } = useCrystalColors()
@@ -60,6 +60,7 @@ export default function Range() {
     const q = query(collection(db, 'range_products'), orderBy('design_code'))
     return onSnapshot(q, snap => {
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setFiltersReady(true)
       setLoading(false)
     }, () => setLoading(false))
   }, [])
@@ -204,6 +205,9 @@ export default function Range() {
 
   const categories = useMemo(() => [...new Set(items.map(s => s.design_type).filter(Boolean))].sort(), [items])
   const productTypes = useMemo(() => [...new Set(items.map(s => s.product_type).filter(Boolean))].sort(), [items])
+
+  const [cat, setCat] = useCatalogueFilter('rf-cat', categories, filtersReady)
+  const [ptype, setPtype] = useCatalogueFilter('rf-ptype', productTypes, filtersReady)
 
   const filtered = useMemo(() => items.filter(s => {
     const q = search.toLowerCase()
