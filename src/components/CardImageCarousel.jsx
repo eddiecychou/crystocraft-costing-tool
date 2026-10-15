@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { cardImageUrl } from '../cardImageUrl'
+import { canWarmCarousel, carouselImageSource, loadCarouselImage } from '../carouselImageLoader'
+import useInViewOnce from '../hooks/useInViewOnce'
 
 // Swipeable image carousel for a PRODUCT CARD in a catalogue grid — distinct
 // from ImageLightbox (the full-screen viewer on a product's DETAIL page).
@@ -17,30 +18,78 @@ import { cardImageUrl } from '../cardImageUrl'
 // should still open the product.
 export default function CardImageCarousel({ images, alt, fallback, imgClassName = 'object-cover', onImageError }) {
   const [index, setIndex] = useState(0)
+  const [displayedUrl, setDisplayedUrl] = useState(images[0]?.url || '')
+  const [readyUrl, setReadyUrl] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [originalFallbacks, setOriginalFallbacks] = useState({})
-  const touch = useRef(null)      // { x, y, moved }
-  const count = images.length
+  const [carouselRef, inView] = useInViewOnce('160px')
+  const touch = useRef(null)
+  const errorCallback = useRef(onImageError)
+  errorCallback.current = onImageError
+  const galleryKey = JSON.stringify(images.map(image => image.url))
+  const urls = useMemo(() => JSON.parse(galleryKey), [galleryKey])
+  const count = urls.length
+  const selected = Math.min(index, Math.max(0, count - 1))
+  const requestedUrl = urls[selected] || ''
+  const requestedOriginal = Boolean(originalFallbacks[requestedUrl])
+  // Removed/replaced photos must disappear immediately, even if previously decoded.
+  const originalUrl = urls.includes(displayedUrl) ? displayedUrl : requestedUrl
+  const source = carouselImageSource(originalUrl, originalFallbacks[originalUrl])
+  const pending = requestedUrl !== originalUrl && loadError !== requestedUrl
 
-  if (!count) return fallback
+  function warmNeighbours(urgent = false) {
+    if (count < 2 || !canWarmCarousel(navigator.connection)) return
+    const current = urls.indexOf(originalUrl)
+    const neighbours = new Set([urls[(current + 1) % count], urls[(current - 1 + count) % count]])
+    neighbours.delete(originalUrl)
+    for (const url of neighbours) loadCarouselImage(url, { urgent, original: Boolean(originalFallbacks[url]) })
+  }
+  useEffect(() => {
+    if (inView && readyUrl === originalUrl) warmNeighbours()
+  }, [inView, readyUrl, originalUrl, galleryKey])
 
-  // A refreshed gallery can remove the currently selected slide.
-  const originalUrl = images[Math.min(index, count - 1)].url
-  const optimizedUrl = cardImageUrl(originalUrl)
-  const src = originalFallbacks[originalUrl] ? originalUrl : optimizedUrl
+  useEffect(() => {
+    if (!requestedUrl || requestedUrl === originalUrl) return
+    let cancelled = false
+    setLoadError('')
+    async function showRequested() {
+      let useOriginal = requestedOriginal
+      let ok = await loadCarouselImage(requestedUrl, { urgent: true, original: useOriginal })
+      if (cancelled) return
+      if (!ok && !useOriginal && carouselImageSource(requestedUrl).src !== requestedUrl) {
+        useOriginal = true
+        ok = await loadCarouselImage(requestedUrl, { urgent: true, original: true })
+      }
+      if (cancelled) return
+      if (ok) {
+        if (useOriginal) setOriginalFallbacks(current => ({ ...current, [requestedUrl]: true }))
+        setDisplayedUrl(requestedUrl)
+      } else {
+        setLoadError(requestedUrl)
+        errorCallback.current?.()
+      }
+    }
+    showRequested()
+    return () => { cancelled = true }
+  }, [requestedUrl, originalUrl, requestedOriginal])
+
   const handleImageError = () => {
-    if (src !== originalUrl) {
+    if (source.src !== originalUrl) {
       setOriginalFallbacks(current => ({ ...current, [originalUrl]: true }))
       return
     }
-    onImageError?.()
+    setLoadError(requestedUrl)
+    errorCallback.current?.()
   }
 
   const go = (e, delta) => {
     e.preventDefault(); e.stopPropagation()
-    setIndex(i => (i + delta + count) % count)
+    setLoadError('')
+    setIndex((selected + delta + count) % count)
   }
 
   function onTouchStart(e) {
+    warmNeighbours(true)
     const t = e.touches[0]
     touch.current = { x: t.clientX, y: t.clientY, moved: false }
   }
@@ -56,21 +105,27 @@ export default function CardImageCarousel({ images, alt, fallback, imgClassName 
   function onTouchEnd(e) {
     const t = touch.current
     touch.current = null
-    if (!t?.moved) return           // a plain tap — let the Link handle it
+    if (!t?.moved || count < 2) return           // a plain tap — let the Link handle it
     const dx = e.changedTouches[0].clientX - t.x
     if (Math.abs(dx) < 30) return   // too small to count as a swipe
     e.preventDefault(); e.stopPropagation()
-    setIndex(i => (i + (dx < 0 ? 1 : -1) + count) % count)
+    setLoadError('')
+    setIndex((selected + (dx < 0 ? 1 : -1) + count) % count)
   }
 
   return (
-    <div className="relative w-full h-full group"
+    <div ref={carouselRef} className="relative w-full h-full group" aria-busy={pending}
+         onMouseEnter={() => warmNeighbours(true)} onFocus={() => warmNeighbours(true)}
          onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <img src={src}
-           srcSet={src !== originalUrl ? `${cardImageUrl(originalUrl, 320)} 320w, ${optimizedUrl} 640w` : undefined}
-           sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
+      {count ? <img key={originalUrl + source.src} src={source.src}
+           srcSet={source.srcSet} sizes={source.sizes}
            alt={alt || ''} loading="lazy" decoding="async" onError={handleImageError}
-           className={`w-full h-full select-none ${imgClassName}`} draggable={false} />
+           onLoad={() => setReadyUrl(originalUrl)}
+           className={`w-full h-full select-none ${imgClassName}`} draggable={false} /> : fallback}
+      {(pending || loadError === requestedUrl && requestedUrl) && <span role="status"
+        className="absolute top-1 left-1 bg-ivory/90 text-ink text-xs px-2 py-1 pointer-events-none">
+        {pending ? 'Loading photo…' : 'Photo unavailable — try another'}
+      </span>}
 
       {count > 1 && (
         <>
@@ -92,7 +147,7 @@ export default function CardImageCarousel({ images, alt, fallback, imgClassName 
           <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
             {images.map((_, i) => (
               <span key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors ${i === index ? 'bg-white' : 'bg-white/50'}`} />
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${i === selected ? 'bg-white' : 'bg-white/50'}`} />
             ))}
           </div>
         </>
