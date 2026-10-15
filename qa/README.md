@@ -149,3 +149,7 @@ in prebuild and GitHub Actions. To keep a local sample for visual inspection:
 QUOTE_PDF_EVIDENCE=/tmp/quote-units.pdf npm run test:quote-pdf
 pdftoppm -scale-to 1400 -png /tmp/quote-units.pdf /tmp/quote-units
 ```
+
+### Excel quotation units
+
+`npm run test:quote-excel` clicks the actual QuoteExport Excel download in an offline DOM, then opens the generated XLSX with ExcelJS. It checks all seven selected units, numeric quantities/prices, every tier, decimal/zero quantities, legacy pcs fallback and unchanged sheet structure. `QUOTE_EXCEL_EVIDENCE=/absolute/path.xlsx` saves the mixed-unit fixture for visual verification. These checks run before builds and in GitHub Actions.

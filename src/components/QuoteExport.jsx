@@ -334,6 +334,8 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
           }
 
           row.getCell(COL.QTY).value       = tier.quantity ?? ''
+          // Display the saved unit without turning numeric quantities into text.
+          row.getCell(COL.QTY).numFmt      = `General" ${(item.product_unit || 'pcs').replace(/"/g, '""')}"`
           row.getCell(COL.QTY).font        = baseFont()
           row.getCell(COL.QTY).alignment   = { horizontal: 'center', vertical: 'middle' }
           row.getCell(COL.PRICE).value     = tier.price ?? tier.price_hkd ?? ''
