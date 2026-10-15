@@ -12,4 +12,13 @@ Fresh password login claude-qa@crystocraft.com: PASS, admin dashboard/Settings n
 
 Fresh password login customer-qa@crystocraft.com: PASS, approved QA-only customer storefront, 24 figurine cards before/after refresh, Sacred Angel detail and USD finish prices, no private admin controls; admin quote route redirected to /shop. No runtime errors. QA sessions signed out. Evidence in /private/tmp/v818-evidence/excel-final-candidate-{admin,customer}.png and mandy-excel-final-candidate.png.
 
-Production verification pending. No rules or access changes.
+## Production PASS — 16 October 2026, Australia/Sydney
+
+Git CD deployed 4de6fe62694eec13d02a8d3d363657d030e257b5 as 6ad0d30f1f21d61d939ae9c3, published 16 October 00:21:04 AEDT. Both portal.crystocraft.com and ua-product-manager.netlify.app serve /assets/index-D1LSbWmZ.js, V8.18 · 16 Oct, 00:20, Firebase probes 200. GitHub Actions run 38741829545 / job 116445217833 completed success: 39 search/filter, 9 quote PDF, 6 quote Excel, 13 invoice and 10 packing/PO checks = 77 passed, zero failed.
+
+Fresh real-page password sign-ins repeated on the published Netlify production origin, preserving the owner's working custom-domain session:
+
+- Admin claude-qa@crystocraft.com PASS: dashboard 96 pipeline, Settings navigation, 294/294 figurine products / 713 SKUs before/after refresh, no runtime errors. Downloaded current six-product Mandy Pong quote: all 12 remarks in separate G9:G20 cells, correct numeric quantity 10, pair formats, original prices, seven images; independent print conversion visually checked. Evidence excel-production-admin.png and mandy-excel-production.png.
+- Customer customer-qa@crystocraft.com PASS: expected approved QA-only storefront, 24 figurine cards before/after refresh, Sacred Angel product detail and finish prices, no admin/cost controls or runtime errors. /settings redirected to /shop. Evidence excel-production-customer.png. QA signed out.
+
+Corrected real production workbook saved under outputs/01a13b22-c93b-79f2-9f8b-551754486033/Mandy Pong - 2026-10-15 - tier remarks.xlsx (ignored output). No quote content, rules or access changes. Verification screenshots under /private/tmp/v818-evidence/.
