@@ -7,3 +7,13 @@ Added XLSX downloads to admin PI/SI print pages, preserving PI's priced/unpriced
 Thirteen regression tests use the real components, Firestore normalization/totals and actual Excel download, covering all seven units, legacy defaults, decimal values, charge rows, numeric totals, quote conversion, customer ownership refusal, historical unknown units, both PI CSV options, sales accounting adjustment and historical negative quantities. Tests run in prebuild and GitHub Actions. No live invoice records or profile/rules changes are needed.
 
 Candidate and production verification pending.
+
+## Candidate PASS — 15 October 2026
+
+Code `13a8681`, deploy `6ad0b77bc43630fe7fd482ee`, https://6ad0b77bc43630fe7fd482ee--ua-product-manager.netlify.app; served `/assets/index-DFPb7HoH.js`, V8.18 ·15Oct22:22; Firebase probe200. All60 checks passed (39search/filter,5quote PDF,3quote Excel,13invoice), production build/lint passed and11configuration tests passed separately.
+
+Admin `claude-qa@crystocraft.com`: fresh password sign-in, dashboard data, Settings access, catalogue294products/713SKUs, refresh and runtime PASS. Existing order `ldtFAPTJpiuDfoIo3Xe2` (SO260058/SI260130) PI/SI print tables show2pcs; actual Excel downloads from both pages retain numeric qty2, Unit pcs, product amount60, freight23 with blank qty/unit, total83. Quote/order/invoice fields were not edited.
+
+Customer `customer-qa@crystocraft.com`: fresh password sign-in to approved QA-only home,24catalogue cards, Sacred Angel detail/prices, refresh in correct shell, Settings redirected to shop, no admin/private controls and runtime PASS. No live invoice was created for QA; customer invoice unit/export/ownership behavior was tested with the real component and offline authorized-order fixtures, including rejection of another customer's order. Historical ERP lines without a saved/documented unit remain unspecified. Both QA sessions signed out; owner session preserved.
+
+Mixed-unit actual-component HTML and XLSX fixtures under `/private/tmp/v818-evidence/` were independently rendered to PDFs and text-checked for all7units; browser screenshots verify the real print CSS/layout separately (LibreOffice HTML rendering does not reproduce browser CSS faithfully). Artifact-tool inspection/render confirms XLSX Unit column; numeric types/blank charge cells were verified directly with ExcelJS because artifact-tool has blank-cell display artifacts. Candidate screenshots: invoice-units-candidate-admin.png, invoice-units-candidate-customer.png, invoice-candidate-pi.png, invoice-candidate-sales.png. Synthetic browser screenshots: pi-invoice-browser.png, sales-invoice-browser.png, customer-invoice-browser.png. No rules, permissions or ERP schema changes.
