@@ -161,3 +161,5 @@ pdftoppm -scale-to 1400 -png /tmp/quote-units.pdf /tmp/quote-units
 ### Packing list and purchase order units
 
 `npm run test:packing-po` exercises actual packing/PO print pages, packing editor and save path with offline Firestore fixtures. Ten regressions cover all seven units, linked-order legacy recovery, ambiguous-code handling, mixed cartons and multiplication, unit persistence/selection/auto-packing, numeric Excel cells, separate quantity totals, carton/pallet weight and volume, private-field exclusion and English/Chinese PO totals/deposits. `PACKING_PO_EVIDENCE_DIR=/absolute/directory` saves real-component HTML/XLSX fixtures. Runs in prebuild and GitHub Actions.
+
+Quote PDF coverage also checks tier remarks stay grouped with their own quantity/unit/price/amount, blank remark handling, separate product/quote notes, Chinese font selection and real multipage rendering with long/multiline remarks. `QUOTE_TIER_REMARKS_EVIDENCE=/absolute/path.pdf npm run test:quote-pdf` saves the rendered fixture.

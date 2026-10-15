@@ -60,3 +60,39 @@ test('real renderer produces the mixed-unit PDF, including a large multi-tier qu
   assert.ok(buffer.length>1000)
   if(process.env.QUOTE_PDF_EVIDENCE)await writeFile(process.env.QUOTE_PDF_EVIDENCE,buffer)
 })
+
+function nodes(node) {
+  if(!node || typeof node!=='object')return []
+  if(Array.isArray(node))return node.flatMap(nodes)
+  return [node,...nodes(node.props?.children)]
+}
+const remarkedItem={product_name:'Crystal Spinning Glass Bordeaux Edition',product_description:'Crystal glass with spinning base.',product_unit:'pair',item_remarks:'Product-level customization stays separate.',tiers:[
+ {quantity:10,price:800,remarks:'1 pair 2 glasses in a gift box'},
+ {quantity:10,price:630,remarks:'1 pair 2 glasses in single gift box combined with paper sleeve'},
+]}
+test('each tier remark shares a group with its own quantity, price and amount',()=>{
+ const tree=QuotePDF({quote,items:[remarkedItem]})
+ for(const [remark,price,amount]of [[remarkedItem.tiers[0].remarks,'800.00','8,000.00'],[remarkedItem.tiers[1].remarks,'630.00','6,300.00']]){
+  const group=nodes(tree).find(n=>n.props?.wrap===false && texts(n).includes(remark) && !texts(n).includes(remark===remarkedItem.tiers[0].remarks?remarkedItem.tiers[1].remarks:remarkedItem.tiers[0].remarks))
+  assert.ok(group,'Each remark has a dedicated tier group')
+  assert.deepEqual(texts(group),['10 pair',price,amount,remark])
+ }
+ assert.ok(texts(tree).includes(remarkedItem.item_remarks))
+})
+test('blank tier remarks add no remark text, and quote notes stay separate',()=>{
+ const tree=QuotePDF({quote:{...quote,notes:'Quote-wide delivery note'},items:[{...remarkedItem,tiers:[{quantity:10,price:800},{quantity:20,price:700,remarks:'  \n '}]}]})
+ assert.ok(texts(tree).includes('20 pair'));assert.ok(texts(tree).includes('14,000.00'))
+ assert.ok(texts(tree).includes('Quote-wide delivery note'))
+ assert.ok(!texts(tree).includes('  \n '))
+})
+test('Chinese tier remarks select the existing Chinese fallback font',()=>{
+ const remark='每對兩個玻璃杯，附禮盒'
+ const node=nodes(QuotePDF({quote,items:[{...remarkedItem,tiers:[{quantity:10,price:800,remarks:remark}]}]})).find(n=>n.type===Text&&n.props.children===remark)
+ assert.ok(node);assert.ok(node.props.style.some(s=>s?.fontFamily==='Noto Sans TC'))
+})
+test('real PDF renderer wraps multiline and long tier remarks across a multipage quote',async()=>{
+ const fixtures=Array.from({length:8},(_,i)=>({...remarkedItem,product_name:`Tier remark layout sample ${i+1}`,tiers:[remarkedItem.tiers[0],{...remarkedItem.tiers[1],remarks:remarkedItem.tiers[1].remarks+'\n'+ 'Packaging and customization details must remain attached to this price tier. '.repeat(3)}]}))
+ const buffer=await renderToBuffer(React.createElement(QuotePDF,{quote,items:fixtures,includeTotal:true}))
+ assert.equal(buffer.subarray(0,5).toString(),'%PDF-');assert.ok(buffer.length>1000)
+ if(process.env.QUOTE_TIER_REMARKS_EVIDENCE)await writeFile(process.env.QUOTE_TIER_REMARKS_EVIDENCE,buffer)
+})

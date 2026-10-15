@@ -93,6 +93,9 @@ const s = StyleSheet.create({
   priceCell: { width: W.price, alignItems: 'flex-end' },
   amountCell: { width: W.amount, alignItems: 'flex-end' },
   tierLine: { marginVertical: 1 },
+  tiersCell: { width: W.qty + W.price + W.amount },
+  tierValues: { flexDirection: 'row' },
+  tierRemark: { fontSize: 7.5, color: C.grayDark, lineHeight: 1.4, marginTop: 2, marginBottom: 5 },
   qtyText: { fontSize: 9, color: C.black, textAlign: 'center' },
   priceText: { fontSize: 9, color: C.black },
   amountText: { fontSize: 9, color: C.black },
@@ -244,17 +247,24 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
                   <Text style={[s.itemRemark, { fontFamily: contentFont(item.item_remarks) }]}>{item.item_remarks}</Text>
                 ) : null}
               </View>
-              <View style={s.qtyCell}>
-                {tiers.map((t, k) => <Text key={k} style={[s.qtyText, s.tierLine]}>{`${t.quantity ?? ''} ${item.product_unit || 'pcs'}`.trim()}</Text>)}
-              </View>
-              <View style={s.priceCell}>
+              <View style={s.tiersCell}>
                 {tiers.map((t, k) => (
-                  <Text key={k} style={[s.priceText, s.tierLine]}>{fmtMoney(t.price ?? t.price_hkd)}</Text>
-                ))}
-              </View>
-              <View style={s.amountCell}>
-                {tiers.map((t, k) => (
-                  <Text key={k} style={[s.amountText, s.tierLine]}>{fmtMoney(tierAmount(t))}</Text>
+                  <View key={k} wrap={false}>
+                    <View style={s.tierValues}>
+                      <View style={{ flex: W.qty, alignItems: 'center' }}>
+                        <Text style={[s.qtyText, s.tierLine]}>{`${t.quantity ?? ''} ${item.product_unit || 'pcs'}`.trim()}</Text>
+                      </View>
+                      <View style={{ flex: W.price, alignItems: 'flex-end' }}>
+                        <Text style={[s.priceText, s.tierLine]}>{fmtMoney(t.price ?? t.price_hkd)}</Text>
+                      </View>
+                      <View style={{ flex: W.amount, alignItems: 'flex-end' }}>
+                        <Text style={[s.amountText, s.tierLine]}>{fmtMoney(tierAmount(t))}</Text>
+                      </View>
+                    </View>
+                    {t.remarks?.trim() ? (
+                      <Text style={[s.tierRemark, { fontFamily: contentFont(t.remarks) }]}>{t.remarks}</Text>
+                    ) : null}
+                  </View>
                 ))}
               </View>
             </View>
