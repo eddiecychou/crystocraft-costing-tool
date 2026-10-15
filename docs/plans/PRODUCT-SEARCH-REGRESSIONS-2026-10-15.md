@@ -11,3 +11,12 @@ Mutation verification: temporarily replacing each grid's product-ID key with a r
 Automation: `prebuild` runs the search suite before every normal application build, including Netlify Git deployments. Local Node20 verification mirrors the hosting runtime. A standalone GitHub Actions workflow was attempted but GitHub rejected the push because the current Personal Access Token lacks `workflow` scope. The unpushed workflow was removed from the commit; no token or account permissions were expanded and branch protection settings were not changed. Build-time regression protection remains active.
 
 This is a test/build-tooling change. The commit uses `[skip netlify]` to retain the already verified production application. No app or Firebase rules deployment and no live product/quote/account mutations.
+
+
+## GitHub Actions enabled — 15 October 2026
+
+Workflow `.github/workflows/product-search.yml` created on main through the already connected GitHub app in commit `f4afdc78817964145c61a0e27c4e02204e0d65f2`; local worktree fast-forwarded to the same commit. Relevant push/PR path triggers plus manual dispatch, Ubuntu + Node20 + npm ci + the39-check search command. The job has read-only contents access, checkout credentials are not persisted, and no project secrets are supplied.
+
+First real run **PASS**: https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/38706116158 — run38706116158/job116325844981 completed successfully, including clean npm ci and the search suite.
+
+Read-only credential audit confirmed the local Git credential belongs to eddiecychou, is a fine-grained PAT and is stored through macOS Keychain. Its workflow-edit permission remains limited. Owner action for future local workflow edits: edit the existing fine-grained token's repository permissions, retain Contents read/write and grant Workflows read/write for this repo; save. The connected GitHub app enabled the current workflow without changing token permissions. Branch protection settings are unchanged.

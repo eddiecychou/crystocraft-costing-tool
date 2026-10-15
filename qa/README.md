@@ -22,11 +22,18 @@ variant identity/price and filter tests run in the same command.
 
 `npm run build` runs this suite first through `prebuild`, so failed search checks
 stop a normal application build/deploy, including Netlify Git deployments.
-A standalone GitHub Actions workflow could not be installed with the current
-git token (GitHub requires the additional `workflow` permission). No account
-permissions were changed. The suite checks component behavior, not visual layout,
-real login or Firebase rules;
-release verification below remains required when publishing an app.
+GitHub Actions also runs the suite on relevant source/QA/dependency/workflow
+pushes and pull requests, with a manual Run workflow option. See
+`.github/workflows/product-search.yml`. Its first Ubuntu/Node20 run passed:
+https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/38706116158
+
+The workflow was enabled through the connected GitHub app. The local Mac's
+fine-grained token still needs repository `Workflows: Read and write` (alongside
+existing `Contents: Read and write`) for future local edits to workflow files.
+Ordinary code pushes and existing Actions runs already work. No account/token
+permissions were changed. The suite checks component behavior, not visual
+layout, real login or Firebase rules; release verification below remains
+required when publishing an app.
 
 # Rendering a PDF to look at it
 
