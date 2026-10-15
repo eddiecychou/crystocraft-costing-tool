@@ -115,6 +115,10 @@ test('multiline, long and Chinese remarks retain text and have room to wrap',asy
  assert.equal(ws.getCell('G10').value,'=literal text, never an Excel formula')
  assert.equal(ws.getCell('G10').type,ExcelJS.ValueType.String)
  assert.equal(ws.getCell('F10').value,700)
+ const chinese='每對兩個玻璃杯，附禮盒'.repeat(25)
+ const {ws:zh}=await exportWorkbook([{product_name:'Chinese remark',tiers:[{quantity:10,price:800,remarks:chinese},{quantity:20,price:700}]}])
+ assert.equal(zh.getCell('G9').value,chinese)
+ assert.ok(zh.getRow(9).height>180,'Wide Chinese characters need additional row height')
 })
 test('missing and whitespace-only tier remarks leave blank cells without changing numbers',async()=>{
  const {ws}=await exportWorkbook([{product_name:'Blank remarks',tiers:[{quantity:80,price:90},{quantity:100,price:85,remarks:'  \n  '}]}])

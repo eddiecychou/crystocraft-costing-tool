@@ -313,7 +313,7 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
         const totalPt  = Math.max(imgMinPt, descPt)
         // Distribute evenly — minimum 18pt per tier row
         const rowH     = Math.max(18, Math.ceil(totalPt / tiers.length),
-          ...tiers.map(t => t.remarks?.trim() ? descLineCount(t.remarks, 38) * LINE_PT + 12 : 0))
+          ...tiers.map(t => t.remarks?.trim() ? descLineCount(t.remarks.replace(/[　-〿㐀-鿿豈-﫿＀-￯]/g, 'XX'), 35) * LINE_PT + 12 : 0))
 
         // ── Page break: don't split a product across pages ───────────
         const productPt = rowH * tiers.length
