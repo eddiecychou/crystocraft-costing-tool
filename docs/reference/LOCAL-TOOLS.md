@@ -291,6 +291,21 @@ delete/edit real customer records with it unless the owner specifically asks
 to test that action. Say plainly what was actually clicked through in the
 browser versus what was only syntax-checked.
 
+## Customer-only release QA account (2026-10-15)
+
+Owner explicitly authorized `customer-qa@crystocraft.com` for mandatory customer
+release checks. Auth UID `LeqnH4vrJENoHJJHBlpeKfUXez23`; profile role `customer`,
+status `approved`, `modules:[]`, no custom claims. It links only to the test
+company `customers/qa_customer_release_testing` (QA ONLY — Customer Portal
+Release Testing), with empty contacts and no real-client association.
+
+Credentials are in the ignored `.env.local` as `QA_CUSTOMER_EMAIL` and
+`QA_CUSTOMER_PASSWORD`. Never print or commit them. Use a fresh browser session
+separate from admin and the owner's working sessions; never change this account
+to admin or change the existing admin QA account into a customer. Test only
+view/read/navigation unless a separate write test is explicitly authorized.
+No invitation, approval email, or password-reset email was sent during setup.
+
 ## Graphify (codebase knowledge graph)
 
 Set up 2026-09-10. A code-graph CLI (`graphifyy` on PyPI) that turns this repo

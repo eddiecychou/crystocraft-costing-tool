@@ -15,7 +15,7 @@ const env = await initializeTestEnvironment({
   firestore: { rules: source.replace(needle, needle.replace('return false;', 'return true;')) },
 })
 const uid = 'mcp-figurine-range-service'
-const rangeId = 'mcp_range_0123456789abcdef0123456789abcdef'
+const rangeId = 'mcp_range_908dea07a5b05873f72e1bffd5ad4ddc'
 const requestId = 'df17f76f-f84d-4f42-bd23-1134464531b8'
 const hash = 'a'.repeat(64)
 const codes = ['B0016-000-GBK', 'B0016-000-GBL', 'B0016-000-GC1', 'B0016-000-GMT', 'B0016-000-GPE', 'B0016-000-GVL']
@@ -74,15 +74,15 @@ await check('mismatched claim to existing design denied', assertFails(setDoc(doc
 })))
 await check('orphaned BOM link denied with write candidate enabled', assertFails(updateDoc(doc(db, `range_products/${rangeId}`), {
   critical_components: [
-    { id: 'mcp_b0016_m_0123456789abcdef0123', code: 'B0016-METAL', qty_per_unit: 1, plating_code: '', all_variants: true },
-    { id: 'mcp_b0016_f_0123456789abcdef0123', code: 'B0016-FABRIC', qty_per_unit: 1, plating_code: '', all_variants: true },
+    { id: 'mcp_b0016_m_3e398a26e52ceeac48a6', code: 'B0016-METAL', qty_per_unit: 1, plating_code: '', all_variants: true },
+    { id: 'mcp_b0016_f_c330cd3872575be1398a', code: 'B0016-FABRIC', qty_per_unit: 1, plating_code: '', all_variants: true },
   ],
 })))
 
-const metalId = 'mcp_b0016_m_0123456789abcdef0123'
-const fabricId = 'mcp_b0016_f_0123456789abcdef0123'
-const metalQuoteId = 'mcp_b0016_mq_0123456789abcdef0123'
-const fabricQuoteId = 'mcp_b0016_fq_0123456789abcdef0123'
+const metalId = 'mcp_b0016_m_3e398a26e52ceeac48a6'
+const fabricId = 'mcp_b0016_f_c330cd3872575be1398a'
+const metalQuoteId = 'mcp_b0016_mq_1ead485578bae9b1db0a'
+const fabricQuoteId = 'mcp_b0016_fq_c06a81387115bee5daa5'
 const refs = [
   { id: metalId, code: 'B0016-METAL', qty_per_unit: 1, plating_code: '', all_variants: true },
   { id: fabricId, code: 'B0016-FABRIC', qty_per_unit: 1, plating_code: '', all_variants: true },

@@ -14,9 +14,9 @@ const check = async (label, promise) => {
   catch (error) { failed++; console.error(`FAIL ${label}: ${error.message}`) }
 }
 const uid = 'mcp-figurine-range-service'
-const rangeId = 'mcp_range_0123456789abcdef0123456789abcdef'
-const componentId = 'mcp_b0016_m_0123456789abcdef0123'
-const quoteId = 'mcp_b0016_mq_0123456789abcdef0123'
+const rangeId = 'mcp_range_908dea07a5b05873f72e1bffd5ad4ddc'
+const componentId = 'mcp_b0016_m_3e398a26e52ceeac48a6'
+const quoteId = 'mcp_b0016_mq_1ead485578bae9b1db0a'
 const code = 'B0016-000-GBK'
 
 await env.withSecurityRulesDisabled(async context => {
@@ -65,11 +65,11 @@ await check('missing token claim denied', assertFails(getDoc(doc(noClaim, `range
 
 // Even a correctly authenticated service token must not write in phase one.
 // These cover orphaned/mismatched claims and BOM links without mutating live data.
-await check('orphan SKU claim create denied', assertFails(setDoc(doc(service, 'range_sku_claims/B0016-000-GBL'), { item_code: 'B0016-000-GBL', range_id: 'mcp_range_ffffffffffffffffffffffffffffffff', service_principal: uid })))
+await check('orphan SKU claim create denied', assertFails(setDoc(doc(service, 'range_sku_claims/B0016-000-GBL'), { item_code: 'B0016-000-GBL', range_id: 'mcp_range_6b5551e0f905a0418691fe0e7f5249d7', service_principal: uid })))
 await check('mismatched SKU claim create denied', assertFails(setDoc(doc(service, 'range_sku_claims/B0016-000-GC1'), { item_code: 'B0016-000-GC1', range_id: rangeId, service_principal: 'wrong' })))
-await check('orphan BOM component create denied', assertFails(setDoc(doc(service, 'range_components/mcp_b0016_f_0123456789abcdef0123'), { code: 'B0016-FABRIC', mcp_creator_uid: uid, mcp_range_id: 'mcp_range_ffffffffffffffffffffffffffffffff' })))
+await check('orphan BOM component create denied', assertFails(setDoc(doc(service, 'range_components/mcp_b0016_f_c330cd3872575be1398a'), { code: 'B0016-FABRIC', mcp_creator_uid: uid, mcp_range_id: 'mcp_range_6b5551e0f905a0418691fe0e7f5249d7' })))
 await check('mismatched BOM link denied', assertFails(updateDoc(doc(service, `range_products/${rangeId}`), { critical_components: [{ id: componentId, code: 'WRONG', qty_per_unit: 1, plating_code: '', all_variants: true }] })))
-await check('service audit create denied', assertFails(setDoc(doc(service, 'range_mcp_audit/mcp_range_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'), { action: 'create_mezuzah_range_design', service_principal: uid })))
+await check('service audit create denied', assertFails(setDoc(doc(service, 'range_mcp_audit/mcp_range_b02df9b966cba2ae033a4a73a71ab89e65540c411496da9753e9419ebd3a100a'), { action: 'create_mezuzah_range_design', service_principal: uid })))
 
 await env.cleanup()
 console.log(`\n${passed} passed, ${failed} failed`)
