@@ -4,7 +4,7 @@
 
 export const emptyLine = () => ({
   _uid: 'ln_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-  code: '', description: '', qty: '', unit: 'pcs', unit_price: '',
+  code: '', description: '', tier_remarks: '', qty: '', unit: 'pcs', unit_price: '',
   linked: null,   // optional { type:'corp'|'range', product_id?, component_id, label }
 })
 
@@ -67,6 +67,7 @@ export function cleanLines(lines) {
       const out = {
         code: (ln.code || '').trim(),
         description: (ln.description || '').trim(),
+        tier_remarks: (ln.tier_remarks || '').trim(),
         qty: Number(ln.qty) || 0,
         unit: ln.unit || 'pcs',
         unit_price: Number(ln.unit_price) || 0,

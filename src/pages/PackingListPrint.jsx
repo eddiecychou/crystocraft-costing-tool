@@ -139,6 +139,7 @@ function PrintDoc({ pl, order, cartons }) {
            never split a single row across a page break. */
         .pl-doc thead { display: table-header-group; }
         .pl-doc tr { break-inside: avoid; page-break-inside: avoid; }
+        .pl-doc .tier-remarks { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 4px; font-size: 9px; }
         .pl-doc .no-border td { border: none; }
         .pl-doc .pallet-row td {
           background: #d0d0d0; font-weight: bold; padding: 2px 4px; border: 1px solid #000;
@@ -267,7 +268,7 @@ function PrintDoc({ pl, order, cartons }) {
                         <>
                           <td style={{ textAlign: 'center' }}>{ctnRange(c)}</td>
                           <td style={{ fontFamily: 'monospace' }}>{item.item_code || ''}</td>
-                          <td>{item.description || ''}</td>
+                          <td>{item.description || ''}{item.tier_remarks?.trim() && <div className="tier-remarks">{item.tier_remarks}</div>}</td>
                           <td style={{ textAlign: 'right' }}>{qty > 0 ? `${qty} ${item.unit || '(unit not set)'}` : ''}</td>
                           <td style={{ textAlign: 'right' }}>{gw > 0 ? fmt(gw, 1) : ''}</td>
                           <td style={{ textAlign: 'center' }}>{count > 1 ? count : 1}</td>
@@ -291,7 +292,7 @@ function PrintDoc({ pl, order, cartons }) {
                         <>
                           <td style={{ textAlign: 'center' }}></td>
                           <td style={{ fontFamily: 'monospace' }}>{item.item_code || ''}</td>
-                          <td>{item.description || ''}</td>
+                          <td>{item.description || ''}{item.tier_remarks?.trim() && <div className="tier-remarks">{item.tier_remarks}</div>}</td>
                           <td style={{ textAlign: 'right' }}>{qty > 0 ? `${qty} ${item.unit || '(unit not set)'}` : ''}</td>
                           <td></td>
                           <td></td>

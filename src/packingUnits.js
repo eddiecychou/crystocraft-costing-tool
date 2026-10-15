@@ -9,8 +9,15 @@ export function packingItemUnit(item, orderLines = []) {
   const units = [...new Set(matches.map(l => l.unit || 'pcs'))]
   return units.length > 1 ? '' : units[0] || 'pcs'
 }
+// A saved carton snapshot (including an intentionally blank remark) wins.
+// Recover only an exact linked order line; repeated product codes can represent
+// different packaging tiers, so a code match is not evidence for a remark.
+export function packingItemTierRemarks(item, orderLines = []) {
+  if (Object.hasOwn(item, 'tier_remarks')) return item.tier_remarks || ''
+  return orderLines.find(l => l.id === item.order_line_id)?.tier_remarks || ''
+}
 export function withPackingUnits(cartons, orderLines = []) {
-  return cartons.map(c => ({ ...c, contents:(c.contents || []).map(i => ({...i, unit:packingItemUnit(i, orderLines)})) }))
+  return cartons.map(c => ({ ...c, contents:(c.contents || []).map(i => ({...i, unit:packingItemUnit(i, orderLines), tier_remarks:packingItemTierRemarks(i, orderLines)})) }))
 }
 export function quantityUnitTotals(lines) {
   const totals = new Map()

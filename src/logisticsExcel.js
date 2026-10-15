@@ -16,17 +16,25 @@ function sheet(wb, name, widths) {
   ws.pageSetup={paperSize:9,orientation:name==='Packing List'?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0}
   return ws
 }
+function tierRemarkCell(row, column, text) {
+  const cell = row.getCell(column)
+  cell.value = text?.trim() ? text : ''
+  cell.alignment = { vertical:'top', wrapText:true }
+  const lines = (text || '').split('\n').reduce((n,line) => n + Math.max(1,Math.ceil(line.replace(/[\u3000-\u303f\u3400-\u9fff\uf900-\ufaff\uff00-\uffef]/g,'XX').length / 38)),0)
+  row.height = Math.max(18, lines * 12 + 6)
+}
 export function downloadPurchaseOrderExcel(po, L) {
-  const wb=new ExcelJS.Workbook(), ws=sheet(wb,'Purchase Order',[22,44,14,14,20,22])
+  const wb=new ExcelJS.Workbook(), ws=sheet(wb,'Purchase Order',[22,44,14,14,20,22,40])
   const totals=poTotals(po)
   for(const row of [[L.title,po.pu_number || ''],[L.supplier,po.supplier_name || '',po.supplier_name_cn || ''],
     [L.attn,po.supplier_contact || ''],['Address',po.supplier_address || ''],[L.issued,po.issued_date || ''],
     [L.estShip,po.est_ship_date || ''],[L.currency,po.currency || 'RMB'],[L.shipTo,po.ship_to || ''],
     [L.terms,[PO_PAYMENT_TERM_LABEL[po.payment_terms],po.payment_terms_custom].filter(Boolean).join(' · ')]]) ws.addRow(row)
   ws.addRow([])
-  ws.addRow([L.itemCode,L.description,L.qty,L.unit,L.unitPrice,L.amount]).font={bold:true}
+  ws.addRow([L.itemCode,L.description,L.qty,L.unit,L.unitPrice,L.amount,L.tierRemarks]).font={bold:true}
   for(const l of po.lines || []) {
     const r=ws.addRow([l.code || '',l.description || '',Number(l.qty) || 0,l.unit || 'pcs',Number(l.unit_price) || 0,lineAmount(l)])
+    tierRemarkCell(r,7,l.tier_remarks)
     r.getCell(5).numFmt='#,##0.00';r.getCell(6).numFmt='#,##0.00'
   }
   ws.addRow([])
@@ -37,21 +45,22 @@ export function downloadPurchaseOrderExcel(po, L) {
   return download(wb,po.pu_number || 'Purchase Order')
 }
 export function downloadPackingExcel(pl, order, cartons) {
-  const wb=new ExcelJS.Workbook(), ws=sheet(wb,'Packing List',[22,14,22,38,14,12,14,14,16,16,24,16,16,16,16,22])
+  const wb=new ExcelJS.Workbook(), ws=sheet(wb,'Packing List',[22,14,22,38,14,12,14,14,16,16,24,16,16,16,16,22,40])
   ws.addRow(['PACKING LIST',order?.erp_so_no || ''])
   ws.addRow(['Consignee',pl.consignee_name || order?.customer_name || ''])
   ws.addRow(['Ref No',order?.uc_no || order?.erp_pi_no || ''])
   ws.addRow(['Customer PO',order?.customer_po || ''])
   ws.addRow(['Case Mark',pl.case_mark || '']);ws.addRow(['Shipped Per',pl.shipped_per || '']);
   ws.addRow(['Date',pl.pl_date?.toDate?.() || pl.pl_date || '']);ws.addRow([])
-  ws.addRow(['Pallet','Carton No','Item Code','Description','Qty/Ctn','Unit','Carton Count','Total Qty','GW/Ctn (kg)','Total GW (kg)','Dimensions (cm)','CBM/Ctn','Total CBM','NW/Ctn (kg)','Total NW (kg)','Pack Code']).font={bold:true}
+  ws.addRow(['Pallet','Carton No','Item Code','Description','Qty/Ctn','Unit','Carton Count','Total Qty','GW/Ctn (kg)','Total GW (kg)','Dimensions (cm)','CBM/Ctn','Total CBM','NW/Ctn (kg)','Total NW (kg)','Pack Code','Tier remarks']).font={bold:true}
   for(const c of cartons) {
     const count=parseInt(c.carton_count) || 1, seq=parseInt(c.carton_seq) || 1
     for(const [i,item] of (c.contents?.length?c.contents:[{}]).entries()) {
       const first=i===0, qty=Number(item.qty) || 0
-      ws.addRow([c.pallet_no || 1,first?(count>1?`${seq}–${seq+count-1}`:seq):'',item.item_code || '',item.description || '',qty,item.qty == null && !item.item_code && !item.description ? '' : item.unit || 'unit not set',first?count:null,qty*count,
+      const row=ws.addRow([c.pallet_no || 1,first?(count>1?`${seq}–${seq+count-1}`:seq):'',item.item_code || '',item.description || '',qty,item.qty == null && !item.item_code && !item.description ? '' : item.unit || 'unit not set',first?count:null,qty*count,
         first?effectiveGw(c):null,first?effectiveGw(c)*count:null,first?[c.length_cm,c.width_cm,c.height_cm].join(' × '):'',
         first?derivedCbm(c):null,first?(derivedCbm(c) || 0)*count:null,first?Number(c.nw_kg) || 0:null,first?(Number(c.nw_kg) || 0)*count:null,first?c.packaging_code || '':''])
+      tierRemarkCell(row,17,item.tier_remarks)
     }
   }
   ws.addRow([])

@@ -462,6 +462,9 @@ export default function PurchaseOrderForm() {
                     <Trash2 size={15} />
                   </button>
                 </div>
+                <textarea className="input text-sm w-full resize-y" rows={1} aria-label="Tier remarks"
+                  placeholder={t('Tier remarks')} value={ln.tier_remarks || ''}
+                  onChange={e => updateLine(ln._uid, { tier_remarks: e.target.value })} />
                 {/* Optional component link — surfaces this actual price on that component */}
                 <div className="flex items-center gap-2 pl-1 text-xs">
                   {ln.linked?.component_id ? (

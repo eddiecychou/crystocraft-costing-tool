@@ -20,7 +20,7 @@ const PO_L = {
     unit: 'Unit', excel: 'Download Excel', qty: 'Qty', unitPrice: 'Unit Price', amount: 'Amount', totalQty: 'Total Qty',
     subtotal: 'Subtotal', discount: 'Discount', addCharge: 'Additional charge',
     orderTotal: 'Order Total', deposit: 'Deposit', balanceDue: 'Balance Due',
-    total: 'Total', remarks: 'Remarks', issuedBy: 'Issued By',
+    total: 'Total', tierRemarks: 'Tier remarks', remarks: 'Remarks', issuedBy: 'Issued By',
     authSign: 'Authorized Signature', pcs: 'pcs', printBtn: 'Print / Save as PDF',
   },
   zh: {
@@ -30,7 +30,7 @@ const PO_L = {
     unit: '单位', excel: '下载 Excel', qty: '数量', unitPrice: '单价', amount: '金额', totalQty: '总数量',
     subtotal: '小计', discount: '折扣', addCharge: '附加费用',
     orderTotal: '订单总额', deposit: '定金', balanceDue: '应付余额',
-    total: '合计', remarks: '备注', issuedBy: '制单',
+    total: '合计', tierRemarks: '阶梯备注', remarks: '备注', issuedBy: '制单',
     authSign: '供应商确认', pcs: '件', printBtn: '打印 / 存为 PDF',
   },
 }
@@ -96,6 +96,7 @@ function PrintDoc({ po, lang }) {
         table.po-lines tr, table.po-lines td { page-break-inside: avoid; break-inside: avoid; }
         table.po-lines thead { display: table-header-group; }
         table.po-lines tfoot { display: table-footer-group; }
+        .po-lines .tier-remarks { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 4px; font-size: 9px; color: #555; }
         .po-totals, .po-words, .po-remarks, .po-sign { page-break-inside: avoid; break-inside: avoid; }
         table.po-lines tr:nth-child(even) td { background: #fafafa; }
         .po-code { font-family: 'SF Mono', Menlo, monospace; font-size: 9.5px; }
@@ -167,7 +168,7 @@ function PrintDoc({ po, lang }) {
             <tr key={i}>
               <td>{i + 1}</td>
               <td className="po-code">{ln.code || '—'}</td>
-              <td style={{ whiteSpace: 'pre-line' }}>{ln.description || '—'}</td>
+              <td style={{ whiteSpace: 'pre-line' }}>{ln.description || '—'}{ln.tier_remarks?.trim() && <div className="tier-remarks">{ln.tier_remarks}</div>}</td>
               <td className="r">{Number(ln.qty).toLocaleString()} {ln.unit || L.pcs}</td>
               <td className="r">{Number(ln.unit_price).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
               <td className="r">{lineAmount(ln).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>

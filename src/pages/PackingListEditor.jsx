@@ -1,4 +1,4 @@
-import { packingItemUnit } from '../packingUnits'
+import { packingItemUnit, packingItemTierRemarks } from '../packingUnits'
 import { useState, useEffect, useMemo } from 'react'
 import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package, Star, Pencil, Copy, FileText, ChevronUp, ChevronDown } from 'lucide-react'
 import {
@@ -241,7 +241,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
             orderLineId={contents[0]?.order_line_id}
             itemCode={contents[0]?.item_code}
             onSelect={line => patchFirstContent(line
-              ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id, unit: line.unit || 'pcs' }
+              ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id, unit: line.unit || 'pcs', tier_remarks: line.tier_remarks || '' }
               : { order_line_id: '' }
             )}
           />
@@ -255,6 +255,9 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
             value={contents[0]?.description || ''} placeholder="Description"
             onChange={e => patchFirstContent({ description: e.target.value })}
           />
+          <textarea className="input py-1 text-xs w-full resize-y" rows={1} aria-label="Tier remarks"
+            placeholder="Tier remarks" value={packingItemTierRemarks(contents[0] || {}, packableLines)}
+            onChange={e => patchFirstContent({ tier_remarks: e.target.value })} />
           <input
             className="input py-1 text-xs w-20 text-right"
             type="number" min="0" value={contents[0]?.qty || ''} placeholder="Qty/ctn"
@@ -282,7 +285,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
                 orderLineId={item.order_line_id}
                 itemCode={item.item_code}
                 onSelect={line => updateItem(i, line
-                  ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id, unit: line.unit || 'pcs' }
+                  ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id, unit: line.unit || 'pcs', tier_remarks: line.tier_remarks || '' }
                   : { order_line_id: '' }
                 )}
               />
@@ -296,6 +299,9 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
                 value={item.description} placeholder="Description"
                 onChange={e => updateItem(i, { description: e.target.value })}
               />
+              <textarea className="input py-1 text-xs w-full resize-y" rows={1} aria-label="Tier remarks"
+                placeholder="Tier remarks" value={packingItemTierRemarks(item, packableLines)}
+                onChange={e => updateItem(i, { tier_remarks: e.target.value })} />
               <input
                 className="input py-1 text-xs w-20 text-right"
                 type="number" min="0" value={item.qty} placeholder="Qty"

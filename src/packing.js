@@ -1,4 +1,4 @@
-import { packingItemUnit } from './packingUnits'
+import { packingItemUnit, packingItemTierRemarks } from './packingUnits'
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
@@ -169,6 +169,7 @@ export function buildFullCartonPlan(packableLines, rangeProducts) {
           description:   line.description || '',
           qty:           pcsPerCtn || qty,
           unit:          line.unit || 'pcs',
+          tier_remarks:  line.tier_remarks || '',
           order_line_id: line.id || '',
         }],
       }
@@ -353,6 +354,7 @@ export async function saveCartonsWithContents(plId, cartons, orderLines = []) {
           description:   iRest.description || '',
           qty:           parseFloat(iRest.qty) || 0,
           unit:          packingItemUnit(iRest, orderLines),
+          tier_remarks:  packingItemTierRemarks(iRest, orderLines),
           order_line_id: iRest.order_line_id || '',
         })
       }

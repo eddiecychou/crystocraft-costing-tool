@@ -9,7 +9,9 @@ import {build} from 'esbuild'
 import {JSDOM} from 'jsdom'
 import React,{act} from 'react'
 import ExcelJS from 'exceljs'
-import {packingItemUnit,quantityUnitTotals} from '../src/packingUnits.js'
+import {packingItemUnit,packingItemTierRemarks,quantityUnitTotals} from '../src/packingUnits.js'
+import {cleanLines} from '../src/purchaseOrders.js'
+import {quoteItemToOrderLine} from '../src/rangeQuote.js'
 const require=createRequire(import.meta.url),rootDir=fileURLToPath(new URL('../',import.meta.url))
 const dom=new JSDOM('<!doctype html><body></body>',{url:'http://packing.test'})
 for(const k of ['window','document','HTMLElement','MouseEvent','Event'])globalThis[k]=dom.window[k]
@@ -122,4 +124,55 @@ test('packing Excel preserves palletised weight and volume separately from carto
   assert.equal(value('Carton GW (kg)'),20);assert.equal(value('Shipping GW (kg)'),28)
   assert.equal(value('Carton CBM'),0.048);assert.equal(value('Shipping CBM'),1.2)
  })}finally{fixture.pl.pallets=[]}
+})
+
+const tierNote='1 pair 2 glasses in a gift box\n獨立禮盒及紙套'
+test('packing remark recovery uses exact order-line identity and preserves blank or changed snapshots',()=>{
+ const source=[{id:'a',item_code:'DUP',tier_remarks:'first'},{id:'b',item_code:'DUP',tier_remarks:'second'}]
+ assert.equal(packingItemTierRemarks({order_line_id:'b'},source),'second')
+ assert.equal(packingItemTierRemarks({item_code:'DUP'},source),'')
+ assert.equal(packingItemTierRemarks({order_line_id:'missing',item_code:'DUP'},source),'')
+ assert.equal(packingItemTierRemarks({tier_remarks:'snapshot',order_line_id:'b'},source),'snapshot')
+ assert.equal(packingItemTierRemarks({tier_remarks:'',order_line_id:'b'},source),'')
+})
+test('quote-to-order auto-packing and actual carton save preserve the tier snapshot',async()=>{
+ const orderLine={id:'quote-line',...quoteItemToOrderLine({product_name:'Glass',product_unit:'pair',tiers:[{quantity:10,price:800,remarks:tierNote},{quantity:20,price:630,remarks:'OTHER TIER'}]},0)}
+ const plan=pages.buildFullCartonPlan([orderLine],[]);assert.equal(plan[0].contents[0].tier_remarks,tierNote)
+ globalThis.__packingWrites=[];await pages.saveCartonsWithContents('pl',plan,[orderLine]);assert.equal(globalThis.__packingWrites[0].tier_remarks,tierNote)
+ plan[0].contents[0].tier_remarks='';globalThis.__packingWrites=[];await pages.saveCartonsWithContents('pl',plan,[orderLine]);assert.equal(globalThis.__packingWrites[0].tier_remarks,'')
+ globalThis.__packingWrites=[];await pages.saveCartonsWithContents('pl',[{contents:[{order_line_id:'quote-line',qty:2}]}],[orderLine]);assert.equal(globalThis.__packingWrites[0].tier_remarks,tierNote)
+})
+for(const mixed of [false,true])test(`packing PDF/Excel show each tier remark with its correct carton quantities (mixed=${mixed})`,async()=>{
+ const original=fixture.cartons
+ lines[2].tier_remarks=tierNote
+ fixture.cartons=[{...original[0],contents:[{...original[0].contents[2]},...(mixed?[{...original[0].contents[1],tier_remarks:'Another packaging tier'}]:[])]}]
+ try{await withPage('packing',async host=>{
+  const note=host.querySelector('.tier-remarks');assert.equal(note.textContent,tierNote)
+  const row=note.closest('tr');assert.match(row.textContent,/12 pair/);assert.match(row.textContent,/24 pair/)
+  const{wb,bytes}=await excel(host),ws=wb.getWorksheet('Packing List');assert.equal(ws.getCell('Q9').value,'Tier remarks');assert.equal(ws.getCell('Q10').value,tierNote);assert.equal(ws.getCell('E10').value,12);assert.equal(ws.getCell('H10').value,24);assert.equal(ws.getCell('Q10').alignment.wrapText,true)
+  if(mixed)assert.equal(ws.getCell('Q11').value,'Another packaging tier')
+  assert.doesNotMatch(JSON.stringify(ws.model),/PRIVATE-SUPPLIER|unit_cost_hkd/)
+  await evidence(`packing-tier-${mixed?'mixed':'single'}`,host,bytes)
+ })}finally{fixture.cartons=original;delete lines[2].tier_remarks}
+})
+test('packing editor displays recovered remarks and allows an intentional blank override',async()=>{
+ lines[2].tier_remarks=tierNote
+ try{await withPage('editor',async host=>{
+  const inputs=host.querySelectorAll('textarea[aria-label="Tier remarks"]');assert.equal(inputs.length,7);assert.equal(inputs[2].value,tierNote)
+  await act(async()=>{Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype,'value').set.call(inputs[2],'');inputs[2].dispatchEvent(new dom.window.Event('input',{bubbles:true}));inputs[2].dispatchEvent(new dom.window.Event('change',{bubbles:true}))})
+  assert.equal(host.querySelectorAll('textarea[aria-label="Tier remarks"]')[2].value,'')
+ })}finally{delete lines[2].tier_remarks}
+})
+for(const lang of ['en','zh'])test(`PO saved line remarks survive PDF/Excel with unchanged money (${lang})`,async()=>{
+ const original=fixture.po.lines
+ const note='=literal note\n'+tierNote+'\n'+('包裝備註 '.repeat(30)).trim()
+ fixture.po.lines=cleanLines([{code:'GLASS',description:'Glasses',qty:10,unit:'pair',unit_price:800,tier_remarks:note,unit_cost_hkd:999},{code:'BLANK',qty:1,unit:'set',unit_price:5,tier_remarks:'  '}])
+ try{await withPage('po',async host=>{
+  if(lang==='zh')await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='简体中文').click())
+  assert.equal(host.querySelector('.tier-remarks').textContent,note);assert.equal(host.querySelectorAll('.tier-remarks').length,1)
+  const{wb,bytes}=await excel(host,lang==='zh'?'下载 Excel':'Download Excel'),ws=wb.getWorksheet('Purchase Order')
+  assert.equal(ws.getCell('G11').value,lang==='zh'?'阶梯备注':'Tier remarks');assert.equal(ws.getCell('G12').value,note);assert.equal(ws.getCell('G13').value,'');assert.equal(ws.getCell('C12').value,10);assert.equal(ws.getCell('D12').value,'pair');assert.equal(ws.getCell('F12').value,8000);assert.ok(ws.getRow(12).height>100);assert.equal(ws.getCell('G12').alignment.wrapText,true)
+  assert.doesNotMatch(JSON.stringify(ws.model),/unit_cost_hkd/)
+  await evidence(`po-tier-${lang}`,host,bytes)
+ })}finally{fixture.po.lines=original}
 })
