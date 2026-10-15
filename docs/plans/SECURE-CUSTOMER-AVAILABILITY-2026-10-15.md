@@ -110,3 +110,35 @@ and --skip-functions-cache. Subsequent candidate 6ad070604ed1bdfa2e000598 proved
 packaging; final candidate adds selected-finish leads and shared stock-field
 normalization. Product calculations remain unchanged; normalization now shares
 one implementation for admin and server, including numeric legacy strings.
+
+## Final combined production catalogue audit — 15 October, 17:48 AEDT
+
+PASS on unchanged current production deploy 6ad072b0043a65b5011bf282. Fresh
+password admin/customer QA sign-ins were performed sequentially on the same
+production hostname documented above. The owner's portal session was untouched.
+
+| View | Loaded total | Combined live flow |
+|---|---:|---|
+| Admin figurine | 294 | Product category Figurines + design Angels + Made to Order + search Sacred Angel restore after refresh (2 matches); Next/Previous produce decoded images without leaving grid; detail shows C0/G5 and 3-week aggregate; returning preserves filters. Clearing restores full list. In stock only survives refresh with 138 matches, then clears normally. |
+| Admin corporate | 140 | Fitness & Wellness + Concept + Cervical Massage survive refresh; reported pillow's arrows work without navigation; detail and return preserve filters; clearing restores full catalogue. |
+| Customer figurine | 292 | Angels + Made to Order + Sacred Angel survive refresh (4 matches); arrows work within grid, detail/return retains filters; Chrome estimate 9 weeks, Gold 3 weeks/5 available; input 999 clamps to 5. Retired-stock Gold 50 left/max50, Chrome hidden, 999 clamps to 50. Reset restores 292. |
+| Customer corporate | 136 | Fitness & Wellness + Cervical Massage survive refresh (1 match); Next/Previous work without opening product; detail has customer-only controls, return preserves filters; reset restores 136. |
+
+All four tested Next swaps changed source, finished with decoded pixels and
+aria-busy=false, and retained the catalogue URL. Previous navigation also works.
+No new timing/SLA claim was made; this is an integration check on production.
+
+47 regression tests pass again, including obsolete-filter repair (tested with
+synthetic options, without renaming production categories), carousel loader,
+server availability/privacy, Firebase config and existing colour-BOM cases.
+Live portal API comparison again matches admin totals, finish limits and leads
+for both checked products. Customer private component reads remain 403 and
+anonymous requests 401. No runtime errors captured during either role's flows.
+/settings redirects the customer to /shop. QA test filters reset and both roles
+signed out; no cart/enquiry/order submissions, product edits or access changes.
+
+Evidence in /private/tmp/v818-evidence/: final-admin-figurine-catalogue.png,
+final-admin-corporate-catalogue.png, final-customer-figurine-catalogue.png,
+final-customer-corporate-catalogue.png, final-customer-stock-and-lead.png.
+No further app changes/deployment required; documentation-only audit commit
+uses [skip netlify].
