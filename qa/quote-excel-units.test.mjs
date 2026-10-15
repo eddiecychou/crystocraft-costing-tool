@@ -68,7 +68,7 @@ test('actual Excel download preserves every selected unit and numeric quantity',
     assert.equal(ws.getCell(`F${9+i}`).numFmt,'#,##0.00')
   }
   assert.equal(ws.getCell('E8').value,'QTY');assert.equal(ws.getCell('F8').value,'UNIT PRICE (HKD)')
-  assert.equal(ws.columnCount,6);assert.equal(ws.pageSetup.orientation,'portrait')
+  assert.equal(ws.columnCount,7);assert.equal(ws.pageSetup.orientation,'portrait')
   assert.match(filename,/\.xlsx$/)
   if(process.env.QUOTE_EXCEL_EVIDENCE)await writeFile(process.env.QUOTE_EXCEL_EVIDENCE,bytes)
 })
@@ -85,4 +85,40 @@ test('older lines without a unit use pcs without changing stored quantities or p
   const {ws}=await exportWorkbook([{product_name:'Legacy',tiers:[{quantity:80,price_hkd:90}]},{product_name:'Empty unit',product_unit:'',tiers:[{quantity:20,price:5}]}])
   assert.equal(ws.getCell('E9').value,80);assert.equal(ws.getCell('F9').value,90)
   assert.equal(ws.getCell('E9').numFmt,'General" pcs"');assert.equal(ws.getCell('E10').numFmt,'General" pcs"')
+})
+
+const tierRemarks=[
+ '1 pair 2 glasses in a gift box',
+ '1 pair 2 glasses in single gift box combined with paper sleeve',
+]
+test('actual Excel download places each tier remark on the matching quantity/price row',async()=>{
+ const {ws,bytes}=await exportWorkbook([
+  {product_name:'Crystal Spinning Glass Bordeaux Edition',product_unit:'pair',tiers:[{quantity:10,price:800,remarks:tierRemarks[0]},{quantity:10,price:630,remarks:tierRemarks[1]}]},
+  {product_name:'Second product',product_unit:'set',tiers:[{quantity:20,price:12,remarks:'Second product tier'}]},
+ ])
+ assert.equal(ws.getCell('G8').value,'TIER REMARKS')
+ for(const[i,price]of [800,630,12].entries()){
+  assert.equal(ws.getCell(`G${9+i}`).value,[...tierRemarks,'Second product tier'][i])
+  assert.equal(ws.getCell(`E${9+i}`).value,[10,10,20][i]);assert.equal(ws.getCell(`F${9+i}`).value,price)
+  assert.equal(ws.getCell(`G${9+i}`).alignment.wrapText,true)
+  assert.equal(ws.getCell(`G${9+i}`).isMerged,false)
+ }
+ assert.equal(ws.getCell('C10').master.address,'C9')
+ assert.equal(ws.getCell('E9').value*ws.getCell('F9').value,8000)
+ if(process.env.QUOTE_EXCEL_TIER_EVIDENCE)await writeFile(process.env.QUOTE_EXCEL_TIER_EVIDENCE,bytes)
+})
+test('multiline, long and Chinese remarks retain text and have room to wrap',async()=>{
+ const remark='First packaging note\n'+ 'Packaging and customization details for this tier. '.repeat(12)+'\n每對兩個玻璃杯，附禮盒'
+ const {ws}=await exportWorkbook([{product_name:'Long remark',product_unit:'pair',tiers:[{quantity:10,price:800,remarks:remark},{quantity:20,price:700,remarks:'=literal text, never an Excel formula'}]}])
+ assert.equal(ws.getCell('G9').value,remark)
+ assert.ok(ws.getRow(9).height>180)
+ assert.equal(ws.getCell('G10').value,'=literal text, never an Excel formula')
+ assert.equal(ws.getCell('G10').type,ExcelJS.ValueType.String)
+ assert.equal(ws.getCell('F10').value,700)
+})
+test('missing and whitespace-only tier remarks leave blank cells without changing numbers',async()=>{
+ const {ws}=await exportWorkbook([{product_name:'Blank remarks',tiers:[{quantity:80,price:90},{quantity:100,price:85,remarks:'  \n  '}]}])
+ assert.equal(ws.getCell('G9').value,'');assert.equal(ws.getCell('G10').value,'')
+ assert.equal(ws.getCell('E9').value,80);assert.equal(ws.getCell('F10').value,85)
+ assert.equal(ws.getCell('E9').numFmt,'General" pcs"')
 })

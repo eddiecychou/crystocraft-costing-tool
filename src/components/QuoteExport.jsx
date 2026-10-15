@@ -61,10 +61,10 @@ const B = {
 const LOGO_W = 210
 const LOGO_H = Math.round(LOGO_W / 5.713)  // 37 px
 
-// Columns (no Category): A=# · B=Photo · C=Product · D=Description · E=Qty · F=Unit Price
-const COL = { NUM: 1, PHOTO: 2, PRODUCT: 3, DESC: 4, QTY: 5, PRICE: 6 }
-const LAST_COL   = 'F'
-const TOTAL_COLS = 6
+// Columns (no Category): A=# · B=Photo · C=Product · D=Description · E=Qty · F=Unit Price · G=Tier Remarks
+const COL = { NUM: 1, PHOTO: 2, PRODUCT: 3, DESC: 4, QTY: 5, PRICE: 6, REMARKS: 7 }
+const LAST_COL   = 'G'
+const TOTAL_COLS = 7
 
 const baseFont = (opts = {}) => ({ name: 'Calibri Light', size: 9, color: { argb: B.BLACK }, ...opts })
 
@@ -184,6 +184,7 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
       ws.getColumn(COL.DESC).width    = 36
       ws.getColumn(COL.QTY).width     = 10
       ws.getColumn(COL.PRICE).width   = 15
+      ws.getColumn(COL.REMARKS).width = 38
 
       // ── Row 1: Logo + "QUOTATION" ───────────────────────────────────────────
       ws.getRow(1).height = LOGO_H + 10
@@ -259,7 +260,7 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
       // ── Column header row (row 8) ───────────────────────────────────────────
       const HEADER_ROW = 8
       ws.getRow(HEADER_ROW).height = 22
-      const headers = ['', '', 'PRODUCT', 'DESCRIPTION', 'QTY', `UNIT PRICE (${cur})`]
+      const headers = ['', '', 'PRODUCT', 'DESCRIPTION', 'QTY', `UNIT PRICE (${cur})`, 'TIER REMARKS']
       headers.forEach((h, i) => {
         const c = ws.getRow(HEADER_ROW).getCell(i + 1)
         c.value = h
@@ -304,14 +305,15 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
         const firstRow = currentRow
         const lastRow  = currentRow + tiers.length - 1
 
-        // ── Calculate row height driven by description length ────────
+        // ── Calculate row height for description and tier remarks ────────
         const lines    = descLineCount(item.product_description, DESC_WRAP)
         const descPt   = lines * LINE_PT + PAD_PT
         // Image needs ~66pt (88px × 0.75pt/px) minimum
         const imgMinPt = Math.ceil(IMG_SIZE * 0.75) + PAD_PT
         const totalPt  = Math.max(imgMinPt, descPt)
         // Distribute evenly — minimum 18pt per tier row
-        const rowH     = Math.max(18, Math.ceil(totalPt / tiers.length))
+        const rowH     = Math.max(18, Math.ceil(totalPt / tiers.length),
+          ...tiers.map(t => t.remarks?.trim() ? descLineCount(t.remarks, 38) * LINE_PT + 12 : 0))
 
         // ── Page break: don't split a product across pages ───────────
         const productPt = rowH * tiers.length
@@ -342,6 +344,9 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
           row.getCell(COL.PRICE).font      = baseFont({ bold: true })
           row.getCell(COL.PRICE).numFmt    = '#,##0.00'
           row.getCell(COL.PRICE).alignment = { horizontal: 'right', vertical: 'middle' }
+          row.getCell(COL.REMARKS).value     = tier.remarks?.trim() ? tier.remarks : ''
+          row.getCell(COL.REMARKS).font      = baseFont({ size: 8, color: { argb: B.GRAY_DARK } })
+          row.getCell(COL.REMARKS).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 }
 
           if (rowBg !== B.WHITE) {
             for (let c = 1; c <= TOTAL_COLS; c++) {
