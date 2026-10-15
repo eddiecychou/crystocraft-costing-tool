@@ -15,7 +15,7 @@ POST /api/customer-availability verifies the Firebase token (including revocatio
 and the current role/profile; only admin or approved customer is allowed. The
 product must be storefront-visible. The server privately reads only referenced
 components and production defaults. Its explicit DTO returns verified status,
-buildable and finished quantities, by-finish/by-colour limits, lead weeks, MOQ,
+buildable and finished quantities, by-finish/by-colour limits and selected-finish/colour lead times, lead weeks, MOQ,
 customerPromise and checkedAt. It excludes costs, suppliers, private component
 records/IDs/codes, bottleneck and procurement-driver metadata. Private/no-store.
 Missing components fail closed without a false stock count or fast promise.
@@ -64,7 +64,45 @@ Refresh retains customer shell; second product automatically selects Gold and
 shows 50 left/max 50, with sold-out Chrome hidden. No runtime errors. Direct
 /settings redirects to /shop. Both QA roles explicitly signed out afterward.
 Candidate screenshot availability-candidate-customer.png under the same folder.
-Production verification pending.
+## Production verification — PASS
+
+Deploy `6ad072b0043a65b5011bf282`, commit
+`c1ef5c6db19e8aeae0dee2bc1d019a2b9ab31f60`, published 15 October 2026
+17:29:48 AEDT. Build marker V8.18 · 15 Oct, 17:29. Both production hostnames
+serve `/assets/index-BHxo8YlD.js` and Firebase configuration probes return 200.
+No Firestore/Storage rules changes or deployment.
+
+Read-only authenticated API comparison on https://portal.crystocraft.com passes
+against current admin Firestore data, including reservations and shared stock
+normalization: Freestand 5 total (C 0, G 5), selected leads C 9/G 3 weeks; Hymn
+Book 50 total (C 0, G 50), Gold lead 3 weeks, Chrome sold out. Actual responses
+contain no supplier/cost/bottleneck/part-code fields. Customer direct private
+component requests return 403 and anonymous endpoint requests return 401.
+API password-token testing is additional functional evidence, not browser login
+proof; both fresh real-page logins were separately completed below.
+
+Fresh browser gates use the current site's production hostname
+https://ua-product-manager.netlify.app, serving the identical published build,
+with explicit sign-out between roles to preserve the owner's portal session.
+Verified around 17:34 AEDT:
+
+- Admin claude-qa@crystocraft.com: password sign-in, /dashboard data/Settings,
+  294/294 catalogue, source-product 5 buildable/C0/G5 and 3-week lead unchanged,
+  correct shell after refresh, no captured runtime errors. Loaded catalogue
+  screenshot: /private/tmp/v818-evidence/availability-production-admin.png.
+- Approved customer customer-qa@crystocraft.com: password sign-in, isolated QA
+  company in /shop, 292 catalogue designs; source-product Chrome 9-week estimate
+  changes to Gold 3 weeks/5 available, entering 999 clamps to 5. Refresh remains
+  in customer shell and loads current server availability. Last-stock product
+  shows only Gold 50 left, hides sold-out Chrome, and entering 999 clamps to 50.
+  No internal controls or runtime errors; /settings redirects to /shop.
+  Screenshot: /private/tmp/v818-evidence/availability-production-customer.png.
+
+Both roles signed out. No enquiry/order submission, product/price edits,
+permission changes, invitation or reset emails were performed. Normal sign-in
+activity stamps only. Server responses are fresh availability snapshots for an
+enquiry; they do not reserve stock. Evidence-only closure uses [skip netlify]
+so it does not replace the verified production deployment.
 
 The initial prebuilt-archive deployment attempt was rejected by Netlify, so the
 final candidates are built directly from source with real local dependencies

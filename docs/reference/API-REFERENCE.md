@@ -138,8 +138,8 @@ feature area — name, route, one-line purpose, auth posture, caller.
 (admin or approved customer), checks storefront publication, then reads only the
 product's referenced components with the server Admin SDK. Uses the same pure
 `src/availability.js` calculation as admin. Returns an explicit allowlist of
-stock/buildable quantities, finish/colour limits, customer-safe promise and lead
-weeks; never component/supplier records, costs, bottleneck codes or stock ledgers.
+stock/buildable quantities, finish/colour limits and selected-finish/colour
+promises/lead weeks (`finishAvailability`, `variantAvailability`); never component/supplier records, costs, bottleneck codes or stock ledgers.
 Private/no-store, bounded IDs/body/component count, read-only, generic errors.
 Called by `src/hooks/useCustomerAvailability.js` for FigurineDetail, refreshing
 on focus and every 30s while visible. Firestore customer permissions unchanged.
