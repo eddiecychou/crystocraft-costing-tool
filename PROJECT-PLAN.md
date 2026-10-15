@@ -89,6 +89,13 @@ about the account before assuming the mechanism.
 
 ## V8.18 — Live catalogue marketing copy review (2026-10-15)
 
+**Released and verified 2026-10-15.** Main `b5d9b122`; Netlify production
+`6ad0594ac4ea2f259d89b404`. Fresh admin and customer sign-ins, customer route
+isolation, and the live 140-product review pass. Existing browser progress
+(110 saved / 4 awaiting approval) retained. See
+`docs/plans/V8.18-MARKETING-COPY-RELEASE-2026-10-15.md` for evidence and the
+fixture-only secret-scanner build repair. No rules deployment or live copy saves.
+
 Replaced the historical 114-ID workbook scope with an admin-only live subscription
 on the full `products` collection, without an ordered-field filter. All statuses
 and products without `createdAt` are included; newly created products appear
