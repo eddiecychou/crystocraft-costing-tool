@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { withPackingUnits, packingQuantityLines, quantityUnitLabel } from '../packingUnits'
+import { downloadPackingExcel } from '../logisticsExcel'
 import { db } from '../firebase'
 import { derivedCbm, effectiveGw, palletisedTotals, palletDimCbm, palletWeight, isPalletised } from '../packing'
 
@@ -28,7 +30,9 @@ async function loadPrintData(plId) {
     return { id: cd.id, ...cd.data(), contents }
   }))
 
-  return { pl, order, cartons }
+  const lineSnap = pl.order_id ? await getDocs(collection(db, 'orders', pl.order_id, 'lines')) : null
+  const orderLines = lineSnap?.docs.map(d => ({id:d.id, ...d.data()})) || []
+  return { pl, order, cartons:withPackingUnits(cartons, orderLines) }
 }
 
 // ── Format helpers ────────────────────────────────────────────────────────────
@@ -63,11 +67,7 @@ function PrintDoc({ pl, order, cartons }) {
 
   // Grand totals
   const totalCtns  = cartons.reduce((s, c) => s + (parseInt(c.carton_count) || 1), 0)
-  const totalQty   = cartons.reduce((s, c) => {
-    const count = parseInt(c.carton_count) || 1
-    const qty = (c.contents || []).reduce((q, it) => q + (parseFloat(it.qty) || 0), 0)
-    return s + qty * count
-  }, 0)
+  const totalQty = quantityUnitLabel(packingQuantityLines(cartons))
   const totalNw    = cartons.reduce((s, c) => s + (parseFloat(c.nw_kg) || 0) * (parseInt(c.carton_count) || 1), 0)
   // Two views: the carton table totals are the loose carton sums (they reconcile
   // down the columns — the customer's warehouse view); the palletised figures
@@ -160,6 +160,7 @@ function PrintDoc({ pl, order, cartons }) {
       `}</style>
 
       <button className="print-btn" onClick={() => window.print()}>Print / Save as PDF</button>
+      <button className="print-btn" onClick={() => downloadPackingExcel(pl, order, cartons)}>Download Excel</button>
 
       {/* ── Document title ── */}
       <h1 style={{ textAlign: 'center', fontSize: '14pt', fontWeight: 'bold', marginBottom: 8 }}>PACKING LIST</h1>
@@ -211,7 +212,7 @@ function PrintDoc({ pl, order, cartons }) {
             <th style={{ width: '6%' }}>CTN NO</th>
             <th style={{ width: '9%' }}>Item NO</th>
             <th style={{ width: '18%' }}>Description</th>
-            <th style={{ width: '4%' }}>Pcs/<br/>Ctn</th>
+            <th style={{ width: '4%' }}>Qty/<br/>Ctn</th>
             <th style={{ width: '5%' }}>Kgs/<br/>Ctn</th>
             <th style={{ width: '4%' }}>Total<br/>CTN</th>
             <th style={{ width: '5%' }}>Total<br/>Qty</th>
@@ -267,10 +268,10 @@ function PrintDoc({ pl, order, cartons }) {
                           <td style={{ textAlign: 'center' }}>{ctnRange(c)}</td>
                           <td style={{ fontFamily: 'monospace' }}>{item.item_code || ''}</td>
                           <td>{item.description || ''}</td>
-                          <td style={{ textAlign: 'right' }}>{qty > 0 ? qty : ''}</td>
+                          <td style={{ textAlign: 'right' }}>{qty > 0 ? `${qty} ${item.unit || '(unit not set)'}` : ''}</td>
                           <td style={{ textAlign: 'right' }}>{gw > 0 ? fmt(gw, 1) : ''}</td>
                           <td style={{ textAlign: 'center' }}>{count > 1 ? count : 1}</td>
-                          <td style={{ textAlign: 'right' }}>{qty > 0 ? qty * count : ''}</td>
+                          <td style={{ textAlign: 'right' }}>{qty > 0 ? `${qty * count} ${item.unit || '(unit not set)'}` : ''}</td>
                           <td style={{ textAlign: 'right' }}>{gw > 0 ? fmt(gw * count, 1) : ''}</td>
                           <td style={{ textAlign: 'center' }}>{dims}</td>
                           {/* 6dp, not 4. The total is computed at full
@@ -291,10 +292,10 @@ function PrintDoc({ pl, order, cartons }) {
                           <td style={{ textAlign: 'center' }}></td>
                           <td style={{ fontFamily: 'monospace' }}>{item.item_code || ''}</td>
                           <td>{item.description || ''}</td>
-                          <td style={{ textAlign: 'right' }}>{qty > 0 ? qty : ''}</td>
+                          <td style={{ textAlign: 'right' }}>{qty > 0 ? `${qty} ${item.unit || '(unit not set)'}` : ''}</td>
                           <td></td>
                           <td></td>
-                          <td style={{ textAlign: 'right' }}>{qty > 0 ? qty * count : ''}</td>
+                          <td style={{ textAlign: 'right' }}>{qty > 0 ? `${qty * count} ${item.unit || '(unit not set)'}` : ''}</td>
                           <td></td>
                           <td></td>
                           <td></td>
@@ -372,8 +373,7 @@ export default function PackingListPrint() {
     loadPrintData(plId)
       .then(d => {
         setData(d)
-        // Auto-print after a short delay so the DOM renders first
-        setTimeout(() => window.print(), 500)
+        // Let the user choose PDF or Excel, as on the other print pages.
       })
       .catch(e => setError(e.message || 'Failed to load packing list'))
   }, [plId])

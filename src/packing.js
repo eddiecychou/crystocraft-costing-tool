@@ -1,3 +1,4 @@
+import { packingItemUnit } from './packingUnits'
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
@@ -167,6 +168,7 @@ export function buildFullCartonPlan(packableLines, rangeProducts) {
           item_code:     line.item_code || '',
           description:   line.description || '',
           qty:           pcsPerCtn || qty,
+          unit:          line.unit || 'pcs',
           order_line_id: line.id || '',
         }],
       }
@@ -308,7 +310,7 @@ export async function getCartonsWithContents(plId) {
 
 // Full replace: delete all existing cartons+contents, then write fresh.
 // Returns the new Firestore carton IDs in order.
-export async function saveCartonsWithContents(plId, cartons) {
+export async function saveCartonsWithContents(plId, cartons, orderLines = []) {
   // Delete existing
   const existing = await getDocs(CTN_COL(plId))
   for (const cd of existing.docs) {
@@ -350,6 +352,7 @@ export async function saveCartonsWithContents(plId, cartons) {
           item_code:     iRest.item_code || '',
           description:   iRest.description || '',
           qty:           parseFloat(iRest.qty) || 0,
+          unit:          packingItemUnit(iRest, orderLines),
           order_line_id: iRest.order_line_id || '',
         })
       }

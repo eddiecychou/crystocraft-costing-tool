@@ -157,3 +157,7 @@ pdftoppm -scale-to 1400 -png /tmp/quote-units.pdf /tmp/quote-units
 ### Proforma and sales invoice units
 
 `npm run test:invoice-units` renders the real admin PI/SI and customer invoice print pages with offline Firestore reads. It clicks each actual Excel download, reopens the XLSX, and checks all seven units, numeric quantities/prices/amounts, charges, discounts, sales accounting adjustments, legacy pcs defaults, quote-to-order propagation, PI priced/unpriced CSV and customer ownership refusal. Historical ERP lines without unit evidence remain unspecified. `INVOICE_EVIDENCE_DIR=/absolute/directory` saves the actual generated HTML/XLSX fixtures. Runs before builds and in GitHub Actions.
+
+### Packing list and purchase order units
+
+`npm run test:packing-po` exercises actual packing/PO print pages, packing editor and save path with offline Firestore fixtures. Ten regressions cover all seven units, linked-order legacy recovery, ambiguous-code handling, mixed cartons and multiplication, unit persistence/selection/auto-packing, numeric Excel cells, separate quantity totals, carton/pallet weight and volume, private-field exclusion and English/Chinese PO totals/deposits. `PACKING_PO_EVIDENCE_DIR=/absolute/directory` saves real-component HTML/XLSX fixtures. Runs in prebuild and GitHub Actions.

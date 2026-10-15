@@ -35,3 +35,4 @@ jobs:
       - run: npm run test:quote-pdf
       - run: npm run test:quote-excel
       - run: npm run test:invoice-units
+      - run: npm run test:packing-po

@@ -1,3 +1,4 @@
+import { packingItemUnit } from '../packingUnits'
 import { useState, useEffect, useMemo } from 'react'
 import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package, Star, Pencil, Copy, FileText, ChevronUp, ChevronDown } from 'lucide-react'
 import {
@@ -240,7 +241,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
             orderLineId={contents[0]?.order_line_id}
             itemCode={contents[0]?.item_code}
             onSelect={line => patchFirstContent(line
-              ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id }
+              ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id, unit: line.unit || 'pcs' }
               : { order_line_id: '' }
             )}
           />
@@ -256,10 +257,14 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
           />
           <input
             className="input py-1 text-xs w-20 text-right"
-            type="number" min="0" value={contents[0]?.qty || ''} placeholder="Pcs/ctn"
+            type="number" min="0" value={contents[0]?.qty || ''} placeholder="Qty/ctn"
             onChange={e => patchFirstContent({ qty: e.target.value })}
           />
-          <span className="text-xs text-ink-60">pcs</span>
+          <select className="input py-1 text-xs w-20" aria-label="Quantity unit"
+            value={packingItemUnit(contents[0] || {}, packableLines)}
+            onChange={e => patchFirstContent({ unit:e.target.value })}>
+            {[...new Set(['', 'pcs','set','pair','box','kg','g','m',packingItemUnit(contents[0] || {}, packableLines)])].map(u => <option key={u} value={u}>{u || 'Select unit'}</option>)}
+          </select>
           {extraItems > 0 && (
             <button type="button" onClick={() => setMode('mixed')}
               className="text-2xs px-1.5 py-0.5 rounded-none bg-amber-100 text-amber-700 hover:bg-amber-200"
@@ -277,7 +282,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
                 orderLineId={item.order_line_id}
                 itemCode={item.item_code}
                 onSelect={line => updateItem(i, line
-                  ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id }
+                  ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id, unit: line.unit || 'pcs' }
                   : { order_line_id: '' }
                 )}
               />
@@ -296,7 +301,10 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
                 type="number" min="0" value={item.qty} placeholder="Qty"
                 onChange={e => updateItem(i, { qty: e.target.value })}
               />
-              <span className="text-xs text-ink-60">pcs</span>
+              <select className="input py-1 text-xs w-20" aria-label="Quantity unit"
+                value={packingItemUnit(item, packableLines)} onChange={e => updateItem(i, { unit:e.target.value })}>
+                {[...new Set(['', 'pcs','set','pair','box','kg','g','m',packingItemUnit(item, packableLines)])].map(u => <option key={u} value={u}>{u || 'Select unit'}</option>)}
+              </select>
               <button type="button" onClick={() => removeItem(i)} className="text-platinum hover:text-red-500">
                 <Trash2 size={13} />
               </button>
@@ -513,7 +521,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
         pallets,
         totals: { carton_count: totals.totalCartons, cbm: totals.totalCbm, chargeable_weight_kg: totals.totalGw },
       })
-      await saveCartonsWithContents(plId, cartons)
+      await saveCartonsWithContents(plId, cartons, packableLines)
       const [fresh, rows] = await Promise.all([getCartonsWithContents(plId), getPackingScenariosByOrder(orderId)])
       setCartons(fresh)
       setScenarios(rows)

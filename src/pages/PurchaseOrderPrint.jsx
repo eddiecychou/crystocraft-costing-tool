@@ -1,3 +1,5 @@
+import { downloadPurchaseOrderExcel } from '../logisticsExcel'
+import { quantityUnitLabel } from '../packingUnits'
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
@@ -15,7 +17,7 @@ const PO_L = {
     title: 'PURCHASE ORDER', tel: 'Tel', supplier: 'Supplier', attn: 'Attn:',
     poNo: 'PO No.', issued: 'Issued', estShip: 'Est. Ship', currency: 'Currency',
     terms: 'Terms', shipTo: 'Ship To', itemCode: 'Item Code', description: 'Description',
-    qty: 'Qty', unitPrice: 'Unit Price', amount: 'Amount', totalQty: 'Total Qty',
+    unit: 'Unit', excel: 'Download Excel', qty: 'Qty', unitPrice: 'Unit Price', amount: 'Amount', totalQty: 'Total Qty',
     subtotal: 'Subtotal', discount: 'Discount', addCharge: 'Additional charge',
     orderTotal: 'Order Total', deposit: 'Deposit', balanceDue: 'Balance Due',
     total: 'Total', remarks: 'Remarks', issuedBy: 'Issued By',
@@ -25,7 +27,7 @@ const PO_L = {
     title: '采购订单', tel: '电话', supplier: '供应商', attn: '收件人：',
     poNo: '采购单号', issued: '下单日期', estShip: '预计出货', currency: '币种',
     terms: '付款条件', shipTo: '送货至', itemCode: '物料编码', description: '描述',
-    qty: '数量', unitPrice: '单价', amount: '金额', totalQty: '总数量',
+    unit: '单位', excel: '下载 Excel', qty: '数量', unitPrice: '单价', amount: '金额', totalQty: '总数量',
     subtotal: '小计', discount: '折扣', addCharge: '附加费用',
     orderTotal: '订单总额', deposit: '定金', balanceDue: '应付余额',
     total: '合计', remarks: '备注', issuedBy: '制单',
@@ -113,6 +115,7 @@ function PrintDoc({ po, lang }) {
       `}</style>
 
       <button className="print-btn" onClick={() => window.print()}>{L.printBtn}</button>
+      <button className="print-btn" onClick={() => downloadPurchaseOrderExcel(po, L)}>{L.excel}</button>
 
       <div className="po-accent" />
 
@@ -177,7 +180,7 @@ function PrintDoc({ po, lang }) {
       <div className="po-totals">
         <table>
           <tbody>
-            <tr><td className="k">{L.totalQty}</td><td className="v">{totals.totalQty.toLocaleString()}</td></tr>
+            <tr><td className="k">{L.totalQty}</td><td className="v">{quantityUnitLabel(po.lines || [])}</td></tr>
             <tr><td className="k">{L.subtotal}</td><td className="v">{money(totals.subtotal, cur)}</td></tr>
             {(po.adjustments || []).map((a, i) => {
               const disc = a.kind === 'discount'
