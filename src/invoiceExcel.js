@@ -24,7 +24,7 @@ export async function downloadInvoiceExcel({ title='Invoice', number, uc, date, 
   ws.addRow(['Item Code','Description','Qty','Unit','Unit Price','Amount']).font={bold:true}
   lines.forEach(l => {
     const row=ws.addRow([l.item_code || '',l.description || '',l.qty == null ? null : Number(l.qty),
-      l.qty > 0 ? (l.unit || '') : '',l.unit_price == null ? null : Number(l.unit_price),Number(l.amount) || 0])
+      l.qty == null ? '' : (l.unit || ''),l.unit_price == null ? null : Number(l.unit_price),Number(l.amount) || 0])
     row.getCell(5).numFmt='#,##0.00';row.getCell(6).numFmt='#,##0.00'
   })
   ws.addRow([])

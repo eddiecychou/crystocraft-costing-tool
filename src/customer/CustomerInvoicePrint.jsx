@@ -222,7 +222,7 @@ export default function CustomerInvoicePrint({ profile }) {
               <td>{i + 1}</td>
               <td className="si-code">{l.item_code || '—'}</td>
               <td className="desc">{l.description || '—'}</td>
-              <td className="r">{l.qty > 0 ? `${Number(l.qty).toLocaleString()}${l.unit ? ` ${l.unit}` : ''}` : ''}</td>
+              <td className="r">{l.qty == null ? '' : `${Number(l.qty).toLocaleString()}${l.unit ? ` ${l.unit}` : ''}`}</td>
               <td className="r">{l.unit_price == null ? '' : Number(l.unit_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td className="r">{(Number(l.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             </tr>

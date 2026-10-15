@@ -33,7 +33,7 @@ const stubs={
  customer:'export const loadCustomers=async()=>[];export const primaryContact=()=>null;export const contactAddress=()=>""',
  bankAccounts:'export const listBankAccounts=async()=>[];export const accountForCurrency=()=>null;export const formatBankDetails=()=>""',
  criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
- customerOrderHistoryApi:'export const myInvoiceDetail=async()=>({header:{code:"ERP-QA",currency:"USD"},lines:[{item_code:"ERP",description:"Historical unit unavailable",qty:5,unit_price:2,amount:10}]})',
+ customerOrderHistoryApi:'export const myInvoiceDetail=async code=>({header:{code:"ERP-QA",currency:"USD"},lines:[{item_code:"ERP",description:"Historical unit unavailable",qty:code==="RETURN"?-5:5,unit_price:2,amount:code==="RETURN"?-10:10}]})',
  router:'export const useParams=()=>globalThis.__invoiceParams',
 }
 before(async()=>{
@@ -115,3 +115,8 @@ test('sales Excel preserves the displayed accounting adjustment and amount payab
   assert.equal(rows.find(r=>r.getCell(5).value==='Amount Payable').getCell(6).value,5053)
  })}finally{delete fixture.order.adjustment;delete fixture.order.accounting_total}
 })
+
+test('historical negative quantities and amounts remain visible and numeric',async()=>withPage('customer',async host=>{
+ const row=host.querySelector('table.si-lines tbody tr');assert.equal(row.children[3].textContent,'-5')
+ const {ws}=await workbook(host);assert.equal(ws.getCell('C7').value,-5);assert.equal(ws.getCell('F7').value,-10)
+},{key:'erp-RETURN'}))
