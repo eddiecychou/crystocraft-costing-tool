@@ -9,3 +9,13 @@ Corporate ProductForm and RangeForm now share MarketingCopyEditor: one optional 
 Thirteen new network-mocked real-handler/component regressions plus existing90 =103passed,0failed. Build8.30s, no-undef lint and diff checks pass. CI includes the new suite and both edge files in path triggers. Chrome local preview reproduced malformed JSON, confirmed preserved current copy/guidance, successful retry/approval and the same editor in both catalogue modes. Screenshot /private/tmp/v818-evidence/ai-writer-draft-preview.png. These are fixture tests, not a live Gemini test. No catalogue records edited.
 
 Candidate verification pending; no main push/production release authorized for this new request yet. Follow docs/skills/RELEASE-WORKFLOW.md before publication.
+
+## Candidate PASS — 16 October 2026 01:04 AEDT
+
+Code7b1a8e7, deploy6ad0dc87eb4af88294d8fe6f, https://6ad0dc87eb4af88294d8fe6f--ua-product-manager.netlify.app; served /assets/index-NouaNP9d.js, V8.18 ·16Oct00:58; Firebase configuration probe200 and11config tests passed.
+
+Admin claude-qa@crystocraft.com fresh real-page password login PASS: dashboard96pipeline/Settings access,294/294products713SKUs before/after refresh, no runtime errors. On an unsaved /products/new form, supplied QA glass name/spec and the screenshot's acoustic guidance. Real Gemini-backed /api/rewrite-section succeeded:272-character valid draft mentioning soft, low-pitched ringing when gently clinked; original61-character copy remained unchanged until acceptance. Draft discarded; product never created/saved. Actual candidate screenshot /private/tmp/v818-evidence/ai-writer-live-candidate.png, admin evidence ai-writer-candidate-admin.png.
+
+Customer customer-qa@crystocraft.com fresh real-page password login PASS: approved QA-only storefront,24figurine cards before/after refresh, Sacred Angel detail/finish prices, no admin/cost controls or runtime errors. /products/new redirected to /shop. Screenshot ai-writer-candidate-customer.png. Both QA sessions signed out; owner working session preserved. Temporary local preview server stopped.
+
+All103local/prebuild regressions passed; GitHub Actions changes are local and have not run remotely. Candidate is ready for production approval. No main push, production deployment, catalogue record writes, rules or permission changes. Production remains the previously verified packing/PO release. Obtain explicit owner release approval under RELEASE-WORKFLOW.md line58, then push main, wait for Git CD/CI and repeat both fresh production-role gates plus real AI rewrite before closure.
