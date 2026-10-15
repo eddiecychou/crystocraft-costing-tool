@@ -114,3 +114,62 @@ Local tests/build and release status are recorded below.
   and production admin/customer checks in RELEASE-WORKFLOW.md.
 - Package: output/DSH-Elementor-readback-followup-2026-10-16.zip (contains writer,
   standalone test, handoff and SHA256SUMS). It is prepared locally, not sent.
+
+## Release authorized — 16 October 2026
+
+Owner explicitly requested push/deploy, fresh admin/customer login verification
+and the DSH update/testing message. App commit:
+89e207e1aa015051ae5aab01d2ceec730a2d499a. Latest main checked before release:
+one ahead, no divergence; unrelated primary checkout changes preserved.
+
+Candidate: 6ad11668bc6a612f27eb8103, /assets/index-CLIzwnDD.js,
+V8.18 · 16 Oct, 05:05. Firebase configuration probe HTTP 200; 11/11 config tests.
+- Admin PASS: fresh password sign-in claude-qa@crystocraft.com -> /dashboard,
+  Settings/Portal available; catalogue fully loaded 296/296 products, 715 SKUs,
+  correct shell after refresh; application error log empty. Signed out.
+- Customer PASS: fresh password sign-in customer-qa@crystocraft.com -> /shop,
+  approved QA company and correct customer navigation. Range loaded 24 cards,
+  remained populated after refresh. Sacred Angel Freestand detail loaded customer
+  prices and made-to-order availability (~9 weeks, MOQ 100); no internal notes
+  or supplier costs. /settings redirected to /shop; application error log empty.
+  Signed out.
+- Screenshots: /private/tmp/v818-evidence/readback-candidate-admin.png and
+  /private/tmp/v818-evidence/readback-candidate-customer.png.
+
+Implementation pushed to main. Production deployment and fresh login checks
+completed; closure below. Earlier local-only status above records the pre-release stage.
+
+## Production closure — 16 October 2026, 05:15 AEDT
+
+- Application commit 89e207e1aa015051ae5aab01d2ceec730a2d499a pushed to main.
+- Netlify production 6ad1170c577af7c395d474d0, ready/published
+  16 October 2026, 05:11:19 AEDT (2026-10-15T18:11:19.050Z).
+- Served build V8.18 · 16 Oct, 05:10, /assets/index-B_We9wrl.js.
+  Both production origins serve it; both Firebase config probes HTTP 200.
+  Candidate and production /api/seo-batch reject unauthenticated POST with 401.
+- GitHub Actions run 38783401357 completed successfully: 360 assertions/tests,
+  zero failures:
+  https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/38783401357
+- Admin PASS: fresh password login claude-qa@crystocraft.com -> /dashboard,
+  approved admin shell, Settings/Portal available; catalogue 296/296 products,
+  715 SKUs; refresh retained correct shell and populated products. SEO Review
+  loaded existing batches; historical partial receipts remained partial.
+  Application console error log empty. Explicit sign-out completed.
+- Customer PASS: fresh password login customer-qa@crystocraft.com -> /shop,
+  approved QA company and correct customer shell. Range loaded 24 cards before
+  and after refresh. Sacred Angel Freestand detail loaded prices and made-to-order
+  availability (~9 weeks, MOQ 100); no supplier costs or internal notes.
+  /settings redirected to /shop, with zero Settings links. Application error
+  log empty. Explicit sign-out completed.
+- Screenshots: /private/tmp/v818-evidence/readback-production-admin.png,
+  /private/tmp/v818-evidence/readback-production-customer.png,
+  /private/tmp/v818-evidence/readback-production-review.png.
+- No live batch decisions/results, WordPress settings/content, Firebase rules,
+  credentials or customer roles were changed by release QA. Owner session
+  preserved. No authenticated create/supersede request or live concurrency
+  exercise was used as QA; those paths have injected-transaction regression
+  tests and still require DSH producer integration tests.
+- DSH message prepared in DSH-READBACK-RELEASE-MESSAGE-2026-10-16.md and portable
+  writer package prepared locally; neither sent externally. DSH re-vendoring
+  and expectedBefore wiring remain required. WordPress page-Yoast registration
+  remains a separate owner/DSH prerequisite, not fixed by the OC release.
