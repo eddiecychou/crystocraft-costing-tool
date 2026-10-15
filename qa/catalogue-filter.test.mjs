@@ -30,3 +30,9 @@ test('customer availability respects lifecycle and published delivery notes', ()
   assert.equal(availability({delivery_note:'Confirm custom production schedule'}).customerPromise,'Confirm custom production schedule')
   assert.equal(availability({moq:100}).leadWeeks,8)
 })
+
+test('customer detail cannot invoke the private supply subscription or legacy migration', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const source = await readFile(new URL('../src/customer/FigurineDetail.jsx', import.meta.url),'utf8')
+  assert.doesNotMatch(source,/from ['"]\.\.\/criticalComponents['"]|useComponents\(/)
+})
