@@ -93,6 +93,7 @@ export function quoteItemToOrderLine(item, index) {
     description: item.product_name || item.product_description || '',
     qty_ordered: tier.quantity ?? '',
     unit: item.product_unit || 'pcs',
+    tier_remarks: tier.remarks || '',
     unit_price: tier.price ?? '',
     line_type: isRange ? 'range' : isCatalogue ? 'corp_gift' : 'ad_hoc',
     packable: true,

@@ -148,6 +148,7 @@ export default function CustomerInvoicePrint({ profile }) {
         table.si-lines thead { display: table-header-group; }
         table.si-lines tfoot { display: table-footer-group; }
         .si-totals, .si-words, .si-sign, .si-foot { page-break-inside: avoid; break-inside: avoid; }
+        table.si-lines .tier-remarks { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 5px; font-size: 9px; color: #555; }
         table.si-lines td.desc { white-space: pre-wrap; }
         table.si-lines tr:nth-child(even) td { background: #fafafa; }
         .si-code { font-family: 'SF Mono', Menlo, monospace; font-size: 9.5px; }
@@ -221,7 +222,7 @@ export default function CustomerInvoicePrint({ profile }) {
             <tr key={i}>
               <td>{i + 1}</td>
               <td className="si-code">{l.item_code || '—'}</td>
-              <td className="desc">{l.description || '—'}</td>
+              <td className="desc">{l.description || '—'}{l.tier_remarks?.trim() && <div className="tier-remarks">{l.tier_remarks}</div>}</td>
               <td className="r">{l.qty == null ? '' : `${Number(l.qty).toLocaleString()}${l.unit ? ` ${l.unit}` : ''}`}</td>
               <td className="r">{l.unit_price == null ? '' : Number(l.unit_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td className="r">{(Number(l.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>

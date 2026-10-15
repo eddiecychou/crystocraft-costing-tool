@@ -285,6 +285,7 @@ export const normLine = l => {
     line_no: numOrNull(l.line_no),
     item_code: str(l.item_code),
     description: str(l.description),
+    tier_remarks: str(l.tier_remarks),
     qty_ordered: numOrNull(l.qty_ordered),
     unit: str(l.unit) || 'pcs',
     unit_price: numOrNull(l.unit_price),

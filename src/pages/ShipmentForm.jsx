@@ -1202,6 +1202,9 @@ export default function ShipmentForm() {
                           <textarea className="input py-1.5 text-sm resize-y leading-snug" rows={1} style={{ minHeight: '2.15rem' }}
                                     value={l.description} onChange={e => setLine(i, { description: e.target.value })} placeholder="Description" />
                         </div>
+                        <textarea className="input py-1.5 text-sm resize-y leading-snug" rows={1}
+                          aria-label={`Tier remarks for line ${i + 1}`} placeholder="Tier remarks (customer-facing)"
+                          value={l.tier_remarks || ''} onChange={e => setLine(i, { tier_remarks: e.target.value })} />
                         <div className="flex gap-2 items-center flex-wrap">
                           <input className="input py-1.5 text-sm w-20 sm:w-24" type="number" value={l.qty_ordered ?? ''} onChange={e => setLine(i, { qty_ordered: e.target.value })} placeholder="Qty" />
                           <input className="input py-1.5 text-sm w-16 sm:w-20" value={l.unit} onChange={e => setLine(i, { unit: e.target.value })} placeholder="pcs" />

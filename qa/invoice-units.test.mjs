@@ -120,3 +120,33 @@ test('historical negative quantities and amounts remain visible and numeric',asy
  const row=host.querySelector('table.si-lines tbody tr');assert.equal(row.children[3].textContent,'-5')
  const {ws}=await workbook(host);assert.equal(ws.getCell('C7').value,-5);assert.equal(ws.getCell('F7').value,-10)
 },{key:'erp-RETURN'}))
+
+const tierNote='1 pair 2 glasses in a gift box\n獨立禮盒及紙套'
+for(const kind of ['pi','sales','customer'])test(`${kind}: quote tier remark survives normalization into PDF and Excel beside the correct amount`,async()=>{
+ const original=fixture.lines
+ const converted=quoteItemToOrderLine({product_name:'Gift glasses',product_unit:'pair',remarks:'PRODUCT NOTE',tiers:[{quantity:10,price:800,remarks:tierNote},{quantity:20,price:630,remarks:'ALTERNATIVE TIER'}]},0)
+ fixture.lines=[{id:'converted',...converted,supplier_name:'PRIVATE-SUPPLIER',unit_cost_hkd:999},
+  {id:'blank',line_no:2,description:'Blank remark',qty_ordered:5,unit:'set',unit_price:2,tier_remarks:'  '}]
+ try{await withPage(kind,async host=>{
+  const rows=host.querySelectorAll('tbody tr');assert.equal(rows[0].querySelector('.tier-remarks').textContent,tierNote)
+  assert.match(rows[0].textContent,/10 pair/);assert.match(rows[0].textContent,/8,000.00/)
+  assert.equal(rows[1].querySelector('.tier-remarks'),null)
+  assert.doesNotMatch(host.textContent,/ALTERNATIVE TIER|PRODUCT NOTE|PRIVATE-SUPPLIER/)
+  const {ws,bytes}=await workbook(host);assert.equal(ws.getCell('G6').value,'Tier remarks');assert.equal(ws.getCell('G7').value,tierNote)
+  assert.equal(ws.getCell('G7').alignment.wrapText,true);assert.equal(ws.getCell('G8').value,'')
+  assert.equal(ws.getCell('C7').value,10);assert.equal(ws.getCell('D7').value,'pair');assert.equal(ws.getCell('E7').value,800);assert.equal(ws.getCell('F7').value,8000)
+  assert.doesNotMatch(JSON.stringify(ws.model),/ALTERNATIVE TIER|PRODUCT NOTE|PRIVATE-SUPPLIER|unit_cost_hkd/)
+  if(process.env.INVOICE_EVIDENCE_DIR){await writeFile(join(process.env.INVOICE_EVIDENCE_DIR,`${kind}-tier-remarks.xlsx`),bytes);await writeFile(join(process.env.INVOICE_EVIDENCE_DIR,`${kind}-tier-remarks.html`),`<!doctype html><meta charset="utf-8">${host.innerHTML}`)}
+ })}finally{fixture.lines=original}
+})
+test('quote conversion copies only the chosen first tier remark, never other tiers or product remarks',()=>{
+ for(const item of [{is_custom:true},{product_id:'corp'},{product_id:'range',product_collection:'range_products'}]){
+  assert.equal(quoteItemToOrderLine({...item,remarks:'product note',tiers:[{quantity:1,price:2,remarks:'chosen'},{quantity:4,price:6,remarks:'alternative'}]},0).tier_remarks,'chosen')
+  assert.equal(quoteItemToOrderLine({...item,remarks:'product note',tiers:[{quantity:1,price:2}]},0).tier_remarks,'')
+ }
+})
+for(const kind of ['pi','sales'])test(`${kind}: long tier remarks wrap and formula-like text stays literal`,async()=>{
+ const original=fixture.lines;const note='=HYPERLINK("https://example.invalid")\n'+('獨立禮盒及紙套 '.repeat(40)).trim()
+ fixture.lines=[{id:'long',line_no:1,description:'Long remarks',qty_ordered:2,unit:'pair',unit_price:20,tier_remarks:note}]
+ try{await withPage(kind,async host=>{assert.equal(host.querySelector('.tier-remarks').textContent,note);const {ws}=await workbook(host);assert.equal(ws.getCell('G7').value,note);assert.equal(typeof ws.getCell('G7').value,'string');assert.ok(ws.getRow(7).height>180);assert.equal(ws.getCell('F7').value,40)})}finally{fixture.lines=original}
+})

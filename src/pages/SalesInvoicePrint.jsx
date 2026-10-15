@@ -187,6 +187,7 @@ export default function SalesInvoicePrint() {
         .si-closing { page-break-inside: avoid; break-inside: avoid; }
         /* One-off MISC lines carry multi-line descriptions; without this they
            collapse into one run-on line. */
+        table.si-lines .tier-remarks { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 5px; font-size: 9px; color: #555; }
         table.si-lines td.desc { white-space: pre-wrap; }
         table.si-lines tr:nth-child(even) td { background: #fafafa; }
         .si-code { font-family: 'SF Mono', Menlo, monospace; font-size: 9.5px; }
@@ -318,7 +319,7 @@ export default function SalesInvoicePrint() {
                   <td>{l.line_image && <img className="si-lineimg" src={l.line_image} alt="" />}</td>
                 )}
                 <td className="si-code">{l.item_code || '—'}</td>
-                <td className="desc">{l.description || '—'}</td>
+                <td className="desc">{l.description || '—'}{l.tier_remarks?.trim() && <div className="tier-remarks">{l.tier_remarks}</div>}</td>
                 <td className="r">{qty.toLocaleString()}{` ${l.unit || 'pcs'}`}</td>
                 <td className="r">{up.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="r">{(qty * up).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -332,7 +333,7 @@ export default function SalesInvoicePrint() {
                 <td>{l.line_image && <img className="si-lineimg" src={l.line_image} alt="" />}</td>
               )}
               <td className="si-code">{l.item_code || '—'}</td>
-              <td className="desc">{l.description || 'Charge'}</td>
+              <td className="desc">{l.description || 'Charge'}{l.tier_remarks?.trim() && <div className="tier-remarks">{l.tier_remarks}</div>}</td>
               <td className="r" />
               <td className="r" />
               <td className="r">{(parseFloat(l.unit_price) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>

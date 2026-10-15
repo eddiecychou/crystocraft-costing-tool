@@ -7,7 +7,7 @@ export function orderInvoiceLines(lines) {
     .map(l => {
       const qty = Number(l.qty_ordered) || 0
       const price = Number(l.unit_price) || 0
-      return { item_code:l.item_code, description:l.description, qty:qty > 0 ? qty : null,
+      return { item_code:l.item_code, description:l.description, tier_remarks:l.tier_remarks || '', qty:qty > 0 ? qty : null,
         unit:qty > 0 ? (l.unit || 'pcs') : '', unit_price:qty > 0 ? price : null,
         amount:qty > 0 ? qty * price : price }
     })
@@ -21,17 +21,20 @@ export async function downloadInvoiceExcel({ title='Invoice', number, uc, date, 
   ws.addRow(['Date', date || ''])
   ws.addRow(['Currency', currency || 'USD'])
   ws.addRow([])
-  ws.addRow(['Item Code','Description','Qty','Unit','Unit Price','Amount']).font={bold:true}
+  ws.addRow(['Item Code','Description','Qty','Unit','Unit Price','Amount','Tier remarks']).font={bold:true}
   lines.forEach(l => {
     const row=ws.addRow([l.item_code || '',l.description || '',l.qty == null ? null : Number(l.qty),
-      l.qty == null ? '' : (l.unit || ''),l.unit_price == null ? null : Number(l.unit_price),Number(l.amount) || 0])
+      l.qty == null ? '' : (l.unit || ''),l.unit_price == null ? null : Number(l.unit_price),Number(l.amount) || 0,l.tier_remarks?.trim() ? l.tier_remarks : ''])
+    row.getCell(7).alignment={vertical:'top',wrapText:true}
+    const wrappedLines=(l.tier_remarks || '').split('\n').reduce((n,line)=>n+Math.max(1,Math.ceil(line.replace(/[\u3000-\u303f\u3400-\u9fff\uf900-\ufaff\uff00-\uffef]/g,'XX').length/38)),0)
+    row.height=Math.max(18,wrappedLines*12+6)
     row.getCell(5).numFmt='#,##0.00';row.getCell(6).numFmt='#,##0.00'
   })
   ws.addRow([])
   for(const [label,value] of summary || []) {
     const row=ws.addRow(['','','','',label,Number(value) || 0]);row.font={bold:true};row.getCell(6).numFmt='#,##0.00'
   }
-  ws.columns.forEach((c,i)=>{c.width=[22,50,12,12,20,22][i]})
+  ws.columns.forEach((c,i)=>{c.width=[22,50,12,12,20,22,40][i]})
   ws.pageSetup={paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0}
   const buffer=await wb.xlsx.writeBuffer()
   const url=URL.createObjectURL(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))
