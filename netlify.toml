@@ -23,6 +23,10 @@
 [functions]
   directory = "netlify/functions"
 
+[functions."customer-availability"]
+  node_bundler = "esbuild"
+  external_node_modules = ["firebase-admin"]
+
 [context.production]
   # VITE_FIREBASE_* are public by design (client Firebase config).
   # RENDER_ADMIN_PASSWORD is server-side only (Deno.env.get in
