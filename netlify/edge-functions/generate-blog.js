@@ -1,3 +1,5 @@
+import { completedAiJson, blogResponseSchema } from './lib/aiResult.js'
+import { validateBlogContent } from '../../src/blogAiContent.js'
 import { requireModule } from './lib/auth.js'
 
 export default async function handler(req) {
@@ -9,8 +11,15 @@ export default async function handler(req) {
   const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
   if (!GEMINI_API_KEY) return new Response('Missing API key', { status: 500 })
 
-  const body = await req.json()
-  const { type, product, products, industry, tone } = body
+  const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+  let input
+  try { input = await req.json() } catch { return json({ error: 'Please send valid blog details.' }, 400) }
+  const { type, product, products, industry, tone } = input || {}
+  if (!['spotlight','roundup'].includes(type)
+    || (type === 'spotlight' && (typeof product?.name !== 'string' || !product.name.trim()))
+    || (type === 'roundup' && (!Array.isArray(products) || products.length < 2 || !products.every(p => typeof p?.name === 'string' && p.name.trim())))) {
+    return json({ error: 'Select a product for a spotlight, or at least two products for a roundup.' }, 400)
+  }
 
   const audienceContext = `
 Target audiences:
@@ -143,11 +152,12 @@ Return ONLY a valid JSON object with this structure:
   async function callGemini(model) {
     const genConfig = {
       temperature: 0.7,
-      maxOutputTokens: 4096,
+      maxOutputTokens: 8192,
+      responseSchema: blogResponseSchema(type),
       responseMimeType: 'application/json',
     }
     // Disable thinking — thinking tokens consume output budget
-    if (model.includes('2.5')) {
+    if (model.includes('2.5') || model.includes('3.8')) {
       genConfig.thinkingConfig = { thinkingBudget: 0 }
     }
     return fetch(
@@ -163,23 +173,16 @@ Return ONLY a valid JSON object with this structure:
     )
   }
 
-  try {
-    let res = await callGemini('gemini-3.8-flash')
-    if (!res.ok) res = await callGemini('gemini-2.5-flash')
-
-    const data = await res.json()
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
-    const parsed = JSON.parse(text)
-
-    return new Response(JSON.stringify(parsed), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  for (const model of ['gemini-3.8-flash','gemini-2.5-flash']) {
+    try {
+      const res = await callGemini(model)
+      if (!res.ok) continue
+      const parsed = completedAiJson(await res.json())
+      validateBlogContent(parsed, type, products)
+      return json(parsed)
+    } catch { /* Retry invalid/incomplete content as well as transport failures. */ }
   }
+  return json({ error: 'The AI could not finish a complete blog draft. Please try again. Your existing draft has been kept.' }, 502)
 }
 
 export const config = { path: '/api/generate-blog' }

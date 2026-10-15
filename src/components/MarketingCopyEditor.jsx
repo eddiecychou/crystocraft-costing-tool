@@ -1,3 +1,4 @@
+import { readAiResponse } from '../aiResponse'
 import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { authHeader } from '../firebase'
@@ -23,9 +24,7 @@ export default function MarketingCopyEditor({ product, source = 'corporate', val
           max_chars: MARKETING_DESC_MAXLEN,
         } : { product, source, instructions: instructions.trim() }),
       })
-      let data
-      try { data = await response.json() } catch { throw new Error('The AI returned an incomplete response. Please try again. Your current copy has been kept.') }
-      if (!response.ok || data?.error) throw new Error(typeof data?.error === 'string' ? data.error : 'AI writing is unavailable. Please try again.')
+      const data = await readAiResponse(response)
       const text = rewriting ? data?.body : data?.marketing_description
       if (typeof text !== 'string' || !text.trim() || text.length > MARKETING_DESC_MAXLEN) {
         throw new Error('The AI did not return usable copy within 300 characters. Please try again. Your current copy has been kept.')

@@ -1,3 +1,4 @@
+import { readAiResponse } from './aiResponse'
 import { collection, onSnapshot, doc, getDocFromServer, getDocsFromServer, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db, authHeader } from './firebase'
 import { MAX_COPY_CHARS } from './marketingCopyReview'
@@ -35,8 +36,7 @@ export async function generatePreview(product, instructions = '') {
     headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify({ product, source: 'corporate', tone: 'professional and premium', instructions: instructions.trim() }),
   })
-  const data = await response.json()
-  if (!response.ok || data.error) throw new Error(data.error || `Generator returned HTTP ${response.status}.`)
+  const data = await readAiResponse(response)
   const after = data.marketing_description
   if (typeof after !== 'string' || !after.trim()) throw new Error('Generator returned empty copy.')
   if (after.length > MAX_COPY_CHARS) throw new Error(`Generator returned ${after.length} characters (> 300).`)

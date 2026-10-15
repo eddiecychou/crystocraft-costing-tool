@@ -1,3 +1,5 @@
+import { readAiResponse } from '../aiResponse'
+import { validateBlogContent } from '../blogAiContent'
 import { useState, useEffect, useCallback } from 'react'
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore'
 import { db, authHeader } from '../firebase'
@@ -445,8 +447,8 @@ function RewritePanel({ sectionType, heading, body, context, onRewrite }) {
         headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ section_type: sectionType, heading, body, guidance, context }),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const data = await readAiResponse(res)
+      if (typeof data.body !== 'string' || !data.body.trim() || (heading !== undefined && data.heading !== null && typeof data.heading !== 'string')) throw new Error('The AI returned an incomplete rewrite. Your current section has been kept.')
       onRewrite(data)
       setOpen(false)
       setGuidance('')
@@ -575,20 +577,17 @@ function SpotlightTab({ preloadedProduct }) {
     if (!selectedProduct) return
     setLoading(true)
     setError('')
-    setResult(null)
     try {
       const res = await fetch('/api/generate-blog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ type: 'spotlight', product: selectedProduct, industry }),
       })
-      if (!res.ok) throw new Error('Generation failed')
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const data = validateBlogContent(await readAiResponse(res), 'spotlight')
       setResult(data)
       setSectionImages(data.sections.map(() => []))
     } catch (err) {
-      setError('Failed to generate — please try again.')
+      setError(err.message || 'Failed to generate — please try again. Your existing draft has been kept.')
       console.error(err)
     } finally {
       setLoading(false)
@@ -648,7 +647,7 @@ function SpotlightTab({ preloadedProduct }) {
         </div>
         <div>
           <label className="label">Product</label>
-          <select className="input" value={selectedId} onChange={e => setSelectedId(e.target.value)}>
+          <select className="input" value={selectedId} onChange={e => { setSelectedId(e.target.value); setResult(null) }}>
             <option value="">Select a product…</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name} — {p.category}</option>)}
           </select>
@@ -833,6 +832,7 @@ function RoundupTab() {
   }, [source])
 
   async function toggleProduct(p) {
+    setResult(null) // A draft belongs to its exact product selection.
     const isSelected = selected.find(s => s.id === p.id)
     if (isSelected) {
       setSelected(prev => prev.filter(s => s.id !== p.id))
@@ -853,21 +853,19 @@ function RoundupTab() {
 
   async function handleGenerate() {
     if (selected.length < 2) return
-    setLoading(true); setError(''); setResult(null)
+    setLoading(true); setError('')
     try {
       const res = await fetch('/api/generate-blog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ type: 'roundup', products: selected, industry, tone }),
       })
-      if (!res.ok) throw new Error('Generation failed')
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const data = validateBlogContent(await readAiResponse(res), 'roundup', selected)
       // Align AI items to the selected products by name so the index-based
       // pairing used by the preview / WP payload / editor can't mismatch.
       data.items = alignRoundupItems(data.items, selected)
       setResult(data)
-    } catch { setError('Failed to generate — please try again.') }
+    } catch (err) { setError(err.message || 'Failed to generate — please try again. Your existing draft has been kept.') }
     finally { setLoading(false) }
   }
 

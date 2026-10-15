@@ -3,8 +3,7 @@ on:
   push:
     paths:
       - 'src/**'
-      - 'netlify/edge-functions/rewrite-section.js'
-      - 'netlify/edge-functions/lib/rewriteResult.js'
+      - 'netlify/edge-functions/**'
       - 'qa/**'
       - 'package.json'
       - 'package-lock.json'
@@ -12,8 +11,7 @@ on:
   pull_request:
     paths:
       - 'src/**'
-      - 'netlify/edge-functions/rewrite-section.js'
-      - 'netlify/edge-functions/lib/rewriteResult.js'
+      - 'netlify/edge-functions/**'
       - 'qa/**'
       - 'package.json'
       - 'package-lock.json'

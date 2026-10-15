@@ -1,3 +1,4 @@
+import { completedAiJson, limitAiCopy } from './lib/aiResult.js'
 import { requireModule } from './lib/auth.js'
 
 export default async function handler(req) {
@@ -12,10 +13,12 @@ export default async function handler(req) {
       status: 500, headers: { 'Content-Type': 'application/json' },
     })
   }
-  console.log('GEMINI_API_KEY present, length:', GEMINI_API_KEY.length)
+  const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
 
-  const { product, source = 'corporate', tone = 'professional and premium', instructions = '' } = await req.json()
-  if (!product?.name) {
+  let input
+  try { input = await req.json() } catch { return json({ error: 'Please send valid product details.' }, 400) }
+  const { product, source = 'corporate', tone = 'professional and premium', instructions = '' } = input || {}
+  if (typeof product?.name !== 'string' || !product.name.trim() || typeof instructions !== 'string') {
     return new Response(JSON.stringify({ error: 'Product data required' }), {
       status: 400, headers: { 'Content-Type': 'application/json' },
     })
@@ -56,7 +59,7 @@ ${imagePart ? `- A product image is provided. You MAY describe visual qualities 
 - Length: STRICTLY under 300 characters (including spaces and punctuation). This is a hard limit — count carefully. Aim for 2 short sentences, ~40–50 words maximum.
 - Do NOT mention prices
 - Write in English only
-- Output ONLY the marketing copy — no headings, no labels, no extra text
+- Return ONLY a valid JSON object with a single string field "marketing_description" containing the marketing copy — no extra text
 - NEVER start with "Elevate" — vary your openings each time. Other banned openers: "Discover", "Introducing", "Transform", "Unleash"`
 
   const prompt = source === 'range'
@@ -104,7 +107,7 @@ Marketing description:`
     try {
       const body = {
         contents: [{ parts: promptParts }],
-        generationConfig: { temperature: 0.75, maxOutputTokens: 1024 },
+        generationConfig: { temperature: 0.75, maxOutputTokens: 2048, responseMimeType: 'application/json', responseSchema: { type:'OBJECT', properties:{marketing_description:{type:'STRING'}}, required:['marketing_description'] } },
       }
       // Disable thinking — thinking tokens eat into output budget (verified
       // live: gemini-3.8-flash accepts the same thinkingConfig shape as 2.5).
@@ -121,28 +124,17 @@ Marketing description:`
       )
 
       if (!res.ok) {
-        const errText = await res.text()
-        console.error(`Gemini ${model} error ${res.status}:`, errText)
+        console.error(`Gemini ${model} error ${res.status}`)
         continue
       }
       const data = await res.json()
-      let text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-      if (!text) { console.error(`Gemini ${model} empty response:`, JSON.stringify(data)); continue }
-
-      // Hard backstop: truncate at the last word boundary within 300 chars.
-      const MAX = 300
-      if (text.length > MAX) {
-        text = text.slice(0, MAX).replace(/\s+\S*$/, '').trimEnd()
-        if (!text.endsWith('.')) text += '…'
-      }
-
-      return new Response(JSON.stringify({ marketing_description: text }), {
-        headers: { 'Content-Type': 'application/json' },
-      })
+      const parsed = completedAiJson(data)
+      if (typeof parsed?.marketing_description !== 'string' || !parsed.marketing_description.trim()) continue
+      return json({ marketing_description: limitAiCopy(parsed.marketing_description, 300) })
     } catch {}
   }
 
-  return new Response(JSON.stringify({ error: 'Failed to generate copy — please try again.' }), {
+  return new Response(JSON.stringify({ error: 'The AI could not finish valid copy. Please try again. Your existing copy and preview have been kept.' }), {
     status: 500, headers: { 'Content-Type': 'application/json' },
   })
 }
