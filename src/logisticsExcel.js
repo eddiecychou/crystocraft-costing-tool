@@ -37,7 +37,7 @@ export function downloadPurchaseOrderExcel(po, L) {
   return download(wb,po.pu_number || 'Purchase Order')
 }
 export function downloadPackingExcel(pl, order, cartons) {
-  const wb=new ExcelJS.Workbook(), ws=sheet(wb,'Packing List',[10,14,22,38,14,12,14,14,16,16,24,16,16,16,16,22])
+  const wb=new ExcelJS.Workbook(), ws=sheet(wb,'Packing List',[22,14,22,38,14,12,14,14,16,16,24,16,16,16,16,22])
   ws.addRow(['PACKING LIST',order?.erp_so_no || ''])
   ws.addRow(['Consignee',pl.consignee_name || order?.customer_name || ''])
   ws.addRow(['Ref No',order?.uc_no || order?.erp_pi_no || ''])
