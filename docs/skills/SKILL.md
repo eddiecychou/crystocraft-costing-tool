@@ -420,7 +420,7 @@ Saved catalogue filters use `src/hooks/useCatalogueFilter.js` + `src/catalogueFi
 ### Bank / Logistics / Catalogues / Settings
 - Bank: `BankAccounts.jsx`, `BankDetailsAudit.jsx`, `src/bankAccounts.js`, `bank` fn.
 - Logistics: `Logistics.jsx`, `LogisticsVendorForm.jsx`, `FreightComparison.jsx`, `src/logistics.js` → `logistics_vendors`, `freight_quotes`, `freight_rfqs` (admin-only).
-- Catalogues (printed PDF): `Catalogues.jsx`, `CatalogueForm.jsx`, `CatalogueDetail.jsx`, `CataloguePreview.jsx`, `RangeCataloguePDF.jsx` → `catalogues/{id}` (admin-only). Render check: `qa/render-catalogue.jsx`.
+- Catalogues (printed PDF): `Catalogues.jsx`, `CatalogueForm.jsx`, `CatalogueDetail.jsx`, `CataloguePreview.jsx`, `RangeCataloguePDF.jsx` → `catalogues/{id}` (admin-only). Render check: `qa/render-catalogue.jsx`. Curated catalogue cover uses shared `CatalogueCover.jsx` in editor and print page. `catalogues/{id}.cover_text_color` is `white` (legacy/default) or `black`; title, season, tagline, logo and divider all follow the chosen solid colour independently of the photo overlay. Regression: `qa/catalogue-cover.test.mjs`.
 - Settings/tools: `Settings.jsx`, `ImportData.jsx`, `ImportImages.jsx`, `TagManager.jsx`, `PricingTiers.jsx`, `Dashboard.jsx`. Edge fns: `fx-rates` (**never for the books**), `download-image`, `image-proxy`. `settings/{docId}` auth is mixed (`../reference/FIRESTORE-COLLECTIONS.md`).
 
 ## 6. Keeping this current

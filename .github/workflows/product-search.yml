@@ -39,3 +39,4 @@ jobs:
       - run: npm run test:invoice-units
       - run: npm run test:packing-po
       - run: npm run test:ai-writer
+      - run: npm run test:catalogue-cover

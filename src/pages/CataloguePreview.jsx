@@ -4,6 +4,7 @@ import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/fires
 import { db } from '../firebase'
 import logo from '../assets/logo.png'
 import { Printer } from 'lucide-react'
+import CatalogueCover from '../components/CatalogueCover'
 
 // ── Auto layout ───────────────────────────────────────────────────────────────
 // 1–2 images → quarter page (4 per A4)
@@ -14,40 +15,6 @@ function getLayout(item) {
   if (count >= 5) return 'full'
   if (count <= 3) return 'quarter'
   return 'half'
-}
-
-// ── Cover page ────────────────────────────────────────────────────────────────
-function CoverPage({ catalogue }) {
-  const hasBg = Boolean(catalogue.cover_image)
-  const overlayColor   = catalogue.overlay_color   || 'black'
-  const overlayOpacity = catalogue.overlay_opacity ?? 0.45
-
-  return (
-    <div className="catalogue-page cover-page" style={{ background: hasBg ? 'none' : '#1a1a1a' }}>
-      {/* Background image */}
-      {hasBg && (
-        <img
-          src={catalogue.cover_image}
-          alt=""
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      )}
-      {/* Colour overlay */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: overlayColor === 'white' ? 'white' : 'black',
-        opacity: overlayOpacity,
-      }} />
-      {/* Content — bottom right */}
-      <div className="cover-inner">
-        <img src={logo} alt="Crystocraft" className="cover-logo" />
-        <div className="cover-divider" />
-        <h1 className="cover-title">{catalogue.name}</h1>
-        {catalogue.season && <p className="cover-season">{catalogue.season}</p>}
-        {catalogue.tagline && <p className="cover-tagline">{catalogue.tagline}</p>}
-      </div>
-    </div>
-  )
 }
 
 // ── Quarter-page layout (up to 4 products in a 2×2 grid) ─────────────────────
@@ -433,7 +400,7 @@ export default function CataloguePreview() {
       {/* Catalogue pages */}
       <div className="catalogue-wrapper catalogue-print-root">
         <style>{catalogueCSS}</style>
-        <CoverPage catalogue={catalogue} />
+        <CatalogueCover catalogue={catalogue} />
         {pages.map((page, idx) =>
           page.type === 'full'    ? <FullPage    key={idx} item={page.item} num={page.num} /> :
           page.type === 'quarter' ? <QuarterPage key={idx} slots={page.slots} nums={page.nums} /> :
@@ -475,57 +442,6 @@ const catalogueCSS = `
     page-break-after: avoid;
     break-after: avoid;
     margin-bottom: 0;
-  }
-
-  /* ── Cover ── */
-  .cover-page {
-    background: #1a1a1a;
-    align-items: flex-end;
-    justify-content: flex-end;
-    flex-direction: column;
-  }
-  .cover-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 12px;
-    z-index: 1;
-    padding: 0 36px 36px 0;
-    text-align: right;
-  }
-  .cover-logo {
-    height: 36px;
-    width: auto;
-    filter: invert(1) brightness(2);
-  }
-  .cover-divider {
-    width: 48px;
-    height: 1px;
-    background: rgba(200, 169, 81, 0.3);
-    margin: 2px 0;
-  }
-  .cover-title {
-    font-family: 'Questrial', Georgia, serif;
-    font-size: 28px;
-    font-weight: 400;
-    color: #ffffff;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin: 0;
-    line-height: 1.15;
-  }
-  .cover-season {
-    font-size: 12px;
-    color: rgba(200, 169, 81, 0.3);
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    margin: 0;
-  }
-  .cover-tagline {
-    font-size: 16px;
-    color: rgba(255,255,255,0.55);
-    margin: 2px 0 0;
-    font-style: italic;
   }
 
   /* ── Full page layout ── */

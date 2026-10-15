@@ -173,3 +173,11 @@ Packing/PO tier remarks: the logistics suite also verifies quote-to-order carton
 AI writer: `npm run test:ai-writer` exercises the real rewrite handler and shared product editor with network boundaries mocked: malformed/truncated/multipart replies, fallback and friendly failure, authorization/input validation, 300-character enforcement, blog heading compatibility, single guidance field, preview acceptance/discard, preserved copy/instructions and retry. Runs in prebuild and GitHub Actions.
 
 Bulk/blog AI: `qa/bulk-blog-ai.test.mjs` runs in `test:ai-writer`, prebuild and CI. Real handlers and screens are exercised with mocked network/database boundaries for structured complete replies, malformed/truncated fallback, blog section/product validation, retained drafts, product-selection reset, section retry, bulk preview preservation and approval/atomic backup. No live WordPress publication or product writes.
+
+## Curated catalogue cover contrast
+
+Run `npm run test:catalogue-cover` (also included in prebuild and GitHub Actions).
+The suite mounts the actual catalogue form, shared cover and print page with
+isolated Firebase boundaries. It checks white/black ink, full-opacity secondary
+text and divider, saved/reloaded selection, legacy defaults, preserved overlay
+settings and no-photo contrast. No live records are written.

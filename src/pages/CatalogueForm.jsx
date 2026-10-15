@@ -4,6 +4,7 @@ import { doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from 'fir
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import { Camera } from 'lucide-react'
+import CatalogueCover from '../components/CatalogueCover'
 
 export default function CatalogueForm() {
   const { id } = useParams()
@@ -13,7 +14,7 @@ export default function CatalogueForm() {
 
   const [form, setForm] = useState({
     name: '', season: '', tagline: '', status: 'draft',
-    cover_image: '', overlay_color: 'black', overlay_opacity: 0.45,
+    cover_image: '', overlay_color: 'black', overlay_opacity: 0.45, cover_text_color: 'white',
   })
   const [loading, setLoading]     = useState(false)
   const [fetching, setFetching]   = useState(isEdit)
@@ -22,7 +23,7 @@ export default function CatalogueForm() {
   useEffect(() => {
     if (!isEdit) return
     getDoc(doc(db, 'catalogues', id)).then(snap => {
-      if (snap.exists()) setForm(f => ({ ...f, ...snap.data() }))
+      if (snap.exists()) setForm(f => ({ ...f, ...snap.data(), cover_text_color: snap.data().cover_text_color === 'black' ? 'black' : 'white' }))
       setFetching(false)
     })
   }, [id, isEdit])
@@ -115,44 +116,29 @@ export default function CatalogueForm() {
           />
           <div>
             <label className="label">Background Image</label>
-            {form.cover_image ? (
-              <div className="relative rounded-none overflow-hidden" style={{ height: 140 }}>
-                <img src={form.cover_image} alt="" className="w-full h-full object-cover" />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: form.overlay_color === 'white' ? 'white' : 'black',
-                    opacity: form.overlay_opacity,
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <p className="text-white text-xs font-medium drop-shadow">Preview</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fileRef.current.click()}
-                  className="absolute top-2 right-2 bg-white/90 text-xs px-2 py-1 rounded-none text-ink-80 hover:bg-white"
-                >
-                  Change
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVal('cover_image', '')}
-                  className="absolute top-2 left-2 bg-white/90 text-xs px-2 py-1 rounded-none text-red-500 hover:bg-white"
-                >
-                  Remove
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileRef.current.click()}
-                disabled={uploading}
-                className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-warm-grey rounded-none p-6 hover:border-brand-300 hover:bg-brand-50 transition-colors text-ink-60 text-sm"
-              >
-                {uploading ? 'Uploading…' : <span className="inline-flex items-center gap-1.5"><Camera size={15} />Click to upload cover image</span>}
-              </button>
-            )}
+            <div className="relative rounded-none overflow-hidden border border-warm-grey" style={{ aspectRatio: '297 / 210' }}>
+              <CatalogueCover catalogue={form} compact />
+              {form.cover_image && <>
+                <button type="button" onClick={() => fileRef.current.click()} className="absolute top-2 right-2 bg-white/90 text-xs px-2 py-1 rounded-none text-ink-80 hover:bg-white">Change</button>
+                <button type="button" onClick={() => setVal('cover_image', '')} className="absolute top-2 left-2 bg-white/90 text-xs px-2 py-1 rounded-none text-red-500 hover:bg-white">Remove</button>
+              </>}
+            </div>
+            {!form.cover_image && <button type="button" onClick={() => fileRef.current.click()} disabled={uploading} className="mt-2 w-full flex items-center justify-center gap-2 border border-warm-grey p-3 text-sm text-ink-60 hover:bg-ivory">
+              {uploading ? 'Uploading…' : <><Camera size={15} />Upload cover image</>}
+            </button>}
+
+          </div>
+
+          <div role="group" aria-labelledby="cover-text-colour-label">
+            <p id="cover-text-colour-label" className="label">Cover text colour</p>
+            <div className="flex gap-3">
+              {['white', 'black'].map(color => <button key={color} type="button" aria-label={`${color === 'white' ? 'White' : 'Black'} cover text`} aria-pressed={form.cover_text_color === color}
+                onClick={() => setVal('cover_text_color', color)}
+                className={`flex items-center gap-2 px-4 py-2 border-2 text-sm capitalize ${form.cover_text_color === color ? 'border-brand-400 bg-brand-50 text-brand-700 font-medium' : 'border-warm-grey text-ink-60 hover:border-ink-60'}`}>
+                <span className="w-4 h-4 rounded-full border border-warm-grey" style={{ background: color }} />{color}
+              </button>)}
+            </div>
+            <p className="text-xs text-ink-60 mt-2">Applies to the title, season / period, tagline, logo and divider in the preview and PDF.</p>
           </div>
 
           {/* Overlay colour */}
