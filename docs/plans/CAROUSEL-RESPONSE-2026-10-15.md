@@ -60,5 +60,24 @@ synthetic photos and no production data. Source default port is 5187.
 
 ## Release
 
-Candidate and production two-role verification will be recorded here before
-closing the V8.18 follow-up. No Firestore/Storage rules changes are required.
+Candidate `6ad05e9a53fa8154e1531054`, source app commit `dcd76f47`, ready.
+Served `/assets/index-CGhc3tGd.js`; served Firebase configuration probe HTTP 200.
+Fresh password sign-ins for admin `claude-qa@crystocraft.com` and approved
+customer `customer-qa@crystocraft.com` pass in separate signed-out Chrome
+sessions. An initial IAB admin attempt reported a network connection error;
+Chrome was used for the successful real-page gate, without altering credentials,
+profiles or permissions. Customer route `/shop`, 136-product corporate catalogue,
+reported pillow's gallery arrows and detail load; no internal controls, direct
+Settings visit redirects to shop, refresh retains customer shell. Admin route
+`/dashboard`, data and Settings navigation load; 140-product catalogue, same
+pillow's gallery arrow and refresh pass. No runtime errors in successful sessions.
+Both real arrow swaps changed the displayed URL and finished decoded, without
+navigating away; cached reverse navigation completed without a loading state.
+No production-data writes were used for functional verification (normal login
+stamps only). Candidate screenshot evidence is under `/private/tmp/v818-evidence/`
+with `carousel-candidate-admin.png` and `carousel-candidate-customer.png`.
+
+The measurement fixture is pinned to pre-optimization revision `e7713ec0`
+(overridable with CAROUSEL_BASE_REF) so its baseline remains reproducible after
+the optimization commit. This fixture-only adjustment does not change the app.
+No Firestore/Storage rules changes are required. Production verification pending.

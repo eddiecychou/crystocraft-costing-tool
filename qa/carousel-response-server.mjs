@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 const root=process.cwd(),dir=mkdtempSync(join(tmpdir(),'carousel-response-'))
-const before=execFileSync('git',['show','HEAD:src/components/CardImageCarousel.jsx'],{encoding:'utf8'})
+const before=execFileSync('git',['show',`${process.env.CAROUSEL_BASE_REF || 'e7713ec0'}:src/components/CardImageCarousel.jsx`],{encoding:'utf8'})
 for(const variant of ['before','after']){
  await build({entryPoints:['qa/carousel-response-preview.jsx'],outfile:join(dir,variant+'.js'),bundle:true,jsx:'automatic',plugins:[{name:'carousel-version',setup(b){
  b.onResolve({filter:/^QA_CAROUSEL$/},()=>({path:variant,namespace:'qa-version'}));
