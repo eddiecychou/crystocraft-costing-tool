@@ -4,6 +4,8 @@ on:
     paths:
       - 'src/**'
       - 'netlify/edge-functions/**'
+      - 'netlify/functions/**'
+      - 'seo-control-plane/**'
       - 'qa/**'
       - 'package.json'
       - 'package-lock.json'
@@ -12,6 +14,8 @@ on:
     paths:
       - 'src/**'
       - 'netlify/edge-functions/**'
+      - 'netlify/functions/**'
+      - 'seo-control-plane/**'
       - 'qa/**'
       - 'package.json'
       - 'package-lock.json'
@@ -40,3 +44,4 @@ jobs:
       - run: npm run test:packing-po
       - run: npm run test:ai-writer
       - run: npm run test:catalogue-cover
+      - run: npm run test:seo-control-plane

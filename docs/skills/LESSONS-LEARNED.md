@@ -1032,6 +1032,23 @@ sessions, add an auto-memory. Then note it in the Change Log.
 - **Root cause.** The one-time legacy migration allowed an operator-selected account to become thread identity, and unattended import later trusted `entry.channel` before the containing folder. A mistaken Business selection therefore created `business__legacy`; the later correct Personal import created `personal__legacy`. Older parsing also shifted timestamps by roughly two to three hours, so the normal timestamp-bearing fingerprint reported zero exact overlap even though normalized sender/body/attachment comparison proved complete duplication.
 - **Permanent fix.** `resolveArchiveAccount(folderAccount, declaredChannel)` makes the Business/Personal folder authoritative for both text and media import. Matching metadata may agree; a conflict stops with `ARCHIVE_ACCOUNT_MISMATCH`. Re-importing one account updates its existing subthread; a second labelled subthread is valid only when a ZIP genuinely exists in the other folder. Repairs prove the smaller record is a complete content subset, preserve it as a `migrated_to` tombstone, and keep the larger authoritative record active. **MUST NOT** infer account from a manifest, migration selector, filename, or display name when the physical archive folder is available. **MUST NOT** concatenate legacy arrays until overlap has been checked without the historical timestamp offset. Tests: `qa/whatsapp-import.test.mjs` 65 → 68.
 
+## L-62 · No prior layout is different from an unreadable layout
+
+- **Symptom:** DSH could not submit a new Elementor page or convert a plain page;
+  preservation guards required an existing tree even when none existed.
+- **Root cause:** absent baseline, malformed source and first-layout creation all
+  shared one failure branch. Treating any source object as proof would allow
+  partial snapshots to erase the protection instead.
+- **Fix:** collection endpoints and confirmed empty edit-context layouts pass
+  preservation checks with an explicit note; first layouts validate node shape
+  and unique IDs. Missing/incomplete/malformed baselines remain blocked. Per-item
+  `allow:[{check,why}]` retains original failures and appears in human review;
+  it cannot waive missing evidence, invalid layout structure/JSON or unlinked
+  translation publication. Approval and verified before/after writes remain.
+- **Verification:** `npm run test:seo-control-plane`; handoff and fingerprints in
+  `seo-control-plane/README.md`, implementation record in
+  `docs/plans/ELEMENTOR-LAYOUT-WRITES-2026-10-16.md`.
+
 ## Change Log
 
 | Date | Change |

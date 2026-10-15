@@ -262,6 +262,43 @@ function normalizeEntity(obj) {
   return out
 }
 
+// Collection paths are creates; query strings and a trailing slash do not
+// change that. A caller-supplied create flag must never turn /pages/123 into POST.
+export function isCreateEndpoint(endpoint = '') {
+  return /^(?:wc\/v3\/products|wp\/v2\/(?:posts|pages))\/?$/.test(String(endpoint).split('?')[0])
+}
+
+// A first layout has no comparison tree, so validate its own structure.
+function validFirstLayout(tree) {
+  if (!Array.isArray(tree) || !tree.length) return false
+  const ids = new Set(), pending = [...tree]
+  while (pending.length) {
+    const node = pending.pop()
+    if (!node || typeof node !== 'object' || Array.isArray(node)
+      || typeof node.id !== 'string' || !node.id.trim() || ids.has(node.id)
+      || !['section', 'column', 'container', 'widget'].includes(node.elType)
+      || (node.elType === 'widget' && (typeof node.widgetType !== 'string' || !node.widgetType.trim()))
+      || (node.elements !== undefined && !Array.isArray(node.elements))) return false
+    ids.add(node.id)
+    if (node.elements) pending.push(...node.elements)
+  }
+  return true
+}
+
+export function validateAllow(allow = []) {
+  if (!Array.isArray(allow)) return ['allow must be an array of { check, why }']
+  const seen = new Set(), errors = []
+  for (const entry of allow) {
+    if (!entry || typeof entry.check !== 'string' || !entry.check.trim()
+      || typeof entry.why !== 'string' || !entry.why.trim()) {
+      errors.push('each allow entry requires a check name and non-empty why'); continue
+    }
+    if (seen.has(entry.check)) errors.push(`duplicate allow check: ${entry.check}`)
+    seen.add(entry.check)
+  }
+  return errors
+}
+
 // kind: 'post' | 'page' | 'product'   lang: 'en'|'es'|'zh-hant'|'ja'|'fr'
 // payload: the exact WP write body    source: the EN-original object it derives from (optional but recommended)
 //
@@ -270,15 +307,16 @@ function normalizeEntity(obj) {
 //   checks[].ok === false  the check ran and found a problem — OR could not run
 //                          where running was mandatory (detail says which)
 //   checks[].ok === null   the check did not run, and not running is acceptable
-// `passed` fails only on an explicit `false`, so it is unchanged for every
-// payload that passed before. `skipped` > 0 is what tells a caller its pass was
+// `passed` fails on unexcepted explicit false checks. Original verdicts
+// remain in checks and rawPassed, even when a reasoned exception applies. `skipped` > 0 is what tells a caller its pass was
 // PARTIAL — previously indistinguishable from a full one (L-48). A check never
 // disappears without a reason in `checks`.
-export function validatePayload({ kind, lang, endpoint = '', payload = {}, source = null, expectedNewIds = [], appendOnly = false, acceptPreexistingOverCap = false } = {}) {
+export function validatePayload({ kind, lang, endpoint = '', payload = {}, source = null, expectedNewIds = [], appendOnly = false, acceptPreexistingOverCap = false, allow = [] } = {}) {
   const checks = []
   const add = (name, ok, detail = '') => checks.push({ name, ok, detail })
   const skip = (name, detail) => add(name, null, detail)
 
+  const sourceMetaVisible = !!source && ((source.meta && typeof source.meta === 'object' && !Array.isArray(source.meta)) || Array.isArray(source.meta_data))
   payload = normalizeEntity(payload) || {}
   source = normalizeEntity(source)
 
@@ -320,13 +358,25 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
       add('widget_count', false, why)
       add('element_ids_preserved', false, why)
       add('length_anomaly', false, why)
-    } else if (!(srcEd && typeof srcEd === 'object')) {
-      const why = source
-        ? 'did not run — source has no _elementor_data; a layout write MUST carry the live EN entity as `source` (a flat `before` works once meta.* keys are present)'
-        : 'did not run — a payload writing _elementor_data MUST carry `source` (the live EN entity) so the layout guards can run'
-      add('widget_count', false, why)
-      add('element_ids_preserved', false, why)
-      add('length_anomaly', false, why)
+    } else if (!(srcEd && typeof srcEd === 'object') || (Array.isArray(srcEd) && srcEd.length === 0)) {
+      // Absence is evidence only in a complete edit-context entity, or an
+      // explicit empty meta value. A partial snapshot is not proof of absence.
+      const raw = source?.meta?._elementor_data
+      const explicitEmpty = source && Object.hasOwn(source.meta || {}, '_elementor_data')
+        && (raw === '' || raw === null || (Array.isArray(srcEd) && srcEd.length === 0))
+      const completeEmpty = sourceMetaVisible && source && Number(source.id) > 0
+        && typeof source.content?.raw === 'string'
+        && source.meta && typeof source.meta === 'object' && !Array.isArray(source.meta)
+        && !Object.hasOwn(source.meta, '_elementor_data')
+      const firstLayout = isCreateEndpoint(endpoint) || explicitEmpty || completeEmpty
+      if (firstLayout) add('first_layout_structure', validFirstLayout(ed),
+        'first layout must be a non-empty Elementor node array with unique IDs and valid node types')
+      const why = firstLayout
+        ? 'no prior _elementor_data on the target — nothing to preserve (first layout on this entity)'
+        : 'did not run — layout write MUST carry `source` with a readable existing tree or proof of no prior layout; malformed or incomplete source is not proof'
+      add('widget_count', !!firstLayout, why)
+      add('element_ids_preserved', !!firstLayout, why)
+      add('length_anomaly', !!firstLayout, why)
     } else {
       const newIdsValid = Array.isArray(expectedNewIds) && expectedNewIds.length <= 100 && expectedNewIds.every(id => typeof id === 'string' && id.length > 0)
         && new Set(expectedNewIds).size === expectedNewIds.length
@@ -501,7 +551,7 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   if (typeof yd === 'string' && yd) add('seo_desc_length', yd.length <= 158, yd.length > 158 ? `${yd.length} chars (>158)` : '')
 
   // 14. an unlinked translation draft must NOT be published (Rule 4)
-  if (isTranslation && /[?&]lang=/.test(endpoint) && /\/(posts|pages|products)(\?|$)/.test(endpoint)) {
+  if (isTranslation && /[?&]lang=/.test(endpoint) && isCreateEndpoint(endpoint)) {
     const pub = payload.status === 'publish' || payload.status === 'future'
     add('translation_draft_only', !pub, pub ? `creating a ${lang} translation with status:${payload.status} — must be draft until the trid is linked (Rule 4)` : '')
   }
@@ -509,14 +559,29 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   // 15. advisory — layout write needs a cache clear afterwards
   if (edRaw != null) add('elementor_cache_reminder', true, 'writes _elementor_data — element-cache clear + flush-css + host purge required after (Rule 5)')
 
-  const passed = checks.every(c => c.ok !== false)
+  const rawPassed = checks.every(c => c.ok !== false)
+  const allowErrors = validateAllow(allow)
+  if (allowErrors.length) add('allow_valid', false, allowErrors.join('; '))
+  else for (const entry of allow) {
+    const check = checks.find(c => c.name === entry.check)
+    if (!check) { add('allow_valid', false, `check does not apply: ${entry.check}`); continue }
+    // Invalid JSON, missing baseline and translation publication rules remain
+    // hard boundaries. Exceptions cannot supply missing evidence.
+    if (check.ok === false && (['allow_valid', 'json_parses', 'first_layout_structure', 'translation_draft_only'].includes(check.name)
+      || check.detail.startsWith('did not run'))) {
+      add('allow_valid', false, `cannot override mandatory check: ${entry.check}`)
+      continue
+    }
+    if (check.ok === false) { check.overridden = true; check.why = entry.why.trim() }
+  }
+  const passed = checks.every(c => c.ok !== false || c.overridden === true)
   // `ran` / `skipped` are what let a caller tell a FULL pass from a partial one
   // — the thing that was impossible before L-48. `skipped` counts only checks
   // that were applicable-but-could-not-run (or that a caller suppressed by not
   // supplying a source); a check that never applied is simply absent.
   const ran = checks.filter(c => c.ok === true || c.ok === false).length
   const skipped = checks.filter(c => c.ok == null).length
-  return { passed, checks, ran, skipped }
+  return { passed, rawPassed, checks, ran, skipped, overridden: checks.filter(c => c.overridden).length }
 }
 
 export default validatePayload

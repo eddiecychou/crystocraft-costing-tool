@@ -21,7 +21,7 @@
 // Ops (POST JSON):
 //   { op: 'create', batch: { note, items: [{ id, kind, lang, endpoint,
 //         summary, payload, before, source, validation,
-//         expectedNewIds?, appendOnly?, acceptPreexistingOverCap? }] } }
+//         expectedNewIds?, appendOnly?, acceptPreexistingOverCap?, allow?: [{check, why}] }] } }
 //       -> { id, failed_validation, skipped_validation, mismatches: [itemIndex] }
 //          (400 if any item has an empty/absent `payload` — nothing to write)
 //          `skipped_validation` = items where the OC gate could not run every
@@ -47,7 +47,7 @@ import { timingSafeEqual } from 'node:crypto'
 // authoritative result the reviewer sees (and that `poll` enforces) is this
 // one. Same SSOT file DSH vendors verbatim; if it ever forks, the OC copy
 // wins and DSH must re-vendor (seo-control-plane/README.md).
-import { validatePayload } from '../../seo-control-plane/validate-payload.mjs'
+import { validatePayload, validateAllow } from '../../seo-control-plane/validate-payload.mjs'
 
 const json = (b, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } })
@@ -87,6 +87,35 @@ export function batchOutcome(items) {
   }
 }
 
+export function revalidateBatchItem(it) {
+  try {
+    const src = it.source ?? it.original ?? it.before ?? null
+    const v = validatePayload({
+      allow: it.allow ?? [],
+      kind: it.kind ?? undefined,
+      lang: it.lang ?? undefined,
+      endpoint: String(it.endpoint || ''),
+      payload: it.payload ?? {},
+      source: src && typeof src === 'object' && Object.keys(src).length ? src : null,
+      expectedNewIds: it.expectedNewIds ?? [],
+      appendOnly: it.appendOnly === true,
+      acceptPreexistingOverCap: it.acceptPreexistingOverCap === true,
+    })
+    return {
+      passed: v.passed === true,
+      rawPassed: v.rawPassed === true,
+      overridden: v.overridden || 0,
+      checks: v.checks || [],
+      ran: typeof v.ran === 'number' ? v.ran : null,
+      skipped: typeof v.skipped === 'number' ? v.skipped : 0,
+      by: 'oc',
+      at: Timestamp.now(),
+    }
+  } catch (e) {
+    return { passed: false, checks: [{ name: 'validator_error', ok: false, detail: String(e?.message || e) }], ran: 0, skipped: 0, by: 'oc', at: Timestamp.now() }
+  }
+}
+
 export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   try { initAdminApp() } catch (e) { return json({ error: String(e?.message || e) }, 500) }
@@ -107,6 +136,12 @@ export default async function handler(req) {
       return json({ error: 'item(s) with an empty payload — nothing to write', indexes: emptyPayloads }, 400)
     }
 
+    const invalidAllow = items.flatMap((it, index) => {
+      const errors = validateAllow(it.allow)
+      return errors.length ? [{ index, errors }] : []
+    })
+    if (invalidAllow.length) return json({ error: 'Invalid per-item allow', items: invalidAllow }, 400)
+
     // Server-side re-validation. `source` (the EN original) makes the full
     // check set run — structure/parity/brand checks cannot run without it — so
     // DSH should include it on translation items (and fetch it with
@@ -117,38 +152,13 @@ export default async function handler(req) {
     //
     // `ran`/`skipped` are carried through so a PARTIAL pass stays
     // distinguishable from a full one — see `skipped_validation` below.
-    const revalidate = (it) => {
-      try {
-        const src = it.source ?? it.original ?? it.before ?? null
-        const v = validatePayload({
-          kind: it.kind ?? undefined,
-          lang: it.lang ?? undefined,
-          endpoint: String(it.endpoint || ''),
-          payload: it.payload ?? {},
-          source: src && typeof src === 'object' && Object.keys(src).length ? src : null,
-          expectedNewIds: it.expectedNewIds ?? [],
-          appendOnly: it.appendOnly === true,
-          acceptPreexistingOverCap: it.acceptPreexistingOverCap === true,
-        })
-        return {
-          passed: v.passed === true,
-          checks: v.checks || [],
-          ran: typeof v.ran === 'number' ? v.ran : null,
-          skipped: typeof v.skipped === 'number' ? v.skipped : 0,
-          by: 'oc',
-          at: Timestamp.now(),
-        }
-      } catch (e) {
-        return { passed: false, checks: [{ name: 'validator_error', ok: false, detail: String(e?.message || e) }], ran: 0, skipped: 0, by: 'oc', at: Timestamp.now() }
-      }
-    }
-
     let failed = 0
     const outItems = items.map((it, i) => {
-      const validation = revalidate(it)
+      const validation = revalidateBatchItem(it)
       if (!validation.passed) failed++
       const dsh = it.validation ?? { passed: null, checks: [] }
       return {
+        allow: it.allow ?? [],
         index: i,
         id: it.id ?? null,
         kind: it.kind ?? null,

@@ -361,9 +361,12 @@ boundaries the 2026-10-03 defects established.
   `skipped_validation` on `seo-batch` `create`, and listed against the item in
   `/seo-review`. `passed: true, skipped: 0` is a full pass; `skipped > 0` is a
   partial one, and **MUST NOT** be read as fully validated (L-48). A payload that
-  writes `_elementor_data` with no usable source tree **MUST** fail
-  (`ok:false`, "did not run — …"), not skip: an unguarded layout write is what
-  B20/B6 are.
+  writes `_elementor_data` onto an existing layout without a usable source tree
+  **MUST** fail (`ok:false`, "did not run — …"). New collection endpoints or
+  confirmed empty layouts instead pass preservation checks with a first-layout
+  note; partial/malformed source remains blocked. See `seo-control-plane/README.md`
+  for the proof-of-absence contract and reasoned per-item exceptions. Exceptions
+  retain original failures and never replace human approval or write verification.
 - **Compare like with like, and RAW only.** A live entity's `content` is the REST
   object `{ rendered, raw }`; `.rendered` is the *built* page (and for Elementor,
   the whole page). Every body-level check **MUST** read `.raw` via

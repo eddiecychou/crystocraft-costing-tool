@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, doc, onSnapshot, query, orderBy, limit, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import SeoValidationDetails from '../components/SeoValidationDetails'
 import { ClipboardCheck, Check, X, AlertTriangle, CircleSlash, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
 // SEO control plane — Step 2: the review queue. DSH posts a batch of intended
@@ -200,7 +201,7 @@ export default function SeoReview() {
 
                       {/* validation — v is the OC's authoritative re-check (by:'oc') */}
                       <div className="mt-2">
-                        {v.passed === true && <p className="text-2xs text-green-700 inline-flex items-center gap-1"><Check size={11} /> validation passed{v.checks?.length ? ` (${v.ran ?? v.checks.filter(c => c.ok === true || c.ok === false).length} checks ran${v.skipped ? `, ${v.skipped} skipped` : ''}${v.by === 'oc' ? ', OC-verified' : ''})` : ''}</p>}
+                        {v.passed === true && <p className="text-2xs text-green-700 inline-flex items-center gap-1"><Check size={11} /> validation {v.overridden ? 'passed with recorded exceptions' : 'passed'}{v.checks?.length ? ` (${v.ran ?? v.checks.filter(c => c.ok === true || c.ok === false).length} checks ran${v.skipped ? `, ${v.skipped} skipped` : ''}${v.by === 'oc' ? ', OC-verified' : ''})` : ''}</p>}
                         {v.passed === false && <p className="text-2xs text-red-600 inline-flex items-center gap-1"><AlertTriangle size={11} /> validation FAILED{v.by === 'oc' ? ' (OC)' : ''}: {(v.checks || []).filter(c => c.ok === false).map(c => c.name || c).join(', ') || 'see batch'}</p>}
                         {/* skipped checks are not failures, but "passed" alone must not read as a FULL pass (L-48) */}
                         {(v.checks || []).some(c => c.ok == null) && (
@@ -219,6 +220,8 @@ export default function SeoReview() {
                           </p>
                         )}
                       </div>
+
+                      <SeoValidationDetails validation={v} allow={it.allow} />
 
                       {/* diff */}
                       <div className="mt-2 overflow-x-auto">

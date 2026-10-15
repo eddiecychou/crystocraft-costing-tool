@@ -28,9 +28,9 @@ Before trusting a run against a newly vendored copy, check it is byte-identical
 to the hash below. **The hash changes whenever the file does** — when the OC
 ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch.
 
-| File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-06) |
+| File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-16) |
 |---|---|
-| `validate-payload.mjs` | `57e397f1b810` |
+| `validate-payload.mjs` | `713ceb69fd16` |
 | `safe-write.mjs` | `8e4d16f4f195` |
 | `yoast-indexable.mjs` | `28eba647fe55` |
 
@@ -247,17 +247,20 @@ copy and any future caller get it too.
 | `false` | ran and found a problem — **or** could not run where running was mandatory (`detail` says which) |
 | `null` | did not run, and not running is acceptable (`detail` says why) |
 
-`validatePayload` returns `{ passed, checks, ran, skipped }`. `passed` still fails
-only on an explicit `false`, so **nothing that passed before fails now** — but
-`passed: true, skipped: 0` is a full pass and `skipped > 0` is a partial one.
+`validatePayload` returns `{ passed, rawPassed, checks, ran, skipped, overridden }`.
+`passed: true, skipped: 0, overridden: 0` is a full pass; skips and recorded
+exceptions are separately visible, and original failure verdicts remain intact.
 Before this, those were indistinguishable, and a `passed:true` was read as a full
 validation when three layout guards had not run at all.
 
-- **A payload that writes `_elementor_data` MUST carry a usable source tree.** If
-  it does not, the three layout guards report `ok:false` ("did not run — …") and
-  the item is blocked. An unguarded layout write is exactly the B20/B6 harm they
-  exist to stop, so this case fails rather than skips. A flat `before` with
-  `meta._elementor_data` satisfies it.
+- **Existing layout writes require a readable baseline.** New collection endpoints
+  (`wp/v2/pages`, `wp/v2/posts`, `wc/v3/products`, optional query/trailing slash)
+  and confirmed empty layouts pass the preservation checks with a first-layout
+  note. Confirmed empty means an explicit empty string/null/empty-array layout
+  value in any supported meta shape, or an edit-context entity with positive
+  `id`, `content.raw` and a meta object without the layout key. `{}`/partial or
+  rendered-only snapshots and malformed source JSON still fail. A `create:true`
+  flag cannot turn an existing-item endpoint into a create.
 - **Body-level checks skip** (never silently, never against the render) when the
   source body has no `.raw`, or when the source already contains the
   `<script>`/`<table>` being guarded.
@@ -298,3 +301,28 @@ restore the old behaviour for every caller that forgot the parameter.
 checks cannot run at all. And **do not** work around a failure by trimming
 `source.content` to a bare string — that suppresses the check instead of
 satisfying it. Pass the whole live entity.
+
+## First layouts and recorded exceptions — 2026-10-16
+
+Items accept `allow: [{ check: "seo_desc_length", why: "Reason for this exception" }]`.
+Every reason must be a non-empty string; malformed/duplicate entries are rejected.
+Unknown or non-applicable checks fail validation. Exceptions are item options, never
+part of the WordPress payload. They do not approve an item: the existing human review,
+poll gate, before/after backups, exact-value read-back and cache-clear requirements remain.
+
+`validatePayload` also returns `rawPassed` and `overridden` (count). An applied
+exception keeps the original check's `ok:false` and `detail`, with `overridden:true`
+and `why`. `passed` means every failure is either resolved or explicitly excepted.
+The review queue labels this as passed with recorded exceptions and displays each
+reason plus the original failure. Missing-source evidence, invalid first-layout structure/JSON and
+`translation_draft_only` cannot be overridden. `skipped` remains independent: an
+exception is never reported as an ordinary full pass.
+
+DSH must re-vendor the validator and its test, pass `allow` to both local validation
+and batch submission, and rebuild/resubmit the failed batch for fresh review. No old
+batch is retroactively approved or rewritten. Collection endpoints must execute via
+POST; existing endpoints via PUT. The OC does not implement DSH's executor or write
+to WordPress. Run `npm run test:seo-control-plane` for validator, write verification,
+batch guards, first-layout/exception and review-component tests.
+
+First layouts also require a non-empty node array, valid Elementor node types, widget types and unique IDs (`first_layout_structure`); this integrity check cannot be overridden.

@@ -605,5 +605,28 @@ function expect(name, cond, detail = '') {
   expect('a newly introduced script is still caught', chk(script).no_new_scripts === false, JSON.stringify(chk(script)))
 }
 
+// First Elementor layouts and recorded exceptions (DSH request, 2026-10-16).
+{
+  const payload = { meta: { _elementor_data: JSON.stringify([{ id: 'first', elType: 'widget', widgetType: 'heading', settings: { title: 'Wholesale' } }]) } }
+  const create = validatePayload({ endpoint: 'wp/v2/pages', payload })
+  expect('first-layout create passes with a preservation note', create.passed && /nothing to preserve/.test(create.checks.find(c => c.name === 'widget_count').detail))
+  const convert = validatePayload({ endpoint: 'wp/v2/pages/123', payload, source: { id: 123, content: { raw: '' }, meta: {} } })
+  expect('complete edit entity without layout supports conversion', convert.passed)
+  const broken = validatePayload({ endpoint: 'wp/v2/pages/123', payload, source: { meta: { _elementor_data: '{broken' } } })
+  expect('malformed source is not an empty layout', !broken.passed)
+  const empty = validatePayload({ endpoint: 'wp/v2/pages/123', payload, source: { 'meta._elementor_data': '[]' } })
+  expect('explicit empty array supports conversion', empty.passed)
+  const badTree = validatePayload({ endpoint: 'wp/v2/pages', payload: { meta: { _elementor_data: '{}' } } })
+  expect('first layout must have valid node structure', !badTree.passed)
+  const exception = validatePayload({ payload: { meta: { _yoast_wpseo_metadesc: 'x'.repeat(159) } }, allow: [{ check: 'seo_desc_length', why: 'Campaign length reviewed' }] })
+  expect('reasoned exception retains raw failure', exception.passed && !exception.rawPassed && exception.overridden === 1 && exception.checks.find(c => c.name === 'seo_desc_length').ok === false)
+  const silent = validatePayload({ payload: { title: 'Title' }, allow: [{ check: 'seo_desc_length', why: ' ' }] })
+  expect('blank exception reason fails', !silent.passed)
+  const missing = validatePayload({ endpoint: 'wp/v2/pages/123', payload, allow: ['widget_count', 'element_ids_preserved', 'length_anomaly'].map(check => ({ check, why: 'Missing source' })) })
+  expect('exceptions cannot waive missing baseline evidence', !missing.passed)
+  const translation = validatePayload({ endpoint: 'wp/v2/pages/?lang=fr', lang: 'fr', payload: { ...payload, status: 'publish' } })
+  expect('trailing slash cannot bypass translation draft rule', !translation.passed)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -445,8 +445,10 @@ DSH stays the sole WordPress writer but goes through this loop:
    product payload uses `meta_data: [{key,value}]`; the `before` snapshot is
    FLAT (`'meta._elementor_data'`)** — the validator normalises all three, but pass a
    real nested `source` anyway: a payload writing `_elementor_data` with no
-   usable source tree is now **blocked**, and a pass with `skipped > 0` is a
-   partial one, not a full validation (L-48).
+   usable source tree is **blocked** unless it is a collection create or carries
+   confirmed no-layout evidence (see `seo-control-plane/README.md`). Reasoned
+   per-item exceptions retain original failures and still require human approval.
+   A pass with `skipped > 0` remains partial, not a full validation (L-48).
 3. **Batch + human approval.** POST the batch to `/api/seo-batch`
    (`op:'create'`, Bearer `SEO_BATCH_SECRET`). The owner approves/rejects
    per-item at `/seo-review` against a real `before → after` diff, then "Send
