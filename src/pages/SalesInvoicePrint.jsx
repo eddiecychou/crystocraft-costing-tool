@@ -7,6 +7,7 @@ import { db } from '../firebase'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { amountInWords } from '../constants'
 import { pdfFileTitle } from '../pdfFilename'
+import { downloadOrderInvoiceExcel } from '../invoiceExcel'
 import logoUrl from '../assets/logo.png'
 
 // Sales Invoice — the commercial invoice, raised from an order the same way
@@ -221,6 +222,7 @@ export default function SalesInvoicePrint() {
       `}</style>
 
       <button className="print-btn" onClick={() => window.print()}>Print / Save as PDF</button>
+      <button className="print-btn" onClick={() => downloadOrderInvoiceExcel(order, lines, 'sales', { subtotal, chargesTotal, discountAmount, total })}>Download Excel</button>
 
       {/* An invoice with no number is not an invoice — say so before it is sent,
           not after the customer asks what to quote on the remittance. */}
@@ -317,7 +319,7 @@ export default function SalesInvoicePrint() {
                 )}
                 <td className="si-code">{l.item_code || '—'}</td>
                 <td className="desc">{l.description || '—'}</td>
-                <td className="r">{qty.toLocaleString()}{l.unit ? ` ${l.unit}` : ''}</td>
+                <td className="r">{qty.toLocaleString()}{` ${l.unit || 'pcs'}`}</td>
                 <td className="r">{up.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="r">{(qty * up).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>

@@ -8,6 +8,7 @@ import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bank
 import { downloadCsv } from '../exportCsv'
 import { amountInWords } from '../constants'
 import { pdfFileTitle } from '../pdfFilename'
+import { downloadOrderInvoiceExcel } from '../invoiceExcel'
 import logoUrl from '../assets/logo.png'
 
 // Proforma Invoice — the document CuiLing currently generates in JES and prints
@@ -148,7 +149,7 @@ export default function ProformaInvoicePrint() {
       { label: 'Item Code', value: r => r.l.item_code || '', text: true },
       { label: 'Description', value: r => r.l.description || '' },
       { label: 'Qty', value: qtyOf },
-      { label: 'Unit', value: r => (r.charge ? '' : (r.l.unit || '')) },
+      { label: 'Unit', value: r => (r.charge ? '' : (r.l.unit || 'pcs')) },
       ...(withPrices ? [
         { label: `Unit Price (${cur})`, value: upOf },
         { label: `Amount (${cur})`, value: r => (r.charge ? upOf(r) : (parseFloat(r.l.qty_ordered) || 0) * upOf(r)) },
@@ -281,6 +282,7 @@ export default function ProformaInvoicePrint() {
       `}</style>
 
       <button className="print-btn" onClick={() => window.print()}>Print / Save as PDF</button>
+      <button className="print-btn" onClick={() => downloadOrderInvoiceExcel(order, lines, 'proforma', { subtotal, chargesTotal, discountAmount, total })}>Download Excel</button>
 
       {/* CSV of the line table (XiangXia, 2026-07-23). Two buttons rather than a
           checkbox so the choice is one click and, more importantly, so the
@@ -375,7 +377,7 @@ export default function ProformaInvoicePrint() {
                 )}
                 <td className="pi-code">{l.item_code || '—'}</td>
                 <td className="desc">{l.description || '—'}</td>
-                <td className="r">{qty.toLocaleString()}{l.unit ? ` ${l.unit}` : ''}</td>
+                <td className="r">{qty.toLocaleString()}{` ${l.unit || 'pcs'}`}</td>
                 <td className="r">{up.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="r">{(qty * up).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>

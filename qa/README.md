@@ -153,3 +153,7 @@ pdftoppm -scale-to 1400 -png /tmp/quote-units.pdf /tmp/quote-units
 ### Excel quotation units
 
 `npm run test:quote-excel` clicks the actual QuoteExport Excel download in an offline DOM, then opens the generated XLSX with ExcelJS. It checks all seven selected units, numeric quantities/prices, every tier, decimal/zero quantities, legacy pcs fallback and unchanged sheet structure. `QUOTE_EXCEL_EVIDENCE=/absolute/path.xlsx` saves the mixed-unit fixture for visual verification. These checks run before builds and in GitHub Actions.
+
+### Proforma and sales invoice units
+
+`npm run test:invoice-units` renders the real admin PI/SI and customer invoice print pages with offline Firestore reads. It clicks each actual Excel download, reopens the XLSX, and checks all seven units, numeric quantities/prices/amounts, charges, discounts, sales accounting adjustments, legacy pcs defaults, quote-to-order propagation, PI priced/unpriced CSV and customer ownership refusal. Historical ERP lines without unit evidence remain unspecified. `INVOICE_EVIDENCE_DIR=/absolute/directory` saves the actual generated HTML/XLSX fixtures. Runs before builds and in GitHub Actions.

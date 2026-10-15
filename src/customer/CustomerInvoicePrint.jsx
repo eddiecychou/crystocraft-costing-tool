@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import ExcelJS from 'exceljs'
+import { downloadInvoiceExcel, orderInvoiceLines } from '../invoiceExcel'
 import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
 import { myInvoiceDetail } from '../customerOrderHistoryApi'
 import { doc, getDoc } from 'firebase/firestore'
@@ -55,8 +55,7 @@ export default function CustomerInvoicePrint({ profile }) {
             no: o.erp_si_no || o.erp_so_no, uc: orderUc(o), date: o.invoice_date || o.invoiced_at || o.order_date,
             currency: o.currency || 'USD', customer_po: o.customer_po, status: null,
           })
-          setLines(ls.filter(l => (parseFloat(l.qty_ordered) || 0) > 0 || (parseFloat(l.unit_price) || 0) !== 0)
-            .map(l => ({ item_code: l.item_code, description: l.description, qty: l.qty_ordered, unit_price: l.unit_price, amount: (parseFloat(l.qty_ordered) || 0) * (parseFloat(l.unit_price) || 0) })))
+          setLines(orderInvoiceLines(ls))
           setTotals(computeOrderTotals(o, ls))
         } else {
           const { header: h, lines: ls } = await myInvoiceDetail(code)
@@ -99,26 +98,12 @@ export default function CustomerInvoicePrint({ profile }) {
   const discountAmount = isApp ? totals?.discountAmount : 0
   const chargesTotal = isApp ? totals?.chargesTotal : 0
 
-  async function downloadExcel() {
-    const wb = new ExcelJS.Workbook()
-    const ws = wb.addWorksheet('Invoice')
-    ws.addRow(['Invoice No.', header.no])
-    ws.addRow(['UC#', header.uc || ''])
-    ws.addRow(['Date', fmtDate(header.date)])
-    ws.addRow(['Currency', cur])
-    ws.addRow([])
-    ws.addRow(['Item Code', 'Description', 'Qty', 'Unit Price', 'Amount']).font = { bold: true }
-    lines.forEach(l => ws.addRow([l.item_code || '', l.description || '', Number(l.qty) || 0, Number(l.unit_price) || 0, Number(l.amount) || 0]))
-    ws.addRow([])
-    ws.addRow(['', '', '', 'Total', Number(total) || 0]).font = { bold: true }
-    ws.columns.forEach(c => { c.width = 22 })
-    const buffer = await wb.xlsx.writeBuffer()
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `${pdfFileTitle([header.no || 'SI', header.uc || null])}.xlsx`
-    a.click()
-    URL.revokeObjectURL(a.href)
+  function downloadExcel() {
+    const summary = [['Subtotal', subtotal]]
+    if (discountAmount) summary.push(['Discount', -discountAmount])
+    if (chargesTotal) summary.push(['Charges', chargesTotal])
+    summary.push(['Total', total])
+    return downloadInvoiceExcel({number:header.no, uc:header.uc, date:fmtDate(header.date), currency:cur, lines, summary})
   }
 
   if (loading) return <p style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading…</p>
@@ -237,8 +222,8 @@ export default function CustomerInvoicePrint({ profile }) {
               <td>{i + 1}</td>
               <td className="si-code">{l.item_code || '—'}</td>
               <td className="desc">{l.description || '—'}</td>
-              <td className="r">{(Number(l.qty) || 0).toLocaleString()}</td>
-              <td className="r">{(Number(l.unit_price) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td className="r">{l.qty > 0 ? `${Number(l.qty).toLocaleString()}${l.unit ? ` ${l.unit}` : ''}` : ''}</td>
+              <td className="r">{l.unit_price == null ? '' : Number(l.unit_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               <td className="r">{(Number(l.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             </tr>
           ))}
