@@ -27,11 +27,10 @@ pushes and pull requests, with a manual Run workflow option. See
 `.github/workflows/product-search.yml`. Its first Ubuntu/Node20 run passed:
 https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/38706116158
 
-The workflow was enabled through the connected GitHub app. The local Mac's
-fine-grained token still needs repository `Workflows: Read and write` (alongside
-existing `Contents: Read and write`) for future local edits to workflow files.
-Ordinary code pushes and existing Actions runs already work. No account/token
-permissions were changed. The suite checks component behavior, not visual
+The workflow was enabled through the connected GitHub app. The owner later
+authorized adding `Workflows: Read and write` to the Mac's `portal-macbookpro`
+fine-grained token; it is now saved alongside the existing code read/write
+permission. The token's existing repository scope and expiry were preserved. The suite checks component behavior, not visual
 layout, real login or Firebase rules; release verification below remains
 required when publishing an app.
 

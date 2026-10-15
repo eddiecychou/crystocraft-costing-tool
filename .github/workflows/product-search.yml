@@ -15,6 +15,7 @@ on:
       - 'package-lock.json'
       - '.github/workflows/product-search.yml'
   workflow_dispatch:
+# Regression checks need read-only repository access and no project secrets.
 permissions:
   contents: read
 jobs:

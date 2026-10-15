@@ -20,3 +20,10 @@ Workflow `.github/workflows/product-search.yml` created on main through the alre
 First real run **PASS**: https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/38706116158 — run38706116158/job116325844981 completed successfully, including clean npm ci and the search suite.
 
 Read-only credential audit confirmed the local Git credential belongs to eddiecychou, is a fine-grained PAT and is stored through macOS Keychain. Its workflow-edit permission remains limited. Owner action for future local workflow edits: edit the existing fine-grained token's repository permissions, retain Contents read/write and grant Workflows read/write for this repo; save. The connected GitHub app enabled the current workflow without changing token permissions. Branch protection settings are unchanged.
+
+
+## Local workflow-push permission restored — 15 October 2026
+
+Owner explicitly authorized adding and saving Workflows read/write on `portal-macbookpro`, after being informed that its existing scope covers all owned repositories. GitHub confirmed the update; reopening the token showed Read and Write access to code and workflows. Existing code permission, repository scope and expiration were preserved. No token value was regenerated, copied or displayed.
+
+A comment-only workflow update documenting the CI job's read-only/no-secret design is included with this record to verify an ordinary local Git push through the existing macOS Keychain credential. Commit uses `[skip netlify]`; no application or rules deployment.
