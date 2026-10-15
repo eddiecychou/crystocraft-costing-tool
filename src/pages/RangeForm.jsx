@@ -2,19 +2,20 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage, auth, authHeader } from '../firebase'
+import { db, storage, auth } from '../firebase'
 import { useCan } from '../access'
 import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
   RANGE_BODY_TYPES, designNumber, brandLetter, bodyLetter,
-  normGallery, normVideos, normBlogLinks, MARKETING_DESC_MAXLEN,
+  normGallery, normVideos, normBlogLinks,
 } from '../constants'
 import { resizeToJpeg } from '../imageResize'
 import { serializedColourScope } from '../rangeBomScope'
 import { catalogueUploadMetadata } from '../catalogueImagePolicy'
 import { enhanceProductImage } from '../enhanceImage'
 import ManualAdjust from '../components/ManualAdjust'
+import MarketingCopyEditor from '../components/MarketingCopyEditor'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
 import BlogLinksEditor from '../components/BlogLinksEditor'
 import CrystalBomEditor from '../components/CrystalBomEditor'
@@ -35,7 +36,7 @@ import { useCrystals } from '../crystals'
 import { normaliseCrystalBom, emptyCrystalBom } from '../crystalBom'
 import { useProductDefaults } from '../useProductDefaults'
 import { imageDownloadUrl } from '../imageDownloadUrl'
-import { Puzzle, Gem, Check, Download, Plus, X, Sparkles, RotateCcw, AlertTriangle } from 'lucide-react'
+import { Puzzle, Gem, Check, Download, Plus, X, Sparkles, AlertTriangle } from 'lucide-react'
 
 // Detect whether the AI has bleached product colours (see ImageGallery.jsx for
 // the same function used in the corp-gift flow).
@@ -474,15 +475,6 @@ export default function RangeForm() {
   const [pickerFor, setPickerFor] = useState(null)
   const [pickerUrl, setPickerUrl] = useState('')
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
-  // AI marketing-copy writer (mirrors the corporate-gift product form)
-  const [aiLoading, setAiLoading]   = useState(false)
-  const [aiError, setAiError]       = useState('')
-  const [aiGuide, setAiGuide]       = useState('')
-  const [guideOpen, setGuideOpen]   = useState(false)
-  const [rewriteOpen, setRewriteOpen]       = useState(false)
-  const [rewriteGuide, setRewriteGuide]     = useState('')
-  const [rewriteLoading, setRewriteLoading] = useState(false)
-  const [rewriteError, setRewriteError]     = useState('')
   const { colors: libColors, setColors: setLibColors } = useCrystalColors()
   const colorLookup = colorMap(libColors)
   const { components: libComponents } = useComponents()
@@ -712,61 +704,6 @@ export default function RangeForm() {
       crystal_type: form.crystal_type,
       finishes,
       heroImage,
-    }
-  }
-
-  // The visible "name" of a range product is entered in the Description field
-  // (there is no separate design-name input), so AI writing keys off either.
-  // `form` is null while an existing product is still loading (before the
-  // `if (!form) return` guard below) — this line runs on every render, so it
-  // must tolerate null (V7.7.1 lesson: hooks/top-level consts run before guards).
-  const aiName = (form?.design_name || form?.description || '').trim()
-
-  async function handleGenerateCopy() {
-    if (!aiName) return
-    setAiLoading(true); setAiError('')
-    try {
-      const res = await fetch('/api/generate-marketing-copy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-        body: JSON.stringify({ product: aiProductPayload(), source: 'range', instructions: aiGuide.trim() }),
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      const desc = (data.marketing_description || '').slice(0, MARKETING_DESC_MAXLEN)
-      setForm(f => ({ ...f, marketing_description: desc }))
-    } catch (err) {
-      setAiError(err.message || 'Generation failed — please try again.')
-    } finally {
-      setAiLoading(false)
-    }
-  }
-
-  async function handleRewrite() {
-    if (!rewriteGuide.trim()) return
-    setRewriteLoading(true); setRewriteError('')
-    try {
-      const res = await fetch('/api/rewrite-section', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-        body: JSON.stringify({
-          section_type: 'marketing_description',
-          body: form.marketing_description,
-          guidance: rewriteGuide,
-          context: `Crystocraft range design: ${form.design_name || form.description}\nType: ${form.design_type || form.product_type}\nSpec: ${form.description}`,
-          max_chars: MARKETING_DESC_MAXLEN,
-        }),
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      // Slice as a safety net — same as handleGenerateCopy. The textarea's
-      // maxLength only limits typing, not a programmatic set.
-      setForm(f => ({ ...f, marketing_description: (data.body || '').slice(0, MARKETING_DESC_MAXLEN) }))
-      setRewriteOpen(false); setRewriteGuide('')
-    } catch (err) {
-      setRewriteError(err.message || 'Rewrite failed — please try again.')
-    } finally {
-      setRewriteLoading(false)
     }
   }
 
@@ -1166,65 +1103,8 @@ export default function RangeForm() {
             <textarea className="input min-h-[80px]" value={form.description} onChange={set('description')} />
           </div>
 
-          {/* Marketing description with AI writer (mirrors corporate-gift form) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="label mb-0">Marketing Description</label>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setGuideOpen(o => !o)}
-                  className="text-xs text-ink-60 hover:text-brand-600 transition-colors">
-                  {guideOpen ? 'Hide instructions' : '+ Instructions'}
-                </button>
-                <button type="button" onClick={handleGenerateCopy} disabled={!aiName || aiLoading}
-                  className="text-xs px-2.5 py-1 rounded-none bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
-                  {aiLoading ? 'Writing…' : <span className="inline-flex items-center gap-1"><Sparkles size={13} />AI Write</span>}
-                </button>
-              </div>
-            </div>
-            {guideOpen && (
-              <div className="mb-2">
-                <textarea className="input text-sm" rows={2}
-                  placeholder="Optional: tell the AI what to emphasise — e.g. highlight the Bohemia crystal, target collectors, keep it under 60 words…"
-                  value={aiGuide} onChange={e => setAiGuide(e.target.value)} />
-                <p className="text-xs text-ink-60 mt-1">
-                  {(form.gallery?.[0]?.url || form.variants?.find(v => v.image)?.image)
-                    ? 'A product image will be sent to the AI so it can describe what it sees.'
-                    : 'No image yet — add a gallery or variant image so the AI can also see the design.'}
-                </p>
-              </div>
-            )}
-            <textarea className="input min-h-[96px]" value={form.marketing_description} onChange={set('marketing_description')}
-              maxLength={MARKETING_DESC_MAXLEN}
-              placeholder="Customer-facing sell-copy for catalogues and the storefront… or click AI Write to generate" />
-            <p className="text-2xs text-ink-60 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
-            {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
-            {!aiName && <p className="text-xs text-ink-60 mt-1">Enter a description (product name) first to enable AI writing</p>}
-            {form.marketing_description && !rewriteOpen && (
-              <button type="button" onClick={() => setRewriteOpen(true)}
-                className="text-xs text-ink-60 hover:text-brand-600 transition-colors mt-1 flex items-center gap-1">
-                <RotateCcw size={13} />Rewrite with guidance
-              </button>
-            )}
-            {rewriteOpen && (
-              <div className="border border-brand-100 rounded-none p-3 bg-brand-50 space-y-2 mt-1">
-                <p className="text-xs font-medium text-brand-700">What should be different?</p>
-                <textarea className="input text-sm w-full" rows={2}
-                  placeholder="e.g. More focused on collectors, shorter, emphasise the crystal sparkle…"
-                  value={rewriteGuide} onChange={e => setRewriteGuide(e.target.value)} autoFocus />
-                {rewriteError && <p className="text-xs text-red-500">{rewriteError}</p>}
-                <div className="flex gap-2">
-                  <button type="button" onClick={handleRewrite} disabled={rewriteLoading || !rewriteGuide.trim()}
-                    className="text-xs px-3 py-1.5 rounded-none bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
-                    {rewriteLoading ? 'Rewriting…' : <span className="inline-flex items-center gap-1"><RotateCcw size={13} />Rewrite</span>}
-                  </button>
-                  <button type="button" onClick={() => { setRewriteOpen(false); setRewriteGuide('') }}
-                    className="text-xs px-3 py-1.5 rounded-none border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <MarketingCopyEditor product={aiProductPayload()} source="range" value={form.marketing_description || ''}
+            onChange={text => setForm(f => ({ ...f, marketing_description: text }))} />
 
           <VideoUrlsEditor videos={form.videos} onChange={v => setForm(f => ({ ...f, videos: v }))} />
 

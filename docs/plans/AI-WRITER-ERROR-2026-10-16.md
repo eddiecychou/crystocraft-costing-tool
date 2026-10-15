@@ -1,0 +1,11 @@
+# V8.18 product AI writer: malformed JSON and duplicate guidance
+
+Screenshot error matches a confirmed server defect: rewrite-section returned the model's raw text as application/json after parsing failed, causing the client res.json() to display an unterminated-string parser exception. It only used parts[0], did not check finishReason, and lacked a response schema. The exact provider finish reason for the old screenshot is not available; truncation/thinking consumption is a plausible cause, not asserted as observed.
+
+The service now requests a response schema, excludes thought parts and joins all visible text, requires a completed STOP candidate with valid nonempty body and optional blog heading, and returns only validated serialized fields. Invalid/truncated responses fall back to the next configured model; exhaustion produces a friendly JSON error. Output budget is increased and thinking disabled consistently with the existing generate-marketing-copy path. The marketing 300-character backstop reserves space for its ellipsis. Authorization remains unchanged. Official API reference: https://ai.google.dev/api/generate-content.
+
+Corporate ProductForm and RangeForm now share MarketingCopyEditor: one optional AI instructions field and one AI Write/AI Rewrite action determined by whether copy exists. Generated text is a draft preview with Use this copy / Discard. Current copy changes only after acceptance; publishing still requires the product save. Errors keep current copy and instructions. Client rejects non-JSON, empty, invalid-type, over-limit and failed-HTTP responses. Blog rewrite heading compatibility retained.
+
+Thirteen new network-mocked real-handler/component regressions plus existing90 =103passed,0failed. Build8.30s, no-undef lint and diff checks pass. CI includes the new suite and both edge files in path triggers. Chrome local preview reproduced malformed JSON, confirmed preserved current copy/guidance, successful retry/approval and the same editor in both catalogue modes. Screenshot /private/tmp/v818-evidence/ai-writer-draft-preview.png. These are fixture tests, not a live Gemini test. No catalogue records edited.
+
+Candidate verification pending; no main push/production release authorized for this new request yet. Follow docs/skills/RELEASE-WORKFLOW.md before publication.

@@ -1,3 +1,4 @@
+import { rewriteResult } from './lib/rewriteResult.js'
 import { requireModule } from './lib/auth.js'
 
 export default async function handler(req) {
@@ -9,13 +10,22 @@ export default async function handler(req) {
   const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
   if (!GEMINI_API_KEY) return new Response('Missing API key', { status: 500 })
 
-  const { section_type, heading, body, guidance, context, max_chars } = await req.json()
+  const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+  let input
+  try { input = await req.json() } catch { return json({ error: 'Please send a valid rewrite request.' }, 400) }
+  const { section_type, heading, body, guidance, context, max_chars } = input || {}
+  if (typeof body !== 'string' || !body.trim() || typeof guidance !== 'string' || !guidance.trim()
+    || (heading !== undefined && heading !== null && typeof heading !== 'string')
+    || (context !== undefined && typeof context !== 'string')) {
+    return json({ error: 'Current copy and rewrite instructions are required.' }, 400)
+  }
 
   // Optional hard length budget (chars). ProductForm/RangeForm pass this for the
   // marketing_description field, which has a 300-char textarea limit — without
   // it the "3–4 sentences" guidance below routinely overshoots and the client
   // has to chop the result mid-sentence.
-  const budget = Number(max_chars) > 0 ? Math.floor(Number(max_chars)) : null
+  const requestedBudget = Number(max_chars)
+  const budget = section_type === 'marketing_description' ? 300 : Number.isFinite(requestedBudget) && requestedBudget > 0 ? Math.max(1, Math.floor(requestedBudget)) : null
 
   const prompt = `You are an expert SEO content writer for Crystocraft, a premium Hong Kong corporate gift manufacturer.
 
@@ -38,6 +48,7 @@ ${budget
 - Tone: confident and editorial, like a premium brand magazine — not a sales brochure.
 - NEVER start with "Elevate", "Discover", "Introducing", "Transform", or "Unleash".
 - Do NOT mention prices.
+- Base factual claims only on the supplied product context and user guidance. Do not invent specifications, tests, certifications or performance claims.
 ${heading !== undefined ? '- Also rewrite the heading if the guidance calls for it, otherwise keep it similar.' : ''}
 
 Return ONLY a valid JSON object:
@@ -52,10 +63,14 @@ Return ONLY a valid JSON object:
     try {
       const genConfig = {
         temperature: 0.75,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048,
+        responseSchema: { type: 'OBJECT', properties: {
+          ...(heading !== undefined ? { heading: { type: 'STRING', nullable: true } } : {}),
+          body: { type: 'STRING' },
+        }, required: ['body', ...(heading !== undefined ? ['heading'] : [])] },
         responseMimeType: 'application/json',
       }
-      if (model.includes('2.5')) genConfig.thinkingConfig = { thinkingBudget: 0 }
+      if (model.includes('2.5') || model.includes('3.8')) genConfig.thinkingConfig = { thinkingBudget: 0 }
 
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
@@ -67,30 +82,12 @@ Return ONLY a valid JSON object:
       )
       if (!res.ok) continue
       const data = await res.json()
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-      if (!text) continue
-
-      // When a hard budget was requested, enforce it server-side too: parse
-      // the JSON, trim `body` at the last word boundary within the limit, and
-      // re-serialise. Same backstop generate-marketing-copy.js applies. If the
-      // model didn't return parseable JSON, fall through to the raw text.
-      if (budget) {
-        try {
-          const parsed = JSON.parse(text)
-          if (typeof parsed.body === 'string' && parsed.body.length > budget) {
-            let b = parsed.body.slice(0, budget).replace(/\s+\S*$/, '').trimEnd()
-            if (!/[.!?]$/.test(b)) b += '…'
-            parsed.body = b
-          }
-          return new Response(JSON.stringify(parsed), { headers: { 'Content-Type': 'application/json' } })
-        } catch { /* not JSON — return as-is below */ }
-      }
-
-      return new Response(text, { headers: { 'Content-Type': 'application/json' } })
+      const parsed = rewriteResult(data, { budget, withHeading: heading !== undefined })
+      return json(parsed)
     } catch {}
   }
 
-  return new Response(JSON.stringify({ error: 'Rewrite failed — please try again.' }), {
+  return new Response(JSON.stringify({ error: 'The AI could not finish a valid rewrite. Please try again; your current copy has been kept.' }), {
     status: 500, headers: { 'Content-Type': 'application/json' },
   })
 }

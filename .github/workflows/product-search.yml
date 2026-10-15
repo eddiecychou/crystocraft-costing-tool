@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - 'src/**'
+      - 'netlify/edge-functions/rewrite-section.js'
+      - 'netlify/edge-functions/lib/rewriteResult.js'
       - 'qa/**'
       - 'package.json'
       - 'package-lock.json'
@@ -10,6 +12,8 @@ on:
   pull_request:
     paths:
       - 'src/**'
+      - 'netlify/edge-functions/rewrite-section.js'
+      - 'netlify/edge-functions/lib/rewriteResult.js'
       - 'qa/**'
       - 'package.json'
       - 'package-lock.json'
@@ -36,3 +40,4 @@ jobs:
       - run: npm run test:quote-excel
       - run: npm run test:invoice-units
       - run: npm run test:packing-po
+      - run: npm run test:ai-writer
