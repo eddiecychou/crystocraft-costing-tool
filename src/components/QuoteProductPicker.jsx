@@ -3,6 +3,7 @@ import { collection, getDocs, orderBy, query } from 'firebase/firestore'
 import { Check, Package } from 'lucide-react'
 import { db } from '../firebase'
 import { rangeQuoteChoices } from '../rangeQuote'
+import { filterQuoteChoices } from '../quoteProductSearch'
 
 export default function QuoteProductPicker({ existingKeys, onAdd, onClose }) {
   const [products, setProducts] = useState([])
@@ -29,12 +30,7 @@ export default function QuoteProductPicker({ existingKeys, onAdd, onClose }) {
   }, [catalogue])
 
   const candidates = catalogue === 'products' ? products : rangeProducts
-  const term = search.trim().toLowerCase()
-  const filtered = candidates.filter(p => {
-    if (existingKeys.includes(p.key)) return false
-    return !term || [p.name, p.category, p.sku, p.detail, p.design_code]
-      .some(value => String(value || '').toLowerCase().includes(term))
-  })
+  const filtered = filterQuoteChoices(candidates, search, existingKeys)
 
   function toggle(p) {
     setSelected(s => s.some(x => x.key === p.key) ? s.filter(x => x.key !== p.key) : [...s, p])
@@ -79,7 +75,7 @@ export default function QuoteProductPicker({ existingKeys, onAdd, onClose }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-ink">{p.name}</p>
-                  <p className="text-xs text-ink-60 break-words">{p.source === 'range_products' ? [p.sku || p.detail, p.category].filter(Boolean).join(' · ') : p.category}</p>
+                  <p className="text-xs text-ink-60 break-words">{p.source === 'range_products' ? [p.sku, p.detail, p.category].filter(Boolean).join(' · ') : p.category}</p>
                   {p.source === 'range_products' && <p className="text-xs text-ink-60">{Number(p.usdPrice) > 0 ? `Wholesale USD ${Number(p.usdPrice).toFixed(2)}` : 'No listed price — enter one in quote'}</p>}
                 </div>
                 {isSelected && <Check size={18} className="text-brand-600" />}

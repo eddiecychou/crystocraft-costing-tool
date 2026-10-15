@@ -5,6 +5,7 @@ import QuoteProductPicker from '../src/components/QuoteProductPicker.jsx'
 function Preview() {
   const [added, setAdded] = useState([])
   return <>
+    <pre data-testid="snapshots">{JSON.stringify(added.map(p => ({key:p.key, sku:p.sku, price:p.usdPrice})))}</pre>
     <p data-testid="added">{added.map(p => p.key).join(',')}</p>
     <QuoteProductPicker existingKeys={['range_products:r1:A0002-001-C']} onAdd={setAdded} onClose={() => {}} />
   </>

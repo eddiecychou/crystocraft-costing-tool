@@ -1,6 +1,11 @@
 // A Gift Range design can have several differently priced SKUs. A quote must
 // select and snapshot one variant, never silently price the whole design from
 // whichever variant happens to be first.
+// SKU is not unique: imported rows can share a SKU but have different brands/prices.
+// Preserve the source variant index already snapshotted on quote lines.
+const rangeChoiceKey = (id, sku, index) =>
+  `range_products:${id}:${sku || `variant-${index ?? 0}`}${Number.isInteger(index) ? `:index-${index}` : ''}`
+
 const imageUrl = image => typeof image === 'string' ? image : image?.url || ''
 
 export function rangeQuoteChoices(product) {
@@ -19,7 +24,9 @@ export function rangeQuoteChoices(product) {
     const detail = variant?.description || [variant?.brand_name, variant?.plating_name, variant?.crystal_name].filter(Boolean).join(' · ')
     return {
       source: 'range_products',
-      key: `range_products:${product.id}:${sku || `variant-${index}`}`,
+      key: rangeChoiceKey(product.id, sku, variant ? index : null),
+      legacyKey: `range_products:${product.id}:${sku || `variant-${index}`}`,
+      design_code: product.design_code || '',
       productId: product.id,
       variantIndex: variant ? index : null,
       sku,
@@ -37,7 +44,7 @@ export function rangeQuoteChoices(product) {
 export function quoteItemKey(item) {
   if (!item.product_id) return null
   return item.product_collection === 'range_products'
-    ? `range_products:${item.product_id}:${item.product_variant_sku || `variant-${item.product_variant_index ?? 0}`}`
+    ? rangeChoiceKey(item.product_id, item.product_variant_sku, item.product_variant_index)
     : `products:${item.product_id}`
 }
 

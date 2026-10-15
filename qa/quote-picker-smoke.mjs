@@ -64,7 +64,7 @@ try {
     await page.getByRole('tab', { name: 'Corporate Gifts' }).click()
     await page.getByRole('button', { name: /Desk Clock/ }).click()
     await page.getByRole('button', { name: 'Add 2 Products' }).click()
-    check(`${width}: mixed catalogues selected`, (await page.getByTestId('added').textContent()) === 'range_products:r1:D0002-001-C,products:p1')
+    check(`${width}: mixed catalogues selected`, (await page.getByTestId('added').textContent()) === 'range_products:r1:D0002-001-C:index-0,products:p1')
     check(`${width}: no page overflow`, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     check(`${width}: no browser error`, errors.length === 0)
     if (width === 1280) await page.locator('[role="tablist"]').first().locator('..').locator('..').screenshot({ path: '/private/tmp/quote-picker-desktop.png' })
