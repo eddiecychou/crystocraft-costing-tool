@@ -1,4 +1,4 @@
-# B0016 Figurine Gifts MCP (isolated, review-gated)
+# B0016 Crystocraft Range MCP (isolated, review-gated)
 
 ## Latest implementation — 15 October 2026 (read/dry-run live, writes disabled)
 

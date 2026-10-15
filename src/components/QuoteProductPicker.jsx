@@ -25,7 +25,7 @@ export default function QuoteProductPicker({ existingKeys, onAdd, onClose }) {
     request.then(snap => {
       if (catalogue === 'products') setProducts(snap.docs.map(d => ({ id: d.id, ...d.data(), source: 'products', key: `products:${d.id}` })))
       else setRangeProducts(snap.docs.flatMap(d => rangeQuoteChoices({ id: d.id, ...d.data() })))
-    }).catch(() => setErrors(s => ({ ...s, [catalogue]: `${catalogue === 'products' ? 'Corporate gifts' : 'Gift Range'} could not be loaded.` })))
+    }).catch(() => setErrors(s => ({ ...s, [catalogue]: `${catalogue === 'products' ? 'Corporate gifts' : 'Crystocraft Range'} could not be loaded.` })))
       .finally(() => setLoading(s => ({ ...s, [catalogue]: false })))
   }, [catalogue])
 
@@ -43,7 +43,7 @@ export default function QuoteProductPicker({ existingKeys, onAdd, onClose }) {
         <div className="p-4 border-b border-warm-grey">
           <h2 className="text-ink mb-3">Add Products to Quote</h2>
           <div className="grid grid-cols-2 gap-2 mb-3" role="tablist" aria-label="Product catalogue">
-            {[["products", "Corporate Gifts"], ["range_products", "Gift Range"]].map(([key, label]) => (
+            {[["products", "Corporate Gifts"], ["range_products", "Crystocraft Range"]].map(([key, label]) => (
               <button key={key} type="button" role="tab" aria-selected={catalogue === key}
                 onClick={() => { setCatalogue(key); setSearch('') }}
                 className={`px-3 py-2 text-xs border rounded-none focus-visible:ring-2 focus-visible:ring-brand-300 ${catalogue === key ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-warm-grey text-ink-60 hover:bg-ivory'}`}>

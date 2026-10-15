@@ -512,7 +512,7 @@ export default function QuoteDetail() {
           )}
           <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
-        {incompleteRangeCount > 0 && <p className="text-xs text-amber-700 mt-2">{incompleteRangeCount} Gift Range line{incompleteRangeCount === 1 ? '' : 's'} need a quantity and a positive price before export or conversion to PI.</p>}
+        {incompleteRangeCount > 0 && <p className="text-xs text-amber-700 mt-2">{incompleteRangeCount} Crystocraft Range line{incompleteRangeCount === 1 ? '' : 's'} need a quantity and a positive price before export or conversion to PI.</p>}
       </div>
 
       {/* Items */}
@@ -790,7 +790,7 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
               <p className="font-medium text-sm text-ink">{item.product_name}</p>
             )}
             <p className="text-xs text-ink-60">
-              {item.is_custom ? <span className="text-amber-600">Custom item — not in catalogue</span> : item.product_collection === 'range_products' ? `Gift Range · ${item.product_category}` : item.product_category}
+              {item.is_custom ? <span className="text-amber-600">Custom item — not in catalogue</span> : item.product_collection === 'range_products' ? `Crystocraft Range · ${item.product_category}` : item.product_category}
               {recurringCost != null && (
                 <span className="ml-2 text-ink-60">
                   · Cost: {currency} {recurringCost.toFixed(2)}
@@ -960,7 +960,7 @@ function ProductImagePicker({ productId, productCollection, itemId, customerId, 
             ...(p.variants || []).map(v => v.image)].filter(Boolean)
           setImages([...new Set(urls)].map((url, i) => ({ id: String(i), file_url: url })))
         })
-        .catch(() => setImageError('Gift Range images could not be loaded.'))
+        .catch(() => setImageError('Crystocraft Range images could not be loaded.'))
         .finally(() => setLoading(false))
       return
     }

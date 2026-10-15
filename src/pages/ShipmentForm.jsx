@@ -284,7 +284,7 @@ export default function ShipmentForm() {
       const itemSnap = await getDocs(collection(db, 'client_quotes', fromQuoteId, 'items'))
       if (!alive) return
       if (itemSnap.docs.some(d => hasIncompleteRangeLine(d.data()))) {
-        setFromQuoteError('A Gift Range line has no quantity or positive price. Complete the quote before converting it to a PI.')
+        setFromQuoteError('A Crystocraft Range line has no quantity or positive price. Complete the quote before converting it to a PI.')
         return
       }
       setHeader(h => ({

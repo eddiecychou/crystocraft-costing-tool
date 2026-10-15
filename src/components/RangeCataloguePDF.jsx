@@ -190,13 +190,13 @@ function ProductCard({ p }) {
  */
 export default function RangeCataloguePDF({ account, currency, validity, groups, generatedAt }) {
   return (
-    <Document title={`Crystocraft Catalogue${account ? ` — ${account}` : ''}`} author="Crystocraft">
+    <Document title={`Crystocraft Range Catalogue${account ? ` — ${account}` : ''}`} author="Crystocraft">
       {/* Cover */}
       <Page size="A4" style={s.page}>
         <View style={s.cover}>
           <Image style={s.coverLogo} src={logoUrl} />
           <Text style={s.coverTitle}>PRODUCT CATALOGUE</Text>
-          <Text style={s.coverSub}>Figurine Range</Text>
+          <Text style={s.coverSub}>Crystocraft Range</Text>
           {account ? (
             <>
               <Text style={s.coverFor}>Prepared for</Text>

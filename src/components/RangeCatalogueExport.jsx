@@ -321,7 +321,7 @@ export default function RangeCatalogueExport({ onClose }) {
         />,
       ).toBlob()
 
-      const stem = ['Crystocraft Catalogue', profile?.name || profile?.email, new Date().toISOString().slice(0, 10)]
+      const stem = ['Crystocraft Range Catalogue', profile?.name || profile?.email, new Date().toISOString().slice(0, 10)]
         .filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g, '-')
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -355,7 +355,7 @@ export default function RangeCatalogueExport({ onClose }) {
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="text-base text-ink inline-flex items-center gap-2">
-            <BookOpen size={16} className="text-brand-600" /> Full range catalogue
+            <BookOpen size={16} className="text-brand-600" /> Crystocraft Range catalogue
           </h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
         </div>

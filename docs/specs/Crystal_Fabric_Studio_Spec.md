@@ -270,7 +270,7 @@ flow.
   and read-only legacy refs, no editing UI.
 - **Sample-request CTA, not a price band** — per §4's standing call that a
   physical sample is the actual conversion event. Adds a `type:
-  'swatch_sample'` line to the SAME enquiry cart Corporate/Figurine Gifts
+  'swatch_sample'` line to the SAME enquiry cart Corporate/Crystocraft Range
   use (`useCart`, `store.jsx`), not a direct Firestore submit — first
   version submitted straight to Firestore on its own and, owner 2026-08-11,
   didn't show up under the portal's Enquiry tab the way adding a product

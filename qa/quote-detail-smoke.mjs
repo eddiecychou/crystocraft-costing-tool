@@ -86,7 +86,7 @@ try {
   page.on('pageerror', error => errors.push(String(error)))
   await page.goto(`http://127.0.0.1:${server.address().port}/qa/quote-detail-preview.html`)
   await page.getByRole('button', { name: '+ Add Products' }).click()
-  await page.getByRole('tab', { name: 'Gift Range' }).click()
+  await page.getByRole('tab', { name: 'Crystocraft Range' }).click()
   await page.getByRole('button', { name: /D0011-001-C/ }).waitFor()
   await page.getByRole('button', { name: /D0011-001-C/ }).click()
   await page.getByRole('button', { name: 'Add 1 Product' }).click()
@@ -97,7 +97,7 @@ try {
   check('priced line permits export', await page.getByRole('button', { name: 'Export', exact: true }).isEnabled())
 
   await page.getByRole('button', { name: '+ Add Products' }).click()
-  await page.getByRole('tab', { name: 'Gift Range' }).click()
+  await page.getByRole('tab', { name: 'Crystocraft Range' }).click()
   await page.getByRole('button', { name: /D0011-001-G/ }).click()
   await page.getByRole('button', { name: 'Add 1 Product' }).click()
   await page.getByText('Sacred Angel Freestand · D0011-001-G').waitFor()

@@ -716,7 +716,7 @@ export default function SupplierDetail() {
         <div className="card mb-6">
           <div className="px-5 py-4 border-b border-warm-grey">
             <h2 className="text-sm text-ink-80">
-              {t('Figurine Range Component Quotes')} <span className="text-ink-60 font-normal">({rangeQuotes.length})</span>
+              {t('Crystocraft Range Component Quotes')} <span className="text-ink-60 font-normal">({rangeQuotes.length})</span>
             </h2>
           </div>
 

@@ -24,7 +24,7 @@ export default function Components() {
     <div className="max-w-5xl mx-auto p-4 sm:p-6">
       <h1 className="text-xl mb-1">{t('Components')}</h1>
       <p className="text-sm text-ink-60 mb-4">
-        {t('Shared libraries for the Figurine range — the critical parts that drive the production promise, crystal colours (a display attribute), and crystal unit costs by size & brand.')}
+        {t('Shared libraries for the Crystocraft Range — the critical parts that drive the production promise, crystal colours (a display attribute), and crystal unit costs by size & brand.')}
       </p>
 
       <div className="flex gap-1 border-b border-ivory-dark mb-5 overflow-x-auto overflow-y-hidden whitespace-nowrap">

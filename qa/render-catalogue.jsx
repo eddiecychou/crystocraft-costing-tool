@@ -43,9 +43,9 @@ const groups = [{
 
 ReactPDF.render(
   <RangeCataloguePDF
-    account="Mascot USA" currency="USD"
-    validity="Prices valid 30 days from issue · USD"
-    groups={groups} generatedAt={new Date('2026-07-21')}
+    account="Catalogue QA sample" currency="USD"
+    validity="Layout sample only - not a price quotation"
+    groups={groups} generatedAt={new Date('2026-10-16')}
   />,
   process.argv[2],
 ).then(() => console.log('rendered ->', process.argv[2]))

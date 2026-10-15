@@ -617,7 +617,7 @@ export default function WooCatalogue() {
             ) : (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
-                  <Stat label="In figurine range" value={matchModel.counts.figurine} tone="green" />
+                  <Stat label="In Crystocraft Range" value={matchModel.counts.figurine} tone="green" />
                   <Stat label="In corp gifts" value={matchModel.counts.corp} tone="green" />
                   <Stat label="In finished goods" value={matchModel.counts.b2c} />
                   <Stat label="Not in any catalogue" value={matchModel.counts.unmatched} tone={matchModel.counts.unmatched ? 'amber' : undefined} />

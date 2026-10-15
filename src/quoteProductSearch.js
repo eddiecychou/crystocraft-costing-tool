@@ -1,4 +1,4 @@
-// Old Gift Range lines without a variant index only identify a SKU. Keep them
+// Old Crystocraft Range lines without a variant index only identify a SKU. Keep them
 // excluded conservatively; indexed lines exclude only the exact source variant.
 export function filterQuoteChoices(choices, search, existingKeys = []) {
   const existing = new Set(existingKeys)

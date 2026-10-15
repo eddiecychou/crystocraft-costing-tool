@@ -1,4 +1,4 @@
-// A Gift Range design can have several differently priced SKUs. A quote must
+// A Crystocraft Range design can have several differently priced SKUs. A quote must
 // select and snapshot one variant, never silently price the whole design from
 // whichever variant happens to be first.
 // SKU is not unique: imported rows can share a SKU but have different brands/prices.
@@ -32,7 +32,7 @@ export function rangeQuoteChoices(product) {
       sku,
       name,
       detail: detail || (variant ? `Variant ${index + 1}` : 'No variant / SKU'),
-      category: product.design_type || product.category || product.product_type || 'Gift Range',
+      category: product.design_type || product.category || product.product_type || 'Crystocraft Range',
       description: product.description || '',
       image: imageUrl(variant?.image) || galleryImage,
       usdPrice: variant?.ws_price_usd,
@@ -72,7 +72,7 @@ export function rangeQuoteItem(choice, quoteCurrency, rates) {
     product_description: choice.sku ? choice.detail : choice.description,
     hero_image: choice.image || null,
     product_unit: 'pcs',
-    // A Gift Range wholesale price is not an internal cost. Do not invent a
+    // A Crystocraft Range wholesale price is not an internal cost. Do not invent a
     // margin by reusing it as one; the costing model is variant-specific.
     unit_cost_hkd: null,
     tooling_cost_hkd: null,

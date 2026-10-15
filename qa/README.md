@@ -5,8 +5,8 @@ npm ci
 npm run test:product-search
 ```
 
-The suite renders the actual admin Figurine Gifts / Corp Gifts and customer
-Figurine Gifts / Corporate Gifts pages in JSDOM. Firebase, pricing feeds and
+The suite renders the actual admin Crystocraft Range / Corp Gifts and customer
+Crystocraft Range / Corporate Gifts pages in JSDOM. Firebase, pricing feeds and
 image/export widgets use local fixtures; the production search predicates,
 React row keys, category/status filters, URL constraints, storage, visibility
 screening and pagination run unchanged. No Firebase credentials are required;
