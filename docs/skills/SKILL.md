@@ -147,6 +147,8 @@ the fast path from a request to the exact code.
 - The proposal is one inactive Concept design with six explicit variants; seven `range_components` (shared metal + six colour panels, reusing C1) each reference their preferred supplier quote. The range document holds only BOM references. No B0016 records have been created. Never copy the Corporate Gift BOM shape or its HKD 62 selling price. The Corporate Gift Concept remains unchanged source provenance.
 - `B`, `000`, plating `G`, and any missing colour-library codes are review findings, not permission to alter codes or taxonomies. All live writes require a separate owner approval, dedicated modules-empty service identity, idempotent UUID, audit and phase-two write enablement.
 
+Saved catalogue filters use `src/hooks/useCatalogueFilter.js` + `src/catalogueFilter.js` across all four grids. Validate dynamic options only after a successful snapshot; repair obsolete saved choices without discarding valid ones during loading. Customer detail availability uses `src/customerAvailability.js`, never the private supply subscription/migration. Release evidence: `../plans/CATALOGUE-FILTER-PERMISSION-FIX-2026-10-15.md`.
+
 ### Catalogue — Figurine / Range (Crystocraft's own crystal line)
 - Pages: `Range.jsx`, `RangeForm.jsx`, `RangeCosting.jsx`, `RangeComponentForm.jsx`, `CatalogueBand.jsx`
 - Logic: `src/rangeCosting.js`, `src/rangeSku.js`, `src/newArrivals.js`, `src/frontPageFeatured.js`, `src/colourPreviewApi.js`

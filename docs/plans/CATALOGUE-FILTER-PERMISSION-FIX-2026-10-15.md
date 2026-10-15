@@ -39,4 +39,45 @@ Candidate 6ad06a626f697d5435e66963, app commit 541b024, served
 /assets/index-DCu4c36w.js, configuration probe HTTP 200.
 Fresh admin QA password login: dashboard/data/Settings, 294/294 figurines,
 227 filtered Figurines persist on refresh and reset to 294; 140 corporate gifts;
-no runtime errors. Customer and production gate evidence pending.
+no runtime errors. Fresh customer QA password login: /shop, 292 figurines,
+Angels filter 26 persists through detail navigation and clears back to All;
+136 corporate gifts. Previously failing Sacred Angel Freestand detail loads,
+refreshes and shows honest availability pending confirmation, with no runtime
+errors. Direct /settings redirects to /shop; no internal controls. Both roles
+signed out after candidate checks. Candidate screenshots are under
+/private/tmp/v818-evidence/filters-candidate-{admin,customer}.png.
+
+## Production verification — PASS
+
+Production deploy `6ad06b0ef2dd0a79247f10db`, release commit
+`44b3c583c8969fac044ae79d977aeca6f76c366f`, published 15 October 2026
+16:57 AEDT. Build marker V8.18 · 15 Oct, 16:56. Portal and default production
+hostname both serve `/assets/index-CRKTnIdM.js`; both configuration probes return
+HTTP 200. No Firestore/Storage rules were changed or deployed.
+
+Fresh real-page password sign-ins were repeated on the current production
+hostname https://ua-product-manager.netlify.app, in separate explicitly signed-out
+QA sessions; this avoids signing the owner out of portal.crystocraft.com. Both
+hostnames resolve to the same published deployment/bundle. Completed around
+17:01 AEDT, with no captured runtime errors for either role.
+
+- Admin claude-qa@crystocraft.com PASS: /dashboard, pipeline and Settings
+  navigation; 294/294 figurines; Figurines selection 227 survives refresh, clears
+  back to All; 140 corporate gifts, Fitness & Wellness survives refresh and
+  clears normally; correct admin shell persists. Screenshot:
+  /private/tmp/v818-evidence/filters-production-admin.png.
+- Approved customer customer-qa@crystocraft.com PASS: /shop and isolated QA
+  company; 292 figurines, Angels 26 survives product detail and return; All
+  restores the catalogue. Previously failing Sacred Angel Freestand detail and
+  refresh pass without a permission error or internal controls. Retired-stock
+  Sacred Angel(Hymn Book) correctly shows confirmation required rather than
+  falsely sold out; quantity remains available for an enquiry and no Infinity
+  is shown in page text. 136 corporate gifts; Fitness & Wellness 8 survives
+  refresh and clears normally. Direct /settings redirects to /shop. Screenshot:
+  /private/tmp/v818-evidence/filters-production-customer.png.
+
+Both QA sessions signed out after checks. No product saves, order submissions,
+price changes, invitations or account/permission changes during verification;
+normal login activity stamps only. Local fixture server stopped after testing.
+The evidence-only closure commit uses [skip netlify] to preserve this verified
+production build.
