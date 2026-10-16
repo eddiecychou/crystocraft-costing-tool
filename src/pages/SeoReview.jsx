@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, doc, onSnapshot, query, orderBy, limit, where, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
+import { sameReviewValue, reviewFieldValue } from '../domain/seoReview'
 import SeoValidationDetails from '../components/SeoValidationDetails'
 import { ClipboardCheck, Check, X, AlertTriangle, CircleSlash, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
@@ -102,7 +103,7 @@ export default function SeoReview() {
           throw new Error('This batch is no longer awaiting review. Reload the queue.')
         }
         // Avoid overwriting another reviewer's decisions from a stale screen.
-        if (JSON.stringify(current.data().items) !== JSON.stringify(sel.items)) {
+        if (!sameReviewValue(current.data().items, sel.items)) {
           throw new Error('Review decisions changed. Reload the queue before continuing.')
         }
         tx.update(ref, { items, ...extra })
@@ -291,7 +292,7 @@ export default function SeoReview() {
                           </thead>
                           <tbody className="divide-y divide-warm-grey">
                             {keys.map(k => {
-                              const b = k.startsWith('meta.') ? (before.meta || {})[k.slice(5)] : before[k]
+                              const b = reviewFieldValue(before, k)
                               return (
                                 <tr key={k}>
                                   <td className="py-1 pr-3 font-mono text-2xs text-ink-70 align-top break-all">{k}</td>

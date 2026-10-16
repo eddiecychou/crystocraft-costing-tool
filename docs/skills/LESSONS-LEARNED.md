@@ -1117,3 +1117,23 @@ No Workbench or WordPress files were modified. Producer claim integration and
 coordinated deployment are still required; a local green suite is not live proof.
 
 **Release closure (16 Oct, 12:58 AEDT):** e516a1c9 deployed as 6ad183af9c09894303c35bbc; 375 CI checks passed, fresh admin/customer sign-ins passed on candidate and production. DSH producer protocol-2 integration remains required; no WP/cache/Workbench changes were made. Evidence: docs/plans/DSH-INTEGRATION-FIXES-2026-10-16.md.
+
+## L-65 — JSON object order is not a Firestore review revision
+
+**Symptom:** Approve and Approve all passing always reported "Review decisions
+changed. Reload the queue before continuing" for an unchanged pending batch.
+
+**Root cause:** the stale-review guard compared JSON.stringify(items) from a
+listener with a transaction read. Firestore maps are unordered; semantically
+identical maps can enumerate keys differently. Our withdrawal UI tests never
+exercised approval with realistic map reordering, so they missed the regression.
+
+**Fix:** src/domain/seoReview.js compares actual values recursively while ignoring
+map key order and preserving array order, timestamps, numeric meaning and every
+reviewed field/decision/receipt. Transaction state guards still refuse stale,
+superseded and claimed work. The review diff also resolves flat dotted metadata,
+nested WP metadata, Woo meta_data and authored raw text, so valid baseline values
+are not displayed as blanks. The original reproduction test failed before this
+fix; real React click tests now cover Approve, bulk approval, Send to DSH and
+concurrent changed payloads/decisions/array order/state. Never verify an approval
+fix by approving an owner's live batch; use isolated data for state transitions.

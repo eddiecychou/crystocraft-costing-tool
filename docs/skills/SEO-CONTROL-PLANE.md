@@ -361,3 +361,14 @@ Metadata carrier permission covers nested meta paths; metadata-only brand checks
 skip visibly without exceptions while actual copy edits remain checked.
 
 **Release closure (16 Oct, 12:58 AEDT):** e516a1c9 deployed as 6ad183af9c09894303c35bbc; 375 CI checks passed, fresh admin/customer sign-ins passed on candidate and production. DSH producer protocol-2 integration remains required; no WP/cache/Workbench changes were made. Evidence: docs/plans/DSH-INTEGRATION-FIXES-2026-10-16.md.
+
+### 16 October approval regression correction
+
+Review transactions compare field VALUES through src/domain/seoReview.js, never
+JSON object serialization order. Arrays retain order and actual data/decisions/
+receipts/timestamps must match. Non-pending/superseded/claimed work remains locked.
+Diff baselines support flat dotted, WP nested and Woo metadata carriers; authored
+raw title/content/excerpt is displayed when available. Regression tests click
+Approve, Approve all passing and Send to DSH under reordered Firestore maps and
+prove stale changes still fail. Shared writer/validator artifacts and protocol 2
+are unchanged; no DSH re-vendoring is required for this UI correction.
