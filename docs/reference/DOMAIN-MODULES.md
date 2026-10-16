@@ -183,3 +183,7 @@ collection it owns (cross-reference FIRESTORE-COLLECTIONS.md), its main
 exports, and anything a future reader would otherwise have to discover by
 tracing call sites (like `linkContactToCustomer`'s "why threads aren't
 copied" note above).
+
+## `rangeUpload.js` — reusable Range planner (candidate)
+
+Pure `planRangeUpload`, `familyKey`, canonical SKU collision validation, stable variant identity, explicit critical references, allowlisted redacted family/component readback and needs-input/conflict reporting. No I/O; narrow field corrections only. Node transaction/approval boundary is `netlify/functions/lib/rangeUploadService.js`; normal UI reservations are `src/rangePersistence.js`. [Operator guide](../../mcp/range/README.md).

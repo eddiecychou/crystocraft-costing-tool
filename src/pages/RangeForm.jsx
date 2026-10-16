@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage, auth } from '../firebase'
 import { useCan } from '../access'
@@ -10,6 +10,7 @@ import {
   RANGE_BODY_TYPES, designNumber, brandLetter, bodyLetter,
   normGallery, normVideos, normBlogLinks,
 } from '../constants'
+import { persistRangeFamily } from '../rangePersistence'
 import { resizeToJpeg } from '../imageResize'
 import { serializedColourScope } from '../rangeBomScope'
 import { catalogueUploadMetadata } from '../catalogueImagePolicy'
@@ -426,6 +427,7 @@ function variantsFromDoc(d, fallbackBrand) {
         ? v.crystal_colors.map(c => (c || '').toString().trim().toUpperCase()).filter(Boolean)
         : docColors
       return {
+        ...(v.id ? { id: v.id } : {}),
         brand_code: code, brand_name: v.brand_name || BRAND_NAME[code] || '',
         plating_code: v.plating_code || '', plating_name: v.plating_name || '',
         crystal_code: v.crystal_code || '', crystal_name: v.crystal_name || '',
@@ -961,6 +963,7 @@ export default function RangeForm() {
           .filter(([, n]) => n != null)
       ),
       variants: form.variants.map((v, i) => ({
+        ...(v.id ? { id: v.id } : {}),
         brand_code: v.brand_code.trim(), brand_name: v.brand_name.trim(),
         plating_code: v.plating_code.trim(), plating_name: v.plating_name.trim(),
         crystal_code: v.crystal_code.trim(), crystal_name: v.crystal_name.trim(),
@@ -987,11 +990,7 @@ export default function RangeForm() {
       updatedAt: serverTimestamp(),
     }
     try {
-      if (isNew) {
-        await setDoc(doc(db, 'range_products', docId), { ...payload, createdAt: serverTimestamp() })
-      } else {
-        await updateDoc(doc(db, 'range_products', docId), payload)
-      }
+      await persistRangeFamily(db, docId, payload, isNew)
       navigate('/range')
     } catch (err) { setError(err.message || 'Save failed.'); setSaving(false) }
   }

@@ -147,3 +147,7 @@ on focus and every 30s while visible. Firestore customer permissions unchanged.
 **16 October local candidate — protocol 2:** poll/claim require execution_protocol:2; poll is discovery only. A transactional claim locks approved unused work as executing before any PUT. Withdraw (id + reason) and supersession accept unclaimed pending/approved batches with no receipts; claimed work is protected. Result writes serialize with state changes. DSH integration and coordinated deployment remain required. Contract: `../../seo-control-plane/README.md`.
 
 **Release closure (16 Oct, 12:58 AEDT):** e516a1c9 deployed as 6ad183af9c09894303c35bbc; 375 CI checks passed, fresh admin/customer sign-ins passed on candidate and production. DSH producer protocol-2 integration remains required; no WP/cache/Workbench changes were made. Evidence: docs/plans/DSH-INTEGRATION-FIXES-2026-10-16.md.
+
+## Reusable Range MCP (local candidate, not deployed)
+
+Node `netlify/functions/mcp-range.js`, `/api/mcp-range`: separate scoped Firebase identity for five allowlisted read/prepare/commit operations. Human-only exact-preview approval is a separate admin operation, not an MCP tool. Admin SDK boundary, no-store responses, revoked-token verification, signed previews, private expiring control and write flag, transactional reservations/audit/receipts. See [operator guide](../../mcp/range/README.md). Existing B0016 and Corporate Gifts endpoints unchanged.

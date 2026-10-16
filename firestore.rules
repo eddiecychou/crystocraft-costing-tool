@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.uid != 'mcp-range-upload-service';
     }
     function hasProfile() {
       return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
@@ -12,7 +12,7 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     function isAdmin() {
-      return hasProfile() && profile().role == 'admin';
+      return hasProfile() && request.auth.uid != 'mcp-range-upload-service' && profile().role == 'admin';
     }
 
     // ── V8.14 RBAC — flat staff role ─────────────────────────────────────
@@ -27,7 +27,7 @@ service cloud.firestore {
       return hasProfile() ? profile().role : '';
     }
     function moduleList() {
-      return roleName() == 'staff'
+      return roleName() == 'staff' && request.auth.uid != 'mcp-range-upload-service'
         ? (profile().get('modules', []) is list ? profile().get('modules', []) : [])
         : [];
     }
@@ -312,7 +312,7 @@ service cloud.firestore {
     }
     // Any internal login (used only where "one of our people" is enough).
     function isInternal() {
-      return isAdmin() || (roleName() == 'staff' && request.auth.uid != 'mcp-figurine-range-service');
+      return isAdmin() || (roleName() == 'staff' && request.auth.uid != 'mcp-figurine-range-service' && request.auth.uid != 'mcp-range-upload-service');
     }
 
     function validWhatsappArchiveMapping(data) {
@@ -374,7 +374,7 @@ service cloud.firestore {
       // role/status or its own modules (no privilege escalation).
       allow read: if isAdmin() || can('portal') || request.auth.uid == uid;
       allow create: if request.auth.uid == uid
-        && request.auth.uid != 'mcp-figurine-range-service'
+        && request.auth.uid != 'mcp-figurine-range-service' && request.auth.uid != 'mcp-range-upload-service'
         && request.resource.data.role == 'customer'
         && request.resource.data.status == 'pending'
         && request.resource.data.ws_discount_pct == 0
@@ -390,11 +390,11 @@ service cloud.firestore {
         // affectedKeys so it can't touch role/status/pricing, and can't be
         // broken by an unrelated odd field like the broad clause below could.
         || (request.auth.uid == uid
-            && request.auth.uid != 'mcp-figurine-range-service'
+            && request.auth.uid != 'mcp-figurine-range-service' && request.auth.uid != 'mcp-range-upload-service'
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['last_login_at', 'login_count']))
         || (request.auth.uid == uid
-            && request.auth.uid != 'mcp-figurine-range-service'
+            && request.auth.uid != 'mcp-figurine-range-service' && request.auth.uid != 'mcp-range-upload-service'
             && request.resource.data.role == resource.data.role
             && request.resource.data.status == resource.data.status
             && request.resource.data.get('modules', []) == resource.data.get('modules', [])
@@ -443,7 +443,7 @@ service cloud.firestore {
         allow write: if can('pricing');
       }
       match /customer_prices/{priceUid} {
-        allow read: if request.auth.uid == priceUid || can('quotes') || can('customers');
+        allow read: if (request.auth.uid == priceUid && request.auth.uid != 'mcp-range-upload-service') || can('quotes') || can('customers');
         allow write: if can('pricing');
       }
       // Product bill-of-materials + supplier quotes — supply data.
@@ -468,15 +468,70 @@ service cloud.firestore {
       }
     }
 
+    // Generic Range family uniqueness: UI + MCP use the same immutable owner.
+    // Claim: range_id, exact design_no/format_code, createdAt. Private to staff.
+    function validRangeFamilyClaim(key, data) {
+      return data.keys().hasOnly(['range_id', 'design_no', 'format_code', 'createdAt'])
+        && data.keys().hasAll(['range_id', 'design_no', 'format_code', 'createdAt'])
+        && data.range_id is string && data.range_id.matches('^[A-Za-z0-9_-]{1,128}$')
+        && data.design_no is string && data.design_no.matches('^[0-9]{3,4}$')
+        && data.format_code is string && data.format_code.matches('^[0-9]{3}$')
+        && key == data.design_no + '-' + data.format_code
+        && data.createdAt is timestamp
+        && getAfter(/databases/$(database)/documents/range_products/$(data.range_id)).data.design_no == data.design_no
+        && getAfter(/databases/$(database)/documents/range_products/$(data.range_id)).data.format_code == data.format_code;
+    }
+    function rangeFamilyReserved(rangeId, data) {
+      return data.design_no is string && data.design_no.matches('^[0-9]{3,4}$')
+        && data.format_code is string && data.format_code.matches('^[0-9]{3}$')
+        && getAfter(/databases/$(database)/documents/range_family_claims/$(data.design_no + '-' + data.format_code)).data.range_id == rangeId;
+    }
+    function rangeIdentityUnchanged() {
+      return resource.data.get('design_no', '') == request.resource.data.get('design_no', '')
+        && resource.data.get('format_code', '') == request.resource.data.get('format_code', '');
+    }
+    match /range_family_claims/{key} {
+      allow read: if can('figurine');
+      allow create: if can('figurine') && validRangeFamilyClaim(key, request.resource.data)
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+    // Backend-only mutations. Even the new scoped service cannot write these
+    // directly with its Firebase token; the reviewed endpoint is the boundary.
+    match /range_upload_controls/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /range_upload_approvals/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /range_upload_receipts/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /range_upload_audit/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /range_upload_code_claims/{id} { allow read: if can('figurine'); allow write: if false; }
+    function componentReserved(id, data) {
+      return data.code is string && data.code.matches('^[A-Z0-9][A-Z0-9 ()_./-]{0,159}$')
+        && getAfter(/databases/$(database)/documents/range_component_claims/$(data.code.replace('[^A-Z0-9]', ''))).data.component_id == id
+        && getAfter(/databases/$(database)/documents/range_component_claims/$(data.code.replace('[^A-Z0-9]', ''))).data.code == data.code;
+    }
+    match /range_component_claims/{key} {
+      allow read: if can('supply');
+      allow create: if can('supply')
+        && request.resource.data.keys().hasOnly(['component_id','code','createdAt'])
+        && request.resource.data.keys().hasAll(['component_id','code','createdAt'])
+        && request.resource.data.component_id is string
+        && request.resource.data.component_id.matches('^[A-Za-z0-9_-]{1,128}$')
+        && request.resource.data.code is string
+        && request.resource.data.code.matches('^[A-Z0-9][A-Z0-9 ()_./-]{0,159}$')
+        && key == request.resource.data.code.replace('[^A-Z0-9]', '')
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/range_components/$(request.resource.data.component_id)).data.code == request.resource.data.code;
+      allow update, delete: if false;
+    }
+
     match /range_products/{rangeId} {
       allow get: if isB0016Mcp() && rangeId == setupReleasePlan().range_id
         && !exists(/databases/$(database)/documents/range_products/$(rangeId));
       allow get, list: if canShop() || can('figurine') || can('quotes')
         || (isB0016Mcp() && resource.data.design_no == '0016');
-      allow create: if can('figurine') || (b0016WritesApproved() && b0016RangeCreate(rangeId));
-      allow update: if can('figurine') || (b0016WritesApproved() && colourRangeLink(rangeId));
+      allow create: if (can('figurine') && rangeFamilyReserved(rangeId, request.resource.data)) || (b0016WritesApproved() && b0016RangeCreate(rangeId));
+      allow update: if (can('figurine') && (rangeIdentityUnchanged() || rangeFamilyReserved(rangeId, request.resource.data))) || (b0016WritesApproved() && colourRangeLink(rangeId));
       allow delete: if can('figurine');
-      match /{allPaths=**} {
+      match /{subcollection}/{documentId}/{allPaths=**} {
         allow read: if canShop() || can('figurine') || can('quotes');
         allow write: if can('figurine');
       }
@@ -565,12 +620,12 @@ service cloud.firestore {
     }
 
     match /favourites/{uid} {
-      allow read, write: if (request.auth.uid == uid && request.auth.uid != 'mcp-figurine-range-service') || isAdmin();
+      allow read, write: if (request.auth.uid == uid && request.auth.uid != 'mcp-figurine-range-service' && request.auth.uid != 'mcp-range-upload-service') || isAdmin();
     }
 
     match /enquiries/{eid} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.resource.data.uid == request.auth.uid;
+      allow create: if signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.auth.uid != 'mcp-range-upload-service' && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
@@ -583,8 +638,8 @@ service cloud.firestore {
     // Customizer saved designs — a customer owns their own designs; admin sees all.
     match /customer_designs/{designId} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isAdmin() || (signedIn() && request.auth.uid != 'mcp-figurine-range-service' && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.auth.uid != 'mcp-range-upload-service' && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.auth.uid != 'mcp-range-upload-service' && resource.data.uid == request.auth.uid);
     }
 
     // Suppliers — supply-side.
@@ -787,10 +842,11 @@ service cloud.firestore {
         && componentId.matches('^mcp_b0016_[mf]_[a-f0-9]{20}(_(bk|bl|mt|pe|vl))?$')
         && (!exists(/databases/$(database)/documents/range_components/$(componentId)) || resource.data.mcp_creator_uid == request.auth.uid));
       allow list: if can('supply');
-      allow create: if can('supply');
+      allow create: if can('supply') && componentReserved(componentId, request.resource.data);
       allow create: if b0016WritesApproved() && colourComponentCreate(componentId);
       allow update: if b0016WritesApproved() && colourC1Update(componentId);
-      allow update, delete: if can('supply');
+      allow update: if can('supply') && (resource.data.get('code','') == request.resource.data.get('code','') || componentReserved(componentId, request.resource.data));
+      allow delete: if can('supply');
       match /supplier_quotes/{quoteId} {
         // Exact C1 child scope is needed to prevent duplicate supplier quotes.
         allow read: if isB0016Mcp() && componentId == 'rc_mv7xu3mmayc5g'

@@ -1,5 +1,12 @@
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
+## Unreleased candidate — reusable Crystocraft Range MCP (2026-10-16)
+
+Implemented on isolated `codex/reusable-range-mcp` from current upstream `f2742198`; primary dirty checkout preserved. Five separate scoped tools, read-only signed previews, private human approval, atomic idempotent commits, shared normal-UI family/component reservations, version/media preservation, prototype rules, portable MCP locks and operator docs. Existing eight B0016 tools retain their implementation and manifest behavior. All focused emulator/MCP/legacy/RBAC checks, full prebuild/build and lint pass; actual Range and component forms checked against emulator-created records.
+
+**LOCAL ONLY.** No push, rules/app deployment, capability provisioning, live fixture or publication. Hosted fresh candidate/production admin+customer login remains blocked pending separately authorized release. See [implementation and verification](docs/reviews/RANGE-MCP-IMPLEMENTATION-2026-10-16.md) and [operator/live-use gates](mcp/range/README.md).
+
+
 > **Canonical plan lives in Obsidian:** `Crystocraft/Operations/Costing Tool - Project Plan.md`
 > and `Costing Tool - Issues & Bugs Log.md`. This in-repo copy is a convenience snapshot.
 

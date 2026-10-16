@@ -1,0 +1,407 @@
+{
+  "tools": [
+    {
+      "name": "search_range_families",
+      "description": "Bounded read of Crystocraft Range families by exact design/format, canonical item code or name. Never dumps the catalogue or reads Corporate Gifts.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "design_no": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "format_code": {
+            "$ref": "#/properties/design_no"
+          },
+          "item_code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "get_range_family",
+      "description": "Read a normalized Range family with ID/version, finish rows and colour chips, components, dimensions, gallery and price state. Supplier costs/private fields are redacted.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "range_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "range_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "search_range_components",
+      "description": "Exact library code first, or bounded name search. Punctuation-only matches require explicit identity confirmation. Returns stable IDs/descriptors, never supplier quotes or costs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "range_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "prepare_range_upload",
+      "description": "READ-ONLY dry run for any Range family. New families are hidden Concept with null prices. Returns existing/proposed/diff/conflicts/missing facts plus an expiring signed preview. One finish row contains chips; selected critical parts are NOT a full BOM. Does not approve, write or publish.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "create",
+              "update"
+            ]
+          },
+          "range_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "expected_version": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "family": {
+            "type": "object",
+            "properties": {
+              "design_no": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "format_code": {
+                "$ref": "#/properties/family/properties/design_no"
+              },
+              "design_name": {
+                "$ref": "#/properties/family/properties/design_no"
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 12000
+              },
+              "marketing_description": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "dimensions": {
+                "type": "object",
+                "properties": {
+                  "length": {
+                    "type": "number"
+                  },
+                  "width": {
+                    "type": "number"
+                  },
+                  "height": {
+                    "type": "number"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "mm",
+                      "cm"
+                    ]
+                  },
+                  "overall_confirmed": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "length",
+                  "width",
+                  "height",
+                  "unit",
+                  "overall_confirmed"
+                ],
+                "additionalProperties": false
+              },
+              "category": {
+                "$ref": "#/properties/family/properties/design_no"
+              },
+              "design_type": {
+                "$ref": "#/properties/family/properties/design_no"
+              },
+              "product_type": {
+                "$ref": "#/properties/family/properties/design_no"
+              },
+              "crystal_type": {
+                "$ref": "#/properties/family/properties/design_no"
+              }
+            },
+            "additionalProperties": false
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variant_id": {
+                  "$ref": "#/properties/family/properties/design_no"
+                },
+                "brand_code": {
+                  "$ref": "#/properties/family/properties/design_no"
+                },
+                "plating_code": {
+                  "$ref": "#/properties/family/properties/design_no"
+                },
+                "crystal_colors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 8
+                  },
+                  "maxItems": 32
+                },
+                "crystal_code": {
+                  "$ref": "#/properties/family/properties/design_no"
+                },
+                "running_no": {
+                  "$ref": "#/properties/family/properties/design_no"
+                },
+                "no_crystal": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "maxItems": 40
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "component_id": {
+                  "$ref": "#/properties/range_id"
+                },
+                "code": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 80
+                },
+                "create": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "$ref": "#/properties/components/items/properties/code"
+                    },
+                    "name": {
+                      "$ref": "#/properties/family/properties/design_no"
+                    },
+                    "category": {
+                      "$ref": "#/properties/family/properties/design_no"
+                    },
+                    "plating_code": {
+                      "$ref": "#/properties/family/properties/design_no"
+                    },
+                    "notes": {
+                      "type": "string",
+                      "maxLength": 2000
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "name",
+                    "category",
+                    "plating_code"
+                  ],
+                  "additionalProperties": false
+                },
+                "qty_per_unit": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                "applicability": {
+                  "$ref": "#/properties/family/properties/design_no"
+                },
+                "ref_index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "critical_reason": {
+                  "type": "string",
+                  "enum": [
+                    "long_lead",
+                    "tooling",
+                    "high_moq",
+                    "supply_risk"
+                  ]
+                }
+              },
+              "required": [
+                "qty_per_unit",
+                "applicability",
+                "critical_reason"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 20
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_range_id": {
+                  "$ref": "#/properties/range_id"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "maxLength": 2000
+                },
+                "caption": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "required": [
+                "source_range_id",
+                "url",
+                "caption"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 10
+          },
+          "category_confirmations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/properties/family/properties/design_no"
+            },
+            "maxItems": 20
+          },
+          "code_confirmations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/properties/family/properties/design_no"
+            },
+            "maxItems": 20
+          },
+          "dry_run": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "mode",
+          "dry_run"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "commit_range_upload",
+      "description": "Commit ONLY an exact human-reviewed signed preview with a separate private OC-owner approval and caller UUID. Atomic family/components/reservations/audit, live version checks and durable retries. No activation, price, stock, costs, quotes, arbitrary uploads or destructive variant/image replacement. Writes are disabled by default. Retry uncertain outcomes with the SAME token and key.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "preview_token": {
+            "type": "string",
+            "maxLength": 150000
+          },
+          "approval_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "preview_token",
+          "approval_id",
+          "idempotency_key"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    }
+  ]
+}

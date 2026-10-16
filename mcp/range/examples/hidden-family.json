@@ -1,0 +1,59 @@
+{
+  "mode": "create",
+  "dry_run": true,
+  "family": {
+    "design_no": "0606",
+    "format_code": "001",
+    "design_name": "Large Crystal Coach",
+    "description": "Crystal coach with gold finish. Confirmed overall dimensions from owner correction.",
+    "marketing_description": "A crystal coach for memorable celebrations.",
+    "product_type": "Figurine",
+    "design_type": "Fairytale",
+    "dimensions": {
+      "length": 106.8,
+      "width": 61.5,
+      "height": 85.6,
+      "unit": "mm",
+      "overall_confirmed": true
+    }
+  },
+  "category_confirmations": [
+    "design_type:Fairytale"
+  ],
+  "variants": [
+    {
+      "brand_code": "D",
+      "plating_code": "G",
+      "crystal_colors": [
+        "C1"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "create": {
+        "code": "FM-U0606PT00-01G",
+        "name": "Coach frame",
+        "category": "Metal Part",
+        "plating_code": "G"
+      },
+      "qty_per_unit": 1,
+      "applicability": "auto",
+      "critical_reason": "tooling"
+    },
+    {
+      "component_id": "globe",
+      "code": "FM-GLB-H(G)",
+      "qty_per_unit": 1,
+      "applicability": "auto",
+      "critical_reason": "supply_risk"
+    },
+    {
+      "component_id": "crown",
+      "code": "FM-U0227PT01-G",
+      "qty_per_unit": 1,
+      "applicability": "G",
+      "critical_reason": "supply_risk"
+    }
+  ]
+}

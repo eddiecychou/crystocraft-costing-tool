@@ -1,3 +1,4 @@
+import { persistRangeFamily } from '../rangePersistence'
 import useCatalogueFilter from '../hooks/useCatalogueFilter'
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
@@ -90,7 +91,10 @@ export default function Range() {
           const q = Number(v.stock_finished)
           if (Number.isFinite(q) && q > 0) platingStock[k] = (platingStock[k] || 0) + q
         }
-        await addDoc(collection(db, 'range_products'), {
+        // Reuse a reserved identity after this explicitly destructive seed reset.
+        const claims = await getDocs(collection(db, 'range_family_claims'))
+        const reserved = claims.docs.find(d => d.id === `${designNo}-${p.format_code || '001'}`)?.data().range_id
+        await persistRangeFamily(db, reserved || doc(collection(db, 'range_products')).id, {
           design_no: designNo,
           body_code: p.body_code || '',
           body_name: p.body_name || '',
@@ -129,7 +133,7 @@ export default function Range() {
           })),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        })
+        }, true)
         n++
         setSeedLog(`Imported ${n}/${rangeData.products.length}…`)
       }

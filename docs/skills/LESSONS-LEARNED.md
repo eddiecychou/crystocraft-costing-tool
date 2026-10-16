@@ -1137,3 +1137,7 @@ are not displayed as blanks. The original reproduction test failed before this
 fix; real React click tests now cover Approve, bulk approval, Send to DSH and
 concurrent changed payloads/decisions/array order/state. Never verify an approval
 fix by approving an owner's live batch; use isolated data for state transitions.
+
+### Firestore v2 recursive child wildcard bypassed parent reservation checks (Range MCP candidate)
+
+**Symptom:** an emulator test could create an unreserved Range family despite a strict parent allow-create rule. **Cause:** nested `match /{allPaths=**}` matches zero segments in rules v2, so its broad figurine write permission also applied to the parent. **Fix:** require `/{subcollection}/{documentId}/{allPaths=**}` so child privileges remain child-only. **MUST** test denied unreserved creates and identity updates; rules are additive, so a stricter parent rule does not override a broader matching allow. This change is local/prototype, not deployed.

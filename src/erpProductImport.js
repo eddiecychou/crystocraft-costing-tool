@@ -31,6 +31,7 @@ import { erpBom, erpLookup } from './erpApi'
 import { loadComponents, saveComponent } from './criticalComponents'
 import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
+import { persistRangeFamily } from './rangePersistence'
 
 const norm = (v) => String(v ?? '').trim().toUpperCase()
 
@@ -183,7 +184,8 @@ export async function applyErpProduct(preview, { selectedCodes } = {}) {
     refs.push({ id, code: c.code, qty_per_unit: c.qty > 0 ? c.qty : 1, plating_code: '' })
   }
 
-  const ref = await addDoc(collection(db, 'range_products'), {
+  const ref = doc(collection(db, 'range_products'))
+  await persistRangeFamily(db, ref.id, {
     brand_code, design_no, format_code,
     design_code: preview.base,
     description: preview.name || '',
@@ -199,7 +201,7 @@ export async function applyErpProduct(preview, { selectedCodes } = {}) {
     erp_imported_at: new Date().toISOString().slice(0, 10),
     critical_components: refs,
     createdAt: serverTimestamp(),
-  })
+  }, true)
 
   return { productId: ref.id, componentsCreated: created, componentsLinked: refs.length }
 }

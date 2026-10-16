@@ -1,0 +1,20 @@
+{
+  "base": "f2742198bd46dc7771a201b0b0fdf780e59ae4b4",
+  "branch": "codex/reusable-range-mcp",
+  "live_catalogue_writes": 0,
+  "remote_push": false,
+  "rules_deployed": false,
+  "app_deployed": false,
+  "identity_provisioned": false,
+  "publications": 0,
+  "sha256": {
+    "src/domain/rangeUpload.js": "0188cd1fc499f1dac29c5207e84eabe133b12446aac76a2ec40803a0bae83f7d",
+    "src/rangePersistence.js": "d826d86c212f89dc2c19348873c5b9154463dde5550b9b4dfd396b9447d9f47e",
+    "netlify/functions/lib/rangeUploadService.js": "ca3335ce42798649e7f55e68f277b568d59dea8375fb704c0f6ca914c7347939",
+    "netlify/functions/mcp-range.js": "55b1de97387935ed000a8c56102bc67ce263e6d42f1b4fd0582f35eb4cb4850b",
+    "mcp/range/server.mjs": "667035cbecd10c514fd7df643ddcca6cebfe27cf81ee7317d3736016de247189",
+    "mcp/range/manifest.json": "badfa9f75344b7ee40b8cc890e7d3ac7c32b8502cb7b1bf0cc1fd75e2dc3f561",
+    "firestore.rules": "6a234f7731206d00f60634e50051a3fdd9fec8e73fdb17436a83adf5f8582ba6",
+    "storage.rules": "94981d875ec150038619275c387f20d3a2b8ea021e53ecb3130ee66a2700828c"
+  }
+}

@@ -3,7 +3,7 @@ service firebase.storage {
   match /b/{bucket}/o {
 
     function isAuth() {
-      return request.auth != null;
+      return request.auth != null && request.auth.uid != 'mcp-range-upload-service';
     }
     function pDoc() {
       return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
@@ -46,7 +46,7 @@ service firebase.storage {
     // user-triggered 1688 extension.
     match /sourcing-captures/{uid}/{allPaths=**} {
       allow read: if can('supply');
-      allow write: if can('supply') && request.auth.uid == uid;
+      allow write: if can('supply') && (isAuth() && request.auth.uid == uid);
     }
     match /catalogues/{catalogueId}/{allPaths=**} {
       allow read, write: if can('catalogues');
@@ -77,12 +77,12 @@ service firebase.storage {
     // uploaded logo and customised render. Scoped to the owner or an admin,
     // matching how the write rule was already scoped. See LESSONS-LEARNED.
     match /customer_uploads/{uid}/{allPaths=**} {
-      allow read: if request.auth.uid == uid || isAdmin();
-      allow write: if request.auth.uid == uid;
+      allow read: if (isAuth() && request.auth.uid == uid) || isAdmin();
+      allow write: if (isAuth() && request.auth.uid == uid);
     }
     match /renders/{uid}/{allPaths=**} {
-      allow read: if request.auth.uid == uid || isAdmin();
-      allow write: if request.auth.uid == uid;
+      allow read: if (isAuth() && request.auth.uid == uid) || isAdmin();
+      allow write: if (isAuth() && request.auth.uid == uid);
     }
 
     // Shipping — imported PI files + freight quote attachments.

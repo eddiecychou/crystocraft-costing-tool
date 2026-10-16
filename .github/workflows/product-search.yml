@@ -2,6 +2,8 @@ name: Product search regressions
 on:
   push:
     paths:
+      - 'mcp/range/**'
+      - 'mcp/figurine-range/**'
       - 'src/**'
       - 'netlify/edge-functions/**'
       - 'netlify/functions/**'
@@ -12,6 +14,8 @@ on:
       - '.github/workflows/product-search.yml'
   pull_request:
     paths:
+      - 'mcp/range/**'
+      - 'mcp/figurine-range/**'
       - 'src/**'
       - 'netlify/edge-functions/**'
       - 'netlify/functions/**'
@@ -45,3 +49,6 @@ jobs:
       - run: npm run test:ai-writer
       - run: npm run test:catalogue-cover
       - run: npm run test:seo-control-plane
+      - run: npm ci --prefix mcp/range --no-audit --no-fund
+      - run: npm ci --prefix mcp/figurine-range --no-audit --no-fund
+      - run: npm run test:range-mcp

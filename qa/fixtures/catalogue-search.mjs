@@ -16,6 +16,8 @@ export const collection = (_, ...parts) => parts.join('/')
 export const doc = collection
 export const query = path => path
 export const orderBy = () => null
+export const where = () => null
+export const limit = () => null
 export function onSnapshot(path, cb) {
   reads.push(path); listeners.set(cb, path)
   if (ready) cb(snapshot(path))
@@ -26,6 +28,7 @@ export async function getDoc(path) { reads.push(path); return { exists: () => fa
 const forbidden = () => { throw Error('Catalogue regression tests must never write data') }
 export const addDoc = forbidden, deleteDoc = forbidden, setDoc = forbidden, updateDoc = forbidden
 export const serverTimestamp = forbidden
+export const runTransaction = forbidden
 
 export function catalogueData() {
   const range = (id, name, code, extra = {}) => ({

@@ -4,6 +4,7 @@ import {
   onSnapshot, query, orderBy, serverTimestamp, writeBatch, increment,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { persistRangeComponent } from './rangePersistence'
 import { numOrNull, trimUpper, result, addError, addWarning, addInfo, merge } from './domain/validation'
 import { colourScope } from './rangeBomScope'
 import { resolveRef, availabilityComponent } from './availability'
@@ -106,13 +107,7 @@ const descriptorOf = c => {
 // Create (id null/undefined) or update an existing component doc. Only descriptive
 // fields are written; cost comes from the preferred supplier quote.
 export async function saveComponent(id, data) {
-  const payload = { ...descriptorOf(data), updatedAt: serverTimestamp() }
-  if (id) {
-    await setDoc(doc(db, 'range_components', id), payload, { merge: true })
-    return id
-  }
-  const ref = await addDoc(COL(), { ...payload, createdAt: serverTimestamp() })
-  return ref.id
+  return persistRangeComponent(db, id || doc(COL()).id, descriptorOf(data))
 }
 
 export async function deleteComponent(id) {
@@ -212,13 +207,9 @@ export async function deleteComponentQuote(componentId, quoteId) {
 export async function bulkCreateComponents(rows) {
   const clean = (rows || []).map(normComponent).filter(c => c.code)
   let n = 0
-  for (let i = 0; i < clean.length; i += 400) {
-    const batch = writeBatch(db)
-    for (const c of clean.slice(i, i + 400)) {
-      batch.set(doc(COL()), { ...c, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
-      n++
-    }
-    await batch.commit()
+  for (const c of clean) {
+    await persistRangeComponent(db, doc(COL()).id, c)
+    n++
   }
   return n
 }
@@ -381,6 +372,7 @@ export async function importStockList(rows, rangeProducts) {
     } else {
       const ref = doc(COL())
       codeToId[code] = ref.id
+      await persistRangeComponent(db, ref.id, { code, name: c.name, plating_code: c.plating_code })
       ops.push({ ref, data: {
         code, name: c.name, plating_code: c.plating_code, stock_qty: c.stock_qty,
         lead_time_weeks: c.lead_time_weeks ?? null, used_by,

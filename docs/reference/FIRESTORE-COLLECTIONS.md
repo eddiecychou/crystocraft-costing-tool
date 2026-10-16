@@ -180,3 +180,9 @@ told about it).
 **16 October local candidate — seo_batches execution lifecycle:** adds executing/execution_started_at and withdrawn/withdrawn_at/withdrawn_by/withdrawal_reason. Claim, machine withdrawal, supersession and receipts use transactions; UI withdrawal also re-reads transactionally. Any claim or receipt prevents withdrawal. No rules changes or production migration performed.
 
 **Release closure (16 Oct, 12:58 AEDT):** e516a1c9 deployed as 6ad183af9c09894303c35bbc; 375 CI checks passed, fresh admin/customer sign-ins passed on candidate and production. DSH producer protocol-2 integration remains required; no WP/cache/Workbench changes were made. Evidence: docs/plans/DSH-INTEGRATION-FIXES-2026-10-16.md.
+
+## Reusable Range MCP candidate collections (not deployed)
+
+`range_family_claims/{design-format}`: immutable shared family reservation; normal figurine writers can atomically create only with matching product. `range_component_claims/{alphanumeric-code}`: immutable punctuation-aware component reservation; supply writers create with matching component. Normal UI/import persistence is `src/rangePersistence.js`. Legacy collision scans remain necessary until all records have claims.
+
+Backend-only writes: `range_upload_controls/service` (separate capability/window), `range_upload_approvals/{preview-hash}` (single-use exact owner review), `range_upload_receipts/{actor-uuid-hash}` (durable retry result), `range_upload_audit/{same-hash}` (actor/operator, field diffs, versions/outcome), `range_upload_code_claims/{code-hash}` (full-code reservation). Controls/approvals/receipts/audit are admin-readable only; code claims are figurine-readable. New `mcp-range-upload-service` has no direct collection/storage mutation permission. No rules deployed. See [operator guide](../../mcp/range/README.md).

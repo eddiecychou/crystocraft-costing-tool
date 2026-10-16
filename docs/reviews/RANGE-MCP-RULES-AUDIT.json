@@ -1,0 +1,11 @@
+{
+  "score": 4,
+  "summary": "Scoped review of the proposed Range MCP boundary and changed rules, not a certification of the entire legacy ruleset. New identity has no direct catalogue/stock/supplier/approval/storage authority; strict server validation and exact human approval protect Admin SDK writes. Prototype only, not deployed.",
+  "findings": [
+    {"check":"Update bypass","severity":"major","issue":"Existing Range recursive child wildcard also matched parent writes in rules v2, bypassing new family reservation validation. Fixed by requiring a subcollection/document path; emulator rejection tests cover unreserved parent writes.","recommendation":"Retain the regression and require this rules change with the release."},
+    {"check":"Authority and ownership","severity":"minor","issue":"Server Admin SDK bypasses client rules by design. New UID/profile/control and exact owner approval are checked inside transactions; no raw write tool is exposed. Direct service access remains denied even if misprofiled.","recommendation":"Review endpoint and private provisioning separately; never grant ordinary modules or share server credentials with MCP clients."},
+    {"check":"Business logic / rollout","severity":"minor","issue":"Old cached normal forms and external privileged scripts do not participate in the new claims contract. Normal create/code-change paths in this branch are migrated; old client creates fail closed after rules release.","recommendation":"Use coordinated maintenance cutover, reload clients, and pause/migrate privileged external writers before enabling the generic capability."},
+    {"check":"Resource bounds","severity":"minor","issue":"Server performs bounded legacy scans (2000 families/components) and conservative transaction revalidation. This is safe but will not scale indefinitely.","recommendation":"Keep rate/request/output limits and fail closed at the cap; review an indexed migration before raising it."},
+    {"check":"Private data","severity":"minor","issue":"Current approved-customer rules allow hidden family reads by ID. Supplier costs and unrelated private data are redacted by MCP readback and are not written onto the family.","recommendation":"Do not treat active:false as confidentiality; retain private supplier/quote collections."}
+  ]
+}

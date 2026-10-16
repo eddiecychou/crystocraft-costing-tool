@@ -17,11 +17,11 @@ import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from '@firebase/rules-unit-testing'
 import {
-  doc, getDoc, setDoc, updateDoc, serverTimestamp,
+  doc, getDoc, setDoc, updateDoc, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadString } from 'firebase/storage'
 
-const PROJECT = 'crystocraft-rbac-test'
+const PROJECT = process.env.FIREBASE_TEST_PROJECT || 'crystocraft-rbac-test'
 let pass = 0, fail = 0
 const ok = (label, p) => p.then(() => { pass++; console.log('ok   ' + label) })
   .catch(e => { fail++; console.log('FAIL ' + label + '  — ' + (e?.message || e)) })
@@ -113,10 +113,20 @@ await ok('supply create own sourcing capture', assertSucceeds(setDoc(doc(supply,
 await ok('supply DENIED create capture for another user', assertFails(setDoc(doc(supply, 'sourcing_captures/sc3'), { captured_by_uid: 'admin1', status: 'needs_review' })))
 await ok('supply DENIED change capture owner', assertFails(setDoc(doc(supply, 'sourcing_captures/sc1'), { captured_by_uid: 'admin1', status: 'needs_review' })))
 await ok('supply rw purchase_orders',   assertSucceeds(setDoc(doc(supply, 'purchase_orders/po2'), { supplier_id: 's1' })))
-await ok('supply rw range_components',  assertSucceeds(setDoc(doc(supply, 'range_components/rc2'), { code: 'RC2' })))
+{
+  const batch = writeBatch(supply)
+  batch.set(doc(supply, 'range_components/rc2'), { code: 'RC2' })
+  batch.set(doc(supply, 'range_component_claims/RC2'), { component_id: 'rc2', code: 'RC2', createdAt: serverTimestamp() })
+  await ok('supply rw range_components via atomic claim', assertSucceeds(batch.commit()))
+}
 await ok('supply rw crystals',          assertSucceeds(setDoc(doc(supply, 'crystals/x2'), { colour: 'blue' })))
 await ok('supply rw b2c_stock',         assertSucceeds(setDoc(doc(supply, 'b2c_stock/b2'), { category: 'g' })))
-await ok('supply write range_products', assertSucceeds(setDoc(doc(supply, 'range_products/rp2'), { name: 'B2' })))
+{
+  const batch = writeBatch(supply)
+  batch.set(doc(supply, 'range_products/rp2'), { name: 'B2', design_no: '9998', format_code: '001' })
+  batch.set(doc(supply, 'range_family_claims/9998-001'), { range_id: 'rp2', design_no: '9998', format_code: '001', createdAt: serverTimestamp() })
+  await ok('supply write range_products with atomic family claim', assertSucceeds(batch.commit()))
+}
 await ok('supply rw catalogues',        assertSucceeds(setDoc(doc(supply, 'catalogues/cat2'), { title: 'D' })))
 await ok('supply write counters/pu_',   assertSucceeds(setDoc(doc(supply, 'counters/pu_26'), { seq: 2 })))
 await ok('supply write crystal_swatch_notes', assertSucceeds(setDoc(doc(supply, 'crystal_swatch_notes/n2'), { note: 'y' })))

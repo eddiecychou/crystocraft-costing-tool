@@ -1,0 +1,4 @@
+import {defineConfig} from 'vite'
+import react from '@vitejs/plugin-react-swc'
+import {fileURLToPath} from 'node:url'
+export default defineConfig({resolve:{dedupe:["firebase","@firebase/app","@firebase/component"],alias:{...Object.fromEntries(["app","firestore","storage","auth"].map(k=>[`firebase/${k}`,fileURLToPath(new URL(`../node_modules/firebase/${k}/dist/esm/index.esm.js`,import.meta.url))])),"@":fileURLToPath(new URL("../src",import.meta.url))}},optimizeDeps:{entries:["qa/range-upload-preview.html"]},plugins:[{name:'emulator-firebase-only',enforce:'pre',resolveId(id){if(/^(\.\.\/|\.\/)+firebase(\.js)?$/.test(id))return fileURLToPath(new URL('./range-upload-preview-firebase.js',import.meta.url))}},react()],define:{__BUILD_TIME__:JSON.stringify('LOCAL EMULATOR')},server:{host:'127.0.0.1',port:5189,strictPort:true}})
