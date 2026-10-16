@@ -264,7 +264,7 @@ export default function Range() {
             <button onClick={handleSeed} disabled={seeding} className="btn-primary">
               {seeding ? 'Importing…' : `Import ${rangeData.products.length} designs`}
             </button>
-            <Link to="/range/new" className="btn-secondary">+ New product</Link>
+            <Link to="/range/new?quick=1" className="btn-secondary">+ New product</Link>
           </div>
           {seedLog && <p className="text-xs font-mono text-ink-60 mt-3">{seedLog}</p>}
         </div>
@@ -297,7 +297,7 @@ export default function Range() {
           <button type="button" onClick={() => setImporting(true)} className="btn-secondary text-sm text-center">
             Import from ERP
           </button>
-          <Link to="/range/new" className="btn-primary text-sm text-center">+ New product</Link>
+          <Link to="/range/new?quick=1" className="btn-primary text-sm text-center">+ New product</Link>
         </div>
       </div>
       {seedLog && <p className="text-xs font-mono text-ink-60 mb-2">{seedLog}</p>}

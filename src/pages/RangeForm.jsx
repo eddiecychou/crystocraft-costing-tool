@@ -11,6 +11,7 @@ import {
   normGallery, normVideos, normBlogLinks,
 } from '../constants'
 import { persistRangeFamily } from '../rangePersistence'
+import { isQuickRangeEntry, quickRangePayload } from '../rangeQuickEntry'
 import { resizeToJpeg } from '../imageResize'
 import { serializedColourScope } from '../rangeBomScope'
 import { catalogueUploadMetadata } from '../catalogueImagePolicy'
@@ -456,22 +457,26 @@ export default function RangeForm() {
   const can = useCan()   // the figurine catalogue is `figurine`; its costing is `pricing`
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const quickDraft = isQuickRangeEntry(isNew, searchParams)
+  const [showMoreFields, setShowMoreFields] = useState(false)
+  const quickMode = quickDraft && !showMoreFields
 
   // Stable doc id (needed for storage paths) — generated up-front for new docs
   const docIdRef = useRef(isNew ? doc(collection(db, 'range_products')).id : routeId)
-  const docId = docIdRef.current
+  const docId = isNew ? docIdRef.current : routeId
 
   // Prefill from a Schema Audit "Add to Range from this PI" link (design_no/
   // body_code/format_code/description query params). New-product form only.
-  const [form, setForm] = useState(isNew ? blankForm({
+  const [form, setForm] = useState(isNew ? { ...blankForm({
     design_no: searchParams.get('design_no') || '',
     brand_code: searchParams.get('brand_code') || '',
     format_code: searchParams.get('format_code') || '',
     description: searchParams.get('description') || '',
-  }) : null)
+  }), ...(quickDraft ? { status: 'concept', active: false } : {}) } : null)
   const [fetching, setFetching] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [duplicateRangeId, setDuplicateRangeId] = useState(null)
   const [uploading, setUploading] = useState('')
   const [lightbox, setLightbox] = useState(null)
   const [pickerFor, setPickerFor] = useState(null)
@@ -629,6 +634,7 @@ export default function RangeForm() {
 
   useEffect(() => {
     if (isNew) return
+    setError(''); setDuplicateRangeId(null)
     getDoc(doc(db, 'range_products', routeId)).then(snap => {
       if (snap.exists()) {
         const d = snap.data()
@@ -896,7 +902,7 @@ export default function RangeForm() {
     e.preventDefault()
     if (!form.design_no.trim()) { setError('Design no. (e.g. 0002) is required.'); return }
     if (!form.format_code.trim()) { setError('Product type code (e.g. 001) is required.'); return }
-    setSaving(true); setError('')
+    setSaving(true); setError(''); setDuplicateRangeId(null)
     // colour_images can be written directly to Firestore from OUTSIDE this
     // form — by "Approve → usable" itself (promoteColourImage, since bug fix
     // 2026-08-23) and by the inline invoice/PI/quote picker. This form's own
@@ -990,9 +996,10 @@ export default function RangeForm() {
       updatedAt: serverTimestamp(),
     }
     try {
-      await persistRangeFamily(db, docId, payload, isNew)
-      navigate('/range')
-    } catch (err) { setError(err.message || 'Save failed.'); setSaving(false) }
+      await persistRangeFamily(db, docId, quickRangePayload(payload, quickDraft), isNew)
+      setSaving(false)
+      navigate(quickDraft ? `/range/${docId}` : '/range')
+    } catch (err) { setError(err.message || 'Save failed.'); setDuplicateRangeId(err.existingRangeId || null); setSaving(false) }
   }
 
   async function handleDelete() {
@@ -1023,7 +1030,7 @@ export default function RangeForm() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="eyebrow mb-1">Crystocraft Range {productCode && `· ${productCode}`}</p>
-          <h1 className="text-xl md:text-2xl">{isNew ? 'New Product' : 'Edit Product'}</h1>
+          <h1 className="text-xl md:text-2xl">{quickDraft ? 'Quick add product' : isNew ? 'New Product' : 'Edit Product'}</h1>
         </div>
         <div className="flex items-center gap-2">
           {!isNew && can('pricing') && <Link to={`/range/${routeId}/costing`} className="btn-secondary text-sm">Costing</Link>}
@@ -1031,22 +1038,27 @@ export default function RangeForm() {
         </div>
       </div>
 
-      {error && <div className="card p-3 mb-4 text-sm text-red-700 bg-red-50 border-red-200">{error}</div>}
+      {quickDraft && <div className="card p-4 mb-4 text-sm space-y-2">
+        <p>Enter the product details, choose its finishes and colour chips, and add images and any critical parts.</p>
+        <p className="text-ink-60">Saves as a hidden, unpriced Concept. Review and correct the same product afterward; publish it when it is ready.</p>
+        <button type="button" className="text-brand-600 underline" onClick={() => setShowMoreFields(v => !v)}>{showMoreFields ? 'Show fewer fields' : 'Show more fields'}</button>
+      </div>}
+      {error && <div className="card p-3 mb-4 text-sm text-red-700 bg-red-50 border-red-200">{error}{duplicateRangeId && <Link to={`/range/${duplicateRangeId}`} className="block mt-2 underline">Open existing product</Link>}</div>}
 
       <form onSubmit={handleSave} className="space-y-5">
         {/* Core fields */}
         <div className="card p-5 space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
-              <label className="label">Design No.</label>
-              <input className="input font-mono" value={form.design_no} inputMode="numeric" maxLength={4}
+              <label className="label" htmlFor="range-design-number">Design No.</label>
+              <input id="range-design-number" className="input font-mono" value={form.design_no} inputMode="numeric" maxLength={4}
                      onChange={e => setForm(f => ({ ...f, design_no: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
                      placeholder="0002" required />
               <p className="text-2xs text-ink-60 mt-0.5">3 or 4 digits (3 = 2-letter prefix allowed)</p>
             </div>
             <div>
-              <label className="label">Product Type</label>
-              <input className="input font-mono" list="format-codes" value={form.format_code} inputMode="numeric" maxLength={3}
+              <label className="label" htmlFor="range-format-code">Product Type</label>
+              <input id="range-format-code" className="input font-mono" list="format-codes" value={form.format_code} inputMode="numeric" maxLength={3}
                      onChange={e => setForm(f => ({ ...f, format_code: e.target.value.replace(/\D/g, '').slice(0, 3) }))}
                      placeholder="001" required />
               <datalist id="format-codes">
@@ -1054,8 +1066,8 @@ export default function RangeForm() {
               </datalist>
             </div>
             <div>
-              <label className="label">Size</label>
-              <input className="input" value={form.size} onChange={set('size')} placeholder="7.5 x 5.5 cm" />
+              <label className="label" htmlFor="range-overall-size">{quickDraft ? 'Overall size (include units)' : 'Size'}</label>
+              <input id="range-overall-size" className="input" value={form.size} onChange={set('size')} placeholder="7.5 x 5.5 cm" />
             </div>
           </div>
           <p className="text-2xs text-ink-60 -mt-2">
@@ -1085,34 +1097,39 @@ export default function RangeForm() {
             </div>
             <div>
               <label className="label">Status</label>
-              <select className="input" value={form.status} onChange={set('status')}>
+              <select className="input" disabled={quickDraft} value={form.status} onChange={set('status')}>
                 {RANGE_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </div>
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
+          <label className={quickMode ? 'hidden' : 'flex items-center gap-2 cursor-pointer select-none w-fit'}>
             <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={!!form.is_new}
                    onChange={e => setForm(f => ({ ...f, is_new: e.target.checked }))} />
             <span className="text-sm text-ink-80">New arrival <span className="text-ink-60 font-normal">— shows a green “New” badge in the shop and floats this product to the top. Untick when it's no longer new.</span></span>
           </label>
 
           <div>
-            <label className="label">Description</label>
-            <textarea className="input min-h-[80px]" value={form.description} onChange={set('description')} />
+            <label className="label" htmlFor="range-product-name">Product name</label>
+            <input id="range-product-name" className="input" value={form.design_name || ''} onChange={set('design_name')} placeholder="e.g. Crystal coach" />
+          </div>
+          <div>
+            <label className="label" htmlFor="range-description">Description</label>
+            <textarea id="range-description" className="input min-h-[80px]" value={form.description} onChange={set('description')} />
           </div>
 
-          <MarketingCopyEditor product={aiProductPayload()} source="range" value={form.marketing_description || ''}
+          <div className={quickMode ? 'hidden' : ''}><MarketingCopyEditor product={aiProductPayload()} source="range" value={form.marketing_description || ''}
             onChange={text => setForm(f => ({ ...f, marketing_description: text }))} />
 
           <VideoUrlsEditor videos={form.videos} onChange={v => setForm(f => ({ ...f, videos: v }))} />
 
           <BlogLinksEditor links={form.blog_links} onChange={v => setForm(f => ({ ...f, blog_links: v }))} />
 
-          <label className="flex items-center gap-2 text-sm text-ink-80 cursor-pointer select-none">
+          </div>
+          {!quickDraft && <label className="flex items-center gap-2 text-sm text-ink-80 cursor-pointer select-none">
             <input type="checkbox" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} />
             Visible in catalogue (untick to hide without deleting)
-          </label>
+          </label>}
         </div>
 
         {/* Production & Availability */}
@@ -1138,7 +1155,7 @@ export default function RangeForm() {
           )}
 
           <>
-          {form.status !== 'stock' && (
+          {form.status !== 'stock' && !quickMode && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 [&_label.label]:min-h-[2.2rem] [&_label.label]:flex [&_label.label]:items-end">
             <div>
               <label className="label">MOQ <span className="text-ink-60 font-normal">(made-to-order)</span></label>
@@ -1518,7 +1535,7 @@ export default function RangeForm() {
         </div>
 
         {/* Packing */}
-        <div className="card p-5">
+        <div className={quickMode ? 'hidden' : 'card p-5'}>
           <h2 className="text-base mb-1">Packing</h2>
           <p className="text-xs text-ink-60 mb-3">Default carton & weight info for shipping quotes (per-variant packaging notes go below).</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 [&_label.label]:min-h-[2.2rem] [&_label.label]:flex [&_label.label]:items-end">
@@ -1535,7 +1552,7 @@ export default function RangeForm() {
         {/* Variants / SKUs */}
         <div className="card p-5">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-base">Variations & Stock</h2>
+            <h2 className="text-base">{quickMode ? 'Finishes & colour chips' : 'Variations & Stock'}</h2>
             <button type="button" onClick={addVariant} className="btn-secondary text-xs">+ Add variation</button>
           </div>
           <p className="text-xs text-ink-60 mb-3">One row per plating. Tick the crystal colours each plating can be made in — colours don't create separate SKUs, stock, or price changes; the SKU is built at quote time. For a colour that costs more, add a separate variation with its own price.</p>
@@ -1641,19 +1658,19 @@ export default function RangeForm() {
                           </datalist>
                           <p className="text-2xs text-ink-60 mt-0.5 leading-tight">G = Gold · C = Chrome · R = Rose Gold · A = Gun Metal</p>
                         </div>
-                        <div>
+                        <div className={quickMode ? 'hidden' : ''}>
                           <label className="label">Running No.</label>
                           <input className="input text-xs font-mono" value={v.running_no} onChange={setVariant(i, 'running_no')} placeholder="(opt.)" />
                         </div>
-                        <div>
+                        <div className={quickDraft ? 'hidden' : ''}>
                           <label className="label">WS Price USD</label>
                           <input className="input text-xs" type="number" step="0.01" value={v.ws_price_usd} onChange={setVariant(i, 'ws_price_usd')} />
                         </div>
-                        <div>
+                        <div className={quickMode ? 'hidden' : ''}>
                           <label className="label">Packaging</label>
                           <input className="input text-xs" value={v.packaging} onChange={setVariant(i, 'packaging')} placeholder="Gift box…" />
                         </div>
-                        <div>
+                        <div className={quickMode ? 'hidden' : ''}>
                           <label className="label">Engraving</label>
                           <input className="input text-xs" value={v.engraving} onChange={setVariant(i, 'engraving')} placeholder="Logo / text…" />
                         </div>
@@ -1775,12 +1792,12 @@ export default function RangeForm() {
             them across colours. Replaces the old Crystal Mixtures editor, which
             held a colour list with no quantities and was populated from a
             marketing CSV that the job-order BOM contradicts. */}
-        <CrystalBomEditor
+        <div className={quickMode ? 'hidden' : ''}><CrystalBomEditor
           bom={form.crystal_components}
           onChange={next => setForm(f => ({ ...f, crystal_components: next }))}
           crystals={libCrystals}
           mixCodes={libColors.map(c => c.code).filter(isMixCode)}
-        />
+        /></div>
 
         {/* Actions */}
         <div className="flex items-center justify-between">
@@ -1790,7 +1807,7 @@ export default function RangeForm() {
           <div className="flex gap-2">
             <Link to="/range" className="btn-secondary text-sm">Cancel</Link>
             <button type="submit" disabled={saving || uploading} className="btn-primary text-sm">
-              {saving ? 'Saving…' : isNew ? 'Create product' : 'Save changes'}
+              {saving ? 'Saving…' : quickDraft ? 'Save hidden Concept' : isNew ? 'Create product' : 'Save changes'}
             </button>
           </div>
         </div>

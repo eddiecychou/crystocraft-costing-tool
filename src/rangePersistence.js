@@ -7,12 +7,13 @@ import { familyKey, punctuationKey } from './domain/rangeUpload.js'
 export async function persistRangeFamily(db, id, payload, isNew) {
   const key = familyKey(payload)
   const matches = await getDocs(query(collection(db, 'range_products'), where('design_no', '==', payload.design_no)))
-  if (matches.docs.some(d => d.id !== id && d.data().format_code === payload.format_code)) throw new Error('This design/format family already exists. Open and correct the existing product instead.')
+  const duplicate = matches.docs.find(d => d.id !== id && d.data().format_code === payload.format_code)
+  if (duplicate) throw Object.assign(new Error('This design/format family already exists. Open and correct the existing product instead.'), { existingRangeId: duplicate.id })
   await runTransaction(db, async tx => {
     const ref = doc(db, 'range_products', id), claimRef = doc(db, 'range_family_claims', key)
     const current = await tx.get(ref), claim = await tx.get(claimRef)
     if (isNew === current.exists()) throw new Error(isNew ? 'Product ID already exists. Reopen it before saving.' : 'Product was removed. Reload before saving.')
-    if (claim.exists() && claim.data().range_id !== id) throw new Error('Another product reserved this family. Reload and use the existing product.')
+    if (claim.exists() && claim.data().range_id !== id) throw Object.assign(new Error('Another product reserved this family. Reload and use the existing product.'), { existingRangeId: claim.data().range_id })
     const saved = { ...payload }
     if (!isNew && Array.isArray(payload.variants)) {
       const fresh = current.data().variants || []

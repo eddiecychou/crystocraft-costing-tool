@@ -10285,3 +10285,7 @@ neither of which is read by existing code paths.
 - **Analytics** — which products are most quoted, win rate per client, margin trends
 - **CRM light** — track follow-ups and status per client enquiry
 - **Catalogue Collections & Merchandising** — ✅ C0/C1/C2 **BUILT 2026-06-23**. C3 (seasonal date windows + `new_in` smart tile in the band) and C4 (best_sellers + account row) remain future phases. Full spec: `Crystocraft/Operations/Catalogue_Collections_Spec.md`.
+
+### Range MCP release authorised + simple entry (16 October 2026)
+
+Owner authorised push/deploy, both-role sign-in verification, read-only service provisioning, and keeping MCP writes disabled until an actual product preview is approved. Also requested equally simple owner/agent starting points, without another queue. Quick Add now uses the existing editor/persistence, starts hidden/unpriced Concept, exposes optional fields on request, opens the result for review and links existing families for correction. One brief/one consolidated missing-facts question/one preview is documented in docs/skills/RANGE-PRODUCT-ENTRY.md. Emulator create/duplicate/correction readback passed; no live product fixture. Final hosted release evidence will be recorded separately.

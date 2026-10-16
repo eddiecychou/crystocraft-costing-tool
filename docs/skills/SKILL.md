@@ -451,3 +451,7 @@ authoritative detail stays in the doc it points to. Update the Change Log below.
 ### Reusable Range MCP candidate (not deployed)
 
 Separate `mcp/range` five-tool server, `/api/mcp-range` Node endpoint, pure `src/domain/rangeUpload.js`, shared normal-UI reservations in `src/rangePersistence.js`. Do not replace B0016/Corporate Gifts identities or activate this candidate without separately reviewed rules/app/identity release. [Operator guide](../../mcp/range/README.md), [verification report](../reviews/RANGE-MCP-IMPLEMENTATION-2026-10-16.md).
+
+### Simple Range entry — owner and agent
+
+Read [RANGE-PRODUCT-ENTRY.md](RANGE-PRODUCT-ENTRY.md) before new Range product work. Both entry points are supported: OC Quick Add and one natural-language agent brief. Keep optional details out of the way, gather blocking facts in one question, review/read back once, correct the same product, and retain reusable lessons. MCP live writes stay disabled until an actual product preview is approved.

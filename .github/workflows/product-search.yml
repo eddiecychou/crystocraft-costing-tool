@@ -38,7 +38,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run test:product-search
