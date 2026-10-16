@@ -499,3 +499,5 @@ not just HTML/Elementor caches; prefer excluding REST/authenticated edit request
 from shared caches. Check both canonical previously cached URLs and fresh URLs.
 DSH owns plugin/cache work. OC does not install or purge WordPress. Full corrected
 contract and protocol-2 rollout: `../../seo-control-plane/README.md`.
+
+**Release closure (16 Oct, 12:58 AEDT):** e516a1c9 deployed as 6ad183af9c09894303c35bbc; 375 CI checks passed, fresh admin/customer sign-ins passed on candidate and production. DSH producer protocol-2 integration remains required; no WP/cache/Workbench changes were made. Evidence: docs/plans/DSH-INTEGRATION-FIXES-2026-10-16.md.

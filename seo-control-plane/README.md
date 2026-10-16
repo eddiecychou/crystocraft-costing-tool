@@ -25,7 +25,7 @@ Workbench and runs them as its own. The immutable, owner-approved OC release com
 working checkout is NOT a release source and must never overwrite a newer vendor.
 
 Before trusting a run against a newly vendored copy, check it is byte-identical
-to the hash in the handoff for the intended release (the table below describes this candidate). **The hash changes whenever the file does** — when the OC
+to the hash in the handoff for the intended release (the table below describes release e516a1c9). **The hash changes whenever the file does** — when the OC
 ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch.
 
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-16) |
@@ -362,7 +362,7 @@ pending batches still need human rejection or explicit replacement after release
 See docs/plans/ELEMENTOR-READBACK-QUEUE-FOLLOWUP-2026-10-16.md for the handoff
 and the separate WordPress page-Yoast prerequisite.
 
-## DSH integration follow-up — candidate, not deployed (16 October 2026)
+## DSH integration follow-up — released 16 October 2026
 
 ### Withdrawal and execution protocol 2
 
@@ -446,5 +446,7 @@ node seo-control-plane/check-vendor-sync.mjs --repo /path/to/oc \
 The checker reads git objects at that commit, checks all five shared artifacts,
 fails for missing/mismatching copies, and never writes or prints copy commands.
 No automatic "master wins" repair is permitted. Confirm deployment identity before
-selecting the release pin; this local candidate is not a released version yet.
+selecting the release pin; this release is pinned to e516a1c9e9763a661e9191803de7a3d53000c685. Its worker protocol requires the DSH update before any further execution.
 DSH must update its own checker/client; OC has not edited Workbench files.
+
+Release verification: app commit e516a1c9, production deploy 6ad183af9c09894303c35bbc; 375 CI checks passed and fresh admin/customer logins passed on candidate and production. See `../docs/plans/DSH-INTEGRATION-FIXES-2026-10-16.md` for evidence.

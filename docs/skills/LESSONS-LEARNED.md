@@ -1115,3 +1115,5 @@ never prints repair copy commands. Updated DSH-only WordPress edit visibility,
 canonical + cache-busted REST purge, and edit-context reviewed snapshot guidance.
 No Workbench or WordPress files were modified. Producer claim integration and
 coordinated deployment are still required; a local green suite is not live proof.
+
+**Release closure (16 Oct, 12:58 AEDT):** e516a1c9 deployed as 6ad183af9c09894303c35bbc; 375 CI checks passed, fresh admin/customer sign-ins passed on candidate and production. DSH producer protocol-2 integration remains required; no WP/cache/Workbench changes were made. Evidence: docs/plans/DSH-INTEGRATION-FIXES-2026-10-16.md.

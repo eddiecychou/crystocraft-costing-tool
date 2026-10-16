@@ -85,3 +85,59 @@ production release and the same checks again. No previous login evidence is reus
 
 Full operational contract and official WordPress references:
 ../../seo-control-plane/README.md.
+
+## Authorised release closure — 16 October 2026, 12:58 AEDT
+
+Owner explicitly requested push/deploy, fresh admin/customer login and DSH message.
+App commit e516a1c9e9763a661e9191803de7a3d53000c685 pushed to main; latest main
+was the expected base (one local commit ahead, no remote divergence).
+
+- Candidate deploy 6ad182be5b8f490e133ce57c:
+  https://6ad182be5b8f490e133ce57c--ua-product-manager.netlify.app
+  asset /assets/index-CbChMJJ4.js; marker V8.18 · 16 Oct, 12:47.
+- Production deploy 6ad183af9c09894303c35bbc, ready and published at
+  2026-10-16T01:54:47.201Z (12:54:47 AEDT), app commit e516a1c9.
+  Both portal.crystocraft.com and ua-product-manager.netlify.app serve
+  /assets/index-Bmg7knIE.js; marker V8.18 · 16 Oct, 12:54.
+- Configuration tests 11/11. Served Firebase probes HTTP 200 on candidate and both
+  production origins; unauthenticated production batch requests HTTP 401.
+- GitHub Actions run 38837577385, job 116770022501: completed SUCCESS, all 375
+  assertions/tests confirmed from job logs; zero failures.
+  https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/38837577385
+
+### Fresh browser sign-ins (real pages and passwords)
+
+| Surface | Role / approved QA identity | Result |
+|---|---|---|
+| Candidate | admin claude-qa@crystocraft.com | PASS |
+| Candidate | customer customer-qa@crystocraft.com | PASS |
+| Production | admin claude-qa@crystocraft.com | PASS |
+| Production | customer customer-qa@crystocraft.com | PASS |
+
+Admin: fresh sign-in routed to /dashboard with Settings/Portal admin navigation;
+/range loaded 296 of 296 products and 720 SKUs and persisted after refresh. Updated
+/seo-review loaded real batches, visible batch ID IneCJ45qIECrLO2eyvGl and Withdraw
+unused batch. Production list showed one pending review and historical states;
+no approved/executing badges were present at inspection. No live batch decisions
+or withdrawals were made. Candidate admin initially had a transient connection
+error; retry succeeded without any configuration or credential changes.
+
+Customer: fresh sign-in routed to /shop with approved QA company/USD header;
+/shop/figurine loaded 24 product cards before and after refresh, no admin Settings
+link. Direct /settings redirected to /shop on both surfaces. No admin shell, supplier
+costs or internal notes appeared. Browser app error logs empty. Both roles signed
+out after testing. The owner's working Chrome/custom-domain session was untouched.
+
+Evidence (screenshots):
+/private/tmp/dsh-worker-candidate-admin.png
+/private/tmp/dsh-worker-candidate-customer.png
+/private/tmp/dsh-worker-candidate-review.png
+/private/tmp/dsh-worker-production-admin.png
+/private/tmp/dsh-worker-production-customer.png
+/private/tmp/dsh-worker-production-review.png
+
+Application release is complete. Firebase rules/Auth/roles/credentials unchanged.
+DSH's worker is NOT changed by this release: legacy polls intentionally fail 409.
+The required protocol-2 producer update and real end-to-end WordPress tests remain
+DSH's work. No WordPress plugins, writes, caches or Workbench files were modified.
+Live WP privacy response remains uncertified here (anonymous probe HTTP 403).
