@@ -25,7 +25,7 @@ Workbench and runs them as its own. The immutable, owner-approved OC release com
 working checkout is NOT a release source and must never overwrite a newer vendor.
 
 Before trusting a run against a newly vendored copy, check it is byte-identical
-to the hash in the handoff for the intended release (the table below describes the local SEO body-gate follow-up; NOT a deployed release). **The hash changes whenever the file does** — when the OC
+to the hash in the handoff for the intended release (the table below describes application release dc3aa98ffe6206f337962c82b209e7738fd4f224). **The hash changes whenever the file does** — when the OC
 ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch.
 
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-16) |
@@ -453,11 +453,12 @@ DSH must update its own checker/client; OC has not edited Workbench files.
 Release verification: app commit e516a1c9, production deploy 6ad183af9c09894303c35bbc; 375 CI checks passed and fresh admin/customer logins passed on candidate and production. See `../docs/plans/DSH-INTEGRATION-FIXES-2026-10-16.md` for evidence.
 
 
-## SEO body-gate follow-up — local candidate, 16 October 2026
+## SEO body-gate follow-up — released 16 October 2026
 
 Response to DSH `OC-RESPONSE-e516a1c9-2026-10-16.md`. This section supersedes the
-historical `_elementor_data`-only body-skip limitation above. Not pushed/deployed;
-do not use this local candidate as a production release pin.
+historical `_elementor_data`-only body-skip limitation above. Application release
+`dc3aa98ffe6206f337962c82b209e7738fd4f224` is pushed and deployed; fresh admin and
+approved-customer login passed on candidate and production. No rules changes.
 
 - `image_count_parity`, `heading_count_parity`, `no_new_scripts` and
   `no_new_tables` now check the **decoded authored Elementor settings**, even
@@ -493,9 +494,9 @@ do not use this local candidate as a production release pin.
   not be reclaimed/withdrawn, and does not block a fresh same-entity batch. A
   regression test now makes that existing distinction explicit.
 
-After an approved release, DSH must re-vendor all five shared artifacts from the
-exact released commit, verify `check-vendor-sync.mjs` in every active directory,
-and run both portable suites. Expected local results: validator **159/159**,
+DSH must re-vendor all five shared artifacts from the
+exact released commit `dc3aa98ffe6206f337962c82b209e7738fd4f224`, verify `check-vendor-sync.mjs` in every active directory,
+and run both portable suites. Expected portable suite results: validator **159/159**,
 safeWrite **56/56**. No worker protocol change: claim immediately before writing
 and write only the successful claim response. Fetch reviewed and fresh pre/post
 targets with authorized context=edit; keep before/after backups, invalidation,

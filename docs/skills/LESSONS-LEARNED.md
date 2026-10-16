@@ -1164,4 +1164,4 @@ Pre-read absence refuses before PUT; post-read absence remains unverified with a
 possible-write warning. Never retry a possibly completed write blindly or replace
 the reviewed baseline. Stale review guards retain their transactional refusal and
 now provide Reload queue. Claimed/refused receipts are inert audit history; fresh
-same-entity work remains possible. Implementation is local until separately released.
+same-entity work remains possible. Released in app commit dc3aa98f after fresh candidate/production admin and customer checks.

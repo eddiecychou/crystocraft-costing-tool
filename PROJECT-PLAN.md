@@ -1,14 +1,15 @@
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
-## Local candidate — SEO Elementor body gate (2026-10-16)
+## Released — SEO Elementor body gate (2026-10-16)
 
 DSH e516a1c9 integration response addressed: layout-only body checks run against
 authored Elementor settings; section/column IDs do not inflate widget_count;
 missing private pre/post read fields get context=edit diagnostics; reviewed REST
 raw objects compare symmetrically; stale-review errors offer Reload queue.
 Existing approval/backup/claim safeguards retained. SEO checks 284 passing, no
-live batch/WordPress changes. Isolated branch `codex/seo-elementor-body-gate`;
-not pushed/deployed. See [verification and hashes](docs/plans/SEO-BODY-GATE-FOLLOWUP-2026-10-16.md).
+live batch/WordPress changes. Isolated branch `codex/seo-elementor-body-gate`; app commit `dc3aa98f` pushed/deployed,
+fresh admin/customer logins PASS on candidate and production, 429 prebuild checks
+and release CI green. Firebase rules unchanged. See [verification and hashes](docs/plans/SEO-BODY-GATE-FOLLOWUP-2026-10-16.md).
 
 
 ## Unreleased candidate — reusable Crystocraft Range MCP (2026-10-16)
