@@ -628,5 +628,17 @@ function expect(name, cond, detail = '') {
   expect('trailing slash cannot bypass translation draft rule', !translation.passed)
 }
 
+// DSH: a metadata-only write cannot remove brands from untouched body copy.
+{
+  const v = validatePayload({ endpoint: 'wp/v2/pages/66619',
+    payload: { meta: { _yoast_wpseo_metadesc: 'A useful description.' } },
+    source: { content: { raw: 'Swarovski Crystocraft' } } })
+  const brand = v.checks.find(c => c.name === 'brand_terms_preserved')
+  expect('metadata-only brand check explicitly skips', brand.ok === null && /untouched/.test(brand.detail))
+  expect('metadata-only skip needs no exception', v.passed && v.overridden === 0)
+  const body = validatePayload({ payload: { content: '' }, source: { content: { raw: 'Crystocraft' } } })
+  expect('empty body writes still detect removed brand', chk(body).brand_terms_preserved === false)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

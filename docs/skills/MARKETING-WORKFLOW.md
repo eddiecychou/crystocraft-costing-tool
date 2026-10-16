@@ -487,3 +487,15 @@ clear, host purge) is unchanged.
 | 2026-10-03 | §6.6 — the control-plane defects are **closed and verified by DSH**: the batch passes on its own merits with the structural guards running, and the `before.content` workaround is no longer needed. The rule now stated in §6.6: pass a nested `source` on every item, fetch it with `context=edit`, and treat `skipped > 0` as a PARTIAL validation (L-44 / L-45 / L-47 / L-48). |
 | 2026-10-03 | §6.6 step 2 extended again for L-48: the validator normalises the nested `payload` and flat `before` shapes (a mismatch used to silently disable the three `_elementor_data` guards while the gate reported `passed`), skips are first-class and surfaced (`skipped_validation`, `/seo-review`), and a layout write with no usable source tree is blocked. |
 | 2026-10-03 | §6.6 step 2 extended — DSH verified defect 2 only partially fixed: the raw-body rule also covers the brand/language/placeholder text scans (L-47), an absent `.raw` makes those checks skip rather than fall back to the render, and `source`/`before` must be fetched with `context=edit`. |
+
+### 16 October REST privacy and cache correction
+
+WordPress `auth_callback` is write permission, not a read visibility gate.
+Private page Yoast raw fields need authorised edit-only visibility (REST schema
+context plus DSH's page response capability filter), separately verified for
+anonymous/customer single/collection/embedded responses. Purge `/wp-json/` cached
+responses and query/language variants at host and CDN layers after privacy changes,
+not just HTML/Elementor caches; prefer excluding REST/authenticated edit requests
+from shared caches. Check both canonical previously cached URLs and fresh URLs.
+DSH owns plugin/cache work. OC does not install or purge WordPress. Full corrected
+contract and protocol-2 rollout: `../../seo-control-plane/README.md`.

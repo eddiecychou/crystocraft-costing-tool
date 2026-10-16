@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, doc, onSnapshot, query, orderBy, limit, runTransaction } from 'firebase/firestore'
+import { collection, doc, onSnapshot, query, orderBy, limit, where, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import SeoValidationDetails from '../components/SeoValidationDetails'
 import { ClipboardCheck, Check, X, AlertTriangle, CircleSlash, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
@@ -13,6 +13,8 @@ import { ClipboardCheck, Check, X, AlertTriangle, CircleSlash, PanelLeftClose, P
 const STATUS_BADGE = {
   pending_review: 'bg-amber-50 text-amber-700',
   approved: 'bg-sky-50 text-sky-700',
+  executing: 'bg-sky-50 text-sky-700',
+  withdrawn: 'bg-ivory text-ink-70',
   rejected: 'bg-ivory text-ink-70',
   superseded: 'bg-ivory text-ink-70',
   executed: 'bg-green-50 text-green-700',
@@ -56,12 +58,37 @@ export default function SeoReview() {
 
   useEffect(() => {
     const q = query(collection(db, 'seo_batches'), orderBy('created_at', 'desc'), limit(50))
-    return onSnapshot(q,
-      snap => setBatches(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-      e => setErr(e.message || 'Could not load batches.'))
+    let history = [], active = []
+    const merge = () => setBatches([...new Map([...history, ...active].map(b => [b.id, b])).values()]
+      .sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0)))
+    const error = e => setErr(e.message || 'Could not load batches.')
+    const stopHistory = onSnapshot(q, snap => {
+      history = snap.docs.map(d => ({ ...d.data(), id: d.id })); merge()
+    }, error)
+    const stopActive = onSnapshot(query(collection(db, 'seo_batches'),
+      where('status', 'in', ['pending_review', 'approved', 'executing'])), snap => {
+      active = snap.docs.map(d => ({ ...d.data(), id: d.id })); merge()
+    }, error)
+    return () => { stopHistory(); stopActive() }
   }, [])
 
   const sel = useMemo(() => batches.find(b => b.id === selId) || batches[0] || null, [batches, selId])
+  const canWithdraw = b => b && ['pending_review', 'approved'].includes(b.status)
+    && !b.superseded_by && !b.execution_started_at && !b.items.some(it => it.result)
+  async function withdraw() {
+    if (!sel) return
+    setBusy(true); setErr('')
+    try {
+      await runTransaction(db, async tx => {
+        const ref = doc(db, 'seo_batches', sel.id)
+        const snap = await tx.get(ref)
+        if (!snap.exists() || !canWithdraw(snap.data())) throw new Error('Batch has started or changed; cannot withdraw.')
+        tx.update(ref, { status: 'withdrawn', withdrawn_at: serverTimestamp(),
+          withdrawn_by: 'reviewer', withdrawal_reason: 'Withdrawn in OC review queue' })
+      })
+    } catch (e) { setErr(e.message || 'Withdrawal failed.') }
+    finally { setBusy(false) }
+  }
   const editable = sel?.status === 'pending_review' && !sel?.superseded_by
 
   async function setItems(items, extra = {}) {
@@ -156,7 +183,7 @@ export default function SeoReview() {
                   <div>
                     <p className="text-sm text-ink">{sel.note || 'Untitled batch'}</p>
                     <p className="text-xs text-ink-60 mt-0.5">
-                      {sel.item_count} items · {fmtTs(sel.created_at)}
+                      Batch {sel.id} · {sel.item_count} items · {fmtTs(sel.created_at)}
                       {counts && <> · <span className="text-green-700">{counts.approve} approve</span> · <span className="text-ink-60">{counts.reject} reject</span> · {counts.pending} pending{counts.failed > 0 && <> · <span className="text-red-600">{counts.failed} failed validation</span></>}</>}
                     </p>
                   </div>
@@ -166,8 +193,12 @@ export default function SeoReview() {
                   Superseded by batch {sel.superseded_by}. This batch cannot be released.
                 </p>}
                 {sel.supersedes?.length > 0 && <p className="text-xs text-ink-60 mt-2">
-                  Replaces pending batches: {sel.supersedes.join(', ')}
+                  Replaces batches: {sel.supersedes.join(', ')}
                 </p>}
+                {sel.status === 'executing' && <p className="text-xs text-ink-60 mt-2">Claimed by DSH for execution. Withdrawal is locked even before the first result.</p>}
+                {sel.status === 'withdrawn' && <p className="text-xs text-ink-60 mt-2">Withdrawn: {sel.withdrawal_reason}</p>}
+                {canWithdraw(sel) && <button onClick={withdraw} disabled={busy}
+                  className="btn-secondary text-xs mt-3">Withdraw unused batch</button>}
                 {editable && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     <button onClick={() => bulk('approve', true)} disabled={busy}

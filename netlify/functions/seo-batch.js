@@ -28,7 +28,9 @@
 //          applicable check (no `source`, or a `.raw`-less source body). Those
 //          are not failures, but a FULL pass is only `failed_validation: 0` AND
 //          `skipped_validation: 0` (L-48).
-//   { op: 'poll' }                 -> { batches: [...] }   status === 'approved'
+//   { op: 'poll', execution_protocol: 2 } -> { batches: [...] } discovery only
+//   { op: 'claim', id, execution_protocol: 2 } -> { batch } atomic execution lock
+//   { op: 'withdraw', id, reason } -> unused pending/approved batch withdrawn
 //                                    (items that failed OC validation come
 //                                     back as decision:'blocked')
 //   { op: 'get', id }              -> { batch }
@@ -42,7 +44,7 @@
 import { initAdminApp } from './lib/firebaseAdmin.js'
 import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 import { timingSafeEqual } from 'node:crypto'
-import { supersedesIds, storeQueuedBatch, releaseBatch, QueueConflict } from './lib/seoBatchSafety.js'
+import { supersedesIds, storeQueuedBatch, releaseBatch, claimBatch, withdrawBatch, QueueConflict } from './lib/seoBatchSafety.js'
 // The OC re-runs the code gate server-side on every incoming batch — DSH's
 // self-reported `validation` is kept as `dsh_validation` for audit, but the
 // authoritative result the reviewer sees (and that `poll` enforces) is this
@@ -213,6 +215,20 @@ export default async function handler(req) {
     })
   }
 
+  if (['poll', 'claim'].includes(body.op) && body.execution_protocol !== 2) {
+    return json({ error: 'Upgrade DSH: execution_protocol:2 and a successful claim are required before any WordPress write' }, 409)
+  }
+  if (body.op === 'claim' || body.op === 'withdraw') {
+    if (!body.id || typeof body.id !== 'string' || !/^[\w-]{1,128}$/.test(body.id)) return json({ error: 'valid batch id required' }, 400)
+    if (body.op === 'withdraw' && (typeof body.reason !== 'string' || !body.reason.trim())) return json({ error: 'withdrawal reason required' }, 400)
+    try {
+      const ref = col.doc(body.id)
+      if (body.op === 'claim') return json({ batch: await claimBatch(getFirestore(), ref, Timestamp.now()) })
+      await withdrawBatch(getFirestore(), ref, Timestamp.now(), body.reason.trim().slice(0, 500))
+      return json({ ok: true, status: 'withdrawn' })
+    } catch (e) { return json({ error: e.message }, e instanceof QueueConflict ? 409 : 500) }
+  }
+
   if (body.op === 'poll') {
     const snap = await col.where('status', '==', 'approved').limit(20).get()
     // Hard gate: an item can be approved in the UI but still have failed the
@@ -232,35 +248,37 @@ export default async function handler(req) {
   if (body.op === 'result') {
     if (!body.id || !Array.isArray(body.results)) return json({ error: 'id + results[] required' }, 400)
     const ref = col.doc(String(body.id))
-    const d = await ref.get()
-    if (!d.exists) return json({ error: 'not found' }, 404)
-    if (d.data().superseded_by || d.data().status === 'superseded') return json({ error: 'Batch is superseded; results cannot reactivate it' }, 409)
-    if (!['approved', 'partial', 'executed'].includes(d.data().status)) return json({ error: 'Batch was not released for execution' }, 409)
-    const byIndex = new Map(body.results.map(r => [r.index, r]))
-    // `verified` is kept as an explicit boolean when DSH sends one, and null
-    // when it doesn't (an older DSH — fall back to `ok` for it rather than
-    // retro-failing every result). A present `verified:false` means the
-    // intended change did not happen (no-op), which is a failure to report.
-    const items = (d.data().items || []).map(it => {
-      const r = byIndex.get(it.index)
-      return r
-        ? { ...it, result: {
-            ok: !!r.ok,
-            after: r.after ?? null,
-            verified: typeof r.verified === 'boolean' ? r.verified : null,
-            noop: !!r.noop,
-            // Fields the payload asked to change that did not move — the
-            // per-field half of `verified` (2026-10-03). Kept so the reviewer
-            // sees WHICH field silently did not land, not just that one didn't.
-            unlanded: Array.isArray(r.unlanded) ? r.unlanded.slice(0, 20) : [],
-            error: r.error ?? null,
-            at: Timestamp.now(),
-          } }
-        : it
+    return getFirestore().runTransaction(async tx => {
+      const d = await tx.get(ref)
+      if (!d.exists) return json({ error: 'not found' }, 404)
+      if (d.data().superseded_by || d.data().status === 'superseded') return json({ error: 'Batch is superseded; results cannot reactivate it' }, 409)
+      if (!['executing', 'partial', 'executed'].includes(d.data().status) || !d.data().execution_started_at) return json({ error: 'Batch was not released for execution' }, 409)
+      const byIndex = new Map(body.results.map(r => [r.index, r]))
+      // `verified` is kept as an explicit boolean when DSH sends one, and null
+      // when it doesn't (an older DSH — fall back to `ok` for it rather than
+      // retro-failing every result). A present `verified:false` means the
+      // intended change did not happen (no-op), which is a failure to report.
+      const items = (d.data().items || []).map(it => {
+        const r = byIndex.get(it.index)
+        return r
+          ? { ...it, result: {
+              ok: !!r.ok,
+              after: r.after ?? null,
+              verified: typeof r.verified === 'boolean' ? r.verified : null,
+              noop: !!r.noop,
+              // Fields the payload asked to change that did not move — the
+              // per-field half of `verified` (2026-10-03). Kept so the reviewer
+              // sees WHICH field silently did not land, not just that one didn't.
+              unlanded: Array.isArray(r.unlanded) ? r.unlanded.slice(0, 20) : [],
+              error: r.error ?? null,
+              at: Timestamp.now(),
+            } }
+          : it
+      })
+      const outcome = batchOutcome(items)
+      tx.update(ref, { items, status: outcome.status, executed_at: Timestamp.now() })
+      return json({ ok: true, ...outcome })
     })
-    const outcome = batchOutcome(items)
-    await ref.update({ items, status: outcome.status, executed_at: Timestamp.now() })
-    return json({ ok: true, ...outcome })
   }
 
   return json({ error: `Unknown op: ${body.op}` }, 400)

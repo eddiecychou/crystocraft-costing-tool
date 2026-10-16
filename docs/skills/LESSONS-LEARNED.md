@@ -1093,3 +1093,25 @@ registration is separate and remains a real unlanded-field failure.
 **Verification:** qa/seo-write-safety.test.mjs reproduces slash/Unicode differences,
 wrong values, real drift, ignored Yoast, pre-write abort, queue policy and the
 actual injected transaction helper. No historical batch results are relabelled.
+
+## L-64 — A receipt is not an execution lock; metadata visibility is not write permission
+
+**Symptom:** unused approved SEO batches could not be withdrawn, metadata carrier
+permissions falsely flagged layout drift, and metadata-only writes falsely dropped
+brands. DSH also reported public private-meta responses, stale REST cache after a
+privacy fix, and a vendor checker recommending an older working checkout.
+
+**Root cause:** only pending batches could be superseded; no atomic claim marked
+work in flight before receipts. `meta` and `meta_data` permission expansion differed;
+brand comparison ran when no body/copy was written. Earlier page-Yoast guidance did
+not explicitly require response visibility and REST cache tests. Working checkout
+identity was confused with immutable release identity.
+
+**Fix (local candidate):** transactional protocol-2 claim, withdrawal/supersession
+for unclaimed pending/approved batches with zero results, transactional receipts,
+all-active queue subscription and visible IDs; metadata permission parity and a
+visible untouched-copy skip. Added immutable release-object vendor checker that
+never prints repair copy commands. Updated DSH-only WordPress edit visibility,
+canonical + cache-busted REST purge, and edit-context reviewed snapshot guidance.
+No Workbench or WordPress files were modified. Producer claim integration and
+coordinated deployment are still required; a local green suite is not live proof.

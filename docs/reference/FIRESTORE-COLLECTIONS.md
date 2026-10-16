@@ -176,3 +176,5 @@ another collection. That last part is the part worth not skipping — an
 undocumented pointer field is exactly how the Alibaba-carry-forward bug
 happened (a merge pattern existed for two collections but a third was never
 told about it).
+
+**16 October local candidate — seo_batches execution lifecycle:** adds executing/execution_started_at and withdrawn/withdrawn_at/withdrawn_by/withdrawal_reason. Claim, machine withdrawal, supersession and receipts use transactions; UI withdrawal also re-reads transactionally. Any claim or receipt prevents withdrawal. No rules changes or production migration performed.

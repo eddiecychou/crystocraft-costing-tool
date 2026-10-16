@@ -125,7 +125,7 @@ DSH ops (POST JSON):
 ```
 {
   created_by: 'dsh', created_at, note, item_count,
-  status: 'pending_review' | 'approved' | 'rejected' | 'executed' | 'partial' | 'superseded',
+  status: 'pending_review' | 'approved' | 'rejected' | 'executed' | 'partial' | 'superseded' | 'executing' | 'withdrawn',
   supersedes: [], superseded_by?, superseded_at?,
   items: [{
     index, id, kind, lang, endpoint, summary,
@@ -338,7 +338,7 @@ Missing expectedBefore remains backward-compatible, not proof of stale-write saf
 
 Batch create accepts optional batch.supersedes (up to 20 unique batch IDs).
 A serialisable transaction rejects same-entity pending/approved collisions with
-409, supersedes only overlapping unexecuted pending batches and creates a fresh
+409, supersedes overlapping unclaimed pending OR approved batches with no results and creates a fresh
 pending replacement. Superseded originals retain payload/decisions/results and
 record superseded_by/at; replacements record supersedes. Poll excludes them
 regardless of a stale status change. Review decisions use a transaction to refuse
@@ -346,3 +346,16 @@ a changed/non-pending/superseded batch. Results reject superseded/unreleased wor
 Existing stale batches are NOT migrated or automatically rejected.
 Details and DSH rollout: ../../seo-control-plane/README.md, and
 ../plans/ELEMENTOR-READBACK-QUEUE-FOLLOWUP-2026-10-16.md.
+
+### DSH 16 October integration findings — local candidate
+
+Execution protocol 2 adds atomic claim before WordPress execution. Poll is discovery
+only; legacy polls fail 409. Approved batches with no receipts may be withdrawn or
+superseded only while unclaimed. Execution_started_at/executing locks the batch
+before the first result, so claim and supersession cannot both win. Results use a
+transaction and reject unreleased/withdrawn work. The UI lists all active work and
+batch IDs and offers withdrawal. DSH must pause/drain old workers and integrate
+claim before a coordinated release. See seo-control-plane/README.md for the complete
+producer, edit-context, REST privacy/cache purge and immutable vendor pin contract.
+Metadata carrier permission covers nested meta paths; metadata-only brand checks
+skip visibly without exceptions while actual copy edits remain checked.

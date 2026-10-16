@@ -471,7 +471,12 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   //    Compare on markup-free text: <script>/<style> bodies (JSON-LD in
   //    particular embeds "Crystocraft") and tags would otherwise make a brand
   //    term look "present in source" that no human-visible copy dropped (B53).
-  if (!source) {
+  const textFields = ['content', 'description', 'short_description', 'excerpt', 'title', 'name']
+  const writesText = textFields.some(k => Object.hasOwn(payload, k))
+    || Object.hasOwn(payload.meta || {}, '_elementor_data')
+  if (!writesText) {
+    skip('brand_terms_preserved', 'No body or copy field is written; existing brand terms are untouched')
+  } else if (!source) {
     skip('brand_terms_preserved', NO_SOURCE)
   } else {
     const bare = (s) => stripTags(String(s).replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' '))

@@ -330,5 +330,14 @@ const productPut = (keys) => (cur, body) => ({
     r.verified === false && r.noop === true, JSON.stringify(r.result))
 }
 
+// DSH: declaring the metadata carrier also declares the nested layout.
+for (const carrier of ['meta', 'meta_data']) {
+  let state = { status: 'publish', meta: { _elementor_data: '[{"id":"a"}]' } }
+  const r = await safeWrite({ id: 1, endpoint: 'wp/v2/pages/1', get: async () => state,
+    put: async () => { state = { ...state, meta: { _elementor_data: '[{"id":"b"}]' } } },
+    payload: { meta: { _elementor_data: '[{"id":"b"}]' } }, expectedFields: [carrier] })
+  expect(`${carrier} covers the nested Elementor field`, r.verified && !r.drift.length)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

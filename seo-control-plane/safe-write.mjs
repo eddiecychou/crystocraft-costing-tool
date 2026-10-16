@@ -180,10 +180,10 @@ export async function safeWrite({ get: getFn, put: putFn, invalidateYoastIndexab
 
   // What changed that we did NOT ask to change?
   const expected = new Set(expectedFields.map(f => (/_elementor_data$/.test(f) ? 'meta._elementor_data' : f)))
-  // Declaring WooCommerce's whole `meta_data` list covers the Elementor tree
+  // Declaring WordPress `meta` or WooCommerce's whole `meta_data` covers the Elementor tree
   // inside it — otherwise the always-on `meta._elementor_data` watch reports the
   // change the caller just declared as drift.
-  if (expected.has('meta_data')) for (const path of watch) if (path.startsWith('meta.')) expected.add(path)
+  if (expected.has('meta') || expected.has('meta_data')) for (const path of watch) if (path.startsWith('meta.')) expected.add(path)
   const drift = []
   for (const f of watch) {
     if (expected.has(f)) continue

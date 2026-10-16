@@ -90,14 +90,15 @@ test('entity collisions ignore language/query/trailing slash but retain entity n
   assert.deepEqual(queuePlan([item(66619, 'wp/v2/posts/66619')], [batch('old')]).conflicts, [])
   assert.throws(() => queuePlan([item(66619), item(66619)], []), /Combine/)
 })
-test('supersession only withdraws overlapping unexecuted pending batches', () => {
+test('supersession withdraws overlapping pending or approved work only before claim', () => {
   assert.deepEqual(queuePlan([item(66619)], [batch('old')], ['old']), { conflicts: [], supersedes: ['old'] })
-  for (const b of [batch('old', 'approved'), batch('old', 'partial'), batch('old', 'rejected'),
+  assert.deepEqual(queuePlan([item(66619)], [batch('old', 'approved')], ['old']).conflicts, [])
+  for (const b of [{ ...batch('old', 'approved'), execution_started_at: 'now' }, batch('old', 'executing'), batch('old', 'partial'), batch('old', 'rejected'),
     { ...batch('old'), superseded_by: 'new' }, batch('old', 'pending_review', [{ ...item(66619), result: { ok: false } }])]) {
-    assert.throws(() => queuePlan([item(66619)], [b], ['old']), /Only unexecuted/)
+    assert.throws(() => queuePlan([item(66619)], [b], ['old']), /Only unclaimed/)
   }
   assert.throws(() => queuePlan([item(2)], [batch('old')], ['old']), /does not overlap/)
-  assert.throws(() => queuePlan([item(66619)], [], ['missing']), /Only unexecuted/)
+  assert.throws(() => queuePlan([item(66619)], [], ['missing']), /Only unclaimed/)
 })
 test('supersedes IDs are bounded and validated, not coerced', () => {
   assert.deepEqual(supersedesIds(undefined), [])

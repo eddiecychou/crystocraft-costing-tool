@@ -21,17 +21,17 @@ commit — then the Workbench re-vendors.
 ## Vendoring contract
 
 DSH copies `validate-payload.mjs`, `safe-write.mjs`, and `yoast-indexable.mjs` **verbatim** into the
-Workbench and runs them as its own. The OC's copies are the SSOT: if they ever
-diverge, the OC's wins and DSH re-vendors.
+Workbench and runs them as its own. The immutable, owner-approved OC release commit is the SSOT. A stale or dirty
+working checkout is NOT a release source and must never overwrite a newer vendor.
 
 Before trusting a run against a newly vendored copy, check it is byte-identical
-to the hash below. **The hash changes whenever the file does** — when the OC
+to the hash in the handoff for the intended release (the table below describes this candidate). **The hash changes whenever the file does** — when the OC
 ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch.
 
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-16) |
 |---|---|
-| `validate-payload.mjs` | `713ceb69fd16` |
-| `safe-write.mjs` | `b9f18f27f404` |
+| `validate-payload.mjs` | `639d0dc1a602` |
+| `safe-write.mjs` | `31fe9a72b18a` |
 | `yoast-indexable.mjs` | `28eba647fe55` |
 
 Regenerate with
@@ -345,20 +345,106 @@ from the pre-write GET, the wrapper stops BEFORE PUT. Omission remains
 backward-compatible, so this protection is not active until DSH passes it.
 
 Queue creation now returns **409 conflicts:[batchIds]** if an active pending or
-approved batch targets the same existing entity. Combine same-entity edits into
+approved or executing batch targets the same existing entity. Combine same-entity edits into
 one item. To withdraw unexecuted pending work, submit:
 `{op:'create',batch:{supersedes:['oldBatchId'],note,items}}`.
 Replacement creation and old-batch supersession are atomic. Superseding applies
 to the WHOLE old batch; carry forward every still-wanted change in the fresh
-reviewed payload. Only overlapping pending-review batches with no results can
-be superseded. Approved/in-flight, executed and partial batches cannot be
-withdrawn this way. A replacement always requires fresh human approval.
+reviewed payload. Overlapping pending-review OR approved batches with no results and no execution
+claim can be superseded. Claimed, executed and partial batches cannot be withdrawn
+this way. A missing result alone never proves work has not started. A replacement always requires fresh human approval.
 Superseded batches keep payloads, decisions and audit linkage; they never poll
-for execution even if an obsolete client changes their status. Do not run
-previously polled/cached work: poll immediately before execution and use the
-reviewed-value preflight. Results cannot revive superseded or unreleased work.
+for execution even if an obsolete client changes their status. Discovery is not execution permission: use protocol 2 and claim immediately
+before execution, then use the reviewed-value preflight. Never run cached work. Results cannot revive superseded or unreleased work.
 
 No existing production batch was changed by implementing these guards. Older
 pending batches still need human rejection or explicit replacement after release.
 See docs/plans/ELEMENTOR-READBACK-QUEUE-FOLLOWUP-2026-10-16.md for the handoff
 and the separate WordPress page-Yoast prerequisite.
+
+## DSH integration follow-up — candidate, not deployed (16 October 2026)
+
+### Withdrawal and execution protocol 2
+
+Stop/drain every old DSH worker before upgrading. Polls without
+`execution_protocol:2` fail HTTP 409 with an upgrade message; old cached batches
+must be discarded. This is an intentional coordinated producer/server change.
+
+1. `{op:'poll',execution_protocol:2}` discovers approved batches; it does NOT grant
+   execution permission.
+2. Immediately before writing, `{op:'claim',id,execution_protocol:2}` atomically
+   changes that batch from approved to executing and records execution_started_at.
+   Execute ONLY the returned batch, including its blocked decisions. A failed or
+   uncertain claim means NO WRITES; do not retry from a cached approved payload.
+3. safeWrite still requires reviewed snapshots, backups, expectedFields, per-field
+   verification and Yoast invalidation. Report receipts through op:result. Result
+   writes are transactional and cannot revive withdrawn/superseded work.
+4. `{op:'withdraw',id,reason:'Obsolete test batch'}` withdraws pending or approved
+   work only before claim and before ANY result. Alternatively use batch.supersedes
+   to replace overlapping unclaimed approved/pending work, with fresh human review.
+   History and original decisions remain; no synthetic failing execution is needed.
+
+The UI shows batch IDs and ALL active pending/approved/executing work, independent
+of its latest-50 history limit, plus Withdraw unused batch. Claimed work stays
+locked even before its first receipt. No automatic claim expiry/release: after a
+worker crash or uncertain claim, inspect WordPress and receipts before owner-led
+reconciliation. Before rollout, ensure no old worker is holding an approval.
+
+### Metadata and reviewed snapshots
+
+`expectedFields:['meta']` covers nested `meta.*`, including Elementor, just like
+`meta_data` covers its concrete WooCommerce keys. Dotted paths remain preferred
+for narrow permissions. Unrelated safety fields and variation drift stay guarded.
+Metadata-only writes explicitly SKIP brand_terms_preserved with an untouched-copy
+note; body/title/name/description/Elementor writes still run it, including empty
+replacement strings. Other applicable metadata/language checks still run.
+
+Both reviewed target snapshots and safeWrite's fresh pre/post reads must use an
+AUTHORISED `context=edit` request. Missing private target fields are NOT empty
+values: stop and repair access/registration; never replace an incomplete reviewed
+snapshot with a new live one or omit expectedBefore. Provided empty snapshots fail
+before PUT; producer integration must assert every intended target key is captured.
+
+### WordPress private meta and REST cache release checks (DSH-owned)
+
+Correction to earlier page-Yoast advice: auth_callback restricts writes, not read
+visibility. `show_in_rest:true` alone may publish private fields. Use a REST schema
+restricted to edit context and the DSH page response capability filter; return the
+two raw keys only for authorised context=edit users who can edit that page. Keep
+sanitization and write authorisation. Check single, collection and embedded REST
+responses, anonymous/customer view and denied edit, plus editor save/readback.
+Do not remove public generated SEO tags that the website needs.
+
+A privacy fix must purge existing REST responses, not only HTML: include
+`/wp-json/` (single and collection routes, query/language variants, and every
+origin/CDN cache layer), alongside HTML, Elementor element/CSS caches and Yoast
+indexables as applicable. Prefer host exclusion of REST and authenticated/edit
+responses from shared caches. A purge of one URL is not proof of a prefix purge.
+Verify canonical previously cached URLs AND fresh cache-busted URLs anonymously,
+then authenticated edit readback. Stop release if either public response exposes
+private raw fields. DSH owns WordPress code and host cache execution; OC does not
+install plugins or issue purges. The report's plugin deployment/tests are DSH
+reported evidence, not an OC re-certification.
+
+Primary references:
+- https://developer.wordpress.org/reference/classes/wp_rest_meta_fields/get_registered_fields/
+- https://developer.wordpress.org/rest-api/extending-the-rest-api/modifying-responses/
+
+### Release-pinned vendor check
+
+New read-only reference: check-vendor-sync.mjs. Explicitly pass the full intended
+OC RELEASE COMMIT from the release handoff, never HEAD/main or the current dirty
+working copy, plus EVERY active vendor directory:
+
+```sh
+node seo-control-plane/check-vendor-sync.mjs --repo /path/to/oc \
+  --release FULL_40_HEX_RELEASE_COMMIT \
+  --vendor '/path/to/Deepseek Render/seo-control-plane' \
+  --vendor '/path/to/SEO/seo-control-plane'
+```
+
+The checker reads git objects at that commit, checks all five shared artifacts,
+fails for missing/mismatching copies, and never writes or prints copy commands.
+No automatic "master wins" repair is permitted. Confirm deployment identity before
+selecting the release pin; this local candidate is not a released version yet.
+DSH must update its own checker/client; OC has not edited Workbench files.
