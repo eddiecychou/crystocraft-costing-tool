@@ -1,6 +1,6 @@
-# Reusable Crystocraft Range MCP — V1, not activated
+# Reusable Crystocraft Range MCP — V1, read/preview deployed
 
-Built from upstream `f2742198`, branch `codex/reusable-range-mcp`. This is a **separate** stdio server and `/api/mcp-range` Node endpoint. It does not reinterpret, register over, or grant privileges to the existing B0016 or Corporate Gifts writer. No production identity/control/configuration or catalogue record was created by this implementation.
+Built from upstream `f2742198`, branch `codex/reusable-range-mcp`. This is a **separate** stdio server and `/api/mcp-range` Node endpoint. It does not reinterpret, register over, or grant privileges to the existing B0016 or Corporate Gifts writer. The initial implementation did not create production state. The separately approved release now has a scoped read/preview identity and endpoint; live commits remain disabled and no catalogue test record was created. See [release evidence](../../docs/plans/RANGE-MCP-RELEASE-2026-10-16.md).
 
 ## Tools and example
 
