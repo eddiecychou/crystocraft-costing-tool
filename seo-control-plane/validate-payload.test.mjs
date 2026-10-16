@@ -264,9 +264,9 @@ function expect(name, cond, detail = '') {
   const payload = { content: '<p>Short intro.</p>', meta: { _elementor_data: mkEd('Neue Überschrift') }, status: 'draft' }
   const v = validatePayload({ kind: 'page', lang: 'de', endpoint: 'wp/v2/pages?lang=de', payload, source })
   const c = chk(v)
-  expect('Elementor edit: rendered side no longer drives image parity', c.image_count_parity === undefined,
+  expect('Elementor edit: rendered side no longer drives image parity', c.image_count_parity === true,
     JSON.stringify(v.checks.filter(x => !x.ok)))
-  expect('Elementor edit: rendered side no longer drives heading parity', c.heading_count_parity === undefined,
+  expect('Elementor edit: rendered side no longer drives heading parity', c.heading_count_parity === true,
     JSON.stringify(v.checks.filter(x => !x.ok)))
   expect('Elementor edit passes on its own merits', v.passed, JSON.stringify(v.checks.filter(x => !x.ok)))
 }
@@ -638,6 +638,36 @@ function expect(name, cond, detail = '') {
   expect('metadata-only skip needs no exception', v.passed && v.overridden === 0)
   const body = validatePayload({ payload: { content: '' }, source: { content: { raw: 'Crystocraft' } } })
   expect('empty body writes still detect removed brand', chk(body).brand_terms_preserved === false)
+}
+
+// DSH e516a1c9 follow-up: layout-only validation and container additions.
+{
+  const original = [{ id: 'h', elType: 'widget', widgetType: 'heading', settings: { title: 'Crystocraft Swarovski' } },
+    { id: 'i', elType: 'widget', widgetType: 'image', settings: { image: { id: 1, url: '/one.jpg' } } }]
+  const source = { meta: { _elementor_data: JSON.stringify(original) } }
+  const run = (tree, options = {}) => validatePayload({ endpoint: 'wp/v2/pages/1', lang: 'en', source,
+    payload: { meta: { _elementor_data: JSON.stringify(tree) } }, ...options })
+  const v = run(original)
+  for (const name of ['image_count_parity', 'heading_count_parity', 'no_new_scripts', 'no_new_tables'])
+    expect(`layout-only ${name} runs against authored settings`, chk(v)[name] === true)
+  expect('layout-only full validation needs no fallback content', v.passed && v.skipped === 0)
+  for (const [name, change, check] of [
+    ['image removal', t => { t[1].settings.image = {} }, 'image_count_parity'],
+    ['heading tag removal', t => { t[0].settings.header_size = 'p' }, 'heading_count_parity'],
+    ['script injection', t => { t[0].settings.extra = [{ html: '<script>bad()</script>' }] }, 'no_new_scripts'],
+    ['table injection', t => { t[0].settings.extra = '<table></table>' }, 'no_new_tables'],
+  ]) {
+    const tree = structuredClone(original); change(tree)
+    expect(`layout-only catches ${name}`, chk(run(tree))[check] === false)
+  }
+  const tree = [...original, { id: 's', elType: 'section', elements: [{ id: 'c', elType: 'column', elements: [
+    { id: 'n', elType: 'widget', widgetType: 'heading', settings: { title: 'Enquiries' } },
+  ] }] }]
+  const options = { appendOnly: true, expectedNewIds: ['s', 'c', 'n'] }
+  expect('append counts a section/column/widget as one new widget', run(tree, options).passed)
+  expect('all introduced IDs must still be declared', !run(tree, { ...options, expectedNewIds: ['n'] }).passed)
+  expect('missing layout baseline cannot be certified by fallback content',
+    chk(run(original, { source: { content: { raw: 'fallback' } } })).no_new_scripts === false)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

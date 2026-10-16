@@ -102,6 +102,14 @@ test('approval tolerates Firestore map key order, but blocks changed values and 
       await act(async () => findButton('Approve').click())
       assert.deepEqual(state.batch, expected, 'stale approval must not overwrite ' + change)
       assert.match(document.body.textContent, /changed|no longer awaiting review/)
+      const reload = findButton('Reload queue')
+      assert.ok(reload, 'stale review provides an explicit recovery action')
+      let reloads = 0
+      const previousWindow = globalThis.window
+      globalThis.window = { location: { reload: () => { reloads++ } } }
+      try { await act(async () => reload.click()) } finally { globalThis.window = previousWindow }
+      assert.equal(reloads, 1)
+      assert.deepEqual(state.batch, expected, 'reload must never approve or mutate stale work')
     }
   } finally {
     await act(async () => root.unmount()); dom.window.close()

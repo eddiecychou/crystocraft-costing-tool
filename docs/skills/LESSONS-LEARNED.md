@@ -1145,3 +1145,23 @@ fix by approving an owner's live batch; use isolated data for state transitions.
 ### Keep new Range entry simple and correct in place (16 October 2026)
 
 Owner preference: support a direct Quick Add and a natural-language agent brief equally. Hide optional fields initially, save new quick entries as hidden/unpriced Concept, open the result for review, and offer the existing product when its family already exists. A route change from a new draft to an existing family must use the current route's document ID, never the new draft's generated ID. Emulator create → duplicate → existing-family correction proved one persisted record with its original finish chips. Read [RANGE-PRODUCT-ENTRY.md](RANGE-PRODUCT-ENTRY.md); consolidate blocking questions, retain confirmed corrections, and do not turn optional blank fields into repeated approval requests. MCP write locks remain independent of normal manual OC permissions.
+
+
+### Validate the authored representation that changes (SEO follow-up, 16 October 2026)
+
+A meta-only Elementor edit skipped image/h2/script/table checks because sharedBody
+only considered raw HTML fields. Adding unchanged fallback content made the warning
+disappear while certifying the wrong representation. The gate now independently
+checks decoded layout settings by element ID, including native image/media and h2
+controls; classic raw HTML is checked separately when written. Missing layout
+baselines fail rather than borrowing a render/fallback. Declared append-only IDs
+include sections/columns/containers, but only actual new widget nodes count toward
+widget_count. Portable tests cover the original meta-only case and section append.
+
+Reviewed REST body objects and live `.raw` values must be normalized symmetrically.
+A private field absent from context=view is missing evidence, not content drift.
+Pre-read absence refuses before PUT; post-read absence remains unverified with a
+possible-write warning. Never retry a possibly completed write blindly or replace
+the reviewed baseline. Stale review guards retain their transactional refusal and
+now provide Reload queue. Claimed/refused receipts are inert audit history; fresh
+same-entity work remains possible. Implementation is local until separately released.

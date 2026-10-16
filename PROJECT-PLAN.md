@@ -1,5 +1,16 @@
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
+## Local candidate — SEO Elementor body gate (2026-10-16)
+
+DSH e516a1c9 integration response addressed: layout-only body checks run against
+authored Elementor settings; section/column IDs do not inflate widget_count;
+missing private pre/post read fields get context=edit diagnostics; reviewed REST
+raw objects compare symmetrically; stale-review errors offer Reload queue.
+Existing approval/backup/claim safeguards retained. SEO checks 284 passing, no
+live batch/WordPress changes. Isolated branch `codex/seo-elementor-body-gate`;
+not pushed/deployed. See [verification and hashes](docs/plans/SEO-BODY-GATE-FOLLOWUP-2026-10-16.md).
+
+
 ## Unreleased candidate — reusable Crystocraft Range MCP (2026-10-16)
 
 Implemented on isolated `codex/reusable-range-mcp` from current upstream `f2742198`; primary dirty checkout preserved. Five separate scoped tools, read-only signed previews, private human approval, atomic idempotent commits, shared normal-UI family/component reservations, version/media preservation, prototype rules, portable MCP locks and operator docs. Existing eight B0016 tools retain their implementation and manifest behavior. All focused emulator/MCP/legacy/RBAC checks, full prebuild/build and lint pass; actual Range and component forms checked against emulator-created records.

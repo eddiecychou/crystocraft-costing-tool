@@ -339,5 +339,28 @@ for (const carrier of ['meta', 'meta_data']) {
   expect(`${carrier} covers the nested Elementor field`, r.verified && !r.drift.length)
 }
 
+// Reviewed REST objects and raw strings must describe the same authored field.
+for (const field of ['content', 'title', 'excerpt']) {
+  let puts = 0
+  const result = await safeWrite({ id: 1, endpoint: 'wp/v2/pages/1', payload: { [field]: 'New' }, expectedFields: [field],
+    expectedBefore: { [field]: { raw: 'Old', rendered: 'Built' } },
+    get: async () => ({ [field]: { raw: puts ? 'New' : 'Old', rendered: 'Different render' } }), put: async () => { puts++ } })
+  expect(`${field} reviewed raw object matches fresh raw string`, result.verified && puts === 1)
+}
+{
+  let puts = 0
+  const result = await safeWrite({ id: 1, payload: { title: 'New' }, expectedBefore: { 'meta.private': 'Reviewed' },
+    get: async () => ({ meta: {} }), put: async () => { puts++ } })
+  expect('absent private pre-read is not mislabeled drift', /not visible.*context=edit/.test(result.error) && !result.stale)
+  expect('absent private pre-read refuses before PUT', puts === 0 && result.missing.includes('meta.private'))
+}
+{
+  let puts = 0
+  const result = await safeWrite({ id: 1, payload: { meta: { private: 'New' } }, expectedFields: ['meta.private'],
+    get: async () => ({ meta: puts ? {} : { private: 'Old' } }), put: async () => { puts++ } })
+  expect('absent post-read warns after possible write', !result.verified && puts === 1 && /write may already have occurred/.test(result.error))
+  expect('absent post-read retains unlanded receipt', result.result.unlanded.includes('meta.private'))
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

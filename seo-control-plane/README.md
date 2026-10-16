@@ -25,13 +25,13 @@ Workbench and runs them as its own. The immutable, owner-approved OC release com
 working checkout is NOT a release source and must never overwrite a newer vendor.
 
 Before trusting a run against a newly vendored copy, check it is byte-identical
-to the hash in the handoff for the intended release (the table below describes release e516a1c9). **The hash changes whenever the file does** — when the OC
+to the hash in the handoff for the intended release (the table below describes the local SEO body-gate follow-up; NOT a deployed release). **The hash changes whenever the file does** — when the OC
 ships a fix, DSH re-vendors, re-hashes, and only then re-runs the affected batch.
 
 | File | `shasum -a 256` fingerprint (first 12 hex chars, 2026-10-16) |
 |---|---|
-| `validate-payload.mjs` | `639d0dc1a602` |
-| `safe-write.mjs` | `31fe9a72b18a` |
+| `validate-payload.mjs` | `37583b7dfd5c` |
+| `safe-write.mjs` | `dcc09bf8d1a0` |
 | `yoast-indexable.mjs` | `28eba647fe55` |
 
 Regenerate with
@@ -181,8 +181,9 @@ and the review UI.
 
 ### A source that is present but incomplete is worse than none
 
-Body-level checks compare only the fields **both** sides carry
-(`sharedBody`). If the intersection is empty — a `before` carrying only
+Classic HTML body checks compare only the fields **both** sides carry
+(`sharedBody`). A payload writing `meta._elementor_data` also checks that authored
+layout against the source layout, independently of fallback `content`. If the intersection is empty — a `before` carrying only
 `_elementor_data`, or a source fetched without `context=edit` — the check
 **skips with a reason** instead of running against an empty baseline. Otherwise a
 page's existing `<table>` is reported as newly introduced, or a meta-only write is
@@ -450,3 +451,61 @@ selecting the release pin; this release is pinned to e516a1c9e9763a661e9191803de
 DSH must update its own checker/client; OC has not edited Workbench files.
 
 Release verification: app commit e516a1c9, production deploy 6ad183af9c09894303c35bbc; 375 CI checks passed and fresh admin/customer logins passed on candidate and production. See `../docs/plans/DSH-INTEGRATION-FIXES-2026-10-16.md` for evidence.
+
+
+## SEO body-gate follow-up — local candidate, 16 October 2026
+
+Response to DSH `OC-RESPONSE-e516a1c9-2026-10-16.md`. This section supersedes the
+historical `_elementor_data`-only body-skip limitation above. Not pushed/deployed;
+do not use this local candidate as a production release pin.
+
+- `image_count_parity`, `heading_count_parity`, `no_new_scripts` and
+  `no_new_tables` now check the **decoded authored Elementor settings**, even
+  when the payload contains only meta. Raw HTML strings in nested settings and
+  repeaters are scanned; native h2 headings (including Elementor's default h2)
+  and image/gallery/carousel/background media controls are counted. This is not
+  a browser/rendered-plugin audit. Dynamic plugin-generated output still needs
+  DSH's render QA. An unchanged fallback `content` cannot certify a bad layout.
+- Image/h2 parity is per existing element ID, preventing new nodes from masking
+  removal from an old node. Declared append-only additions may add images and
+  headings. Scripts/tables may not increase on an existing node or appear on a
+  new node, even if a different source node already has one. A preserved existing
+  script/table is checked rather than automatically skipping the layout guard.
+- Malformed/missing layout baselines fail the four checks. First layouts require
+  the existing positive absence/create evidence and structure validation.
+  Classic raw HTML checks remain separate; if both representations are written,
+  both are judged and missing evidence remains visible. Genuine skips and
+  recorded exceptions retain their existing review labels.
+- `expectedNewIds` still declares **every** introduced section, column, container
+  and widget exactly once. `appendOnly` widget_count adds only introduced IDs
+  whose payload nodes are widgets; structural IDs no longer inflate it. Existing
+  IDs cannot disappear, and undeclared/absent/duplicate declared IDs still fail.
+- `expectedBefore` prefers raw strings but also accepts REST `content`, `title`
+  or `excerpt` objects carrying `.raw`: both comparison sides use the same
+  authored value. `.rendered` is never used as the reviewed baseline. Missing
+  intended pre-read keys are diagnosed as not visible, with context=edit advice,
+  before PUT. Missing post-read keys stay unverified/unlanded and warn that a
+  write may already have occurred: inspect before retrying. No new network read,
+  automatic retry, snapshot replacement or weakening of stale checks is added.
+- Review error banners offer **Reload queue**. Reloading does not approve any
+  work; the transaction must still validate the fresh reviewed values.
+- Claimed/refused work with a receipt remains inert and retains history; it may
+  not be reclaimed/withdrawn, and does not block a fresh same-entity batch. A
+  regression test now makes that existing distinction explicit.
+
+After an approved release, DSH must re-vendor all five shared artifacts from the
+exact released commit, verify `check-vendor-sync.mjs` in every active directory,
+and run both portable suites. Expected local results: validator **159/159**,
+safeWrite **56/56**. No worker protocol change: claim immediately before writing
+and write only the successful claim response. Fetch reviewed and fresh pre/post
+targets with authorized context=edit; keep before/after backups, invalidation,
+receipts and exact-preview approval. Remove the unchanged-content workaround
+when the intended write is Elementor only, then prepare a new batch for fresh
+review. Do not relabel/replay old results or execute deliberately failing work.
+
+WordPress private-meta visibility and REST cache purging remain DSH-owned. The
+response's zero-leak route checks are **DSH-reported evidence**, not independent
+OC verification; both reported route reads were cache MISSes. No bot-blocker,
+WordPress registration, cache, live batch or publication changes were made here.
+
+See `../docs/plans/SEO-BODY-GATE-FOLLOWUP-2026-10-16.md` for checks and full hashes.

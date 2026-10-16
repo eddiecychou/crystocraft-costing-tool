@@ -99,6 +99,7 @@ const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 // Only Elementor JSON gets semantic comparison; authored HTML/text stays exact.
 // Sort object keys recursively, preserve array order and every authored value.
 export function comparableField(path, value) {
+  if (['content', 'excerpt', 'title'].includes(path) && value && typeof value === 'object' && Object.hasOwn(value, 'raw')) return value.raw
   if (path !== 'meta._elementor_data') return value
   let tree = value
   if (typeof tree === 'string') {
@@ -114,7 +115,8 @@ const sameField = (path, a, b) => same(comparableField(path, a), comparableField
 const yoastWrite = payload => payloadPaths(payload).some(path => /^meta\._yoast_wpseo_/.test(path))
 const failure = (error, extra = {}) => ({
   ok: false, verified: false, noop: false, unlanded: [], error, ...extra,
-  result: { ok: false, after: null, verified: false, noop: false, unlanded: [], error },
+  result: { ok: false, after: null, verified: false, noop: false, unlanded: extra.unlanded || [], error,
+    ...(extra.missing ? { missing: extra.missing } : {}) },
 })
 
 // Reduce an entity to a comparable fingerprint of the fields we care about.
@@ -162,6 +164,11 @@ export async function safeWrite({ get: getFn, put: putFn, invalidateYoastIndexab
   if (expectedBefore !== undefined) {
     if (!expectedBefore || typeof expectedBefore !== 'object' || Array.isArray(expectedBefore)
         || !Object.keys(expectedBefore).length) return failure('expectedBefore must be a non-empty field snapshot')
+    const missing = Object.keys(expectedBefore).filter(field => get(before, field) === undefined
+      || (['content', 'excerpt', 'title'].includes(field) && typeof get(before, field) === 'object'
+        && get(before, field) !== null && !Object.hasOwn(get(before, field), 'raw')))
+    if (missing.length) return failure('pre-read target field(s) not visible: ' + missing.join(', ')
+      + '; use authorised context=edit and expose the intended private keys', { missing })
     const stale = Object.entries(expectedBefore)
       .filter(([field, value]) => value === undefined || !sameField(field, value, get(before, field)))
       .map(([field]) => field)
@@ -175,6 +182,13 @@ export async function safeWrite({ get: getFn, put: putFn, invalidateYoastIndexab
 
   let after
   try { after = await getFn(id) } catch (e) { return failure(`post-read failed: ${e?.message || e}`, { writeError: writeErr, before: beforeFp }) }
+  if (!after || typeof after !== 'object') return failure('post-read returned no entity', { writeError: writeErr, before: beforeFp })
+  const missingAfter = [...new Set([...paths, ...Object.keys(expectedBefore || {})])].filter(field => get(after, field) === undefined
+    || (['content', 'excerpt', 'title'].includes(field) && get(after, field) && typeof get(after, field) === 'object'))
+  if (missingAfter.length) return failure('post-read target field(s) not visible: ' + missingAfter.join(', ')
+    + '; use authorised context=edit; write may already have occurred — inspect before retrying',
+    { missing: missingAfter, writeError: writeErr, before: beforeFp,
+      unlanded: paths.filter(field => !sameField(field, get(payload, field), get(after, field))) })
   const afterFp = fingerprint(after, watch)
   const afterVarH = variationHash(after)
 

@@ -218,6 +218,36 @@ function contentString(c) {
 // A source that is present but incomplete is worse than none (L-50).
 const BODY_FIELDS = ['content', 'description', 'short_description']
 
+// Authored Elementor body, not the fallback post_content or rendered page.
+// Scan decoded settings recursively (including HTML widget/repeater values).
+// Native image/gallery widgets and heading widgets also contribute their
+// authored media / h2 values; plugin-generated output is not a rendered audit.
+function layoutBody(tree) {
+  const rows = new Map()
+  const strings = value => typeof value === 'string' ? [value]
+    : value && typeof value === 'object' ? Object.values(value).flatMap(strings) : []
+  for (const n of walk(tree)) {
+    if (!n || typeof n !== 'object') continue
+    const settings = n.settings || {}
+    const html = strings(settings).join('\n')
+    const mediaCount = (value, key = '') => {
+      if (Array.isArray(value)) return value.reduce((sum, item) => sum + mediaCount(item, key), 0)
+      if (!value || typeof value !== 'object') return 0
+      // Image controls occur on image-boxes, containers and repeaters too.
+      // A link.url is navigation, never an image. Count media references once.
+      if (/(?:^|_)(?:image|images|gallery|carousel)$/.test(key) && (value.url || value.id)) return 1
+      return Object.entries(value).reduce((sum, [k, v]) => sum + mediaCount(v, k), 0)
+    }
+    const nativeHeading = n.widgetType === 'heading' && String(settings.header_size || 'h2').toLowerCase() === 'h2' ? 1 : 0
+    rows.set(n.id, {
+      images: countMatches(html, /<img[\s>]/gi) + mediaCount(settings),
+      headings: countMatches(html, /<h2[\s>]/gi) + nativeHeading,
+      scripts: countMatches(html, /<script[\s>]/gi), tables: countMatches(html, /<table[\s>]/gi),
+    })
+  }
+  return rows
+}
+
 // ── the gate ──────────────────────────────────────────────────────────────
 // A control-plane item can carry an entity in TWO shapes:
 //   nested  { content, meta: { _elementor_data, _yoast_wpseo_title } }   ← the write payload / a real REST entity
@@ -352,6 +382,7 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
   // scale) protection — so "could not run" is a failure here, not an acceptable
   // skip: an unguarded layout write is exactly what these exist to stop.
   const srcEd = source ? parseElementor(source?.meta?._elementor_data) : null
+  let firstLayoutBody = false
   if (edRaw != null) {
     if (!(ed && typeof ed === 'object')) {
       const why = 'did not run — payload _elementor_data does not parse (see json_parses)'
@@ -369,6 +400,7 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
         && source.meta && typeof source.meta === 'object' && !Array.isArray(source.meta)
         && !Object.hasOwn(source.meta, '_elementor_data')
       const firstLayout = isCreateEndpoint(endpoint) || explicitEmpty || completeEmpty
+      firstLayoutBody = !!firstLayout && validFirstLayout(ed)
       if (firstLayout) add('first_layout_structure', validFirstLayout(ed),
         'first layout must be a non-empty Elementor node array with unique IDs and valid node types')
       const why = firstLayout
@@ -383,7 +415,9 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
       const expectedIds = new Set(newIdsValid ? expectedNewIds : [])
       const pw = [...walk(ed)].filter(isWidget).length
       const sw = [...walk(srcEd)].filter(isWidget).length
-      const wantedWidgets = sw + (appendOnly ? expectedIds.size : 0)
+      const sourceIds = elementIds(srcEd)
+      const newWidgets = [...walk(ed)].filter(n => isWidget(n) && expectedIds.has(n.id) && !sourceIds.has(n.id)).length
+      const wantedWidgets = sw + (appendOnly ? newWidgets : 0)
       add('widget_count', newIdsValid && pw === wantedWidgets,
         newIdsValid && pw === wantedWidgets ? '' : `payload ${pw} widgets vs expected ${wantedWidgets} (appendOnly=${!!appendOnly}; B20)`)
 
@@ -495,47 +529,89 @@ export function validatePayload({ kind, lang, endpoint = '', payload = {}, sourc
       payload.name.startsWith(m[1]) ? '' : `name should start with SKU "${m[1]}" — got "${payload.name.slice(0, 40)}"`)
   }
 
-  // 9/10. image + heading count parity (HTML fields). Both sides go through
-  // contentString() so a live entity's REST `content` object is compared on its
-  // RAW body, not its rendered page (see the helper).
-  if (!source) {
-    skip('image_count_parity', NO_SOURCE)
-    skip('heading_count_parity', NO_SOURCE)
-  } else if (!sharedBody.length) {
-    skip('image_count_parity', bodySkipReason)
-    skip('heading_count_parity', bodySkipReason)
-  } else {
-    const pBody = sharedBody.map(f => contentString(payload[f])).join('')
-    const sBody = sharedBody.map(f => contentString(source[f])).join('')
-    const pImg = countMatches(pBody, /<img[\s>]/gi)
-    const sImg = countMatches(sBody, /<img[\s>]/gi)
-    if (sImg > 0) add('image_count_parity', pImg === sImg, pImg === sImg ? '' : `${pImg} <img> vs source ${sImg}`)
-
-    const pHEad = sharedBody.map(f => contentString(payload[f])).join('')
-    const sHead = sharedBody.map(f => contentString(source[f])).join('')
-    const pH = countMatches(pHEad, /<h2[\s>]/gi)
-    const sH = countMatches(sHead, /<h2[\s>]/gi)
-    if (sH > 0) add('heading_count_parity', pH === sH, pH === sH ? '' : `${pH} <h2> vs source ${sH}`)
+  // Each touched body representation gets its own baseline. Supplying unchanged
+  // fallback content cannot mask a bad Elementor tree (or vice versa).
+  const layoutWritten = Object.hasOwn(payload.meta || {}, '_elementor_data')
+  const bodyFindings = new Map()
+  const recordBody = (name, ok, detail = '') => {
+    const findings = bodyFindings.get(name) || []
+    findings.push({ ok, detail }); bodyFindings.set(name, findings)
   }
-
-  // 11. no scripts/tables introduced. Same raw-body rule: a source entity's
-  // `.rendered` page carries Yoast's inline JSON-LD <script>, which used to
-  // suppress this check entirely; and it can equally carry a <table> the raw
-  // body never had.
-  // With no source at all there is no baseline, so the whole payload body is
-  // judged (a <script> in a write body is unusual enough to flag — the documented
-  // source-less mode). With a source, only the fields both sides carry are judged:
-  // a field the source does not have cannot be attributed to this write.
-  const judgedBody = source ? sharedBody : BODY_FIELDS
-  const payBodyStr = judgedBody.map(f => contentString(payload[f])).join('') + asString(edRaw)
-  const srcBodyStr = source ? sharedBody.map(f => contentString(source[f])).join('') + asString(source?.meta?._elementor_data) : ''
-  const scripts = (name, rx, what) => {
-    if (source && !sharedBody.length) return skip(name, bodySkipReason)
-    if (source && rx.test(srcBodyStr)) return skip(name, `did not run — source already contains ${what}; a pre-existing one cannot be attributed to this write`)
-    add(name, !rx.test(payBodyStr), rx.test(payBodyStr) ? `${what} introduced` : '')
+  if (layoutWritten) {
+    const usable = Array.isArray(ed) && validFirstLayout(ed)
+      && (firstLayoutBody || (Array.isArray(srcEd) && validFirstLayout(srcEd)))
+    const names = ['image_count_parity', 'heading_count_parity', 'no_new_scripts', 'no_new_tables']
+    if (!usable) {
+      for (const name of names) recordBody(name, false,
+        'Elementor body check requires valid payload and readable source layout (or proven first layout); use context=edit')
+    } else {
+      const prior = layoutBody(firstLayoutBody ? [] : srcEd), next = layoutBody(ed)
+      const declared = new Set(Array.isArray(expectedNewIds) ? expectedNewIds : [])
+      for (const [name, metric] of [['image_count_parity', 'images'], ['heading_count_parity', 'headings'],
+        ['no_new_scripts', 'scripts'], ['no_new_tables', 'tables']]) {
+        const problems = []
+        for (const id of new Set([...prior.keys(), ...next.keys()])) {
+          const before = prior.get(id)?.[metric] || 0, after = next.get(id)?.[metric] || 0
+          const addition = !prior.has(id) && (firstLayoutBody || (appendOnly && declared.has(id)))
+          const clean = ['scripts', 'tables'].includes(metric) ? after <= before
+            : addition ? true : before === after
+          if (!clean) problems.push(`${id}: ${metric} ${before} → ${after}`)
+        }
+        recordBody(name, !problems.length, 'Elementor authored settings: ' + (problems.join('; ') || 'checked'))
+      }
+    }
   }
-  scripts('no_new_scripts', SCRIPT_RX, '<script>')
-  scripts('no_new_tables', TABLE_RX, '<table>')
+  // A layout-only payload never falls back to content merely to make checks run.
+  if (!layoutWritten || BODY_FIELDS.some(f => Object.hasOwn(payload, f))) {
+    // Classic HTML fields. Both sides go through
+    // contentString() so a live entity's REST `content` object is compared on its
+    // RAW body, not its rendered page (see the helper).
+    if (!source) {
+      recordBody('image_count_parity', null, NO_SOURCE)
+      recordBody('heading_count_parity', null, NO_SOURCE)
+    } else if (!sharedBody.length) {
+      recordBody('image_count_parity', null, bodySkipReason)
+      recordBody('heading_count_parity', null, bodySkipReason)
+    } else {
+      const pBody = sharedBody.map(f => contentString(payload[f])).join('')
+      const sBody = sharedBody.map(f => contentString(source[f])).join('')
+      const pImg = countMatches(pBody, /<img[\s>]/gi)
+      const sImg = countMatches(sBody, /<img[\s>]/gi)
+      if (sImg > 0) recordBody('image_count_parity', pImg === sImg, pImg === sImg ? '' : `${pImg} <img> vs source ${sImg}`)
+
+      const pHEad = sharedBody.map(f => contentString(payload[f])).join('')
+      const sHead = sharedBody.map(f => contentString(source[f])).join('')
+      const pH = countMatches(pHEad, /<h2[\s>]/gi)
+      const sH = countMatches(sHead, /<h2[\s>]/gi)
+      if (sH > 0) recordBody('heading_count_parity', pH === sH, pH === sH ? '' : `${pH} <h2> vs source ${sH}`)
+    }
+
+    // 11. no scripts/tables introduced. Same raw-body rule: a source entity's
+    // `.rendered` page carries Yoast's inline JSON-LD <script>, which used to
+    // suppress this check entirely; and it can equally carry a <table> the raw
+    // body never had.
+    // With no source at all there is no baseline, so the whole payload body is
+    // judged (a <script> in a write body is unusual enough to flag — the documented
+    // source-less mode). With a source, only the fields both sides carry are judged:
+    // a field the source does not have cannot be attributed to this write.
+    const judgedBody = source ? sharedBody : BODY_FIELDS
+    const payBodyStr = judgedBody.map(f => contentString(payload[f])).join('')
+    const srcBodyStr = source ? sharedBody.map(f => contentString(source[f])).join('') : ''
+    const scripts = (name, rx, what) => {
+      if (source && !sharedBody.length) return recordBody(name, null, bodySkipReason)
+      if (source && rx.test(srcBodyStr)) return recordBody(name, null, `did not run — source already contains ${what}; a pre-existing one cannot be attributed to this write`)
+      recordBody(name, !rx.test(payBodyStr), rx.test(payBodyStr) ? `${what} introduced` : '')
+    }
+    scripts('no_new_scripts', SCRIPT_RX, '<script>')
+    scripts('no_new_tables', TABLE_RX, '<table>')
+
+  }
+  for (const [name, findings] of bodyFindings) {
+    // Missing evidence in any touched representation stays visible, even when
+    // another representation passed; failures always take precedence.
+    const ok = findings.some(c => c.ok === false) ? false : findings.some(c => c.ok === null) ? null : true
+    add(name, ok, findings.map(c => c.detail).filter(Boolean).join('; '))
+  }
 
   // 12. Yoast title double-branding (L-09). A custom Yoast title is emitted
   // verbatim; only the post-title path receives Yoast's site-name template.

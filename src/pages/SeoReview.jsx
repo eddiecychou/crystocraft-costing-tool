@@ -145,6 +145,8 @@ export default function SeoReview() {
       {err && (
         <div className="card p-3 mb-4 text-sm text-red-700 bg-red-50 inline-flex items-center gap-2">
           <AlertTriangle size={15} /> {err}
+          <button type="button" className="btn-secondary text-xs" disabled={busy}
+            onClick={() => window.location.reload()}>Reload queue</button>
         </div>
       )}
 
