@@ -9,7 +9,7 @@ import {setTimeout as delay} from 'node:timers/promises'
 import {build} from 'esbuild'
 import React,{act} from 'react'
 import {createRoot} from 'react-dom/client'
-import {MemoryRouter,Routes,Route} from 'react-router-dom'
+import {MemoryRouter,Routes,Route,useNavigate} from 'react-router-dom'
 import {Simulate} from 'react-dom/test-utils'
 import {JSDOM} from 'jsdom'
 import {initializeTestEnvironment,assertFails} from '@firebase/rules-unit-testing'
@@ -40,6 +40,11 @@ async function click(host,text){const b=button(host,text);assert.ok(b,`Missing b
 async function fill(el,value){assert.ok(el);await act(async()=>{el.value=value;Simulate.change(el,{target:{value}})})}
 async function save(host){await act(async()=>host.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));await eventually(()=>!host.querySelector('form')||host.querySelector('[role="alert"]'),'Save must finish')}
 async function choose(host,id){const select=[...host.querySelectorAll('label')].find(l=>l.textContent.includes('Find a customer')).querySelector('select');await fill(select,id)}
+function CustomerNavigation({id}) {
+ const navigate=useNavigate()
+ React.useEffect(()=>{navigate(`/customers/${id}`,{replace:true})},[id,navigate])
+ return null
+}
 async function fixture(t,{withLegacy=false}={}){
  await env.clearFirestore();localStorage.clear()
  await env.withSecurityRulesDisabled(async ctx=>{
@@ -49,7 +54,7 @@ async function fixture(t,{withLegacy=false}={}){
   if(withLegacy)await setDoc(doc(admin,'customers',C,'enquiries/legacy'),legacy)
  })
  const hosts=[document.createElement('div'),document.createElement('div')];hosts.forEach(h=>document.body.append(h));let roots=hosts.map(h=>createRoot(h))
- const render=async(index,id=C)=>{await act(async()=>roots[index].render(React.createElement(MemoryRouter,{key:id,initialEntries:[index?`/customers/${id}`:'/dashboard']},index?React.createElement(Routes,null,React.createElement(Route,{path:'/customers/:id',element:React.createElement(CustomerDetail)})):React.createElement(Dashboard))));await eventually(()=>workspace(hosts[index],id),'Actual page workspace loads')}
+ const render=async(index,id=C)=>{await act(async()=>roots[index].render(React.createElement(MemoryRouter,{initialEntries:[index?`/customers/${id}`:'/dashboard']},index?React.createElement(React.Fragment,null,React.createElement(CustomerNavigation,{id}),React.createElement(Routes,null,React.createElement(Route,{path:'/customers/:id',element:React.createElement(CustomerDetail)}))):React.createElement(Dashboard))));await eventually(()=>workspace(hosts[index],id),'Actual page workspace loads')}
  t.after(async()=>{for(const r of roots)await act(async()=>r.unmount());hosts.forEach(h=>h.remove())})
  await render(0);await choose(hosts[0],C);await render(1)
  return {dash:hosts[0],customer:hosts[1],d:()=>workspace(hosts[0]),c:()=>workspace(hosts[1]),render,remount:async(index,id=C)=>{await act(async()=>roots[index].unmount());roots[index]=createRoot(hosts[index]);await render(index,id);if(!index)await choose(hosts[index],id)}}
