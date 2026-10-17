@@ -12,6 +12,9 @@ import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
+import CustomerWorkspace from '../components/CustomerWorkspace'
+import { useCustomerWorkItems } from '../domain/customerWorkItems'
+import { combineWorkItems } from '../customerWorkItems'
 import { useCustomerAssets, cannotRenderAsImage } from '../customerAssets'
 import { loadProposal } from '../customerProposal'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, ChevronRight, Database, Mail, MessageCircle, MessageSquare, Loader2, RefreshCw, Smartphone, Mic, ShoppingCart } from 'lucide-react'
@@ -532,6 +535,16 @@ export default function CustomerDetail() {
   const [orders, setOrders]             = useState([])
   const [accounts, setAccounts]         = useState([])
   const [enquiries, setEnquiries]       = useState([])
+  const work = useCustomerWorkItems([id])
+  const [sharedSummary, setSharedSummary] = useState(null)
+  const [sharedSummaryError, setSharedSummaryError] = useState('')
+  useEffect(() => onSnapshot(doc(db, 'dashboard_cache', 'weekly_summary'), snap => {
+    const cached = snap.exists() ? snap.data() : null
+    setSharedSummary({ digest: cached?.items?.find(i => i.customerId === id)?.digest,
+      generatedAt: cached?.generatedAt?.toDate?.().toLocaleString('en-GB') })
+    setSharedSummaryError('')
+  }, () => setSharedSummaryError('The shared summary could not load.')), [id])
+
   const [portalEnquiries, setPortalEnquiries] = useState([])
   const [erpSiRows, setErpSiRows] = useState([])              // raw erp_sales_invoice rows, by erp_code
   const [erpHistoryLoading, setErpHistoryLoading] = useState(false)
@@ -1160,7 +1173,7 @@ export default function CustomerDetail() {
   if (loading) return <LoadingBar />
   if (!customer) return <div className="p-4 text-ink-60">Customer not found.</div>
 
-  const followUpEnquiries = enquiries.filter(e => e.follow_up_date)
+  const followUpEnquiries = enquiries.filter(e => e.follow_up_date && e.todo_status !== 'done')
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
@@ -1216,18 +1229,21 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      {/* Interaction Log — moved directly under the header (owner,
-          2026-08-21): "I usually first find the customer and log the
-          interaction from the customer page" — this used to sit near the
-          bottom of a long page, well below Contacts/Company details/Sales
-          History/Quotes/Brand Gallery/Email/WhatsApp, so + Log Interaction
-          needed a long scroll to reach on every visit. */}
-      <Collapsible storageKey={`${id}:interaction-log`} title={`Interaction Log (${enquiries.length})`} bodyClassName=""
+      <div className="card mb-4">
+        {(work.error || sharedSummaryError) && <p role="alert" className="text-sm text-brand-600 p-4">{work.error || sharedSummaryError}</p>}
+        {work.loading && <p className="text-sm text-ink-60 p-4">Loading tasks…</p>}
+        <CustomerWorkspace key={id} customerId={id} customerName={customer.company_name || customer.contact_name || 'Customer'}
+          digest={sharedSummary?.digest} generatedAt={sharedSummary?.generatedAt}
+          items={combineWorkItems(enquiries, work.items)} />
+        <p className="px-4 pb-4 text-xs text-ink-60">Refresh the shared summary from the Dashboard. Email and WhatsApp source history remains below.</p>
+      </div>
+
+      <Collapsible storageKey={`${id}:interaction-log`} title={`Interaction history (${enquiries.length})`} defaultOpen={false} bodyClassName=""
         right={<button
             onClick={() => { setEditingEnquiry(null); setEnquiryFormOpen(true) }}
             className="btn-primary text-xs py-1.5 px-3"
           >
-            + Log Interaction
+            + Add interaction (call / meeting)
           </button>}>
         {enquiries.length === 0 ? (
           <p className="text-sm text-ink-60 text-center py-8">No interactions logged yet.</p>
@@ -1277,7 +1293,8 @@ export default function CustomerDetail() {
                     )}
                     {/* Follow-up + linked quotes */}
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                      {enq.follow_up_date && (
+                      {enq.todo_status && <p className="text-xs text-ink-60">Follow-up in To-do: {enq.todo_status === 'done' ? 'Done' : enq.todo_status === 'waiting' ? 'Waiting' : 'To do'}{enq.todo_due_on ? ` · ${enq.todo_due_on}` : ''}</p>}
+                      {enq.follow_up_date && !enq.todo_status && (
                         <p className={`text-xs font-medium ${isOverdue(enq.follow_up_date) ? 'text-red-600' : 'text-ink-60'}`}>
                           Follow-up: {fmtDate(enq.follow_up_date)}
                           {isOverdue(enq.follow_up_date) && <AlertTriangle size={11} className="inline align-[-1px] ml-1" />}

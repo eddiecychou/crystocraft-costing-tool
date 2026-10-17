@@ -38,7 +38,7 @@ const MAX_CUSTOMERS_PER_CALL = 40
 const MAX_TOTAL_INPUT_CHARS = 180000
 
 const SYSTEM = 'You are reading the last 30 days\' activity for several B2B customers of Crystocraft (a corporate ' +
-  'gift/crystal products supplier), across two channels: a manually-logged CRM Interaction Log, and recent ' +
+  'gift/crystal products supplier), across the CRM Interaction Log, imported WhatsApp messages, and recent ' +
   'email. For EACH customer block below, write a short digest (1-2 sentences) of what happened this month and ' +
   'what (if anything) is outstanding — factual only, do not invent details not present in the text. ' +
   'Return ONLY a valid JSON object: { "digests": [ { "id": "<the customer id exactly as given>", ' +

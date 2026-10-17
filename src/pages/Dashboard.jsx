@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { collection, query, getDocs, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, collectionGroup, query, onSnapshot, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import EnquiryForm from './EnquiryForm'
+import CustomerWorkspace from '../components/CustomerWorkspace'
+import { useCustomerWorkItems } from '../domain/customerWorkItems'
+import { combineWorkItems, dateOnly, hasOpenWork } from '../customerWorkItems'
 import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
-import { loadWeeklySummary, generateWeeklySummary } from '../domain/weeklySummary'
+import { generateWeeklySummary } from '../domain/weeklySummary'
 import { orderStatusOf, orderUc } from '../shipping'
 
 // Orders in these statuses are "in production" — committed and being made, but
@@ -73,8 +75,7 @@ export default function Dashboard() {
   const [loading, setLoading]           = useState(true)
   const [refreshKey, setRefreshKey]     = useState(0)
   const [refreshing, setRefreshing]     = useState(false)
-  const [logTarget, setLogTarget]       = useState(null)
-  const [dismissing, setDismissing]     = useState(null)
+  const [selectedCustomer, setSelectedCustomer] = useState('')
   const [activeFilter, setActiveFilter]     = useState(null) // 'overdue' | 'open' | 'quotes' | 'won'
   const [categoryFilter, setCategoryFilter] = useState(null) // customer category pill
   const [retailFilter, setRetailFilter] = useState(false) // Retail-tagged-only toggle — independent of category
@@ -86,29 +87,6 @@ export default function Dashboard() {
   function refresh() { setRefreshKey(k => k + 1); setRefreshing(true) }
 
   function toggleFilter(f) { setActiveFilter(prev => prev === f ? null : f) }
-
-  async function handleDone(enq, e) {
-    e.preventDefault()
-    e.stopPropagation()
-    setDismissing(enq.id)
-    try {
-      await updateDoc(doc(db, 'customers', enq.customerId, 'enquiries', enq.id), {
-        follow_up_date: null,
-        updatedAt: serverTimestamp(),
-      })
-      setAllEnquiries(prev => prev.map(x =>
-        x.id === enq.id ? { ...x, follow_up_date: null } : x
-      ))
-    } finally {
-      setDismissing(null)
-    }
-  }
-
-  function handleLog(enq, e) {
-    e.preventDefault()
-    e.stopPropagation()
-    setLogTarget({ customerId: enq.customerId, companyName: enq.companyName })
-  }
 
   useEffect(() => {
     const unsubCustomers = onSnapshot(query(collection(db, 'customers')), snap => {
@@ -123,32 +101,21 @@ export default function Dashboard() {
     return () => { unsubCustomers(); unsubQuotes(); unsubOrders() }
   }, [])
 
+  // Both views subscribe to the same interaction records: legacy task edits
+  // become visible without waiting for a focus refresh or summary generation.
   useEffect(() => {
-    if (customers.length === 0) { setLoading(false); return }
-    let cancelled = false
-    Promise.all(
-      customers.map(c =>
-        getDocs(collection(db, 'customers', c.id, 'enquiries')).then(snap =>
-          snap.docs.map(d => ({
-            id: d.id,
-            ...d.data(),
-            customerId:   c.id,
-            customerName: c.contact_name || '',
-            companyName:  c.company_name || '',
-            channel:      d.data().channel || c.channels?.[0] || '',
-          }))
-        )
-      )
-    ).then(results => {
-      if (!cancelled) {
-        setAllEnquiries(results.flat())
-        setLoading(false)
-        setRefreshing(false)
-      }
-    })
-    return () => { cancelled = true }
+    if (!customers.length) { setAllEnquiries([]); setLoading(false); return }
+    const customerById = new Map(customers.map(c => [c.id, c]))
+    return onSnapshot(collectionGroup(db, 'enquiries'), snap => {
+      setAllEnquiries(snap.docs.filter(d => d.ref.parent.parent?.parent.id === 'customers' && customerById.has(d.ref.parent.parent.id)).map(d => {
+        const c = customerById.get(d.ref.parent.parent.id)
+        return {...d.data(), id:d.id, customerId:c.id, customerName:c.contact_name || '', companyName:c.company_name || ''}
+      }))
+      setLoading(false); setRefreshing(false)
+    }, () => { setWeeklyError('Interaction history could not load. Refresh or check your access.'); setLoading(false); setRefreshing(false) })
   }, [customers, refreshKey])
 
+  const work = useCustomerWorkItems(customers.map(c => c.id))
   useEffect(() => {
     function handleFocus() { setRefreshKey(k => k + 1) }
     window.addEventListener('focus', handleFocus)
@@ -157,13 +124,9 @@ export default function Dashboard() {
 
   // On-demand only (V8.15) — load whatever was cached from the last time
   // someone clicked "Refresh" below; never auto-generates on its own.
-  useEffect(() => {
-    let cancelled = false
-    loadWeeklySummary().then(cached => { if (!cancelled) setWeeklySummary(cached) })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setWeeklyLoading(false) })
-    return () => { cancelled = true }
-  }, [])
+  useEffect(() => onSnapshot(doc(db, 'dashboard_cache', 'weekly_summary'), snap => {
+    setWeeklySummary(snap.exists() ? snap.data() : null); setWeeklyLoading(false)
+  }, () => { setWeeklyError('The summary could not load. Refresh or check your access.'); setWeeklyLoading(false) }), [])
 
   async function handleGenerateWeeklySummary() {
     setWeeklyGenerating(true)
@@ -237,13 +200,26 @@ export default function Dashboard() {
   // a distinct actionable item, so these are NOT collapsed per customer — a
   // customer chasing two threads shows both. Filtering on follow_up_date first
   // also means a follow-up on a non-latest thread is no longer hidden.
-  const overdueList = byCat(allEnquiries.filter(e => e.follow_up_date && isOverdue(e.follow_up_date)))
-
-  // Default follow-up list (overdue + next 7 days, per thread, category-filtered)
-  const priorityFollowUps = byCat(allEnquiries
-    .filter(e => e.follow_up_date && (isOverdue(e.follow_up_date) || isWithinDays(e.follow_up_date, 7))))
-    .sort((a, b) => (a.follow_up_date?.seconds || 0) - (b.follow_up_date?.seconds || 0))
-    .slice(0, 10)
+  const groupedWork = new Map(customers.map(c => [c.id, combineWorkItems(
+    allEnquiries.filter(e => e.customerId === c.id), work.items.filter(i => i.customerId === c.id))]))
+  const today = dateOnly(new Date())
+  const overdueList = [] // native tasks and carried follow-ups, without a recency cutoff
+  for (const c of customers) {
+    if ((categoryFilter && c.crm_category !== categoryFilter) || (retailFilter && !c.tags?.includes(RETAIL_TAG))) continue
+    for (const item of groupedWork.get(c.id) || []) {
+      if (item.kind === 'task' && item.state !== 'done' && item.due_on && item.due_on < today) overdueList.push({ ...item, customerId: c.id })
+    }
+  }
+  const digestByCustomer = new Map((weeklySummary?.items || []).map(i => [i.customerId, i]))
+  const workspaceCustomers = customers.filter(c =>
+    (!categoryFilter || c.crm_category === categoryFilter) && (!retailFilter || c.tags?.includes(RETAIL_TAG)) &&
+    (activeFilter === 'overdue'
+      ? overdueList.some(i => i.customerId === c.id)
+      : c.id === selectedCustomer || digestByCustomer.has(c.id) || hasOpenWork(groupedWork.get(c.id) || []))
+  ).sort((a,b) => {
+    const due = c => (groupedWork.get(c.id) || []).filter(i => i.kind === 'task' && i.state !== 'done' && i.due_on).map(i => i.due_on).sort()[0] || '9999'
+    return due(a).localeCompare(due(b)) || (a.company_name || '').localeCompare(b.company_name || '')
+  })
 
   // Filtered list panel config
   const filterConfig = {
@@ -330,58 +306,22 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* This Month — a per-customer AI digest of the last 30 days (widened
-          from 7, 2026-09-17: "not all issues are resolved in a week"), built
-          from the CRM Interaction Log + ingested email only (V8.15).
-          On-demand: generated fresh only when "Refresh" is clicked, then cached. */}
       <div className="card mb-6">
-        <div className="px-5 py-4 border-b border-warm-grey flex items-center justify-between">
-          <h2 className="flex items-center gap-1.5 text-sm text-ink-80">
-            <Mail size={15} />
-            This Month
-            {weeklySummary?.generatedAt && (
-              <span className="ml-2 text-xs font-normal text-ink-60">
-                · generated {weeklySummary.generatedAt.toDate().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
-          </h2>
-          <button
-            onClick={handleGenerateWeeklySummary}
-            disabled={weeklyGenerating}
-            className="text-sm text-brand-600 hover:text-brand-800 font-medium flex items-center gap-1.5"
-          >
-            <RefreshCw size={14} className={weeklyGenerating ? 'animate-spin' : ''} />
-            {weeklyGenerating ? 'Generating…' : 'Refresh'}
-          </button>
+        <div className="p-4 border-b border-warm-grey flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="text-base">Customer Summary &amp; To-do</h2><p className="text-xs text-ink-60 mt-1">Recent conversations and your saved tasks. Unfinished work stays here until done.</p></div>
+          <button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Refreshing…' : 'Refresh summaries'}</button>
+          <label className="text-sm w-full">Find a customer to add a task or note
+            <select className="input mt-1" value={selectedCustomer} onChange={e => { setSelectedCustomer(e.target.value); setActiveFilter(null) }}>
+              <option value="">Choose customer…</option>{[...customers].sort((a,b) => (a.company_name || '').localeCompare(b.company_name || '')).map(c => <option key={c.id} value={c.id}>{c.company_name || c.contact_name || c.id}</option>)}
+            </select>
+          </label>
         </div>
-        {weeklyError && <p className="text-sm text-red-700 px-5 py-3">{weeklyError}</p>}
-        {weeklyLoading ? (
-          <p className="text-sm text-ink-60 text-center py-8">Loading…</p>
-        ) : !weeklySummary ? (
-          <p className="text-sm text-ink-60 text-center py-8">Not generated yet — click Refresh to summarize this month's customer activity.</p>
-        ) : weeklySummary.items.length === 0 ? (
-          <p className="text-sm text-ink-60 text-center py-8">No customer activity (Interaction Log or email) in the last 30 days.</p>
-        ) : (
-          <div className="divide-y divide-warm-grey">
-            {weeklySummary.items.map(item => (
-              <Link
-                key={item.customerId}
-                to={`/customers/${item.customerId}`}
-                className="flex items-start gap-3 px-5 py-3.5 hover:bg-ivory transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-ink">{item.customerName}</p>
-                    {item.channels.map(ch => (
-                      <span key={ch} className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CHANNEL_BADGE[ch] || 'bg-ivory-dark text-ink-70'}`}>{ch}</span>
-                    ))}
-                  </div>
-                  <p className="text-sm text-ink-70 mt-1">{item.digest}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        {(weeklyError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{weeklyError || work.error}</p>}
+        {(weeklyLoading || work.loading || loading) && <p className="text-sm text-ink-60 p-4">Loading summaries and tasks…</p>}
+        {workspaceCustomers.map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
+          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink
+          generatedAt={weeklySummary?.generatedAt?.toDate?.().toLocaleString('en-GB')} />)}
+        {!loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'overdue' ? 'No overdue tasks.' : 'No recent summaries or outstanding tasks. Choose a customer above to get started.'}</p>}
       </div>
 
       {/* Customer Type filter pills — Retail Customer sits alongside
@@ -433,7 +373,7 @@ export default function Dashboard() {
       </div>
 
       {/* Filtered panel — shown when a stat card is active */}
-      {activeFilter && (
+      {activeFilter && activeFilter !== 'overdue' && (
         <div className="card mb-6 ring-2 ring-brand-200">
           <div className="px-5 py-4 border-b border-warm-grey flex items-center justify-between">
             <h2 className="flex items-center gap-1.5 text-sm text-ink-80">
@@ -534,23 +474,7 @@ export default function Dashboard() {
                           <p className="text-xs text-ink-60 mt-1">{fmtDate(enq.date)}</p>
                         )}
                       </Link>
-                      {(activeFilter === 'overdue') && (
-                        <div className="flex flex-col gap-1.5 shrink-0">
-                          <button
-                            onClick={e => handleLog(enq, e)}
-                            className="px-2.5 py-1 rounded-none border border-brand-200 bg-brand-50 text-brand-700 text-xs font-medium hover:bg-brand-100 transition-colors"
-                          >
-                            + Log
-                          </button>
-                          <button
-                            onClick={e => handleDone(enq, e)}
-                            disabled={dismissing === enq.id}
-                            className="px-2.5 py-1 rounded-none border border-warm-grey bg-white text-ink-60 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
-                          >
-                            {dismissing === enq.id ? '…' : <span className="inline-flex items-center gap-1"><Check size={12} />Done</span>}
-                          </button>
-                        </div>
-                      )}
+
                     </div>
                   </div>
                 )
@@ -558,77 +482,6 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      )}
-
-      {/* Priority follow-ups (default, hidden when filter active) */}
-      {!activeFilter && (
-        <div className="card mb-6">
-          <div className="px-5 py-4 border-b border-warm-grey">
-            <h2 className="text-sm text-ink-80">Priority Follow-ups</h2>
-          </div>
-          {priorityFollowUps.length === 0 ? (
-            <p className="text-sm text-ink-60 text-center py-8">
-              {(categoryFilter || retailFilter)
-                ? `No follow-ups for ${[categoryFilter, retailFilter ? RETAIL_TAG : null].filter(Boolean).join(' · ')} in the next 7 days`
-                : 'No follow-ups due in the next 7 days'}
-            </p>
-          ) : (
-            <div className="divide-y divide-warm-grey">
-              {priorityFollowUps.map(enq => {
-                const overdue = isOverdue(enq.follow_up_date)
-                const today   = isToday(enq.follow_up_date)
-                return (
-                  <div key={`${enq.customerId}-${enq.id}`} className="px-5 py-3.5">
-                    <div className="flex items-start gap-3">
-                      <Link to={`/customers/${enq.customerId}`} className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-ink">{enq.companyName}</p>
-                          {enq.customerName && <p className="text-xs text-ink-60">{enq.customerName}</p>}
-                          {enq.channel && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CHANNEL_BADGE[enq.channel] || 'bg-ivory-dark text-ink-60'}`}>
-                              {enq.channel}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-ink-70 mt-0.5">
-                          {enq.description?.slice(0, 100)}{enq.description?.length > 100 ? '…' : ''}
-                        </p>
-                        <p className={`text-xs font-semibold mt-1 ${overdue ? 'text-red-600' : today ? 'text-amber-600' : 'text-ink-60'}`}>
-                          {overdue ? <AlertTriangle size={11} className="inline align-[-1px] mr-1" /> : today ? <Calendar size={11} className="inline align-[-1px] mr-1" /> : null}{fmtDate(enq.follow_up_date)}
-                        </p>
-                      </Link>
-                      <div className="flex flex-col gap-1.5 shrink-0">
-                        <button
-                          onClick={e => handleLog(enq, e)}
-                          className="px-2.5 py-1 rounded-none border border-brand-200 bg-brand-50 text-brand-700 text-xs font-medium hover:bg-brand-100 transition-colors"
-                        >
-                          + Log
-                        </button>
-                        <button
-                          onClick={e => handleDone(enq, e)}
-                          disabled={dismissing === enq.id}
-                          className="px-2.5 py-1 rounded-none border border-warm-grey bg-white text-ink-60 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
-                        >
-                          {dismissing === enq.id ? '…' : <span className="inline-flex items-center gap-1"><Check size={12} />Done</span>}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Log interaction drawer */}
-      {logTarget && (
-        <EnquiryForm
-          customerId={logTarget.customerId}
-          customerQuotes={quotes.filter(q => q.customer_id === logTarget.customerId)}
-          onSave={() => refresh()}
-          onClose={() => setLogTarget(null)}
-        />
       )}
 
       {/* Personal WhatsApp panel */}

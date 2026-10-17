@@ -41,6 +41,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: npm run test:customer-workspace
       - run: npm run test:product-search
       - run: npm run test:quote-pdf
       - run: npm run test:quote-excel

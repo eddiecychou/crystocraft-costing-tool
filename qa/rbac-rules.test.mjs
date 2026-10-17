@@ -17,7 +17,7 @@ import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from '@firebase/rules-unit-testing'
 import {
-  doc, getDoc, setDoc, updateDoc, serverTimestamp, writeBatch,
+  doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadString } from 'firebase/storage'
 
@@ -215,6 +215,29 @@ await ok('broad upload customers/**',   assertSucceeds(uploadString(storageRef(b
 await ok('broad upload client_quotes/**', assertSucceeds(uploadString(storageRef(broadS, 'client_quotes/b.png'), 'x')))
 await ok('broad upload daily_draft_images/**', assertSucceeds(uploadString(storageRef(broadS, 'daily_draft_images/b.png'), 'x')))
 await ok('broad DENIED settings/**',    assertFails(uploadString(storageRef(broadS, 'settings/b.png'), 'x')))
+
+// Customer workspace records: same customers capability, never a portal grant.
+const workPayload = uid => ({kind:'task',text:'Send quotation',state:'todo',due_on:'2026-10-18',revision:1,created_by:uid,updated_by:uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp()})
+await ok('admin creates internal task', assertSucceeds(setDoc(doc(admin, 'customers/c1/work_items/task'),workPayload('admin1'))))
+await ok('CRM staff creates note', assertSucceeds(setDoc(doc(broad,'customers/c1/work_items/note'),{...workPayload('broad1'),kind:'note',due_on:''})))
+await ok('CRM staff reads customer task list', assertSucceeds(getDocs(collection(broad,'customers/c1/work_items'))))
+await ok('CRM staff reads aggregate task list', assertSucceeds(getDocs(collectionGroup(broad,'work_items'))))
+await ok('customer denied own internal task', assertFails(getDoc(doc(cust,'customers/c1/work_items/task'))))
+await ok('customer denied task list', assertFails(getDocs(collection(cust,'customers/c1/work_items'))))
+await ok('customer denied aggregate task list', assertFails(getDocs(collectionGroup(cust,'work_items'))))
+await ok('customer denied task create', assertFails(setDoc(doc(cust,'customers/c1/work_items/forged'),workPayload('cust1'))))
+await ok('supply-only denied task read', assertFails(getDoc(doc(supply,'customers/c1/work_items/task'))))
+await ok('no modules denied task read', assertFails(getDoc(doc(none,'customers/c1/work_items/task'))))
+await ok('anonymous denied task read', assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),'customers/c1/work_items/task'))))
+await ok('forged creator denied', assertFails(setDoc(doc(admin,'customers/c1/work_items/forged'),workPayload('broad1'))))
+await ok('unknown fields denied', assertFails(setDoc(doc(admin,'customers/c1/work_items/extra'),{...workPayload('admin1'),public:true})))
+await ok('oversized text denied', assertFails(setDoc(doc(admin,'customers/c1/work_items/large'),{...workPayload('admin1'),text:'x'.repeat(4001)})))
+await ok('invalid status denied', assertFails(setDoc(doc(admin,'customers/c1/work_items/status'),{...workPayload('admin1'),state:'auto_done'})))
+await ok('dated note denied', assertFails(setDoc(doc(admin,'customers/c1/work_items/date-note'),{...workPayload('admin1'),kind:'note'})))
+await ok('revision-skipping update denied', assertFails(updateDoc(doc(admin,'customers/c1/work_items/task'),{state:'done',revision:3,updatedAt:serverTimestamp()})))
+await ok('revisioned task completion allowed', assertSucceeds(updateDoc(doc(admin,'customers/c1/work_items/task'),{state:'done',revision:2,updatedAt:serverTimestamp()})))
+await ok('stale update denied', assertFails(updateDoc(doc(admin,'customers/c1/work_items/task'),{state:'todo',revision:2,updatedAt:serverTimestamp()})))
+await ok('customer denied completion', assertFails(updateDoc(doc(cust,'customers/c1/work_items/task'),{state:'done',revision:3,updated_by:'cust1',updatedAt:serverTimestamp()})))
 
 await env.cleanup()
 console.log(`\n${pass} passed, ${fail} failed`)

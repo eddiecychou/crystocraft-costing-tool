@@ -688,6 +688,8 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
 //     marked sensitive, or just leave a tag nothing can ever resolve again).
 export async function mergeCustomers(duplicateId, survivorId) {
   const preview = await previewCustomerMerge(duplicateId, survivorId)
+  const workItems = await getDocs(collection(db, 'customers', duplicateId, 'work_items'))
+  if (!workItems.empty) throw new Error('This customer has saved tasks or notes. Keep this customer as the surviving record when merging, so its workspace is preserved.')
   const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
   const brandedImages = await brandedImageDocs(duplicateId)
 

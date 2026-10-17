@@ -186,3 +186,7 @@ told about it).
 `range_family_claims/{design-format}`: immutable shared family reservation; normal figurine writers can atomically create only with matching product. `range_component_claims/{alphanumeric-code}`: immutable punctuation-aware component reservation; supply writers create with matching component. Normal UI/import persistence is `src/rangePersistence.js`. Legacy collision scans remain necessary until all records have claims.
 
 Backend-only writes: `range_upload_controls/service` (separate capability/window), `range_upload_approvals/{preview-hash}` (single-use exact owner review), `range_upload_receipts/{actor-uuid-hash}` (durable retry result), `range_upload_audit/{same-hash}` (actor/operator, field diffs, versions/outcome), `range_upload_code_claims/{code-hash}` (full-code reservation). Controls/approvals/receipts/audit are admin-readable only; code claims are figurine-readable. New `mcp-range-upload-service` has no direct collection/storage mutation permission. No rules deployed. See [operator guide](../../mcp/range/README.md).
+
+## Customer workspace (17 October 2026)
+
+`customers/{customerId}/work_items/{uuid}` — internal task/reference note, state, optional due_on, revision and creator/updater server audit fields. Read/write uses customers capability; customer portal never reads it. Archive/reopen, no hard delete. Legacy enquiry follow-ups remain in enquiries with additive todo_* fields. Details: `docs/plans/CUSTOMER-SUMMARY-TODO-2026-10-17.md`.

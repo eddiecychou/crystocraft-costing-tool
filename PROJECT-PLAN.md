@@ -1,3 +1,7 @@
+# 17 October 2026 — Customer Summary & To-do
+
+Shared dashboard/customer tasks and reference notes, legacy follow-up carry-over without rewriting history, revision-protected saves and internal CRM rules. Release evidence: [Customer Summary & To-do](docs/plans/CUSTOMER-SUMMARY-TODO-2026-10-17.md).
+
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
 ## Released — SEO Elementor body gate (2026-10-16)
