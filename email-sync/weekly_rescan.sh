@@ -9,6 +9,7 @@
 # re-scan just re-confirms already-correct data for everyone except newly
 # matched customers.
 set -e
+export TZ=Asia/Hong_Kong  # Log dates follow the OC business clock.
 cd "$(dirname "$0")"
 
 PYTHON=/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/bin/python3

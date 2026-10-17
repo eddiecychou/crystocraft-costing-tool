@@ -13,6 +13,15 @@ The model boundary is strict: analysis is advisory and every human-review row de
 
 ## 1. Daily Drafts (personalized outreach)
 
+Dates display in Hong Kong time. “Daily” is a workflow name, not a midnight job:
+generation and sending remain manual; pending drafts are not cleared at midnight.
+The 14-day outreach and 21-day topic cooldowns are elapsed durations. Use
+`src/outreachTiming.js` for timestamp parsing, including legacy OC wall times;
+invalid history remains conservatively ineligible rather than silently bypassing
+a cooldown. Scheduled email/WhatsApp **ingestion** is separate: see
+`docs/reference/LOCAL-TOOLS.md`, HKT scheduler section.
+
+
 **UI:** `src/marketing/DailyDrafts.jsx` (the "Daily Drafts" tab of `Marketing.jsx`).
 **Data layer:** `src/domain/outreachDrafts.js` (`outreach_drafts/{id}`).
 **AI client:** `src/outreachApi.js`. **Edge fns:** `draft-outreach-topic`,

@@ -1,3 +1,4 @@
+import { outreachDaysAgo as daysAgo, outreachBlocked } from '../outreachTiming.js'
 import { formatOcDate } from '../ocTime.js'
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -47,12 +48,6 @@ const TOPIC_COOLDOWN_DAYS = 21  // don't re-suggest the SAME topic to someone al
 const MAX_CANDIDATES = 60        // sent to fit-scoring; protects DeepSeek rate limits and function run time
 const MAX_HISTORY_DECISIONS = 60 // how many recent sent/skipped drafts feed the historicalHints summary
 const MAX_ATTACHED_IMAGES = 2
-
-const daysAgo = (ts) => {
-  if (!ts) return Infinity
-  const ms = ts.toMillis ? ts.toMillis() : new Date(ts).getTime()
-  return (Date.now() - ms) / 86400000
-}
 
 // Direct upload (not from a product gallery) — Compose-phase images and the
 // per-draft fallback when a draft has no linked product to pick from. Same
@@ -215,11 +210,8 @@ function eligibleCandidates(entities, excludedIds, excludedEmails) {
   const seenEmails = new Set()
   const pool = entities.filter(e => {
     if (!e) return false
-    if (e.blockOutreachUntil) {
-      const until = e.blockOutreachUntil.toMillis ? e.blockOutreachUntil.toMillis() : new Date(e.blockOutreachUntil).getTime()
-      if (until > now) return false
-    }
-    if (daysAgo(e.lastOutreachAt) < COOLDOWN_DAYS) return false
+    if (outreachBlocked(e.blockOutreachUntil, now)) return false
+    if (daysAgo(e.lastOutreachAt, now) < COOLDOWN_DAYS) return false
     if (excludedIds.has(e.id) || excludedEmails.has(e.email)) return false
     if (seenEmails.has(e.email)) return false
     seenEmails.add(e.email)
@@ -1269,6 +1261,7 @@ export default function DailyDrafts() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl space-y-8">
+      <p className="text-sm text-ink-60">Dates use Hong Kong time. Drafts stay here until you review them; generation and sending are manual. Outreach cooldowns do not reset at midnight.</p>
       {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-none px-3 py-2">{error}</div>}
 
       {/* ── Draft Memory Layer (V8.9) — global writing rules review ──────

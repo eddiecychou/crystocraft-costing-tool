@@ -255,3 +255,12 @@ and SO/PU year functions. A source policy guard blocks device-local date/time
 formatters/calendar getters and UTC-derived today defaults outside `ocTime.js`.
 Numeric locale formatting, UTC storage/wire timestamps, elapsed durations and
 calendar-only UTC arithmetic are intentional. Historical records are not migrated.
+
+### Scheduled jobs and Daily Drafts timing
+
+`npm run test:scheduled-time` runs Python standard-library scheduler tests plus
+Node marketing timing tests, included in `test:oc-time`, prebuild and Actions.
+Fictional commands/temp checkpoints only: no mail, Firestore, AI or imports.
+Covers HKT midnight vs 03:00, Sunday/year/leap/DST boundaries, four host zones,
+sleep catch-up, duplicate/clock-rollback prevention, failure retry/shared email
+lock, no run on install, elapsed outreach cooldowns and legacy timestamp parsing.

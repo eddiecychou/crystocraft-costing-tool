@@ -372,116 +372,61 @@ so the merged view's only value is browsing both — or either alone via the
 viewer's Repository toggle. Rebuild: `scripts/graphify-merge.sh`
 (`EXPENSE_TOOL=<path>` env var overrides the default location).
 
-## Scheduled email sync (launchd)
+## Scheduled OC imports — Hong Kong time
 
-Two `launchd` LaunchAgents live in `~/Library/LaunchAgents/` on this Mac —
-**not** committed to the repo (OS-specific, per-machine config), but the
-scripts they run are (`email-sync/*.sh`). Check `launchctl list | grep
-crystocraft` to confirm both are loaded; PID column non-`-` means running
-right now, `-` means idle/waiting for its next scheduled fire.
+The three existing per-Mac LaunchAgents use `scripts/oc-scheduler/runner.py`:
 
-- **`com.crystocraft.email-hourly-sync`** (added 2026-09-23) — runs
-  `email-sync/hourly_sync.sh` every hour (`StartInterval: 3600`,
-  `RunAtLoad: true`). Plain `sync.py` (no `--rescan`) — a fast UID-
-  incremental fetch against the **live** mailbox (`mail.s406.sureserver.com`,
-  the backend `mbox.uart.com.hk` points at) of only what's new since
-  `state.json`'s last-seen UID. This is what keeps `CustomerDetail.jsx`'s
-  Email Summary "Refresh" button close to real-time. Logs:
-  `email-sync/hourly_*.log` (newest 48 kept), `email-sync/launchd-hourly.log`
-  (launchd's own stdout/stderr wrapper — usually empty, errors only).
-  First real run (2026-09-23, right after setup) picked up 52 new messages
-  since the previous Sunday's rescan, matched 12 to real customers/leads,
-  finished in ~3.5 min.
-- **`com.crystocraft.email-rescan`** (existing, Aug 12) — runs
-  `email-sync/weekly_rescan.sh` every Sunday 3am. `sync.py --rescan` +
-  `archive_import.py --rescan --all` — a **full** rescan (hours, not
-  minutes) that catches customers added to Firestore *after* their older
-  mail was first ingested, since a plain incremental run only ever looks at
-  new/unscanned mail. Does **not** need to run more often — the static PST
-  archive `archive_import.py` reads never changes, unlike the live mbox.
-  Logs: `email-sync/rescan_*.log`.
+| Job | Intended timing |
+|---|---|
+| `com.crystocraft.email-hourly-sync` | Once per Hong Kong clock hour |
+| `com.crystocraft.email-rescan` | Sunday 03:00 HKT |
+| `com.crystocraft.whatsapp-auto-import` | Every day 03:00 HKT |
 
-**To recreate the hourly job on the other Mac:**
+Launchd polls every minute; the runner checks the **Hong Kong** period. Do not
+restore `StartCalendarInterval Hour=3`: that uses the Mac's calendar even if a
+child process has `TZ=Asia/Hong_Kong`. HKT has no current daylight saving.
+At midnight the daily/weekly job does not run early; its next period starts at
+03:00 HKT (19:00 UTC on the preceding date). After sleep, the next poll catches
+up once; it does not replay every missed day. Checkpoints advance after success,
+failed jobs retry, and shared email locking avoids incremental/rescan overlap.
+A backward clock adjustment cannot repeat a completed period. The underlying
+imports remain idempotent; a crash after import but before checkpoint may retry.
+The Mac must be awake and logged in; this is not a cloud scheduler.
+
+Read-only installer preview and installation (on each Mac separately):
 ```bash
-cat > ~/Library/LaunchAgents/com.crystocraft.email-hourly-sync.plist <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.crystocraft.email-hourly-sync</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/bash</string>
-        <string>/Users/eddie/Developer/costing-tool/email-sync/hourly_sync.sh</string>
-    </array>
-    <key>StartInterval</key>
-    <integer>3600</integer>
-    <key>StandardOutPath</key>
-    <string>/Users/eddie/Developer/costing-tool/email-sync/launchd-hourly.log</string>
-    <key>StandardErrorPath</key>
-    <string>/Users/eddie/Developer/costing-tool/email-sync/launchd-hourly.log</string>
-    <key>RunAtLoad</key>
-    <true/>
-</dict>
-</plist>
-EOF
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.crystocraft.email-hourly-sync.plist
+python3 scripts/oc-scheduler/install.py --repo "$PWD"
+python3 scripts/oc-scheduler/install.py --repo "$PWD" --apply
 ```
-(Adjust the path if the repo isn't at `~/Developer/costing-tool` on that Mac.)
+Requires the three existing approved LaunchAgents targeting this repository.
+Unexpected targets or running jobs stop installation. The installer copies only
+the tested runner to `~/Library/Application Support/Crystocraft/oc-scheduler/`,
+backs up original plists there, and seeds the current periods. Installation does
+not execute imports, copy secrets or change the repository's live sync state.
+It retains the existing repo scripts and their credentials/configuration. For
+reinstallation, inspect the installed runner configuration first; the initial
+installer deliberately refuses an already-converted or unfamiliar target.
 
-## Scheduled WhatsApp auto-import (launchd)
+Inspect with `launchctl print gui/$(id -u)/com.crystocraft.email-rescan` (and the
+other labels). Runner status logs/checkpoints are in the installed `state/`
+directory; original detailed import logs remain in `email-sync/` and `scripts/`.
+For rollback, wait for idle, boot out each changed job, restore its backed-up
+plist and bootstrap it. Do not delete UID/archive state or force a rescan.
 
-`com.crystocraft.whatsapp-auto-import` (added 2026-10-03) runs
-`scripts/whatsapp-sync.sh` daily at 03:00 (`StartCalendarInterval`
-`Hour=3, Minute=0`, `RunAtLoad: true`). It auto-imports `.zip` files dropped
-into `~/Whatsapp Archives/{Business,Personal}/` (text-first, then uploads their
-media). Matching is owner-approved, NOT automatic: existing filenames in
-`scripts/whatsapp-import-manifest.json` still map to a customer/contact/account;
-an unknown filename is recorded in the OC's **Unassigned archives** inbox and
-remains skipped until its customer, lead, or group mapping is approved. The
-importer tracks each file's mtime+size in
-`scripts/.whatsapp-sync-state.json` (gitignored) and skips unchanged files, so
-each run is a no-op until you actually overwrite/add an archive. Logs:
-`scripts/whatsapp-sync_*.log` (newest 48 kept) + `scripts/launchd-whatsapp.log`.
-To import sooner, double-click `scripts/Sync WhatsApp Archives Now.command`,
-run `bash scripts/whatsapp-sync.sh`, or use
-`launchctl kickstart -k gui/$(id -u)/com.crystocraft.whatsapp-auto-import`.
+The hourly script runs incremental live IMAP ingestion; the weekly script runs
+`sync.py --rescan` and `archive_import.py --rescan --all`. Neither generates AI
+summaries. WhatsApp runs approved archive mappings then media uploads; unknown
+filenames remain in the Unassigned archives inbox for review. Existing
+`scripts/.whatsapp-sync-state.json`, source signatures, export checkpoints and
+Message-ID deduplication remain intact. A manual approved import can still use
+`scripts/Sync WhatsApp Archives Now.command`; the new scheduler is not a manual
+run or backfill tool.
 
-Each processed ZIP also has a compact record in `whatsapp_archive_inbox` for
-the OC's **Export checkpoints** table: `source_file_modified_at` records when
-the ZIP was placed/replaced, while `last_message_at` records the newest message
-inside it. On the first run after this feature was added, an unchanged ZIP is
-parsed once to backfill that checkpoint but its customer thread is not
-rewritten. Later unchanged runs skip it by `source_signature` as before.
-
-**Manual run / dry-run:**
-```bash
-cd ~/Developer/costing-tool
-node scripts/import-whatsapp-archives.mjs            # import text (approved mappings only)
-node scripts/upload-whatsapp-media.mjs               # upload attachment files
-node scripts/import-whatsapp-archives.mjs --dry-run  # preview, no writes
-```
-
-**To recreate on the other Mac** (plist isn't git-synced):
-```bash
-cat > ~/Library/LaunchAgents/com.crystocraft.whatsapp-auto-import.plist <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key><string>com.crystocraft.whatsapp-auto-import</string>
-    <key>ProgramArguments</key>
-    <array><string>/bin/bash</string><string>/Users/eddie/Developer/costing-tool/scripts/whatsapp-sync.sh</string></array>
-    <key>StartCalendarInterval</key>
-    <dict><key>Weekday</key><integer>0</integer><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
-    <key>RunAtLoad</key><true/>
-</dict>
-</plist>
-EOF
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.crystocraft.whatsapp-auto-import.plist
-```
-(Adjust the path if the repo isn't at `~/Developer/costing-tool` on that Mac.)
+Daily Drafts and marketing campaigns are **manual**, not scheduled: generation,
+review and sending require their existing user actions. Pending drafts survive
+midnight. The 14-day outreach and 21-day topic cooldowns are full elapsed days,
+not calendar-day resets. Dates shown in OC are HKT; persisted instants and
+provider timestamp/quota semantics remain unchanged. No automatic send was added.
 
 ## Updating this file
 

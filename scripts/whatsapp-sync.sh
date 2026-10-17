@@ -10,6 +10,7 @@
 # filename is printed as SKIP so it can be added to the manifest once.
 # Idempotent — re-running updates in place and skips already-uploaded media.
 set -e
+export TZ=Asia/Hong_Kong  # Log dates follow the OC business clock.
 cd "$(dirname "$0")/.."   # repo root
 
 # launchd has a minimal PATH — use the absolute node path (same reason the

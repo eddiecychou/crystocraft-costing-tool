@@ -18,6 +18,7 @@
 # weekly schedule only, to catch newly-added customers against already-
 # scanned archive mail.
 set -e
+export TZ=Asia/Hong_Kong  # Log dates follow the OC business clock.
 cd "$(dirname "$0")"
 
 PYTHON=/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/bin/python3
