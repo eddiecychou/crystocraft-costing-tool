@@ -20,4 +20,33 @@ The existing real Dashboard/CustomerDetail emulator suite remains the integratio
 
 Rendered the actual mixed-unit QuotePDF to `/private/tmp/oc-hkt-quote.pdf`, rasterized and visually inspected page1: entered15 October2026 remains15 October2026; quantities/units, columns, totals and footer remain legible and aligned. No live data used.
 
-Release evidence follows after candidate and production checks. No rules deployment planned; dirty primary checkout preserved.
+## Local and branch verification — PASS
+
+Final source `bd3032c1be9556c8660be31c7a60361e574aba81` (audit implementation `977b94c1402f2bb3c53792b10e67720b3d4a4ba2` plus legacy month-name/slash parsing correction). Production build passed578 prebuild checks (279 Node cases +299 standalone assertions), no-undef lint, whitespace checks and11 Firebase config tests. The real-page sync suite passed53 local executions; the final source also passed the complete branch Actions jobs, including that suite: https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/39031549525 .
+
+No direct device-local date/time formatters/calendar getters or UTC-derived today defaults remain in UI/domain source outside the shared policy. UTC full timestamps for storage/security/wire payloads and documented calendar-only UTC arithmetic remain intentional.
+
+## Candidate — PASS
+
+Final candidate `6ad3660384d84bed4c548763`, served `/assets/index-7WJefeFz.js`, sidebar V8.18 /17Oct20:11HKT. Served Firebase configuration probe200.
+
+Fresh real-page email/password sign-ins in separate clean tabs:
+
+- Admin `claude-qa@crystocraft.com`: expected OC Dashboard, Settings/Portal,3 follow-ups (3 overdue/0 today),13 New Orders,297 Range products /722 SKUs, refresh and empty authenticated runtime error log. Portal Login activity filtered to only the QA admin displayed `17 Oct 2026, 20:13` for the fresh sign-in, matching independently checked `12:13 UTC` /20:13HKT. No other account changed.
+- Approved customer `customer-qa@crystocraft.com`: expected QA wholesale company, customer `/shop`,295 designs, Mini Butterfly Music Box Chrome USD12.51 /Gold USD12.84 and ~9 weeks /MOQ100, product refresh and empty authenticated runtime error log. No Settings/Add task controls; direct `/dashboard` redirected to `/shop`.
+
+Per-role screenshots and the rendered PDF evidence are in `/Users/eddie/.codex/visualizations/2026/10/14/01a13b22-c93b-79f2-9f8b-551754486033/oc-wide-hkt-release-2026-10-17/`. Candidate QA sessions signed out after verification.
+
+## Production evidence
+
+Published `6ad366e4b56825e4ed6dda61` from final source `bd3032c1be9556c8660be31c7a60361e574aba81` on17 October2026 at20:16:38HKT (12:16:38UTC). Served bundle `/assets/index-uiqxPjur.js`; Firebase configuration probe200; sidebar V8.18 /17Oct20:15HKT. Main Actions passed: https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/39031816115 .
+
+Fresh production admin email/password sign-in passed: correct OC Dashboard/Settings/Portal,3 follow-ups (3 overdue/0 today),13 New Orders,297 products /722 SKUs, refresh persistence and empty authenticated runtime error log. Filtered Login activity for the QA admin displayed17Oct2026 20:17HKT for the new sign-in, matching the independently checked12:17UTC clock. Screenshot saved as `production-admin-activity.png`.
+
+Fresh production approved-customer email/password sign-in passed: expected QA company and `/shop` shell,295 designs, actual Mini Butterfly Music Box Chrome USD12.51 /Gold USD12.84 and ~9 weeks /MOQ100, product refresh persistence and empty authenticated runtime error log. Settings/Add task absent; direct `/dashboard` redirected to `/shop`. Screenshots saved. Both QA sessions signed out.
+
+## State and boundaries
+
+Application source pushed to main and production verified. Per-role checks passed on candidate AND current production. Rules were not deployed or changed: Firestore SHA256 `92e35cd019e7be61a4f676131bcffad72c7b56e0cba427f52225cb89992b2468`, Storage `94981d875ec150038619275c387f20d3a2b8ea021e53ecb3130ee66a2700828c`. Original dirty checkout unchanged (porcelain SHA256 `fca5caf4923d0a7794ceaf571996019e4fea9602f75851e7f413dad1240bf846`). Owner browser untouched.
+
+No live customer/task/note/Pipeline/product/financial writes, imports or AI runs were performed during verification. Normal fresh QA sign-ins stamp account activity; these are the only routine test writes. No historical timestamps, issued document dates/numbers or accounting dates were migrated. Docs-only evidence follow-up uses `[skip netlify]` to preserve the verified app build.
