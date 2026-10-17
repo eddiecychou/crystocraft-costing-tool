@@ -81,8 +81,8 @@ before(async()=>{
   b.onLoad({filter:/.*/,namespace:'fixture'},a=>({loader:'js',contents:a.path==='firebase/firestore'?`export const doc=(...a)=>a.slice(1).join('/');export const collection=(...a)=>a.slice(1).join('/');export const collectionGroup=(db,name)=>'group/'+name;export const query=x=>x;export const onSnapshot=(path,fn)=>{const rows=globalThis.__dashboardRows[path]||[];fn({docs:rows.map((r,i)=>({id:r.id||String(i),data:()=>r,ref:{parent:{parent:{id:'c1',parent:{id:'customers'}}}}})),exists:()=>true,data:()=>({items:[{customerId:'c1',digest:'Fixture summary'}]})});return()=>{}};`
    :a.path.endsWith('/firebase')?'export const db={};'
    :a.path.endsWith('customerWorkItems')?'export const useCustomerWorkItems=()=>({items:[],loading:false,error:""});export async function saveCustomerWorkItem(){};'
-   :a.path.endsWith('weeklySummary')?'export async function generateWeeklySummary(){return {items:[]}};'
-   :a.path.endsWith('customerPipeline')?'export async function savePipelineDecision(){};export async function suggestCustomerPipeline(){return 0};'
+   :a.path.endsWith('weeklySummary')?'export async function generateWeeklySummary(days){globalThis.__dashboardAiCalls.push(days);return {items:[]}};'
+   :a.path.endsWith('customerPipeline')?'export async function savePipelineDecision(){};export async function suggestCustomerPipeline(customers,progress,days){globalThis.__dashboardSuggestionCalls.push(days);return 0};'
    :a.path.endsWith('/shipping')?'export const orderStatusOf=v=>({label:v});export const orderUc=o=>o.uc_no;'
    :'export const normalizeCustomer=c=>c;export const RETAIL_TAG="Retail Customer";'}))
  }}]})
@@ -118,6 +118,7 @@ test('every real Dashboard figure immediately replaces general summaries with it
  globalThis.__dashboardRows={customers:[{id:'c1',company_name:'QA',sales_pipeline:{...emptyPipeline(),status:'active',detail:'Current repeat request'}}],orders:[{id:'o1',customer_id:'c1',status:'confirmed',order_date:new Date().toISOString().slice(0,10),uc_no:'QA-ONLY'}],'group/enquiries':[{id:'e1',follow_up_date:{seconds:1000},description:'Old task',status:'Open'}]}
  await mount(Dashboard,{},async h=>{
  assert.ok([...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer Summary & To-do'))
+ assert.ok(!h.textContent.includes('Current repeat request'));assert.ok(!button(h,'Suggest from summaries'))
  for(const name of ['Pipeline','Follow-ups Due','In Production','New Orders']){
   const card=[...h.querySelectorAll('button')].find(b=>[...b.querySelectorAll('p')].some(p=>p.textContent===name));assert.ok(card);await act(async()=>card.click())
   assert.ok(button(h,'Back to summaries'));assert.ok(![...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer Summary & To-do'))
@@ -127,6 +128,33 @@ test('every real Dashboard figure immediately replaces general summaries with it
   await act(async()=>button(h,'Back to summaries').click());assert.ok([...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer Summary & To-do'))
  }
  });delete globalThis.__dashboardRows
+})
+test('Dashboard customer selection and conversation window only read saved data; AI actions are explicit',async()=>{
+ globalThis.localStorage=dom.window.localStorage;localStorage.clear()
+ globalThis.__dashboardAiCalls=[];globalThis.__dashboardSuggestionCalls=[]
+ globalThis.__dashboardRows={customers:[{id:'c1',company_name:'QA',sales_pipeline:{...emptyPipeline(),status:'active',detail:'Private Pipeline position'}}]}
+ await mount(Dashboard,{},async h=>{
+  assert.ok(!button(h,'Refresh'));assert.match(h.textContent,/Saved data updates automatically/)
+  assert.ok(!h.textContent.includes('Private Pipeline position'))
+  const period=()=>[...h.querySelectorAll('label')].find(l=>l.textContent.startsWith('Conversation window'))?.querySelector('select')
+  const customer=[...h.querySelectorAll('label')].find(l=>l.textContent.includes('Find a customer')).querySelector('select')
+  await act(async()=>Simulate.change(customer,{target:{value:'c1'}}))
+  assert.ok(!h.textContent.includes('Private Pipeline position'));assert.ok(!button(h,'Transaction completed'))
+  await act(async()=>Simulate.change(period(),{target:{value:'90'}}))
+  assert.deepEqual(globalThis.__dashboardAiCalls,[]);assert.deepEqual(globalThis.__dashboardSuggestionCalls,[])
+  assert.match(h.textContent,/Tasks and dashboard figures are unaffected/)
+  await act(async()=>button(h,'Update AI summaries').click())
+  assert.deepEqual(globalThis.__dashboardAiCalls,[90]);assert.deepEqual(globalThis.__dashboardSuggestionCalls,[])
+  const pipeline=()=>[...h.querySelectorAll('button')].find(b=>[...b.querySelectorAll('p')].some(p=>p.textContent==='Pipeline'))
+  await act(async()=>pipeline().click());assert.match(h.textContent,/Private Pipeline position/)
+  const source=[...h.querySelectorAll('label')].find(l=>l.textContent.startsWith('Use saved summaries from')).querySelector('select')
+  assert.equal(source.value,'90');await act(async()=>Simulate.change(source,{target:{value:'14'}}))
+  assert.deepEqual(globalThis.__dashboardSuggestionCalls,[])
+  await act(async()=>button(h,'Suggest from summaries').click())
+  assert.deepEqual(globalThis.__dashboardSuggestionCalls,[14]);assert.deepEqual(globalThis.__dashboardAiCalls,[90])
+  await act(async()=>pipeline().click());assert.ok(period());assert.equal(period().value,'14')
+  assert.ok(!button(h,'Suggest from summaries'));assert.ok(!h.textContent.includes('Private Pipeline position'))
+ });delete globalThis.__dashboardRows;delete globalThis.localStorage
 })
 test('both real pages use the shared Pipeline; old interaction-status count removed',async()=>{
  const dash=await readFile('src/pages/Dashboard.jsx','utf8'),detail=await readFile('src/pages/CustomerDetail.jsx','utf8');assert.match(dash,/<PipelinePanel/);assert.match(detail,/<CustomerPipeline/);assert.doesNotMatch(dash,/allEnquiries.filter\(e => e.status === 'Open'/)

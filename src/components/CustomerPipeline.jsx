@@ -62,7 +62,7 @@ export default function PipelinePanel({ customers, allCustomers=customers, summa
     <div className="p-4 border-b border-warm-grey flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="text-base">Customer Pipeline</h2><p className="text-xs text-ink-60 mt-1">{active.length} confirmed active customers · {pending.length} suggestions awaiting review. Product, sample, price and quotation requests.</p></div>
       <button className="btn-secondary text-xs min-h-[40px]" disabled={busy} onClick={generate}>{busy?'Preparing suggestions…':'Suggest from summaries'}</button>
-      <p className="text-xs text-ink-60 w-full">Uses saved email and WhatsApp summaries for the last {summaryPeriodLabel(summaryPeriod)}. Refresh summaries below when you need newer conversations. Suggestions cover all customers; the current filters control this list.</p>
+      <p className="text-xs text-ink-60 w-full">Uses saved email and WhatsApp summaries for the last {summaryPeriodLabel(summaryPeriod)}. To update them, go back to Customer Summary & To-do and choose Update AI summaries. This button only prepares suggestions; it does not sync messages or regenerate summaries. Suggestions cover all customers; the current filters control this list.</p>
     </div>
     {message&&<p role="status" className="p-4 text-sm text-ink-60">{message}</p>}{error&&<p role="alert" className="p-4 text-sm text-brand-600">{error}</p>}
     {!!pending.length&&<h3 className="eyebrow px-4 pt-4">Awaiting your review</h3>}

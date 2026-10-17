@@ -4,9 +4,9 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import CustomerWorkspace from '../components/CustomerWorkspace'
-import PipelinePanel, { CustomerPipeline } from '../components/CustomerPipeline'
+import PipelinePanel from '../components/CustomerPipeline'
 import useSummaryPeriod from '../hooks/useSummaryPeriod'
-import {SUMMARY_PERIODS,summaryCacheId,summaryPeriodLabel} from '../customerSummary'
+import {SUMMARY_PERIODS,summaryCacheId} from '../customerSummary'
 import { useCustomerWorkItems } from '../domain/customerWorkItems'
 import { combineWorkItems, dateOnly, hasOpenWork } from '../customerWorkItems'
 import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
@@ -18,7 +18,7 @@ import { orderStatusOf, orderUc } from '../shipping'
 const IN_PRODUCTION_ORDER_STATUSES = ['confirmed', 'packing', 'ready']
 import {
   AlertTriangle, ClipboardList, Factory, Trophy, Calendar, Check,
-  Store, ShoppingCart, Gift, Sparkles, Smartphone, X, RefreshCw, ChevronUp, ShoppingBag, Mail,
+  Store, ShoppingCart, Gift, Sparkles, Smartphone, X, ChevronUp, ShoppingBag, Mail,
 } from 'lucide-react'
 
 function fmtDate(ts) {
@@ -77,8 +77,6 @@ export default function Dashboard() {
   const [orders, setOrders]             = useState([])
   const [allEnquiries, setAllEnquiries] = useState([])
   const [loading, setLoading]           = useState(true)
-  const [refreshKey, setRefreshKey]     = useState(0)
-  const [refreshing, setRefreshing]     = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [activeFilter, setActiveFilter]     = useState(null) // 'overdue' | 'open' | 'quotes' | 'won'
   const [categoryFilter, setCategoryFilter] = useState(null) // customer category pill
@@ -87,8 +85,6 @@ export default function Dashboard() {
   const [weeklyLoading, setWeeklyLoading] = useState(true)
   const [weeklyGenerating, setWeeklyGenerating] = useState(false)
   const [weeklyError, setWeeklyError] = useState('')
-
-  function refresh() { setRefreshKey(k => k + 1); setRefreshing(true) }
 
   function toggleFilter(f) { setActiveFilter(prev => prev === f ? null : f) }
 
@@ -103,7 +99,7 @@ export default function Dashboard() {
   }, [])
 
   // Both views subscribe to the same interaction records: legacy task edits
-  // become visible without waiting for a focus refresh or summary generation.
+  // become visible without a manual reload or summary generation.
   useEffect(() => {
     if (!customers.length) { setAllEnquiries([]); setLoading(false); return }
     const customerById = new Map(customers.map(c => [c.id, c]))
@@ -112,27 +108,21 @@ export default function Dashboard() {
         const c = customerById.get(d.ref.parent.parent.id)
         return {...d.data(), id:d.id, customerId:c.id, customerName:c.contact_name || '', companyName:c.company_name || ''}
       }))
-      setLoading(false); setRefreshing(false)
-    }, () => { setWeeklyError('Interaction history could not load. Refresh or check your access.'); setLoading(false); setRefreshing(false) })
-  }, [customers, refreshKey])
+      setLoading(false)
+    }, () => { setWeeklyError('Interaction history could not load. Reload this page or check your access.'); setLoading(false) })
+  }, [customers])
 
   const work = useCustomerWorkItems(customers.map(c => c.id))
-  useEffect(() => {
-    function handleFocus() { setRefreshKey(k => k + 1) }
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [])
-
   // On-demand only (V8.15) — load whatever was cached from the last time
-  // someone clicked "Refresh" below; never auto-generates on its own.
+  // someone clicked "Update AI summaries" below; never auto-generates on its own.
   useEffect(() => {setWeeklyLoading(true);setWeeklySummary(null);return onSnapshot(doc(db, 'dashboard_cache', summaryCacheId(summaryPeriod)), snap => {
     setWeeklySummary(snap.exists() ? snap.data() : null); setWeeklyLoading(false)
-  }, () => { setWeeklyError('The summary could not load. Refresh or check your access.'); setWeeklyLoading(false) })}, [summaryPeriod])
+  }, () => { setWeeklyError('The summary could not load. Reload this page or check your access.'); setWeeklyLoading(false) })}, [summaryPeriod])
 
   async function handleGenerateWeeklySummary() {
     setWeeklyGenerating(true)
     setWeeklyError('')
-    setSummaryProgress('Reading customer conversations…')
+    setSummaryProgress('Reading already-synced conversations…')
     try {
       const result = await generateWeeklySummary(summaryPeriod,(n,total)=>setSummaryProgress(`Summarized ${n} of ${total} customers…`))
       setWeeklySummary({ ...result, generatedAt: { toDate: () => new Date() }, weekStart: new Date(Date.now() - summaryPeriod * 86400000).toISOString() })
@@ -215,21 +205,8 @@ export default function Dashboard() {
           <h1 className="text-xl md:text-2xl text-ink">Dashboard</h1>
           <p className="text-sm text-ink-60 mt-0.5">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <button
-          onClick={refresh}
-          disabled={refreshing}
-          className="text-sm text-brand-600 hover:text-brand-800 font-medium flex items-center gap-1.5 mt-1"
-        >
-          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-          {refreshing ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <p className="text-xs text-ink-60 mt-1 max-w-40 text-right">Saved data updates automatically</p>
       </div>
-
-      <label className="block text-sm mb-4">Summary period
-        <select className="input mt-1 max-w-xs" value={summaryPeriod} disabled={weeklyGenerating} onChange={e=>setSummaryPeriod(e.target.value)}>
-          {SUMMARY_PERIODS.map(p=><option key={p.days} value={p.days}>{p.label}</option>)}
-        </select>
-      </label>
 
       {/* Customer Type filter pills — Retail Customer sits alongside
           Distributor/Small B2B/Gift-OEM/Crystal Fabric as a peer type
@@ -333,12 +310,21 @@ export default function Dashboard() {
         </Link>)}</div>
       </div>}
 
-      {(!activeFilter || activeFilter === 'open') && <PipelinePanel customers={pipelineCustomers} allCustomers={customers} summaryPeriod={summaryPeriod} />}
+      {activeFilter === 'open' && <>
+        <div className="card p-4 mb-4">
+          <ConversationWindow value={summaryPeriod} onChange={setSummaryPeriod} disabled={weeklyGenerating} pipeline />
+        </div>
+        <PipelinePanel customers={pipelineCustomers} allCustomers={customers} summaryPeriod={summaryPeriod} />
+      </>}
 
       {!activeFilter && (<div className="card mb-6">
         <div className="p-4 border-b border-warm-grey flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-base">Customer Summary &amp; To-do</h2><p className="text-xs text-ink-60 mt-1">Conversations from the last {summaryPeriodLabel(summaryPeriod)} and your saved tasks. Unfinished work stays until done.</p></div>
-          <button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Refreshing…' : 'Refresh summaries'}</button>
+          <div><h2 className="text-base">Customer Summary &amp; To-do</h2><p className="text-xs text-ink-60 mt-1">Your saved conversation summaries, tasks and notes. Unfinished tasks stay until done.</p></div>
+          <button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Updating AI summaries…' : 'Update AI summaries'}</button>
+          <div className="w-full">
+            <ConversationWindow value={summaryPeriod} onChange={setSummaryPeriod} disabled={weeklyGenerating} />
+            <p className="text-xs text-ink-60 mt-2">Update AI summaries reads already-synced email, WhatsApp and interaction history for this window. It does not fetch new messages or prepare Pipeline suggestions.</p>
+          </div>
           <label className="text-sm w-full">Find a customer to add a task or note
             <select className="input mt-1" value={selectedCustomer} onChange={e => { setSelectedCustomer(e.target.value); setActiveFilter(null) }}>
               <option value="">Choose customer…</option>{[...customers].sort((a,b) => (a.company_name || '').localeCompare(b.company_name || '')).map(c => <option key={c.id} value={c.id}>{c.company_name || c.contact_name || c.id}</option>)}
@@ -348,8 +334,7 @@ export default function Dashboard() {
         {(weeklyError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{weeklyError || work.error}</p>}
         {(weeklyLoading || work.loading || loading) && <p className="text-sm text-ink-60 p-4">Loading summaries and tasks…</p>}
         {summaryProgress&&<p role="status" className="text-sm text-ink-60 p-4">{summaryProgress}</p>}
-        {!weeklyLoading&&!weeklySummary&&<p className="text-sm text-ink-60 p-4">No saved summaries for this period yet. Click Refresh summaries to prepare them. Your tasks and Pipeline are unchanged.</p>}
-        {selectedCustomer && customerMap[selectedCustomer] && <CustomerPipeline key={selectedCustomer} customer={customerMap[selectedCustomer]} />}
+        {!weeklyLoading&&!weeklySummary&&<p className="text-sm text-ink-60 p-4">No saved summaries for this period yet. Click Update AI summaries to prepare them. Your tasks and Pipeline are unchanged.</p>}
         {workspaceCustomers.map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
           digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink
           summaryDays={summaryPeriod} sourceLimited={digestByCustomer.get(c.id)?.sourceLimited}
@@ -406,4 +391,17 @@ function StatCard({ label, value, colour, note, active, onClick }) {
       {active && <p className={`inline-flex items-center gap-1 text-xs mt-1 font-medium ${c.label} opacity-70`}><ChevronUp size={12} />filtered</p>}
     </button>
   )
+}
+
+function ConversationWindow({value, onChange, disabled, pipeline = false}) {
+  return <div>
+    <label className="block text-sm">{pipeline ? 'Use saved summaries from' : 'Conversation window'}
+      <select className="input mt-1 max-w-xs" value={value} disabled={disabled} onChange={e => onChange(e.target.value)}>
+        {SUMMARY_PERIODS.map(p => <option key={p.days} value={p.days}>{p.label}</option>)}
+      </select>
+    </label>
+    <p className="text-xs text-ink-60 mt-2">{pipeline
+      ? 'Selects the saved conversation summaries used for AI suggestions. Confirmed Pipeline positions do not expire with this window.'
+      : 'Shows saved summaries of conversations from this window. Changing it does not run AI. Tasks and dashboard figures are unaffected.'}</p>
+  </div>
 }

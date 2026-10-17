@@ -50,5 +50,5 @@ test('a later batch failure preserves previous saved summaries in every period',
  await assert.rejects(api.generateWeeklySummary(14),/Incomplete/);assert.equal(globalThis.__summarySaved,old)
 })
 test('both customer and dashboard expose period selection; tasks remain independent of period',async()=>{
- for(const path of ['src/pages/Dashboard.jsx','src/pages/CustomerDetail.jsx']){const src=await readFile(path,'utf8');assert.match(src,/Summary period/);assert.match(src,/useSummaryPeriod/);assert.match(src,/summaryDays=\{summaryPeriod\}/);assert.match(src,/combineWorkItems/)}
+ for(const path of ['src/pages/Dashboard.jsx','src/pages/CustomerDetail.jsx']){const src=await readFile(path,'utf8');assert.match(src,path.includes('Dashboard') ? /Conversation window/ : /Summary period/);assert.match(src,/useSummaryPeriod/);assert.match(src,/summaryDays=\{summaryPeriod\}/);assert.match(src,/combineWorkItems/)}
 })
