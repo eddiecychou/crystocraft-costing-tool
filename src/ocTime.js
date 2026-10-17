@@ -9,6 +9,11 @@ export function asOcDate(value) {
     // Date-only fields and timezone-less OC/ERP wall times belong to Hong Kong.
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T00:00:00+08:00`)
     if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(value)) return new Date(`${value.replace(' ', 'T')}+08:00`)
+    // Legacy month-name/slash dates must not fall back to device-local parsing.
+    if (!/(?:[zZ]|[+-]\d{2}:?\d{2})$|\b(?:GMT|UTC)\b/i.test(value.trim())) {
+      const parsed = new Date(value)
+      return Number.isNaN(parsed.getTime()) ? parsed : new Date(`${value} GMT+0800`)
+    }
   }
   return new Date(value == null || value === '' ? NaN : value)
 }

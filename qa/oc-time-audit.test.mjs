@@ -25,6 +25,8 @@ test('OC human timestamps, times and dates are identical across device zones', (
 }))
 test('entered business dates and timezone-less OC/ERP wall times preserve Hong Kong meaning', () => acrossZones(() => {
   assert.equal(formatOcDate('2026-10-17'), '17/10/2026')
+  assert.equal(formatOcDate('17 Oct 2026'), '17/10/2026')
+  assert.equal(formatOcDate('2026/10/17'), '17/10/2026')
   assert.equal(formatOcDateTime('2026-10-17 09:15:00'), '17/10/2026, 09:15:00')
   assert.equal(asOcDate('2026-10-17T09:15').toISOString(), '2026-10-17T01:15:00.000Z')
   assert.equal(asOcDate('2026-10-17T09:15:00-04:00').toISOString(), '2026-10-17T13:15:00.000Z')
