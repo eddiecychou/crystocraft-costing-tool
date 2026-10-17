@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useParams, useNavigate } from "react-router-dom";
@@ -78,11 +79,12 @@ export default function ProductDetailPage() {
     navigate("/design/products");
   }
 
-  if (product === "loading") return <main className="p-10 text-ink-60">Loading…</main>;
-  if (!product) return <main className="p-10 text-ink-60">Product not found.</main>;
+  if (product === "loading") return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Loading…</p></main>;
+  if (!product) return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Product not found.</p></main>;
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
+      <ProductDesignNav />
       <p className="text-xs text-ink-60 mb-2">
         <Link to="/design/products" className="hover:underline">Products</Link> /{" "}
         {supplier && (
@@ -91,14 +93,14 @@ export default function ProductDetailPage() {
           </Link>
         )} / {product.name}
       </p>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl">{product.name}</h1>
           <span className={`badge ${product.status === "active" ? "badge-active" : "badge-retired"}`}>
             {product.status}
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link to={`/design/products/${id}/edit`} className="btn btn-secondary">Edit</Link>
           <button
             type="button"
@@ -121,7 +123,7 @@ export default function ProductDetailPage() {
         onChange={(e) => handleFiles(e.target.files)}
       />
 
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-1">
         <h2 className="eyebrow">
           Images{product.images.length > 0 && ` (${product.images.length})`}
         </h2>
@@ -203,7 +205,7 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-1">
         <h2 className="eyebrow">
           Prompt Templates{templates.length > 0 && ` (${templates.length})`}
         </h2>
@@ -241,7 +243,7 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-1 mt-10">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-1 mt-10">
         <h2 className="eyebrow">
           Spec Sheets{specSheets.length > 0 && ` (${specSheets.length})`}
         </h2>

@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useParams, useNavigate } from "react-router-dom";
@@ -269,25 +270,26 @@ export default function TemplateDetailPage() {
     navigate(`/design/templates/${newId}/edit`);
   }
 
-  if (template === "loading") return <main className="p-10 text-ink-60">Loading…</main>;
-  if (!template) return <main className="p-10 text-ink-60">Template not found.</main>;
+  if (template === "loading") return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Loading…</p></main>;
+  if (!template) return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Template not found.</p></main>;
 
   const sourceImage = product?.images.find((img) => img.id === template.sourceImageId);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      <ProductDesignNav />
       <p className="text-xs text-ink-60 mb-2">
         <Link to="/design/templates" className="hover:underline">Templates</Link> /{" "}
         {product && (
           <Link to={`/design/products/${product.id}`} className="hover:underline">{product.name}</Link>
         )} / {template.name}
       </p>
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-1">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl">{template.name}</h1>
           <span className={`badge ${STATUS_BADGE[template.status]}`}>{template.status}</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link to={`/design/templates/${id}/edit`} className="btn btn-secondary">Edit</Link>
           <button
             type="button"
@@ -323,8 +325,8 @@ export default function TemplateDetailPage() {
           side... I find it very difficult to relate the parameters to the
           image") — same fix already shipped for TemplateEdit.tsx, applied
           here too since this read-only JSON view can be just as long. */}
-      <div className="grid grid-cols-[280px_1fr] gap-6 items-start">
-        <div className="sticky top-6 self-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-6 items-start">
+        <div className="lg:sticky lg:top-6 self-start min-w-0">
           <h2 className="eyebrow mb-2">Source Image</h2>
           {sourceImage ? (
             <>
@@ -350,7 +352,7 @@ export default function TemplateDetailPage() {
           )}
         </div>
         <div className="min-w-0">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-wrap gap-3 items-center justify-between mb-2">
             <h2 className="eyebrow">Prompt JSON</h2>
             <button type="button" className="btn btn-secondary" onClick={handleCopy}>
               {copied ? "Copied ✓" : "Copy JSON"}
@@ -368,7 +370,7 @@ export default function TemplateDetailPage() {
           Upload/Extract/Replace/Remove only make sense in edit mode. */}
       {template.referenceImages && template.referenceImages.length > 0 && (
         <div className="mt-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-wrap gap-3 items-center justify-between mb-2">
             <h2 className="eyebrow">Reference Images ({template.referenceImages.length})</h2>
             <Link to={`/design/templates/${id}/edit`} className="text-xs text-brand-600 hover:underline">Manage →</Link>
           </div>
@@ -402,7 +404,7 @@ export default function TemplateDetailPage() {
         onChange={(e) => handleFiles(e.target.files)}
       />
 
-      <div className="flex items-center justify-between mt-10 mb-1">
+      <div className="flex flex-wrap gap-3 items-center justify-between mt-10 mb-1">
         <h2 className="eyebrow">
           Generations{generations.length > 0 && ` (${generations.length})`}
         </h2>

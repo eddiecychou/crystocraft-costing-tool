@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type DragEvent } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { pdApiFetch } from "@/lib/pdApi";
@@ -387,13 +388,14 @@ export default function EditTemplatePage() {
     setHighlightPath(landedPath);
   }
 
-  if (template === "loading") return <main className="p-10 text-ink-60">Loading…</main>;
-  if (!template) return <main className="p-10 text-ink-60">Template not found.</main>;
+  if (template === "loading") return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Loading…</p></main>;
+  if (!template) return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Template not found.</p></main>;
 
   const sourceImage = product?.images.find((img) => img.id === template.sourceImageId);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      <ProductDesignNav />
       <h1 className="text-2xl mb-6">Edit Template</h1>
       {/* Source photo pinned alongside the field editor (Eddie, 2026-09-20:
           "I need to be able to see the image side by side... so I know
@@ -402,8 +404,8 @@ export default function EditTemplatePage() {
           sections — scrolls past on the right; `self-start` stops the grid
           item stretching to the (much taller) form's height, which would
           otherwise cancel the sticky effect. */}
-      <div className="grid grid-cols-[280px_1fr] gap-6 items-start">
-        <div className="sticky top-6 self-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-6 items-start">
+        <div className="lg:sticky lg:top-6 self-start min-w-0">
           {sourceImage ? (
             <>
               <div className="card overflow-hidden aspect-square bg-ivory-dark flex items-center justify-center">
@@ -427,7 +429,7 @@ export default function EditTemplatePage() {
             <p className="text-2xs text-ink-60 mt-2 truncate" title={product.name}>{product.name}</p>
           )}
         </div>
-      <form onSubmit={handleSubmit} className="card p-6 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="card min-w-0 p-4 sm:p-6 flex flex-col gap-4">
         <div>
           <label className="label" htmlFor="name">Name</label>
           <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -469,9 +471,9 @@ export default function EditTemplatePage() {
 
         {/* i) Structured, lockable field editor */}
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex flex-wrap gap-2 items-center justify-between mb-1">
             <label className="label mb-0">Prompt JSON</label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button type="button" className="btn btn-secondary" onClick={handleCopy}>
                 {copied ? "Copied ✓" : "Copy JSON"}
               </button>
@@ -731,7 +733,7 @@ export default function EditTemplatePage() {
             fields (🔒 above) are pinned and won&rsquo;t move even if the
             instruction implies it.
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input
               id="tweak"
               className="input flex-1"
@@ -752,7 +754,7 @@ export default function EditTemplatePage() {
           {tweakNote && <p className="text-xs text-amber-700 mt-2">{tweakNote}</p>}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button type="submit" className="btn btn-primary" disabled={busy || !name || !customerId}>
             {busy ? "Saving…" : "Save Changes"}
           </button>
