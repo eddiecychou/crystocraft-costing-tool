@@ -76,4 +76,5 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm ci --no-audit --no-fund
-      - run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs"
+      - name: Access rules, customer workflows and real-page task/note sync
+        run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs && npm run test:workspace-sync"

@@ -181,3 +181,31 @@ The suite mounts the actual catalogue form, shared cover and print page with
 isolated Firebase boundaries. It checks white/black ink, full-opacity secondary
 text and divider, saved/reloaded selection, legacy defaults, preserved overlay
 settings and no-photo contrast. No live records are written.
+
+
+## Dashboard ↔ customer task and note sync
+
+`qa/customer-workspace-sync-emulator.mjs` mounts the **real Dashboard and
+CustomerDetail pages** with shared workspace UI, live Firestore subscriptions,
+revision-checked save transactions and real repository rules. Only unrelated
+integrations (ERP, AI, assets, etc.) are stubbed in
+`qa/customer-workspace-sync-fixture.mjs`. The suite requires a loopback emulator,
+uses fictional customers and reads no project credentials or `.env` file.
+
+Run with Node dependencies installed and Java 21 available:
+
+```sh
+npx firebase-tools@15.33.0 emulators:exec --only firestore --project crystocraft-rbac-test "npm run test:workspace-sync"
+```
+
+Nine cases cover creation from either page, two-way text/date/status and note
+edits, completion/archive/reopen in either direction, remount persistence, stale
+edit rejection with draft retention, legacy conversation preservation, customer
+isolation and anonymous/customer denial. Each case keeps both pages mounted for
+its cross-view observations; remounts happen only for persistence checks.
+
+The existing `.github/workflows/product-search.yml` emulator job runs this after
+the RBAC, customer merge, Pipeline and Product Design suites on applicable pushes,
+pull requests and manual runs. No CI secrets, production deploy or live fixtures
+are needed. The normal build's fast workspace checks remain emulator-independent;
+this integration suite runs explicitly in the job that starts Firestore.
