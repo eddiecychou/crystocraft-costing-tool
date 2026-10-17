@@ -1188,3 +1188,19 @@ before filtering message dates; sync timestamps are not message dates. Missing
 referenced pages fail closed. Tests cover preservation, split recovery, provider
 failures, long windows, page history and real-page period selection. Rules only
 extend the existing Pipeline source-cache allowlist; no new role access.
+
+
+### Expiring image URLs are not stable media identities
+
+18 October 2026, DSH image-access local implementation: signing the same object
+again changes its URL, so hashing that URL duplicates WordPress media. Return a
+stable image ID and actual content hash, and have DSH key its upload ledger on
+product + image + hash. Five-minute URLs are transfer capabilities, not public
+image sources. Legacy missing visibility defaults to public for display only;
+never reuse that default for external export. Re-read approval at download,
+block customer branding independently, and pin object generation. ImageGallery
+Save as new previously omitted the branding tag while copying visibility;
+inherit the tag and require fresh Public approval for edited bytes, including
+hero mirrors. Local tests use fictional records/files and real Storage/Firestore
+emulators, not production catalogue fixtures. Feature remains disabled pending
+release and private credential provisioning approval.

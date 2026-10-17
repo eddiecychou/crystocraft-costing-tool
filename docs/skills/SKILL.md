@@ -168,6 +168,21 @@ Saved catalogue filters use `src/hooks/useCatalogueFilter.js` + `src/catalogueFi
 - "Square as standard" is a **content convention, not enforced.** Brand proposal **banner** is NOT a product image — it's `proposal.hero_asset_id` → a `customers/{id}/assets` doc (`src/customerAssets.js`, Storage prefix `customer-assets/…`).
 - ⚠️ **Before changing product/card image display, read `MARKETING-WORKFLOW.md` §6.5** — external DeepSeek editorial art (full-bleed, borderless, text-free) must not be square-cropped, letterboxed, or captioned in ways that fight the composition.
 
+### DSH approved product image access — local candidate, disabled
+
+`netlify/functions/product-images.js` / `lib/productImages.js` provide read-only
+`GET /api/oc/product-images?product_id=...` and five-minute signed byte downloads
+at `/api/oc/product-image`. Separate machine token, server-only signing secret,
+explicit enable flag default false. Only raw `visibility:public` generic images
+from the same product's owned Firebase object prefix; customer branding and
+missing visibility are denied. Never use the legacy display fallback or expose
+permanent download tokens. No cost, supplier, customer asset, OC/WP write access.
+Stable image ID + actual content MD5 is DSH's dedupe key, never a signed URL hash.
+Edited/copied images preserve branding and need Public approval again; hero
+visibility mirrors edits. Guide/status: `../plans/DSH-PRODUCT-IMAGE-ACCESS-2026-10-18.md`.
+Tests `qa/product-images*.mjs`, `npm run test:product-images`, existing Actions
+emulator job. No live credentials, records, publishing or deployment performed.
+
 ### Components & BOM costing
 - Pages: `Components.jsx`, `ComponentDetail.jsx`, `ComponentForm.jsx`, `ComponentRequirements.jsx`, `ComponentCodeAudit.jsx`
   - `Components.jsx` tabs: Critical Components (card list + stock), **Price List** (V8.15 — dense sortable table of every `range_components` code's denormalised `unit_cost`/supplier, search + plating/supplier/costed filters + "Copy table" TSV; code → `/components/critical/:id`), Crystal Stock / Packaging Stock / Finished Goods, Crystal Colours, Crystal Costs, Format MOQs, Categories

@@ -591,3 +591,19 @@ makes it real.
 ### Reusable Range MCP boundary (candidate, not deployed)
 
 The separate scoped UID `mcp-range-upload-service` must never receive admin/ordinary module access or an Admin SDK key. Direct catalogue/storage writes are denied. Exact signed read-only preview + separate human admin approval + expiring private window + server flag guard the field-allowlisted transaction endpoint. Family/component identity claims are shared with normal UI/imports; no query-then-write-only create. Preserve unknown fields and externally updated colour images; stale versions require fresh review. No activation/prices/stock/quotes or arbitrary media upload. Claims are retained as tombstones, not silently deleted. Rules and app must be reviewed/deployed in a coordinated window before enabling capability; old clients must reload. [Operator/release details](../../mcp/range/README.md).
+
+
+### Approved image export is distinct from legacy display visibility
+
+The DSH image route (local candidate, disabled) must require the **stored**
+`visibility === 'public'`, reject any nonempty/unknown customer-branding value,
+and never inherit the legacy public fallback. Explicit approval of generic
+images is not consent to expose a branded mockup. A separate machine token only
+reads projections for one Corporate Gifts product; it grants no Firestore,
+ordinary module, customer-asset, costing or WordPress access. Signed byte links
+expire, bind the exact object generation and recheck current policy; originals'
+Firebase URLs/tokens never leave this route. Storefront display is unchanged.
+Edited/copied photo bytes require Public approval again and keep branding tags;
+hero visibility follows replacements. Gallery saves must transactionally re-read
+current privacy labels and refuse a changed source, rather than overwrite newer
+labels/hero selection from an open editor. See the image-access operator contract.

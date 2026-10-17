@@ -38,3 +38,10 @@ export function catalogueStoragePath(url, bucket, collection, id) {
     return prefix && path.startsWith(prefix) && !path.includes('/../') ? path : null
   } catch { return null }
 }
+
+// Edited bytes need a new public review; keep the client's branding tag on copies.
+export function editedImageAccess(image,showVisibility){
+  const current=image?.visibility || 'private' // legacy images already show in the storefront
+  return {branded_for_customer_id:image?.branded_for_customer_id ?? null,
+    ...(showVisibility?{visibility:current==='public'?'private':(['private','internal'].includes(current)?current:'internal')}: {})}
+}

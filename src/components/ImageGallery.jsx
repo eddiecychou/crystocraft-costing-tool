@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { collection, addDoc, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore'
+import { collection, addDoc, doc, updateDoc, serverTimestamp, writeBatch, runTransaction } from 'firebase/firestore'
 import { storage, db } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
 import {
@@ -16,7 +16,7 @@ import { enhanceProductImage } from '../enhanceImage'
 import ManualAdjust from './ManualAdjust'
 import { useT } from '../i18n'
 import { imageDownloadUrl } from '../imageDownloadUrl'
-import { catalogueUploadMetadata, isCurrentHero, productHeroPatch } from '../catalogueImagePolicy'
+import { catalogueUploadMetadata, isCurrentHero, productHeroPatch, editedImageAccess } from '../catalogueImagePolicy'
 
 // Sample both images at 150×150 and count pixels that were clearly coloured in
 // the original but became near-white in the enhanced version — that's colour loss.
@@ -373,22 +373,25 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       await uploadBytes(sRef, outBlob, catalogueUploadMetadata(path))
       const url = await getDownloadURL(sRef)
       const old = enh.img
-      const batch = writeBatch(db)
-      batch.update(doc(db, ...firestorePath.split('/'), old.id), {
-        file_url: url, storage_path: path, orientation,
-        // Provenance for the AI edit that produced this file — which prompt
-        // version/model, and whether it warned of a reframe or colour loss.
-        // See enhance-image.js's PROMPT_VERSION comment for why this exists.
-        ai_enhance: {
-          mode: enh.mode, model: enh.model || null, prompt_version: enh.promptVersion || null,
-          reframed: !!enh.reframed, color_warning: !!enh.colorWarning, enhanced_at: serverTimestamp(),
-        },
+      let replacement, selected=false
+      await runTransaction(db,async tx=>{
+        const imageRef=doc(db,...firestorePath.split('/'),old.id)
+        const snap=await tx.get(imageRef)
+        if(!snap.exists() || snap.data().file_url!==old.file_url || (snap.data().storage_path || '')!==(old.storage_path || ''))throw Error('This image changed while you were editing. Reload it before saving.')
+        const current=snap.data()
+        const parent=productParent && onHeroChange ? await tx.get(productParent) : null
+        if(parent && !parent.exists())throw Error('The product no longer exists. Reload before saving.')
+        const patch={
+          file_url:url, storage_path:path, orientation, ...editedImageAccess(current,showVisibility),
+          ai_enhance:{mode:enh.mode,model:enh.model || null,prompt_version:enh.promptVersion || null,
+            reframed:!!enh.reframed,color_warning:!!enh.colorWarning,enhanced_at:serverTimestamp()},
+        }
+        tx.update(imageRef,patch)
+        replacement={...current,id:old.id,...patch}
+        selected=!!onHeroChange && (parent?.data().heroImage ? parent.data().heroImage===current.file_url : isCurrentHero(current,heroUrl))
+        if(selected)mirrorHero(tx,replacement)
       })
-      const selected = onHeroChange && isCurrentHero(old, heroUrl)
-      const replacement = { ...old, file_url: url, storage_path: path }
-      if (selected) mirrorHero(batch, replacement)
-      await batch.commit()
-      if (selected) await notifyHero(replacement)
+      if(selected)await notifyHero(replacement)
       try { if (old.storage_path) await deleteObject(storageRef(storage, old.storage_path)) } catch {}
       closeEditor()
     } catch (err) {
@@ -407,21 +410,21 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       const sRef = storageRef(storage, path)
       await uploadBytes(sRef, outBlob, catalogueUploadMetadata(path))
       const url = await getDownloadURL(sRef)
-      // Copy metadata from the original, but without hero status
-      const old = enh.img
-      await addDoc(collection(db, ...firestorePath.split('/')), {
-        file_url: url, storage_path: path, orientation,
-        file_name: `enhanced-${old.file_name || 'image'}.jpg`,
-        type: old.type || typeOptions?.[0]?.value || 'hero',
-        caption: old.caption || '',
-        ...(showVisibility ? { visibility: old.visibility || 'internal' } : {}),
-        is_hero: false,
-        sort_order: images.length,
-        uploaded_at: serverTimestamp(),
-        ai_enhance: {
-          mode: enh.mode, model: enh.model || null, prompt_version: enh.promptVersion || null,
-          reframed: !!enh.reframed, color_warning: !!enh.colorWarning, enhanced_at: serverTimestamp(),
-        },
+      // Read current labels atomically: another editor's privacy change wins.
+      const old=enh.img,newRef=doc(collection(db,...firestorePath.split('/')))
+      await runTransaction(db,async tx=>{
+        const snap=await tx.get(doc(db,...firestorePath.split('/'),old.id))
+        if(!snap.exists() || snap.data().file_url!==old.file_url || (snap.data().storage_path || '')!==(old.storage_path || ''))throw Error('This image changed while you were editing. Reload it before saving.')
+        const current=snap.data()
+        tx.set(newRef,{
+          file_url:url,storage_path:path,orientation,
+          file_name:`enhanced-${current.file_name || 'image'}.jpg`,
+          type:current.type || typeOptions?.[0]?.value || 'hero',caption:current.caption || '',
+          ...editedImageAccess(current,showVisibility),is_hero:false,sort_order:images.length,
+          uploaded_at:serverTimestamp(),
+          ai_enhance:{mode:enh.mode,model:enh.model || null,prompt_version:enh.promptVersion || null,
+            reframed:!!enh.reframed,color_warning:!!enh.colorWarning,enhanced_at:serverTimestamp()},
+        })
       })
       closeEditor()
     } catch (err) {
@@ -708,7 +711,6 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 </div>
               )}
             </div>
-            {enh.error && <p className="text-xs text-red-500 mt-2">{enh.error}</p>}
             {enh.colorWarning && (
               <div className="flex items-start gap-2 mt-3 rounded-none border border-amber-300 bg-amber-50 px-3 py-2.5">
                 <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
@@ -730,6 +732,8 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
             </>
             )}
 
+            {enh.error && <p role="alert" className="text-xs text-brand-600 mt-2">{enh.error}</p>}
+
             {/* Shared footer — actions apply to whatever the active tab produced */}
             <div className="flex items-center gap-2 mt-4 flex-wrap">
               {editTab === 'ai' && <>
@@ -750,6 +754,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 ? 'AI re-renders the image — check the shape and colours match the real product before keeping. The original isn’t changed until you Keep.'
                 : 'Adjustments are applied exactly as shown. The original isn’t changed until you Keep.'}
             </p>
+            {showVisibility && <p className="text-2xs text-ink-60 mt-2">Edited images need Public approval again before use on the website. Customer-branding labels are kept.</p>}
           </div>
         </div>
       )}

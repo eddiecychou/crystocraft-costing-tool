@@ -56,6 +56,7 @@ jobs:
       - run: npm run test:design-projects
       - run: npm run test:oc-time
       - run: npm run test:customer-workspace
+      - run: npm run test:product-images
       - run: npm run test:product-search
       - run: npm run test:quote-pdf
       - run: npm run test:quote-excel
@@ -84,4 +85,4 @@ jobs:
           java-version: '21'
       - run: npm ci --no-audit --no-fund
       - name: Access rules, customer workflows and real-page task/note sync
-        run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs && npm run test:workspace-sync"
+        run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node --test qa/product-images-emulator.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs && npm run test:workspace-sync"

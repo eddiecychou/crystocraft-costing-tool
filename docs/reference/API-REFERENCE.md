@@ -155,3 +155,19 @@ on focus and every 30s while visible. Firestore customer permissions unchanged.
 Node `netlify/functions/mcp-range.js`, `/api/mcp-range`: separate scoped Firebase identity for five allowlisted read/prepare/commit operations. Human-only exact-preview approval is a separate admin operation, not an MCP tool. Admin SDK boundary, no-store responses, revoked-token verification, signed previews, private expiring control and write flag, transactional reservations/audit/receipts. See [operator guide](../../mcp/range/README.md). Existing B0016 and Corporate Gifts endpoints unchanged.
 
 - `customer-merge` (`/api/customer-merge`, Node function): admin-only, revoked Firebase token checked. POST sourceId/targetId only; 202 continuations or 200 complete. Preserves both workspaces and message/interaction history with server-only audit snapshots, collisions/retries/locks. See `docs/plans/CUSTOMER-MERGE-WORKSPACE-2026-10-17.md`.
+
+
+### DSH approved product images (local candidate — disabled)
+
+- `netlify/functions/product-images.js` (Node / Firebase Admin Storage):
+  `GET /api/oc/product-images?product_id=<products document ID>` requires the
+  dedicated `OC_PRODUCT_IMAGES_TOKEN`; returns only explicit Public, unbranded
+  image projections and short-lived links. No original URLs, client fields,
+  costs, supplier details, internal notes or writes. `GET /api/oc/product-image`
+  requires a signed five-minute capability; rechecks approval and exact owned
+  object generation before bounded, hash/signature-verified byte download.
+- Default disabled (`OC_PRODUCT_IMAGES_ENABLED`), separate server-only signing
+  secret, no Firebase account/module grants or rule changes. Existing public
+  download/image-proxy endpoints are not repurposed. No endpoint is enabled by
+  this local implementation. Full operator contract and DSH media dedupe key:
+  [DSH-PRODUCT-IMAGE-ACCESS-2026-10-18](../plans/DSH-PRODUCT-IMAGE-ACCESS-2026-10-18.md).
