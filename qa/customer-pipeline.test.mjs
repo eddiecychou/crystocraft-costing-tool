@@ -1,0 +1,133 @@
+import {test,before,after} from 'node:test'
+import assert from 'node:assert/strict'
+import {mkdtemp,rm,readFile} from 'node:fs/promises'
+import {resolve,join} from 'node:path'
+import {pathToFileURL} from 'node:url'
+import {build} from 'esbuild'
+import {JSDOM} from 'jsdom'
+import React,{act} from 'react'
+import {createRoot} from 'react-dom/client'
+import {Simulate} from 'react-dom/test-utils'
+import {MemoryRouter} from 'react-router-dom'
+import {emptyPipeline,pipelineTransition,summaryKey,validatePipelineSuggestions} from '../src/customerPipeline.js'
+import {customerMergeFields} from '../src/customerMergeFields.js'
+import {pipelineSuggestions,PIPELINE_SYSTEM} from '../netlify/edge-functions/lib/pipelineSuggestions.js'
+const digest='Customer requests a sample and a quotation for a repeat order.'
+const key=await summaryKey(digest)
+const input=[{id:'c1',name:'QA customer',digest,source_key:key,pipeline:emptyPipeline()}]
+const suggestion={id:'c1',status:'active',detail:'Sample and quotation for repeat order',reason:'Specific buying request',evidence:'requests a sample and a quotation',request_kind:'sample',all_requests_resolved:false}
+const validated=()=>validatePipelineSuggestions({suggestions:[suggestion]},input)[0]
+const stage=()=>pipelineTransition(emptyPipeline(),'suggest',{suggestion:validated()})
+test('AI additions never count as active before human confirmation',()=>{
+ const staged=stage();assert.equal(staged.status,'inactive');assert.equal(staged.detail,'');assert.equal(staged.suggestion.status,'active')
+ const active=pipelineTransition(staged,'confirm',{sourceKey:key,detail:'Sample + quotation; keep both requests'});assert.equal(active.status,'active');assert.match(active.detail,/both/);assert.equal(active.suggestion,null)
+})
+test('dismiss preserves confirmed requests and suppresses the same reviewed summary',()=>{
+ const current={...stage(),status:'active',detail:'Two outstanding requests'}
+ const result=pipelineTransition(current,'dismiss',{sourceKey:key});assert.equal(result.status,'active');assert.equal(result.detail,current.detail)
+ assert.equal(pipelineTransition(result,'suggest',{suggestion:validated()}),null)
+})
+test('repeat order confirmation and rolling-summary absence never close a customer',()=>{
+ const current={...emptyPipeline(),status:'active',detail:'First order agreed; another sample request remains',revision:4}
+ assert.equal(pipelineTransition(current,'suggest',{suggestion:{...validated(),based_on_revision:4}}).status,'active')
+ assert.match(PIPELINE_SYSTEM,/order confirmation closes only that request/);assert.match(PIPELINE_SYSTEM,/missing mention/)
+ const closed=pipelineTransition(current,'manual',{status:'inactive',detail:'All requests completed; no further request'});assert.equal(closed.status,'inactive')
+})
+test('unknown IDs, duplicates, hallucinated evidence, unqualified requests and unsupported closure fail closed',()=>{
+ for(const change of [{id:'other'},{evidence:'Invented text'},{request_kind:'greeting'},{status:'inactive',all_requests_resolved:false},{status:'inactive',all_requests_resolved:true},{detail:''},{detail:'x'.repeat(2001)}])assert.throws(()=>validatePipelineSuggestions({suggestions:[{...suggestion,...change}]},input))
+ assert.throws(()=>validatePipelineSuggestions({suggestions:[suggestion,suggestion]},input));assert.throws(()=>validatePipelineSuggestions({},input))
+})
+test('explicit all-request closure is a proposal until reviewed',()=>{
+ const active={...emptyPipeline(),status:'active',detail:'Sample request',revision:2}
+ const [s]=validatePipelineSuggestions({suggestions:[{...suggestion,status:'inactive',all_requests_resolved:true}]},[{...input[0],pipeline:active}])
+ const proposed=pipelineTransition(active,'suggest',{suggestion:s});assert.equal(proposed.status,'active')
+ assert.equal(pipelineTransition(proposed,'confirm',{sourceKey:key,detail:'All requests closed'}).status,'inactive')
+})
+test('stale review and concurrent generation cannot replace a human decision',()=>{
+ assert.throws(()=>pipelineTransition({...emptyPipeline(),revision:2},'suggest',{suggestion:validated()}),/changed/)
+ assert.throws(()=>pipelineTransition(stage(),'confirm',{sourceKey:'old',detail:'x'}),/changed/)
+ assert.throws(()=>pipelineTransition(stage(),'confirm',{sourceKey:key,detail:' '}))
+})
+for(const reverse of [false,true])test(`customer merges keep active requests whichever record survives (${reverse})`,()=>{
+ const a={sales_pipeline:{...emptyPipeline(),status:'active',detail:'Sample A',revision:3}},b={sales_pipeline:{...emptyPipeline(),status:'active',detail:'Repeat quotation B',revision:6}}
+ const p=customerMergeFields(reverse?a:b,reverse?b:a).sales_pipeline;assert.equal(p.status,'active');assert.match(p.detail,/Sample A/);assert.match(p.detail,/quotation B/);assert.equal(p.revision,7);assert.equal(p.suggestion,null)
+})
+const request=customers=>new Request('https://example.test/api',{method:'POST',body:JSON.stringify({customers})})
+const ai=(result,finish='stop')=>new Response(JSON.stringify({choices:[{finish_reason:finish,message:{content:typeof result==='string'?result:JSON.stringify(result)}}]}))
+test('AI endpoint validates complete grounded output and preserves prompt-injection data boundaries',async()=>{
+ let calls=0;const response=await pipelineSuggestions(request(input),'private-key',async(url,opts)=>{calls++;const body=JSON.parse(opts.body);assert.match(body.messages[0].content,/untrusted DATA/);return ai({suggestions:[suggestion]})});assert.equal(response.status,200);assert.equal(calls,1)
+})
+test('truncated JSON retries once and never salvages partial suggestions',async()=>{
+ let calls=0;const response=await pipelineSuggestions(request(input),'key',async()=>{calls++;return ai('{"suggestions":[','length')});assert.equal(calls,2);assert.equal(response.status,502)
+})
+test('unknown AI IDs and invalid evidence cannot reach staging',async()=>{
+ for(const result of [{suggestions:[{...suggestion,id:'bad'}]},{suggestions:[{...suggestion,evidence:'no evidence'}]}])assert.equal((await pipelineSuggestions(request(input),'key',async()=>ai(result))).status,502)
+})
+test('oversized/invalid batches rejected before calling AI; empty no-change result allowed',async()=>{
+ let calls=0;const mock=async()=>{calls++;return ai({suggestions:[]})}
+ assert.equal((await pipelineSuggestions(request([...input,...input]),'key',mock)).status,400)
+ assert.equal((await pipelineSuggestions(request([{...input[0],digest:'x'.repeat(8001)}]),'key',mock)).status,400);assert.equal(calls,0)
+ assert.equal((await pipelineSuggestions(request(input),'key',mock)).status,200)
+})
+let scratch,Component,Panel,Dashboard
+const dom=new JSDOM('<!doctype html><html><body></body></html>',{url:'http://localhost'})
+before(async()=>{
+ globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true
+ scratch=await mkdtemp(resolve('.qa-pipeline-'))
+ await build({entryPoints:['src/components/CustomerPipeline.jsx'],outdir:scratch,outExtension:{'.js':'.mjs'},bundle:true,jsx:'automatic',format:'esm',platform:'node',external:['react','react-dom','react-router-dom','lucide-react'],plugins:[{name:'mock-api',setup(b){b.onResolve({filter:/domain\/customerPipeline$/},()=>({path:'mock',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:'export async function savePipelineDecision(){};export async function suggestCustomerPipeline(){return 0}',loader:'js'}))}}]})
+ const module=await import(pathToFileURL(join(scratch,'CustomerPipeline.mjs')));Component=module.CustomerPipeline;Panel=module.default
+ await build({entryPoints:['src/pages/Dashboard.jsx'],outfile:join(scratch,'dashboard.mjs'),bundle:true,jsx:'automatic',format:'esm',platform:'node',external:['react','react-dom','react-router-dom','lucide-react'],plugins:[{name:'dashboard-fixtures',setup(b){
+  b.onResolve({filter:/firebase\/firestore$|\/firebase$|domain\/customerWorkItems$|domain\/customer$|domain\/weeklySummary$|domain\/customerPipeline$|\/shipping$/},a=>({path:a.path,namespace:'fixture'}))
+  b.onLoad({filter:/.*/,namespace:'fixture'},a=>({loader:'js',contents:a.path==='firebase/firestore'?`export const doc=(...a)=>a.slice(1).join('/');export const collection=(...a)=>a.slice(1).join('/');export const collectionGroup=(db,name)=>'group/'+name;export const query=x=>x;export const onSnapshot=(path,fn)=>{const rows=globalThis.__dashboardRows[path]||[];fn({docs:rows.map((r,i)=>({id:r.id||String(i),data:()=>r,ref:{parent:{parent:{id:'c1',parent:{id:'customers'}}}}})),exists:()=>true,data:()=>({items:[{customerId:'c1',digest:'Fixture summary'}]})});return()=>{}};`
+   :a.path.endsWith('/firebase')?'export const db={};'
+   :a.path.endsWith('customerWorkItems')?'export const useCustomerWorkItems=()=>({items:[],loading:false,error:""});export async function saveCustomerWorkItem(){};'
+   :a.path.endsWith('weeklySummary')?'export async function generateWeeklySummary(){return {items:[]}};'
+   :a.path.endsWith('customerPipeline')?'export async function savePipelineDecision(){};export async function suggestCustomerPipeline(){return 0};'
+   :a.path.endsWith('/shipping')?'export const orderStatusOf=v=>({label:v});export const orderUc=o=>o.uc_no;'
+   :'export const normalizeCustomer=c=>c;export const RETAIL_TAG="Retail Customer";'}))
+ }}]})
+ Dashboard=(await import(pathToFileURL(join(scratch,'dashboard.mjs')))).default
+})
+after(async()=>{dom.window.close();await rm(scratch,{recursive:true,force:true})})
+async function mount(component,props,fn){const host=document.createElement('div');document.body.append(host);const root=createRoot(host);try{await act(async()=>root.render(React.createElement(MemoryRouter,null,React.createElement(component,props))));await fn(host,root)}finally{await act(async()=>root.unmount());host.remove()}}
+const button=(h,t)=>[...h.querySelectorAll('button')].find(b=>b.textContent.trim()===t)
+test('real review UI requires opening and explicit confirmation; cancellation does not save',async()=>{
+ const saves=[];await mount(Component,{customer:{id:'c1',company_name:'QA',sales_pipeline:stage()},save:async(...args)=>saves.push(args)},async h=>{
+ assert.match(h.textContent,/Awaiting your confirmation/);assert.equal(button(h,'Confirm active customer'),undefined)
+ await act(async()=>button(h,'Review suggestion').click());await act(async()=>button(h,'Cancel').click());assert.equal(saves.length,0)
+ await act(async()=>button(h,'Review suggestion').click());await act(async()=>h.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})))
+ assert.equal(saves.length,1);assert.equal(saves[0][2],'confirm');assert.match(saves[0][3].detail,/Sample/)
+ })
+})
+test('failed review keeps the editable draft and displays an error',async()=>mount(Component,{customer:{id:'c1',company_name:'QA',sales_pipeline:stage()},save:async()=>{throw Error('Changed elsewhere')}},async h=>{
+ await act(async()=>button(h,'Review suggestion').click());await act(async()=>{const el=h.querySelector('textarea');el.value='Keep second request active';Simulate.change(el,{target:{value:el.value}})});await act(async()=>h.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})))
+ assert.match(h.querySelector('[role="alert"]').textContent,/Changed/);assert.equal(h.querySelector('textarea').value,'Keep second request active')
+}))
+test('dashboard counts distinct confirmed customers separately from pending suggestions',async()=>mount(Panel,{customers:[{id:'a',company_name:'A',sales_pipeline:stage()},{id:'b',company_name:'B',sales_pipeline:{...emptyPipeline(),status:'active',detail:'Two requests, counted once'}}]},async h=>{
+ assert.match(h.textContent,/1 confirmed active customers · 1 suggestions/);assert.equal(h.querySelectorAll('section').length,2)
+}))
+test('open editor submits its original revision even if a newer position arrives',async()=>{
+ const saves=[],c={id:'c1',company_name:'QA',sales_pipeline:{...emptyPipeline(),status:'active',detail:'Old request',revision:4}}
+ await mount(Component,{customer:c,save:async(...a)=>saves.push(a)},async(h,root)=>{
+ await act(async()=>button(h,'Edit position').click())
+ await act(async()=>root.render(React.createElement(MemoryRouter,null,React.createElement(Component,{customer:{...c,sales_pipeline:{...c.sales_pipeline,revision:5,detail:'New request from another tab'}},save:async(...a)=>saves.push(a)}))))
+ await act(async()=>h.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));assert.equal(saves[0][1],4);assert.ok(saves[0][4])
+ })
+})
+test('every real Dashboard figure immediately replaces general summaries with its content',async()=>{
+ globalThis.__dashboardRows={customers:[{id:'c1',company_name:'QA',sales_pipeline:{...emptyPipeline(),status:'active',detail:'Current repeat request'}}],orders:[{id:'o1',customer_id:'c1',status:'confirmed',order_date:new Date().toISOString().slice(0,10),uc_no:'QA-ONLY'}],'group/enquiries':[{id:'e1',follow_up_date:{seconds:1000},description:'Old task',status:'Open'}]}
+ await mount(Dashboard,{},async h=>{
+ assert.ok([...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer Summary & To-do'))
+ for(const name of ['Pipeline','Follow-ups Due','In Production','New Orders']){
+  const card=[...h.querySelectorAll('button')].find(b=>[...b.querySelectorAll('p')].some(p=>p.textContent===name));assert.ok(card);await act(async()=>card.click())
+  assert.ok(button(h,'Back to summaries'));assert.ok(![...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer Summary & To-do'))
+  if(name==='Pipeline')assert.match(h.textContent,/Current repeat request/)
+  else if(name==='Follow-ups Due')assert.match(h.textContent,/Old task/)
+  else assert.match(h.textContent,/QA-ONLY/)
+  await act(async()=>button(h,'Back to summaries').click());assert.ok([...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer Summary & To-do'))
+ }
+ });delete globalThis.__dashboardRows
+})
+test('both real pages use the shared Pipeline; old interaction-status count removed',async()=>{
+ const dash=await readFile('src/pages/Dashboard.jsx','utf8'),detail=await readFile('src/pages/CustomerDetail.jsx','utf8');assert.match(dash,/<PipelinePanel/);assert.match(detail,/<CustomerPipeline/);assert.doesNotMatch(dash,/allEnquiries.filter\(e => e.status === 'Open'/)
+})

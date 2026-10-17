@@ -13,6 +13,8 @@ const task=(text,state='todo')=>({kind:'task',text,state,due_on:'2026-08-17',rev
 for(const reverse of [false,true])test(`real merge keeps both complete workspaces, history and audit metadata (${reverse?'keep A':'keep B'})`,async()=>{
  const {a,b}=await fixtures();const [source,target]=reverse?[b,a]:[a,b]
  for(const id of [a,b]){
+ await db.doc(`customers/${id}`).update({sales_pipeline:{status:'active',detail:'Unresolved request '+id,revision:2,suggestion:null,last_reviewed_source:''}})
+ await db.doc(`customers/${id}/pipeline_history/same-event`).set({originalCustomer:id,position:'Original review '+id})
  await db.doc(`customers/${id}/work_items/same-id`).set(task(id,'done'))
  await db.doc(`customers/${id}/work_items/note`).set({...task('Private reference '+id,'done'),kind:'note',due_on:''})
  await db.doc(`customers/${id}/enquiries/same-id`).set({description:'History '+id,date:Timestamp.fromMillis(3000),follow_up_date:Timestamp.fromMillis(4000),todo_status:'waiting',attachments:[{url:'https://example.test/file.pdf',path:'original/blob.pdf'}]})
@@ -23,6 +25,7 @@ for(const reverse of [false,true])test(`real merge keeps both complete workspace
  await db.doc(`users/${source}`).set({customer_id:source,role:'customer',status:'approved',pricing_group:'unchanged'})
  const result=await mergeCustomerRecords(db,source,target,'admin',{budgetMs:120000});assert.equal(result.complete,true);assert.equal((await db.doc(`customers/${source}`).get()).exists,false)
  const survivor=(await db.doc(`customers/${target}`).get()).data();assert.match(survivor.notes,/Alpha/);assert.match(survivor.notes,/Beta/);assert.equal(survivor.customer_merge_lock,undefined)
+ assert.equal(survivor.sales_pipeline.status,'active');assert.ok(survivor.sales_pipeline.detail.includes(a)&&survivor.sales_pipeline.detail.includes(b));assert.equal((await db.collection(`customers/${target}/pipeline_history`).get()).size,2)
  const work=(await db.collection(`customers/${target}/work_items`).get()).docs.map(d=>d.data());assert.equal(work.length,4);assert.equal(work.filter(d=>d.kind==='note').length,2);for(const d of work){assert.equal(d.state,'done');assert.equal(d.created_by,'original-author');assert.equal(d.revision,7);assert.equal(d.createdAt.toMillis(),1000)}
  assert.equal((await db.collection(`customers/${target}/enquiries`).get()).size,2)
  for(const name of ['email_threads','whatsapp_threads','alibaba_threads'])assert.equal((await db.collection(`customers/${target}/${name}`).get()).size,2)

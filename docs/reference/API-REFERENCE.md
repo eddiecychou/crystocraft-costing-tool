@@ -1,5 +1,7 @@
 # API Reference — Netlify Edge Functions
 
+Pipeline addition (2026-10-17): `POST /api/pipeline-suggestions` → `pipeline-suggestions.js` / `lib/pipelineSuggestions.js`. Admin or customers module; bounded saved summaries → evidence-backed AI proposals. No database writes or approvals in this endpoint; client stages proposals and human decisions through a revision-checked transaction.
+
 39 edge functions under `netlify/edge-functions/*.js`, each proxied through
 `/api/<name>` (declared in `netlify.toml`, occasionally also via the
 function's own `export const config`). The browser never talks to Supabase,

@@ -1,5 +1,7 @@
 # Firestore Collections Map
 
+Customer Pipeline (2026-10-17): customer `sales_pipeline` stores the confirmed position and separate AI proposal. `customers/{id}/pipeline_history` contains immutable before/after decisions. CRM capability only, never portal-readable. Each update requires matching revision, actor/time and atomic history; merge locks apply. Customer merges preserve both active request texts and both audit histories. Domain: `src/domain/customerPipeline.js`.
+
 24 top-level collections, ~20 nested subcollections, and 2 collection-group
 wildcard rules. Every entry below traces to a `match` block in
 `firestore.rules` (~500 lines) — that file is the authority on auth

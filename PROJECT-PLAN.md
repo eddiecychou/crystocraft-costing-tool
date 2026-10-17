@@ -1,5 +1,9 @@
 # 17 October 2026 — Customer merge preserves both workspaces
 
+## Customer-based Pipeline — 17 October 2026
+
+Replaces historical interaction counting with human-confirmed customer buying positions, separate AI suggestions, repeat-request retention, atomic review history and merge preservation. Figure drill-downs now replace general summaries immediately below the figures. Implementation, operator workflow and release evidence: `docs/plans/CUSTOMER-PIPELINE-2026-10-17.md`.
+
 Admin-reviewed server transfer replaces the task merge restriction, preserves both histories/notes and handles same-ID collisions and retries. See [release evidence](docs/plans/CUSTOMER-MERGE-WORKSPACE-2026-10-17.md).
 
 # 17 October 2026 — Customer Summary & To-do

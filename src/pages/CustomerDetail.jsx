@@ -13,6 +13,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import CustomerWorkspace from '../components/CustomerWorkspace'
+import { CustomerPipeline } from '../components/CustomerPipeline'
 import { useCustomerWorkItems } from '../domain/customerWorkItems'
 import { combineWorkItems } from '../customerWorkItems'
 import { useCustomerAssets, cannotRenderAsImage } from '../customerAssets'
@@ -1235,6 +1236,7 @@ export default function CustomerDetail() {
       </div>
 
       <div className="card mb-4">
+        <CustomerPipeline key={`pipeline-${id}`} customer={customer} />
         {(work.error || sharedSummaryError) && <p role="alert" className="text-sm text-brand-600 p-4">{work.error || sharedSummaryError}</p>}
         {work.loading && <p className="text-sm text-ink-60 p-4">Loading tasks…</p>}
         <CustomerWorkspace key={id} customerId={id} customerName={customer.company_name || customer.contact_name || 'Customer'}

@@ -752,12 +752,50 @@ service cloud.firestore {
         && (d.kind != 'note' || d.due_on == '')
         && d.revision is int && d.updated_by == request.auth.uid && d.updatedAt == request.time;
     }
+    // Customer-based Pipeline: only CRM staff/admin, reviewed position + proposed change,
+    // monotonic revision and an atomic immutable audit record. Never portal-readable.
+    function validPipelineSuggestion(s) {
+      return s == null || (s is map && s.keys().hasOnly(['status','detail','reason','evidence','source_key','based_on_revision'])
+        && s.status in ['active','inactive'] && s.detail is string && s.detail.size() > 0 && s.detail.size() <= 2000
+        && s.reason is string && s.reason.size() > 0 && s.reason.size() <= 1000
+        && s.evidence is string && s.evidence.size() > 0 && s.evidence.size() <= 1500
+        && s.source_key is string && s.source_key.matches('^[a-f0-9]{64}$')
+        && s.based_on_revision is int && s.based_on_revision >= 0);
+    }
+    function validPipeline(customerId) {
+      let p = request.resource.data.sales_pipeline;
+      let old = resource.data.get('sales_pipeline', {'revision':0,'status':'inactive','detail':''});
+      let audit = getAfter(/databases/$(database)/documents/customers/$(customerId)/pipeline_history/$(p.event_id)).data;
+      return p is map && p.keys().hasOnly(['revision','status','detail','suggestion','last_reviewed_source','updated_by','updatedAt','last_action','event_id'])
+        && p.status in ['active','inactive'] && p.detail is string && p.detail.size() <= 8000
+        && (p.status != 'active' || p.detail.size() > 0)
+        && p.revision is int && p.revision == old.revision + 1
+        && p.last_reviewed_source is string && p.last_reviewed_source.size() <= 64
+        && p.updated_by == request.auth.uid && p.updatedAt == request.time
+        && p.event_id is string && p.event_id.matches('^[A-Za-z0-9_-]{1,128}$')
+        && p.last_action in ['suggest','confirm','dismiss','manual'] && validPipelineSuggestion(p.suggestion)
+        && (!(p.last_action in ['suggest','dismiss']) || (p.status == old.status && p.detail == old.detail))
+        && (p.last_action != 'suggest' || (p.suggestion != null && p.suggestion.based_on_revision == old.revision))
+        && audit.pipeline == p && audit.actor == request.auth.uid && audit.at == request.time;
+    }
     match /customers/{customerId} {
       allow read: if can('customers');
-      allow create: if can('customers') && !request.resource.data.keys().hasAny(['customer_merge_lock']);
+      allow create: if can('customers') && !request.resource.data.keys().hasAny(['customer_merge_lock','sales_pipeline']);
       allow update: if can('customers') && resource.data.get('customer_merge_lock', '') == ''
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['customer_merge_lock']);
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['customer_merge_lock'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['sales_pipeline']) || validPipeline(customerId));
       allow delete: if can('customers') && resource.data.get('customer_merge_lock', '') == '';
+      match /pipeline_history/{eventId} {
+        allow read: if can('customers');
+        allow create: if can('customers') && customerWorkspaceWritable(customerId)
+          && request.resource.data.keys().hasOnly(['previous','pipeline','actor','at','action'])
+          && request.resource.data.actor == request.auth.uid && request.resource.data.at == request.time
+          && request.resource.data.action == request.resource.data.pipeline.last_action
+          && request.resource.data.pipeline.event_id == eventId
+          && getAfter(/databases/$(database)/documents/customers/$(customerId)).data.sales_pipeline == request.resource.data.pipeline
+          && get(/databases/$(database)/documents/customers/$(customerId)).data.get('sales_pipeline', {'revision':0,'status':'inactive','detail':'','suggestion':null,'last_reviewed_source':''}) == request.resource.data.previous;
+        allow update, delete: if false;
+      }
       match /work_items/{itemId} {
         allow read: if can('customers');
         allow create: if can('customers') && customerWorkspaceWritable(customerId) && validWorkItem()

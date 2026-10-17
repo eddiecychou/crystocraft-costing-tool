@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import CustomerWorkspace from '../components/CustomerWorkspace'
+import PipelinePanel, { CustomerPipeline } from '../components/CustomerPipeline'
 import { useCustomerWorkItems } from '../domain/customerWorkItems'
 import { combineWorkItems, dateOnly, hasOpenWork } from '../customerWorkItems'
 import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
@@ -69,7 +70,6 @@ const QUOTE_STATUS_BADGE = {
 
 export default function Dashboard() {
   const [customers, setCustomers]       = useState([])
-  const [quotes, setQuotes]             = useState([])
   const [orders, setOrders]             = useState([])
   const [allEnquiries, setAllEnquiries] = useState([])
   const [loading, setLoading]           = useState(true)
@@ -92,13 +92,10 @@ export default function Dashboard() {
     const unsubCustomers = onSnapshot(query(collection(db, 'customers')), snap => {
       setCustomers(snap.docs.map(d => ({ id: d.id, ...normalizeCustomer(d.data()) })))
     })
-    const unsubQuotes = onSnapshot(query(collection(db, 'client_quotes')), snap => {
-      setQuotes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    })
     const unsubOrders = onSnapshot(query(collection(db, 'orders')), snap => {
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
-    return () => { unsubCustomers(); unsubQuotes(); unsubOrders() }
+    return () => { unsubCustomers(); unsubOrders() }
   }, [])
 
   // Both views subscribe to the same interaction records: legacy task edits
@@ -143,28 +140,6 @@ export default function Dashboard() {
 
   const customerMap = Object.fromEntries(customers.map(c => [c.id, c]))
 
-  // Dedupe a list to one enquiry per customer — the most recent by date.
-  // Applied *within* a single status class (see below), never globally.
-  function latestPerCustomer(list) {
-    return Object.values(
-      list.reduce((acc, e) => {
-        const ex = acc[e.customerId]
-        if (!ex || (e.date?.seconds || 0) > (ex.date?.seconds || 0)) acc[e.customerId] = e
-        return acc
-      }, {})
-    )
-  }
-
-  // Apply category + Retail-tag filters to any enquiry list (both independent
-  // axes, AND'd together — e.g. "Small B2B" + Retail-only at once).
-  function byCat(list) {
-    return list.filter(e => {
-      const c = customerMap[e.customerId]
-      return (!categoryFilter || c?.crm_category === categoryFilter) &&
-             (!retailFilter || c?.tags?.includes(RETAIL_TAG))
-    })
-  }
-
   // Same, for orders (which key on customer_id, not customerId)
   function byCatOrder(list) {
     return list.filter(o => {
@@ -174,12 +149,9 @@ export default function Dashboard() {
     })
   }
 
-  // Pipeline / New Orders are enquiry-based, each derived from the FULL enquiry
-  // set and deduped within its own status class — so a customer with a live
-  // production order AND a separate new-order enquiry appears independently in
-  // each. (Previously every customer was collapsed to a single "latest" enquiry
-  // first, which hid whichever thread wasn't the most recent.)
-  const pipelineList = latestPerCustomer(byCat(allEnquiries.filter(e => e.status === 'Open' || e.status === 'Quoted')))
+  // Only human-confirmed customer positions count. Historical interactions never seed approvals.
+  const pipelineCustomers = customers.filter(c => (!categoryFilter || c.crm_category === categoryFilter) && (!retailFilter || c.tags?.includes(RETAIL_TAG)))
+  const pipelineList = pipelineCustomers.filter(c => c.sales_pipeline?.status === 'active')
 
   // In Production and New Orders are both ORDER-based, not enquiry-based.
   // Production/shipment is an order lifecycle (Confirmed → Packing → Ready →
@@ -221,32 +193,9 @@ export default function Dashboard() {
     return due(a).localeCompare(due(b)) || (a.company_name || '').localeCompare(b.company_name || '')
   })
 
-  // Filtered list panel config
   const filterConfig = {
-    overdue: {
-      title: 'Overdue Follow-ups', Icon: AlertTriangle,
-      empty: 'No overdue follow-ups',
-      items: overdueList.sort((a, b) => (a.follow_up_date?.seconds || 0) - (b.follow_up_date?.seconds || 0)),
-      type: 'enquiry',
-    },
-    open: {
-      title: 'Pipeline — Open & Quoted', Icon: ClipboardList,
-      empty: 'No open or quoted enquiries',
-      items: pipelineList.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0)),
-      type: 'enquiry',
-    },
-    quotes: {
-      title: 'In Production', Icon: Factory,
-      empty: 'No orders currently in production',
-      items: inProductionOrders,
-      type: 'order',
-    },
-    won: {
-      title: 'New Orders — Last 30 Days', Icon: Trophy,
-      empty: 'No orders received in the last 30 days',
-      items: newOrdersList,
-      type: 'order',
-    },
+    quotes: { title:'In Production', empty:'No orders currently in production', items:inProductionOrders },
+    won: { title:'New Orders — Last 30 Days', empty:'No orders received in the last 30 days', items:newOrdersList },
   }
 
   const personalWaCustomers = customers.filter(c => c.is_personal_wa)
@@ -268,60 +217,6 @@ export default function Dashboard() {
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
-      </div>
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatCard
-          label="Follow-ups Due"
-          value={overdueList.length}
-          colour="red"
-          note="overdue"
-          active={activeFilter === 'overdue'}
-          onClick={() => toggleFilter('overdue')}
-        />
-        <StatCard
-          label="Pipeline"
-          value={pipelineList.length}
-          colour="amber"
-          note="open + quoted"
-          active={activeFilter === 'open'}
-          onClick={() => toggleFilter('open')}
-        />
-        <StatCard
-          label="In Production"
-          value={inProductionOrders.length}
-          colour="blue"
-          note="active orders"
-          active={activeFilter === 'quotes'}
-          onClick={() => toggleFilter('quotes')}
-        />
-        <StatCard
-          label="New Orders"
-          value={newOrdersList.length}
-          colour="green"
-          note="last 30 days"
-          active={activeFilter === 'won'}
-          onClick={() => toggleFilter('won')}
-        />
-      </div>
-
-      <div className="card mb-6">
-        <div className="p-4 border-b border-warm-grey flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-base">Customer Summary &amp; To-do</h2><p className="text-xs text-ink-60 mt-1">Recent conversations and your saved tasks. Unfinished work stays here until done.</p></div>
-          <button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Refreshing…' : 'Refresh summaries'}</button>
-          <label className="text-sm w-full">Find a customer to add a task or note
-            <select className="input mt-1" value={selectedCustomer} onChange={e => { setSelectedCustomer(e.target.value); setActiveFilter(null) }}>
-              <option value="">Choose customer…</option>{[...customers].sort((a,b) => (a.company_name || '').localeCompare(b.company_name || '')).map(c => <option key={c.id} value={c.id}>{c.company_name || c.contact_name || c.id}</option>)}
-            </select>
-          </label>
-        </div>
-        {(weeklyError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{weeklyError || work.error}</p>}
-        {(weeklyLoading || work.loading || loading) && <p className="text-sm text-ink-60 p-4">Loading summaries and tasks…</p>}
-        {workspaceCustomers.map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
-          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink
-          generatedAt={weeklySummary?.generatedAt?.toDate?.().toLocaleString('en-GB')} />)}
-        {!loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'overdue' ? 'No overdue tasks.' : 'No recent summaries or outstanding tasks. Choose a customer above to get started.'}</p>}
       </div>
 
       {/* Customer Type filter pills — Retail Customer sits alongside
@@ -372,120 +267,84 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Filtered panel — shown when a stat card is active */}
-      {activeFilter && activeFilter !== 'overdue' && (
-        <div className="card mb-6 ring-2 ring-brand-200">
-          <div className="px-5 py-4 border-b border-warm-grey flex items-center justify-between">
-            <h2 className="flex items-center gap-1.5 text-sm text-ink-80">
-              {(() => { const I = filterConfig[activeFilter].Icon; return I ? <I size={15} /> : null })()}
-              {filterConfig[activeFilter].title}
-              {(categoryFilter || retailFilter) && (
-                <span className="ml-2 text-xs font-normal text-ink-60">
-                  · {[categoryFilter, retailFilter ? RETAIL_TAG : null].filter(Boolean).join(' · ')}
-                </span>
-              )}
-            </h2>
-            <button onClick={() => setActiveFilter(null)} className="text-ink-60 hover:text-ink-70 leading-none"><X size={18} /></button>
-          </div>
-          {filterConfig[activeFilter].items.length === 0 ? (
-            <p className="text-sm text-ink-60 text-center py-8">{filterConfig[activeFilter].empty}</p>
-          ) : filterConfig[activeFilter].type === 'order' ? (
-            <div className="divide-y divide-warm-grey">
-              {filterConfig[activeFilter].items.map(o => {
-                const cust = customerMap[o.customer_id]
-                const st = orderStatusOf(o.status)
-                const dateStr = o.order_date
-                  ? new Date(o.order_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                  : '—'
-                return (
-                  <Link
-                    key={o.id}
-                    to={`/shipments/${o.id}`}
-                    className="flex items-center gap-3 px-5 py-3.5 hover:bg-ivory transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-ink">{cust?.company_name || o.customer_name || '—'}</p>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
-                      </div>
-                      <p className="text-xs text-ink-60 mt-0.5">{orderUc(o) || o.id}</p>
-                    </div>
-                    <p className="text-xs text-ink-60 shrink-0">{dateStr}</p>
-                  </Link>
-                )
-              })}
-            </div>
-          ) : filterConfig[activeFilter].type === 'quote' ? (
-            <div className="divide-y divide-warm-grey">
-              {filterConfig[activeFilter].items.map(q => {
-                const cust = customerMap[q.customer_id]
-                return (
-                  <Link
-                    key={q.id}
-                    to={`/quotes/${q.id}`}
-                    className="flex items-center gap-3 px-5 py-3.5 hover:bg-ivory transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-ink">{cust?.company_name || q.customer_name || '—'}</p>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium capitalize ${QUOTE_STATUS_BADGE[q.status] || 'bg-ivory-dark text-ink-60'}`}>
-                          {q.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-ink-60 mt-0.5">{q.title || q.id}</p>
-                    </div>
-                    <p className="text-xs text-ink-60 shrink-0">{fmtDate(q.createdAt)}</p>
-                  </Link>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="divide-y divide-warm-grey">
-              {filterConfig[activeFilter].items.map(enq => {
-                const overdue = enq.follow_up_date && isOverdue(enq.follow_up_date)
-                const today   = enq.follow_up_date && isToday(enq.follow_up_date)
-                return (
-                  <div key={`${enq.customerId}-${enq.id}`} className="px-5 py-3.5">
-                    <div className="flex items-start gap-3">
-                      <Link to={`/customers/${enq.customerId}`} className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-ink">{enq.companyName}</p>
-                          {enq.customerName && <p className="text-xs text-ink-60">{enq.customerName}</p>}
-                          {enq.channel && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CHANNEL_BADGE[enq.channel] || 'bg-ivory-dark text-ink-60'}`}>
-                              {enq.channel}
-                            </span>
-                          )}
-                          {enq.status && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-ivory-dark text-ink-60">
-                              {enq.status}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-ink-70 mt-0.5">
-                          {enq.description?.slice(0, 100)}{enq.description?.length > 100 ? '…' : ''}
-                        </p>
-                        {enq.follow_up_date && (
-                          <p className={`text-xs font-semibold mt-1 ${overdue ? 'text-red-600' : today ? 'text-amber-600' : 'text-ink-60'}`}>
-                            {overdue ? <AlertTriangle size={11} className="inline align-[-1px] mr-1" /> : today ? <Calendar size={11} className="inline align-[-1px] mr-1" /> : null}Follow-up: {fmtDate(enq.follow_up_date)}
-                          </p>
-                        )}
-                        {enq.date && !enq.follow_up_date && (
-                          <p className="text-xs text-ink-60 mt-1">{fmtDate(enq.date)}</p>
-                        )}
-                      </Link>
 
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <StatCard
+          label="Follow-ups Due"
+          value={overdueList.length}
+          colour="red"
+          note="overdue"
+          active={activeFilter === 'overdue'}
+          onClick={() => toggleFilter('overdue')}
+        />
+        <StatCard
+          label="Pipeline"
+          value={pipelineList.length}
+          colour="amber"
+          note="confirmed customers"
+          active={activeFilter === 'open'}
+          onClick={() => toggleFilter('open')}
+        />
+        <StatCard
+          label="In Production"
+          value={inProductionOrders.length}
+          colour="blue"
+          note="active orders"
+          active={activeFilter === 'quotes'}
+          onClick={() => toggleFilter('quotes')}
+        />
+        <StatCard
+          label="New Orders"
+          value={newOrdersList.length}
+          colour="green"
+          note="last 30 days"
+          active={activeFilter === 'won'}
+          onClick={() => toggleFilter('won')}
+        />
+      </div>
+
+      {activeFilter && <button className="text-sm text-brand-600 underline mb-4 min-h-[40px]" onClick={() => setActiveFilter(null)}>Back to summaries</button>}
+      {activeFilter === 'overdue' && <div className="card mb-6" aria-label="Overdue follow-ups">
+        <h2 className="text-base p-4 border-b border-warm-grey">Overdue follow-ups · {overdueList.length}</h2>
+        {(weeklyError || work.error) && <p role="alert" className="p-4 text-sm text-brand-600">{weeklyError || work.error}</p>}
+        {pipelineCustomers.filter(c => overdueList.some(i => i.customerId === c.id)).map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || 'Customer'}
+          items={overdueList.filter(i => i.customerId === c.id)} showLink showSummary={false} />)}
+        {!overdueList.length && <p className="p-4 text-sm text-ink-60">No overdue follow-ups in this view.</p>}
+      </div>}
+      {(activeFilter === 'quotes' || activeFilter === 'won') && <div className="card mb-6" aria-label={filterConfig[activeFilter].title}>
+        <h2 className="text-base p-4 border-b border-warm-grey">{filterConfig[activeFilter].title} · {filterConfig[activeFilter].items.length}</h2>
+        {!filterConfig[activeFilter].items.length && <p className="p-4 text-sm text-ink-60">{filterConfig[activeFilter].empty}</p>}
+        <div className="divide-y divide-warm-grey">{filterConfig[activeFilter].items.map(o => <Link key={o.id} to={`/shipments/${o.id}`} className="flex items-center justify-between gap-3 p-4 hover:bg-ivory">
+          <span className="min-w-0"><span className="block text-sm">{customerMap[o.customer_id]?.company_name || o.customer_name || 'Customer'} · {orderStatusOf(o.status).label}</span><span className="block text-xs text-ink-60 mt-1">{orderUc(o) || o.id}</span></span>
+          <span className="text-xs text-ink-60 shrink-0">{o.order_date || '—'}</span>
+        </Link>)}</div>
+      </div>}
+
+      {(!activeFilter || activeFilter === 'open') && <PipelinePanel customers={pipelineCustomers} allCustomers={customers} />}
+
+      {!activeFilter && (<div className="card mb-6">
+        <div className="p-4 border-b border-warm-grey flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="text-base">Customer Summary &amp; To-do</h2><p className="text-xs text-ink-60 mt-1">Recent conversations and your saved tasks. Unfinished work stays here until done.</p></div>
+          <button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Refreshing…' : 'Refresh summaries'}</button>
+          <label className="text-sm w-full">Find a customer to add a task or note
+            <select className="input mt-1" value={selectedCustomer} onChange={e => { setSelectedCustomer(e.target.value); setActiveFilter(null) }}>
+              <option value="">Choose customer…</option>{[...customers].sort((a,b) => (a.company_name || '').localeCompare(b.company_name || '')).map(c => <option key={c.id} value={c.id}>{c.company_name || c.contact_name || c.id}</option>)}
+            </select>
+          </label>
         </div>
+        {(weeklyError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{weeklyError || work.error}</p>}
+        {(weeklyLoading || work.loading || loading) && <p className="text-sm text-ink-60 p-4">Loading summaries and tasks…</p>}
+        {selectedCustomer && customerMap[selectedCustomer] && <CustomerPipeline key={selectedCustomer} customer={customerMap[selectedCustomer]} />}
+        {workspaceCustomers.map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
+          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink
+          generatedAt={weeklySummary?.generatedAt?.toDate?.().toLocaleString('en-GB')} />)}
+        {!loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'overdue' ? 'No overdue tasks.' : 'No recent summaries or outstanding tasks. Choose a customer above to get started.'}</p>}
+      </div>
       )}
 
       {/* Personal WhatsApp panel */}
-      {personalWaCustomers.length > 0 && (
+      {!activeFilter && personalWaCustomers.length > 0 && (
         <div className="card mb-4">
           <div className="px-5 py-4 border-b border-warm-grey">
             <h2 className="flex items-center gap-1.5 text-sm text-ink-80"><Smartphone size={15} />Personal WhatsApp Contacts</h2>

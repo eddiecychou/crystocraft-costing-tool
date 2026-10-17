@@ -4,7 +4,7 @@ import { saveCustomerWorkItem } from '../domain/customerWorkItems'
 import { dateOnly } from '../customerWorkItems'
 
 const LABEL = { todo: 'To do', waiting: 'Waiting', done: 'Done' }
-export default function CustomerWorkspace({ customerId, customerName, digest, items = [], generatedAt, showLink = false, saveItem = saveCustomerWorkItem }) {
+export default function CustomerWorkspace({ customerId, customerName, digest, items = [], generatedAt, showLink = false, showSummary = true, saveItem = saveCustomerWorkItem }) {
   const uid = useId()
   const [editor, setEditor] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -37,8 +37,8 @@ export default function CustomerWorkspace({ customerId, customerName, digest, it
         <button className="btn-secondary text-xs min-h-[40px] px-3" onClick={() => open('note')}>Add note</button>
       </div>
     </div>
-    <p className="text-sm text-ink-70 mt-2 whitespace-pre-wrap break-words">{digest || 'No recent summary. You can still add tasks and notes.'}</p>
-    {digest && <p className="text-xs text-ink-60 mt-1">AI draft · Last 30 days{generatedAt ? ` · Updated ${generatedAt}` : ''} · Tasks and notes are saved separately.</p>}
+    {showSummary && <p className="text-sm text-ink-70 mt-2 whitespace-pre-wrap break-words">{digest || 'No recent summary. You can still add tasks and notes.'}</p>}
+    {showSummary && digest && <p className="text-xs text-ink-60 mt-1">AI draft · Last 30 days{generatedAt ? ` · Updated ${generatedAt}` : ''} · Tasks and notes are saved separately.</p>}
     {error && <p role="alert" className="text-sm text-brand-600 mt-2">{error}</p>}
     {editor && <form onSubmit={save} className="mt-3 p-3 bg-ivory border border-warm-grey space-y-3">
       <label className="block text-sm" htmlFor={`${uid}-text`}>{editor.kind === 'note' ? 'Reference note' : 'Task'}

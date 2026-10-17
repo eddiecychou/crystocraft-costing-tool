@@ -8,6 +8,13 @@ const contactsOf = customer => {
 const SCALARS = ['website','address','country','crm_category','crm_status','source','segment','erp_code','folder_path']
 export function customerMergeFields(survivor, source) {
   const out = {}
+  if (survivor.sales_pipeline || source.sales_pipeline) {
+    const a=survivor.sales_pipeline, b=source.sales_pipeline
+    const active=[a,b].filter(p=>p?.status==='active')
+    out.sales_pipeline={...(a || b),status:active.length?'active':'inactive',detail:active.length
+      ? [...new Set(active.map(p=>p.detail).filter(Boolean))].join('\n\n') : (a?.detail || b?.detail || ''),
+      suggestion:null,last_reviewed_source:'',revision:Math.max(a?.revision || 0,b?.revision || 0)+1,last_action:'merge'}
+  }
   for (const key of SCALARS) if (!String(survivor[key] || '').trim() && String(source[key] || '').trim()) out[key] = source[key]
   for (const key of ['tags','channels','linked_marketing_contact_ids']) {
     const values = [...new Set([...(survivor[key] || []), ...(source[key] || [])])]

@@ -10,7 +10,7 @@
 // this config is self-contained and needs no install beyond eslint itself.
 const browser = Object.fromEntries([
   'window','document','navigator','console','fetch','Blob','File','FileReader',
-  'URL','URLSearchParams','FormData','Headers','Request','Response','AbortController',
+  'URL','URLSearchParams','FormData','Headers','Request','Response','AbortController','AbortSignal',
   'setTimeout','clearTimeout','setInterval','clearInterval','requestAnimationFrame','cancelAnimationFrame',
   'localStorage','sessionStorage','crypto','btoa','atob','alert','confirm','prompt',
   'Image','HTMLElement','Event','CustomEvent','IntersectionObserver','ResizeObserver',

@@ -236,6 +236,7 @@ export function normalizeCustomer(raw) {
     address:           str(r.address),
     country:           str(r.country || r.region),        // fold legacy `region`
     crm_category:      str(r.crm_category),
+    sales_pipeline:    r.sales_pipeline || null,
     crm_status:        str(r.crm_status),
     channels:          channelsOf(r),
     source:            str(r.source),

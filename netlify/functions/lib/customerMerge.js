@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { Timestamp, FieldValue } from 'firebase-admin/firestore'
 import { customerMergeFields, customerMergeContactMap } from '../../../src/customerMergeFields.js'
-export const MERGE_COLLECTIONS = ['work_items','enquiries','email_threads','whatsapp_threads','alibaba_threads','assets']
+export const MERGE_COLLECTIONS = ['work_items','pipeline_history','enquiries','email_threads','whatsapp_threads','alibaba_threads','assets']
 const hash = s => createHash('sha256').update(s).digest('hex')
 export class MergeError extends Error { constructor(message, status=409) { super(message); this.status=status } }
 const canonical = value => value && typeof value === 'object' ? Array.isArray(value) ? value.map(canonical) : Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])) : value
