@@ -19,7 +19,7 @@ export function validatePipelineSuggestions(result, customers) {
     }
     seen.add(s.id)
     return { id:s.id, status:s.status, detail:s.detail.trim(), reason:s.reason.trim(), evidence:s.evidence,
-      source_key:c.source_key, based_on_revision:c.pipeline?.revision || 0 }
+      source_key:c.source_key, source_cache:c.source_cache || 'weekly_summary', based_on_revision:c.pipeline?.revision || 0 }
   })
 }
 export function pipelineTransition(current, action, { suggestion, detail, sourceKey = '', status } = {}) {

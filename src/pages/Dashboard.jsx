@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import CustomerWorkspace from '../components/CustomerWorkspace'
 import PipelinePanel, { CustomerPipeline } from '../components/CustomerPipeline'
+import useSummaryPeriod from '../hooks/useSummaryPeriod'
+import {SUMMARY_PERIODS,summaryCacheId,summaryPeriodLabel} from '../customerSummary'
 import { useCustomerWorkItems } from '../domain/customerWorkItems'
 import { combineWorkItems, dateOnly, hasOpenWork } from '../customerWorkItems'
 import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
@@ -69,6 +71,8 @@ const QUOTE_STATUS_BADGE = {
 }
 
 export default function Dashboard() {
+  const [summaryPeriod,setSummaryPeriod]=useSummaryPeriod()
+  const [summaryProgress,setSummaryProgress]=useState('')
   const [customers, setCustomers]       = useState([])
   const [orders, setOrders]             = useState([])
   const [allEnquiries, setAllEnquiries] = useState([])
@@ -121,20 +125,22 @@ export default function Dashboard() {
 
   // On-demand only (V8.15) — load whatever was cached from the last time
   // someone clicked "Refresh" below; never auto-generates on its own.
-  useEffect(() => onSnapshot(doc(db, 'dashboard_cache', 'weekly_summary'), snap => {
+  useEffect(() => {setWeeklyLoading(true);setWeeklySummary(null);return onSnapshot(doc(db, 'dashboard_cache', summaryCacheId(summaryPeriod)), snap => {
     setWeeklySummary(snap.exists() ? snap.data() : null); setWeeklyLoading(false)
-  }, () => { setWeeklyError('The summary could not load. Refresh or check your access.'); setWeeklyLoading(false) }), [])
+  }, () => { setWeeklyError('The summary could not load. Refresh or check your access.'); setWeeklyLoading(false) })}, [summaryPeriod])
 
   async function handleGenerateWeeklySummary() {
     setWeeklyGenerating(true)
     setWeeklyError('')
+    setSummaryProgress('Reading customer conversations…')
     try {
-      const result = await generateWeeklySummary()
-      setWeeklySummary({ ...result, generatedAt: { toDate: () => new Date() }, weekStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() })
+      const result = await generateWeeklySummary(summaryPeriod,(n,total)=>setSummaryProgress(`Summarized ${n} of ${total} customers…`))
+      setWeeklySummary({ ...result, generatedAt: { toDate: () => new Date() }, weekStart: new Date(Date.now() - summaryPeriod * 86400000).toISOString() })
     } catch (e) {
       setWeeklyError(e.message || 'Could not generate the weekly summary.')
     } finally {
       setWeeklyGenerating(false)
+      setSummaryProgress('')
     }
   }
 
@@ -218,6 +224,12 @@ export default function Dashboard() {
           {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
+
+      <label className="block text-sm mb-4">Summary period
+        <select className="input mt-1 max-w-xs" value={summaryPeriod} disabled={weeklyGenerating} onChange={e=>setSummaryPeriod(e.target.value)}>
+          {SUMMARY_PERIODS.map(p=><option key={p.days} value={p.days}>{p.label}</option>)}
+        </select>
+      </label>
 
       {/* Customer Type filter pills — Retail Customer sits alongside
           Distributor/Small B2B/Gift-OEM/Crystal Fabric as a peer type
@@ -321,11 +333,11 @@ export default function Dashboard() {
         </Link>)}</div>
       </div>}
 
-      {(!activeFilter || activeFilter === 'open') && <PipelinePanel customers={pipelineCustomers} allCustomers={customers} />}
+      {(!activeFilter || activeFilter === 'open') && <PipelinePanel customers={pipelineCustomers} allCustomers={customers} summaryPeriod={summaryPeriod} />}
 
       {!activeFilter && (<div className="card mb-6">
         <div className="p-4 border-b border-warm-grey flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-base">Customer Summary &amp; To-do</h2><p className="text-xs text-ink-60 mt-1">Recent conversations and your saved tasks. Unfinished work stays here until done.</p></div>
+          <div><h2 className="text-base">Customer Summary &amp; To-do</h2><p className="text-xs text-ink-60 mt-1">Conversations from the last {summaryPeriodLabel(summaryPeriod)} and your saved tasks. Unfinished work stays until done.</p></div>
           <button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Refreshing…' : 'Refresh summaries'}</button>
           <label className="text-sm w-full">Find a customer to add a task or note
             <select className="input mt-1" value={selectedCustomer} onChange={e => { setSelectedCustomer(e.target.value); setActiveFilter(null) }}>
@@ -335,9 +347,12 @@ export default function Dashboard() {
         </div>
         {(weeklyError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{weeklyError || work.error}</p>}
         {(weeklyLoading || work.loading || loading) && <p className="text-sm text-ink-60 p-4">Loading summaries and tasks…</p>}
+        {summaryProgress&&<p role="status" className="text-sm text-ink-60 p-4">{summaryProgress}</p>}
+        {!weeklyLoading&&!weeklySummary&&<p className="text-sm text-ink-60 p-4">No saved summaries for this period yet. Click Refresh summaries to prepare them. Your tasks and Pipeline are unchanged.</p>}
         {selectedCustomer && customerMap[selectedCustomer] && <CustomerPipeline key={selectedCustomer} customer={customerMap[selectedCustomer]} />}
         {workspaceCustomers.map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
           digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink
+          summaryDays={summaryPeriod} sourceLimited={digestByCustomer.get(c.id)?.sourceLimited}
           generatedAt={weeklySummary?.generatedAt?.toDate?.().toLocaleString('en-GB')} />)}
         {!loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'overdue' ? 'No overdue tasks.' : 'No recent summaries or outstanding tasks. Choose a customer above to get started.'}</p>}
       </div>

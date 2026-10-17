@@ -16,7 +16,7 @@ const admin=env.authenticatedContext('pipeline_admin').firestore(),staff=env.aut
 globalThis.__pipelineDb=admin
 const api=await import(pathToFileURL(join(scratch,'customerPipeline.mjs')))
 const key=await summaryKey('Requested a quotation and sample.')
-const suggestion={status:'active',detail:'Quotation and sample; repeat order request',reason:'Buying request',evidence:'Requested a quotation',source_key:key,based_on_revision:0}
+const suggestion={status:'active',detail:'Quotation and sample; repeat order request',reason:'Buying request',evidence:'Requested a quotation',source_key:key,source_cache:'weekly_summary',based_on_revision:0}
 after(async()=>{await env.cleanup();await rm(scratch,{recursive:true,force:true});delete globalThis.__pipelineDb})
 test('actual transaction stages without activation, confirms once and keeps immutable history',async()=>{
  await api.savePipelineDecision('pipeline_one',0,'suggest',{suggestion},'pipeline-stage')
@@ -50,4 +50,11 @@ test('merge lock prevents review and ordinary customer edits preserve the Pipeli
  await env.withSecurityRulesDisabled(async c=>updateDoc(doc(c.firestore(),'customers/pipeline_one'),{customer_merge_lock:'job'}))
  const p=(await getDoc(doc(admin,'customers/pipeline_one'))).data().sales_pipeline
  await assert.rejects(api.savePipelineDecision('pipeline_one',p.revision,'manual',{status:'inactive',detail:'No active requests'}),/merged/)
+})
+test('review uses the proposal’s original period cache, not the current display period',async()=>{
+ const digest='Another repeat quotation remains active.',hash=await summaryKey(digest)
+ await env.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),'dashboard_cache/customer_summary_90'),{items:[{customerId:'pipeline_two',digest}]}))
+ await api.savePipelineDecision('pipeline_two',0,'suggest',{suggestion:{...suggestion,source_key:hash,source_cache:'customer_summary_90'}},'period-stage')
+ await api.savePipelineDecision('pipeline_two',1,'confirm',{sourceKey:hash,detail:'Repeat quotation remains active'},'period-confirm')
+ assert.equal((await getDoc(doc(admin,'customers/pipeline_two'))).data().sales_pipeline.status,'active')
 })

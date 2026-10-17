@@ -1,24 +1,12 @@
 import { collectionGroup, collection, doc, getDoc, getDocs, query, where, orderBy, Timestamp, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, authedUser } from '../firebase'
 import { NOT_CUSTOMER_TAG, RETAIL_TAG } from './customer'
+import { summaryDays, summaryCacheId, summarySource } from '../customerSummary'
 
-// Dashboard "This Month" section (V8.15, extended 2026-09-17, 2026-10-03) — a
-// per-customer AI digest of what happened in the last 30 days, built from the
-// channels that are kept current day-to-day: the CRM Interaction Log
-// (`enquiries`, hand-logged), ingested email (`email_threads`, synced daily by
-// email-sync/sync.py), and WhatsApp (`whatsapp_threads`, auto-imported hourly
-// by scripts/whatsapp-sync.sh since 2026-10-03). Alibaba is still excluded
-// (manually pasted, not kept current).
-//
-// Originally a 7-day window; widened to 30 (Eddie: "not all issues are
-// resolved in a week") — function/doc names below still say "weekly" to
-// avoid an unnecessary rename churn, but the actual lookback is LOOKBACK_MS.
-//
-// On-demand only (no scheduled job): generateWeeklySummary() is called from
-// a Dashboard "Refresh" button, result cached in dashboard_cache/weekly_summary
-// so reopening the dashboard doesn't require a fresh AI call every time.
-const LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000
-const CACHE_DOC = doc(db, 'dashboard_cache', 'weekly_summary')
+// On-demand shared CRM/email/WhatsApp summaries for 14, 30 or 90 days.
+// Each period has its own cache; generating summaries never changes saved tasks
+// or confirmed Pipeline. All customers are processed in bounded AI batches.
+const CACHE_DOC = days => doc(db, 'dashboard_cache', summaryCacheId(days))
 
 // Same split every other AI feature here uses: the browser holds Firestore
 // access and does all the reading; the edge function only holds the
@@ -118,7 +106,7 @@ async function activityFromEmailThreads(cutoffDate) {
       messages: recentMessages.map(m => ({
         date: m.date,
         from: m.from || '',
-        snippet: String(m.body_text || '').slice(0, 300),
+        snippet: String(m.body_text || '').slice(0, 600),
       })),
     })
   }
@@ -147,7 +135,7 @@ async function activityFromWhatsappThreads(cutoffDate) {
         messages: recentMessages.map(m => ({
           date: m.date,
           from: m.from || '',
-          snippet: String(m.body_text || '').slice(0, 300),
+          snippet: String(m.body_text || '').slice(0, 600),
         })),
       })
     }
@@ -155,42 +143,12 @@ async function activityFromWhatsappThreads(cutoffDate) {
   return byCustomer
 }
 
-function renderCustomerText(enquiries = [], threads = [], whatsappThreads = []) {
-  const parts = []
-  if (enquiries.length > 0) {
-    parts.push('=== CRM Interaction Log ===')
-    for (const e of enquiries) {
-      const d = e.date ? e.date.toLocaleDateString('en-GB') : '?'
-      parts.push(`[${d}] (${e.channel}) ${e.description}`)
-    }
-  }
-  if (threads.length > 0) {
-    parts.push('=== Email ===')
-    for (const t of threads) {
-      parts.push(`Subject: ${t.subject}`)
-      for (const m of t.messages) {
-        parts.push(`  [${m.date.slice(0, 10)}] from ${m.from}: ${m.snippet}`)
-      }
-    }
-  }
-  if (whatsappThreads.length > 0) {
-    parts.push('=== WhatsApp ===')
-    for (const t of whatsappThreads) {
-      parts.push(`Chat: ${t.subject} (${t.channel || 'WhatsApp'})`)
-      for (const m of t.messages) {
-        parts.push(`  [${m.date.slice(0, 10)}] ${m.from}: ${m.snippet}`)
-      }
-    }
-  }
-  return parts.join('\n').slice(0, 8000) // per-customer cap — a month's worth, not a full history (4000→6000 for 7d→30d, then →8000 for WhatsApp)
-}
-
 // Step 1 — gather the trailing month's raw activity, grouped per customer, with no
 // AI call yet. Exposed separately from generateWeeklySummary so the
 // Dashboard can show "N customers active this month" immediately, before
 // the (slower) digest call resolves.
-export async function findActiveCustomers() {
-  const cutoff = new Date(Date.now() - LOOKBACK_MS)
+export async function findActiveCustomers(days = 30) {
+  const cutoff = new Date(Date.now() - summaryDays(days) * 86400000)
   const [enquiriesByCustomer, threadsByCustomer, whatsappByCustomer] = await Promise.all([
     activityFromEnquiries(cutoff),
     activityFromEmailThreads(cutoff),
@@ -233,7 +191,7 @@ export async function findActiveCustomers() {
       customerName: name,
       channels: [...channels],
       lastActivity,
-      text: renderCustomerText(enquiries, threads, whatsappThreads),
+      ...summarySource(enquiries, threads, whatsappThreads),
     }
   }))
   return entries.filter(Boolean).sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))
@@ -242,32 +200,38 @@ export async function findActiveCustomers() {
 // Step 2 — one batched DeepSeek call covering every active customer (not
 // one call each), then cache the result. Called from the Dashboard's
 // "Refresh" button.
-export async function generateWeeklySummary() {
-  const entries = await findActiveCustomers()
+export async function generateWeeklySummary(days = 30, onProgress = () => {}) {
+  days=summaryDays(days)
+  const entries = await findActiveCustomers(days)
   if (entries.length === 0) {
-    const empty = { generatedAt: serverTimestamp(), weekStart: new Date(Date.now() - LOOKBACK_MS).toISOString(), items: [] }
-    await setDoc(CACHE_DOC, empty)
-    return { items: [] }
+    const empty = { generatedAt: serverTimestamp(), lookbackDays:days, weekStart: new Date(Date.now() - days * 86400000).toISOString(), items: [] }
+    await setDoc(CACHE_DOC(days), empty)
+    return { items: [], lookbackDays:days }
   }
 
-  const { digests } = await authedPost('/api/weekly-digest', {
-    customers: entries.map(e => ({ id: e.customerId, name: e.customerName, text: e.text })),
-  })
-  const digestById = new Map((digests || []).map(d => [d.id, d.digest]))
+  const digests=[]
+  for(let start=0;start<entries.length;start+=6){
+    const batch=entries.slice(start,start+6)
+    const data=await authedPost('/api/weekly-digest',{lookbackDays:days,customers:batch.map(e=>({id:e.customerId,name:e.customerName,text:e.text}))})
+    const wanted=new Set(batch.map(e=>e.customerId))
+    if(!Array.isArray(data.digests)||data.digests.length!==batch.length||new Set(data.digests.map(d=>d.id)).size!==batch.length||data.digests.some(d=>!wanted.has(d.id)||typeof d.digest!=='string'||!d.digest.trim()))throw Error('Incomplete summaries returned. Previous saved summaries are unchanged; please retry.')
+    digests.push(...data.digests);onProgress(Math.min(start+6,entries.length),entries.length)
+  }
+  const digestById = new Map(digests.map(d => [d.id, d.digest]))
 
   const items = entries.map(e => ({
     customerId: e.customerId,
     customerName: e.customerName,
     channels: e.channels,
     lastActivity: e.lastActivity ? e.lastActivity.toISOString() : null,
-    digest: digestById.get(e.customerId) || '(no digest returned)',
+    digest: digestById.get(e.customerId), sourceLimited:e.limited,
   }))
 
-  await setDoc(CACHE_DOC, { generatedAt: serverTimestamp(), weekStart: new Date(Date.now() - LOOKBACK_MS).toISOString(), items })
-  return { items }
+  await setDoc(CACHE_DOC(days), { generatedAt: serverTimestamp(), lookbackDays:days, weekStart: new Date(Date.now() - days * 86400000).toISOString(), items })
+  return { items, lookbackDays:days }
 }
 
-export async function loadWeeklySummary() {
-  const snap = await getDoc(CACHE_DOC)
+export async function loadWeeklySummary(days=30) {
+  const snap = await getDoc(CACHE_DOC(days))
   return snap.exists() ? snap.data() : null
 }

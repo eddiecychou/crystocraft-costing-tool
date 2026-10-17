@@ -755,11 +755,12 @@ service cloud.firestore {
     // Customer-based Pipeline: only CRM staff/admin, reviewed position + proposed change,
     // monotonic revision and an atomic immutable audit record. Never portal-readable.
     function validPipelineSuggestion(s) {
-      return s == null || (s is map && s.keys().hasOnly(['status','detail','reason','evidence','source_key','based_on_revision'])
+      return s == null || (s is map && s.keys().hasOnly(['status','detail','reason','evidence','source_key','source_cache','based_on_revision'])
         && s.status in ['active','inactive'] && s.detail is string && s.detail.size() > 0 && s.detail.size() <= 2000
         && s.reason is string && s.reason.size() > 0 && s.reason.size() <= 1000
         && s.evidence is string && s.evidence.size() > 0 && s.evidence.size() <= 1500
         && s.source_key is string && s.source_key.matches('^[a-f0-9]{64}$')
+        && s.get('source_cache','weekly_summary') in ['weekly_summary','customer_summary_14','customer_summary_90']
         && s.based_on_revision is int && s.based_on_revision >= 0);
     }
     function validPipeline(customerId) {

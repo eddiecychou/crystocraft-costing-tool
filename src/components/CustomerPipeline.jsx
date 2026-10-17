@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { emptyPipeline } from '../customerPipeline'
 import { savePipelineDecision, suggestCustomerPipeline } from '../domain/customerPipeline'
+import {summaryPeriodLabel} from '../customerSummary'
 
 export function CustomerPipeline({ customer, showLink=false, save=savePipelineDecision }) {
   const p=customer.sales_pipeline || emptyPipeline(), proposal=p.suggestion
@@ -21,6 +22,7 @@ export function CustomerPipeline({ customer, showLink=false, save=savePipelineDe
     <p className="text-xs text-ink-60 mt-1">One customer, one position. Confirming an order does not close other buying requests.</p>
     {proposal&&<div className="mt-3 p-3 bg-ivory border border-warm-grey">
       <p className="label">AI suggestion · Awaiting your confirmation</p>
+      <p className="text-xs text-ink-60 mt-1">Source: last {summaryPeriodLabel(proposal.source_cache==='customer_summary_14'?14:proposal.source_cache==='customer_summary_90'?90:30)}</p>
       <p className="text-sm mt-2">{proposal.status==='active'?(p.status==='active'?'Update active position':'Add to Pipeline'):'Close active position'}</p>
       <p className="text-sm whitespace-pre-wrap break-words mt-1">{proposal.detail}</p>
       <p className="text-xs text-ink-60 mt-2">{proposal.reason}</p>
@@ -48,15 +50,15 @@ export function CustomerPipeline({ customer, showLink=false, save=savePipelineDe
   </section>
 }
 
-export default function PipelinePanel({ customers, allCustomers=customers, suggest=suggestCustomerPipeline }) {
+export default function PipelinePanel({ customers, allCustomers=customers, summaryPeriod=30, suggest=suggestCustomerPipeline }) {
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('')
   const pending=customers.filter(c=>c.sales_pipeline?.suggestion),active=customers.filter(c=>c.sales_pipeline?.status==='active')
-  async function generate(){setBusy(true);setError('');setMessage('Reading shared summaries…');try{const count=await suggest(allCustomers,(n,total)=>setMessage(`Reviewed ${n} of ${total} summaries…`));setMessage(`${count} suggestion${count===1?'':'s'} prepared. Confirmed positions are unchanged.`)}catch(e){setError(e.message)}finally{setBusy(false)}}
+  async function generate(){setBusy(true);setError('');setMessage('Reading shared summaries…');try{const count=await suggest(allCustomers,(n,total)=>setMessage(`Reviewed ${n} of ${total} summaries…`),summaryPeriod);setMessage(`${count} suggestion${count===1?'':'s'} prepared. Confirmed positions are unchanged.`)}catch(e){setError(e.message)}finally{setBusy(false)}}
   return <div className="card mb-6" aria-label="Customer Pipeline">
     <div className="p-4 border-b border-warm-grey flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="text-base">Customer Pipeline</h2><p className="text-xs text-ink-60 mt-1">{active.length} confirmed active customers · {pending.length} suggestions awaiting review. Product, sample, price and quotation requests.</p></div>
       <button className="btn-secondary text-xs min-h-[40px]" disabled={busy} onClick={generate}>{busy?'Preparing suggestions…':'Suggest from summaries'}</button>
-      <p className="text-xs text-ink-60 w-full">Uses saved email and WhatsApp summaries. Refresh summaries below when you need newer conversations. Suggestions cover all customers; the current filters control this list.</p>
+      <p className="text-xs text-ink-60 w-full">Uses saved email and WhatsApp summaries for the last {summaryPeriodLabel(summaryPeriod)}. Refresh summaries below when you need newer conversations. Suggestions cover all customers; the current filters control this list.</p>
     </div>
     {message&&<p role="status" className="p-4 text-sm text-ink-60">{message}</p>}{error&&<p role="alert" className="p-4 text-sm text-brand-600">{error}</p>}
     {!!pending.length&&<h3 className="eyebrow px-4 pt-4">Awaiting your review</h3>}

@@ -1,6 +1,7 @@
 import { doc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db, authedUser } from '../firebase'
 import { emptyPipeline, pipelineTransition, summaryKey, validatePipelineSuggestions } from '../customerPipeline'
+import {summaryCacheId, validSummaryCache} from '../customerSummary'
 
 export async function savePipelineDecision(customerId, expectedRevision, action, input, eventId = crypto.randomUUID()) {
   const user = await authedUser()
@@ -13,7 +14,9 @@ export async function savePipelineDecision(customerId, expectedRevision, action,
     if (before.event_id === eventId) return // same operation retry
     if (before.revision !== expectedRevision) throw Error('Pipeline changed in another tab. Reopen the latest position.')
     if (action === 'suggest' || action === 'confirm') {
-      const summary = await tx.get(doc(db,'dashboard_cache','weekly_summary'))
+      const cacheId=(action==='suggest'?input.suggestion?.source_cache:before.suggestion?.source_cache) || 'weekly_summary'
+      if(!validSummaryCache(cacheId))throw Error('Choose a valid summary period.')
+      const summary = await tx.get(doc(db,'dashboard_cache',cacheId))
       const digest = summary.data()?.items?.find(i => i.customerId === customerId)?.digest || ''
       const key = action === 'suggest' ? input.suggestion?.source_key : input.sourceKey
       if (!digest || await summaryKey(digest) !== key) throw Error('The summary changed. Refresh suggestions before confirming.')
@@ -28,10 +31,12 @@ export async function savePipelineDecision(customerId, expectedRevision, action,
 
 // Reads the shared summaries, never raw mail or another customer's portal data.
 // Small batches avoid silent caps/truncation; a failure leaves reviewed positions intact.
-export async function suggestCustomerPipeline(customers, onProgress = () => {}) {
+export async function suggestCustomerPipeline(customers, onProgress = () => {}, days = 30) {
   const user = await authedUser()
   if (!user) throw Error('Please sign in.')
-  const cache = await getDoc(doc(db,'dashboard_cache','weekly_summary'))
+  const cacheId=summaryCacheId(days)
+  const cache = await getDoc(doc(db,'dashboard_cache',cacheId))
+  if(!cache.exists())throw Error('Refresh summaries for this period first, then prepare suggestions.')
   const byId = new Map(customers.map(c => [c.id,c]))
   const entries = []
   for (const item of cache.data()?.items || []) {
@@ -39,7 +44,7 @@ export async function suggestCustomerPipeline(customers, onProgress = () => {}) 
     if (!c || !item.digest || item.digest === '(no digest returned)') continue
     const key = await summaryKey(item.digest), pipeline = c.sales_pipeline || emptyPipeline()
     if (pipeline.last_reviewed_source === key || pipeline.suggestion?.source_key === key) continue
-    entries.push({id:c.id,name:c.company_name || '',digest:item.digest,source_key:key,pipeline:{revision:pipeline.revision,status:pipeline.status,detail:pipeline.detail}})
+    entries.push({id:c.id,name:c.company_name || '',digest:item.digest,source_key:key,source_cache:cacheId,pipeline:{revision:pipeline.revision,status:pipeline.status,detail:pipeline.detail}})
   }
   let saved=0
   for (let start=0;start<entries.length;start+=6) {
@@ -50,7 +55,7 @@ export async function suggestCustomerPipeline(customers, onProgress = () => {}) 
     if (!response.ok) throw Error(data.error || 'Could not prepare Pipeline suggestions. Reviewed positions are unchanged; retry to resume.')
     const suggestions = validatePipelineSuggestions(data,batch)
     for (const s of suggestions) {
-      await savePipelineDecision(s.id,s.based_on_revision,'suggest',{suggestion:{status:s.status,detail:s.detail,reason:s.reason,evidence:s.evidence,source_key:s.source_key,based_on_revision:s.based_on_revision}})
+      await savePipelineDecision(s.id,s.based_on_revision,'suggest',{suggestion:{status:s.status,detail:s.detail,reason:s.reason,evidence:s.evidence,source_key:s.source_key,source_cache:s.source_cache,based_on_revision:s.based_on_revision}})
       saved++
     }
     onProgress(Math.min(start+6,entries.length),entries.length)

@@ -14,6 +14,8 @@ import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import CustomerWorkspace from '../components/CustomerWorkspace'
 import { CustomerPipeline } from '../components/CustomerPipeline'
+import useSummaryPeriod from '../hooks/useSummaryPeriod'
+import {SUMMARY_PERIODS,summaryCacheId} from '../customerSummary'
 import { useCustomerWorkItems } from '../domain/customerWorkItems'
 import { combineWorkItems } from '../customerWorkItems'
 import { useCustomerAssets, cannotRenderAsImage } from '../customerAssets'
@@ -543,13 +545,15 @@ export default function CustomerDetail() {
   const [enquiries, setEnquiries]       = useState([])
   const work = useCustomerWorkItems([id])
   const [sharedSummary, setSharedSummary] = useState(null)
+  const [summaryPeriod,setSummaryPeriod]=useSummaryPeriod()
   const [sharedSummaryError, setSharedSummaryError] = useState('')
-  useEffect(() => onSnapshot(doc(db, 'dashboard_cache', 'weekly_summary'), snap => {
+  useEffect(() => {setSharedSummary(null);return onSnapshot(doc(db, 'dashboard_cache', summaryCacheId(summaryPeriod)), snap => {
     const cached = snap.exists() ? snap.data() : null
-    setSharedSummary({ digest: cached?.items?.find(i => i.customerId === id)?.digest,
+    const item=cached?.items?.find(i => i.customerId === id)
+    setSharedSummary({ digest: item?.digest, sourceLimited:item?.sourceLimited,
       generatedAt: cached?.generatedAt?.toDate?.().toLocaleString('en-GB') })
     setSharedSummaryError('')
-  }, () => setSharedSummaryError('The shared summary could not load.')), [id])
+  }, () => setSharedSummaryError('The shared summary could not load.'))}, [id,summaryPeriod])
 
   const [portalEnquiries, setPortalEnquiries] = useState([])
   const [erpSiRows, setErpSiRows] = useState([])              // raw erp_sales_invoice rows, by erp_code
@@ -1237,12 +1241,14 @@ export default function CustomerDetail() {
 
       <div className="card mb-4">
         <CustomerPipeline key={`pipeline-${id}`} customer={customer} />
+        <label className="block text-sm p-4">Summary period<select className="input mt-1 max-w-xs" value={summaryPeriod} onChange={e=>setSummaryPeriod(e.target.value)}>{SUMMARY_PERIODS.map(p=><option key={p.days} value={p.days}>{p.label}</option>)}</select></label>
         {(work.error || sharedSummaryError) && <p role="alert" className="text-sm text-brand-600 p-4">{work.error || sharedSummaryError}</p>}
         {work.loading && <p className="text-sm text-ink-60 p-4">Loading tasks…</p>}
         <CustomerWorkspace key={id} customerId={id} customerName={customer.company_name || customer.contact_name || 'Customer'}
           digest={sharedSummary?.digest} generatedAt={sharedSummary?.generatedAt}
+          summaryDays={summaryPeriod} sourceLimited={sharedSummary?.sourceLimited}
           items={combineWorkItems(enquiries, work.items)} />
-        <p className="px-4 pb-4 text-xs text-ink-60">Refresh the shared summary from the Dashboard. Email and WhatsApp source history remains below.</p>
+        <p className="px-4 pb-4 text-xs text-ink-60">Refresh this period’s shared summaries from the <Link to="/dashboard" className="text-brand-600 underline">Dashboard</Link>. Email and WhatsApp source history remains below.</p>
       </div>
 
       <Collapsible storageKey={`${id}:interaction-log`} title={`Interaction history (${enquiries.length})`} defaultOpen={false} bodyClassName=""
