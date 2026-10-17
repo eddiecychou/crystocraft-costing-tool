@@ -1,5 +1,10 @@
 # Dashboard summary controls — 17 October 2026
 
+> Release update: app and required Firestore rules published on 17 October 2026.
+> See [combined release evidence](DASHBOARD-PRODUCT-DESIGN-RELEASE-2026-10-17.md).
+> The local-only statements below describe the implementation review stage.
+> Draft project import remains unapproved and has not occurred.
+
 Local implementation only. Branch `codex/dashboard-summary-controls` starts from
 upstream main `5f5c2294`. No push, deployment, rules change or live customer update.
 The dirty primary checkout and separate Product Design Projects work are untouched.

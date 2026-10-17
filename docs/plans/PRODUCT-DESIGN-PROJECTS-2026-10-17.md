@@ -1,5 +1,10 @@
 # Product Design Projects — local implementation for review
 
+> Release update: app and required Firestore rules published on 17 October 2026.
+> See [combined release evidence](DASHBOARD-PRODUCT-DESIGN-RELEASE-2026-10-17.md).
+> The local-only statements below describe the implementation review stage.
+> Draft project import remains unapproved and has not occurred.
+
 **Not deployed. No live project records/imports, rules deployment, app deployment, publication or new MCP.** Work is isolated on `codex/product-design-projects`; the original dirty checkout is untouched.
 
 ## Operator workflow
