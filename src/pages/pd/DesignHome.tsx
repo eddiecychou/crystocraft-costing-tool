@@ -11,7 +11,8 @@ export default function DesignHome() {
         live Operation Center records — manage those in their own sections.
       </p>
       <div className="flex flex-wrap gap-4">
-        <Link to="/design/products" className="btn btn-primary">Products</Link>
+        <Link to="/design/projects" className="btn btn-primary">Projects</Link>
+        <Link to="/design/products" className="btn btn-secondary">Gallery &amp; design sources</Link>
         <Link to="/design/templates" className="btn btn-secondary">Templates</Link>
         <Link to="/design/generations" className="btn btn-secondary">Generations</Link>
       </div>

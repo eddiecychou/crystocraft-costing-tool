@@ -1034,6 +1034,69 @@ service cloud.firestore {
     // pd_customer_brands is genuinely new data this repo doesn't have (a
     // customer's Visual Tokens for image generation), keyed by the real
     // customer's own id. -----
+    // Private design-work register. Links never grant writes to their targets.
+    // Root fields are bounded; every revision requires its immutable actor-stamped
+    // history event in the same atomic write. No physical deletion in v1.
+    function pdProjectId(v) { return v is string && v.matches('^[A-Za-z0-9_-]{1,128}$'); }
+    function pdText(v, max) { return v is string && v.size() <= max; }
+    function pdHttps(v) { return v is string && v.size() <= 2000 && v.matches('https://[^/\\s<>@?#]+([/?#][^\\s<>]*)?'); }
+    function pdImage(v) {
+      return v == '' || (pdHttps(v) && v.matches('https://(firebasestorage[.]googleapis[.]com|storage[.]googleapis[.]com|portal[.]crystocraft[.]com|www[.]crystocraft[.]com|crystocraft[.]com)/.*'));
+    }
+    function pdProjectLink(l) {
+      let prefix = {'customer':'/customers/','supplier':'/suppliers/','corp_product':'/products/','range_product':'/range/','concept':'/design/templates/'}.get(l.type,'');
+      return l is map && l.keys().hasOnly(['type','label','recordId','url']) && l.keys().size()==4
+        && pdText(l.label,160) && (
+          (prefix != '' && pdProjectId(l.recordId) && l.url == prefix + l.recordId)
+          || (l.type in ['repo','reference'] && l.recordId == '' && pdHttps(l.url)));
+    }
+    function pdProjectLinks(a) {
+      return a is list && a.size() <= 4
+        && (a.size()<1 || pdProjectLink(a[0])) && (a.size()<2 || pdProjectLink(a[1]))
+        && (a.size()<3 || pdProjectLink(a[2])) && (a.size()<4 || pdProjectLink(a[3]));
+    }
+    function validPdProject(d) {
+      return d.keys().hasAll(['title','customerId','customerLabel','internalGroup','projectType','status','brief','currentState','nextAction','waitingOn','leadImageUrl','links','archived','revision','createdAt','created_by','updatedAt','updated_by','eventId'])
+        && d.keys().hasOnly(['title','customerId','customerLabel','internalGroup','projectType','status','brief','currentState','nextAction','waitingOn','leadImageUrl','links','archived','revision','createdAt','created_by','updatedAt','updated_by','eventId'])
+        && pdText(d.title,160) && d.title.size()>0 && pdText(d.customerLabel,200) && pdText(d.internalGroup,120)
+        && ((d.customerId == null && d.customerLabel == '') || (pdProjectId(d.customerId) && d.internalGroup == ''))
+        && pdText(d.projectType,80) && d.status in ['Idea','In design','Awaiting feedback','Sourcing / costing','Ready for handoff','On hold','Completed']
+        && pdText(d.brief,2000) && pdText(d.currentState,1200) && pdText(d.nextAction,600) && pdText(d.waitingOn,300)
+        && pdImage(d.leadImageUrl) && pdProjectLinks(d.links) && d.archived is bool
+        && d.revision is int && d.revision>0 && d.createdAt is timestamp && d.created_by is string
+        && d.updatedAt == request.time && d.updated_by == request.auth.uid && pdProjectId(d.eventId);
+    }
+    function pdProjectReceipt(id,d,previous,kind) {
+      let event = getAfter(/databases/$(database)/documents/pd_projects/$(id)/updates/$(d.eventId)).data;
+      return event.project == d && event.previous == previous && event.kind in kind;
+    }
+    match /pd_projects/{id} {
+      allow read: if can('product_design');
+      allow create: if can('product_design') && pdProjectId(id) && validPdProject(request.resource.data)
+        && request.resource.data.revision == 1 && request.resource.data.createdAt == request.time
+        && request.resource.data.created_by == request.auth.uid
+        && pdProjectReceipt(id,request.resource.data,{},['create']);
+      allow update: if can('product_design') && validPdProject(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.created_by == resource.data.created_by
+        && request.resource.data.revision == resource.data.revision+1 && request.resource.data.eventId != resource.data.eventId
+        && pdProjectReceipt(id,request.resource.data,resource.data,['edit','note']);
+      allow delete: if false;
+      match /updates/{eventId} {
+        allow read: if can('product_design');
+        allow create: if can('product_design') && pdProjectId(eventId)
+          && request.resource.data.keys().hasAll(['kind','note','actor','actorLabel','at','revision','previous','project'])
+          && request.resource.data.keys().hasOnly(['kind','note','actor','actorLabel','at','revision','previous','project'])
+          && request.resource.data.actor == request.auth.uid && request.resource.data.actorLabel == request.auth.token.get('email',request.auth.uid) && request.resource.data.at == request.time
+          && request.resource.data.kind in ['create','edit','note']
+          && request.resource.data.project.updatedAt == request.time && request.resource.data.project.updated_by == request.auth.uid
+          && request.resource.data.previous == (exists(/databases/$(database)/documents/pd_projects/$(id)) ? get(/databases/$(database)/documents/pd_projects/$(id)).data : {})
+          && pdText(request.resource.data.note,2000)
+          && request.resource.data.project == getAfter(/databases/$(database)/documents/pd_projects/$(id)).data
+          && request.resource.data.project.eventId == eventId && request.resource.data.revision == request.resource.data.project.revision
+          && (request.resource.data.kind != 'note' || (request.resource.data.note.size()>0 && request.resource.data.project.diff(request.resource.data.previous).affectedKeys().hasOnly(['revision','updatedAt','updated_by','eventId'])));
+        allow update,delete: if false;
+      }
+    }
     match /pd_products/{id} {
       allow read, write: if can('product_design');
     }

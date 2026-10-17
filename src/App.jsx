@@ -90,6 +90,8 @@ const ProductionDashboard = lazy(() => import('./pages/ProductionDashboard'))
 // under /design/* to avoid colliding with this app's own /products,
 // /customers, /suppliers, /templates routes. All gated on product_design.
 const DesignHome = lazy(() => import('./pages/pd/DesignHome'))
+const PdProjects = lazy(() => import('./pages/pd/Projects'))
+const PdProjectDetail = lazy(() => import('./pages/pd/Projects').then(m=>({default:m.DesignProjectDetail})))
 const PdProducts = lazy(() => import('./pages/pd/Products'))
 const PdProductNew = lazy(() => import('./pages/pd/ProductNew'))
 const PdProductDetail = lazy(() => import('./pages/pd/ProductDetail'))
@@ -335,7 +337,11 @@ function AdminApp({ user, profile, role }) {
                 <Route path="/import-data" element={<Gate module="settings"><ImportData /></Gate>} />
                 {/* Product Design (V8.16) — /design/* namespace. Specific
                     routes before the :id ones so RR matches new/edit first. */}
-                <Route path="/design" element={<Gate module="product_design"><DesignHome /></Gate>} />
+                <Route path="/design" element={<Gate module="product_design"><Navigate to="/design/projects" replace /></Gate>} />
+                <Route path="/design/tools" element={<Gate module="product_design"><DesignHome /></Gate>} />
+                <Route path="/design/projects" element={<Gate module="product_design"><PdProjects /></Gate>} />
+                <Route path="/design/projects/new" element={<Gate module="product_design"><PdProjectDetail /></Gate>} />
+                <Route path="/design/projects/:id" element={<Gate module="product_design"><PdProjectDetail /></Gate>} />
                 <Route path="/design/products" element={<Gate module="product_design"><PdProducts /></Gate>} />
                 <Route path="/design/products/new" element={<Gate module="product_design"><PdProductNew /></Gate>} />
                 <Route path="/design/products/:id" element={<Gate module="product_design"><PdProductDetail /></Gate>} />

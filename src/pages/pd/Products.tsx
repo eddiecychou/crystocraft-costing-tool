@@ -111,7 +111,7 @@ export default function ProductsPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl">Product Design</h1>
+        <div><h1 className="text-2xl">Gallery &amp; design sources</h1><Link to="/design/projects" className="text-sm text-brand-600 underline">Back to projects</Link></div>
         {products && products.length > 0 && (
           <Link to="/design/products/new" className="btn btn-primary">New Product</Link>
         )}

@@ -196,3 +196,8 @@ Backend-only writes: `range_upload_controls/service` (separate capability/window
 ## Customer merge audit and locks
 
 `customer_merges/{sourceId}` + `snapshots`, `history`, `entries`: server-only lease, pre-merge customer snapshots, unmodified original history and fingerprint/destination receipts. No client grant. `customers/{id}.customer_merge_lock` is server-owned; clients may read but not forge/clear it or mutate locked workspaces. Either customer may survive a merge.
+
+
+## pd_projects — local candidate, not deployed
+
+Private Product Design project register and `/updates/{eventId}` immutable revision history. Existing `product_design` capability only; no customer/anonymous/unrelated-staff/MCP grant. Root create/update must atomically append actor-stamped snapshots; bounded optional fields and four typed references; creator immutable, revision checked. Queries list roots and page history ordered by revision descending (50 per page). No delete, importer, product/customer/price/gallery side effect. Owner: `src/domain/pdProjects.js`. See `../plans/PRODUCT-DESIGN-PROJECTS-2026-10-17.md`.

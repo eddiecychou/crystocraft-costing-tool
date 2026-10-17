@@ -1,0 +1,87 @@
+{
+  "status": "DRAFT_ONLY_NOT_IMPORTED",
+  "preparedOn": "2026-10-17",
+  "reviewRequired": "Confirm ownership, design stage, next action and current linked records before any live import. Repository outcomes are evidence, not live operational truth. This file is not loaded by the app and is not an import command.",
+  "projects": [
+    {
+      "reviewKey": "bmw-vip-gifts",
+      "sourceUpdated": "2026-10-08",
+      "confirmBeforeImport": ["Is the crystal wallet still the lead route?", "Confirm customer identity and current recipient tier, quantity, budget and deadline."],
+      "proposedRecord": {
+        "title": "BMW VIP gifts — crystal wallet design",
+        "customerId": "WfSo1i560L4wRsj9vyj9",
+        "customerLabel": "BMW Concessionaires",
+        "internalGroup": "",
+        "projectType": "Customer gift development",
+        "status": "In design",
+        "brief": "Rework the Kinetic Facet direction for the Fine Rock wallet underlay without changing the intended geometry.",
+        "currentState": "The 8 October outcome records a lead wallet concept, but its artwork has not passed the 1.5 mm crystal-layer legibility check. This is a proposed starting state, not a new approval.",
+        "nextAction": "Confirm the route is still current, then simplify the underlay and test it at real panel scale before compositing approved branding.",
+        "waitingOn": "Owner confirmation of the current brief and priority",
+        "leadImageUrl": "",
+        "links": [{"type":"repo","label":"BMW outcome and evidence","recordId":"","url":"https://github.com/eddiecychou/product-design/blob/main/projects/2026-10-bmw-vip-gifts/99-outcome.md"}],
+        "archived": false
+      }
+    },
+    {
+      "reviewKey": "b0016-mezuzah",
+      "sourceUpdated": "2026-10-15",
+      "confirmBeforeImport": ["Should this project be internal Crystocraft Range or assigned to AIA?", "Recheck the existing B0016 family; its detailed outcome supersedes the registry row and records visibility/BOM/finish corrections. Do not create a duplicate or restore older BOM links.", "Confirm the actual current design and costing stage; no publication or pricing permission is implied."],
+      "proposedRecord": {
+        "title": "B0016 mezuzah — existing Range family",
+        "customerId": null,
+        "customerLabel": "",
+        "internalGroup": "Crystocraft Range",
+        "projectType": "Range development",
+        "status": "Sourcing / costing",
+        "brief": "Continue the existing B0016 family. Treat later finish, colour-chip and critical-BOM corrections as evidence to verify, not as a new create instruction.",
+        "currentState": "The 15 October outcome records an existing Range family and later corrections. Commercial, visibility and production details require a fresh read before any handoff; the registry's older create-blocked state is stale.",
+        "nextAction": "Confirm ownership, then read back the existing family and resolve production/specification gaps without changing catalogue state.",
+        "waitingOn": "Owner project ownership decision and supplier specification confirmations",
+        "leadImageUrl": "",
+        "links": [{"type":"range_product","label":"Existing B0016 record — verify current state","recordId":"mcp_range_70a2cc0a0ba82d0e75206c989d28800e","url":"/range/mcp_range_70a2cc0a0ba82d0e75206c989d28800e"},{"type":"repo","label":"Latest detailed mezuzah outcome","recordId":"","url":"https://github.com/eddiecychou/product-design/blob/main/projects/2026-10-aia-crystal-fabric-mezuzah/99-outcome.md"}],
+        "archived": false
+      }
+    },
+    {
+      "reviewKey": "westk-pin",
+      "sourceUpdated": "2026-10-08",
+      "confirmBeforeImport": ["Confirm whether customer approval has arrived since the outcome was written.", "Confirm current sampling/quotation priority and customer link."],
+      "proposedRecord": {
+        "title": "WestK — silver crystal pin",
+        "customerId": "6yKENXdmWE2AOdfShlR6",
+        "customerLabel": "WestK 西九龍文化中心",
+        "internalGroup": "",
+        "projectType": "Customer pin design",
+        "status": "Awaiting feedback",
+        "brief": "Owner-finished silver double-pin artwork with Aquamarine 202 and English-only anniversary wording.",
+        "currentState": "The 8 October outcome records completed owner artwork. It does not establish customer approval, a confirmed order or final production specifications.",
+        "nextAction": "Confirm the latest customer feedback, then check physical crystal swatches and plating before sampling or requoting.",
+        "waitingOn": "Customer feedback / supplier feasibility confirmation — verify current position",
+        "leadImageUrl": "",
+        "links": [{"type":"repo","label":"WestK outcome and final-artwork reference","recordId":"","url":"https://github.com/eddiecychou/product-design/blob/main/projects/2026-10-westk-silver-crystal-pin/99-outcome.md"}],
+        "archived": false
+      }
+    },
+    {
+      "reviewKey": "lasalle-luggage-belt",
+      "sourceUpdated": "2026-10-09",
+      "confirmBeforeImport": ["Confirm whether the v5 direction has already been selected or revised.", "Keep belt and towel as separate deliverables under the same customer; confirm current priority."],
+      "proposedRecord": {
+        "title": "La Salle — luggage belt artwork",
+        "customerId": "DRqtVBnLhTKVyS5fjOZi",
+        "customerLabel": "La Salle Primary School PTA",
+        "internalGroup": "",
+        "projectType": "Customer programme / luggage belt",
+        "status": "In design",
+        "brief": "Text-free purple/red abstract motion on the locked 50 mm strap form; production repeat remains a separate handoff.",
+        "currentState": "The 9 October outcome contains a v5 customer-review mock-up and describes it as direction artwork, not production-ready repeat artwork. Its earlier next-action text also says to create v5, so the source itself needs reconciliation.",
+        "nextAction": "Confirm the latest selected direction; if selected, reconstruct deterministic supplier artwork rather than reusing generated pixels.",
+        "waitingOn": "Owner confirmation of the selected revision and current priority",
+        "leadImageUrl": "",
+        "links": [{"type":"repo","label":"La Salle belt outcome and revision evidence","recordId":"","url":"https://github.com/eddiecychou/product-design/blob/main/projects/2026-10-lasalle-luggage-belt/99-outcome.md"}],
+        "archived": false
+      }
+    }
+  ]
+}

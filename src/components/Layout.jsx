@@ -30,7 +30,7 @@ const nav = [
   { to: '/range',      label: 'Crystocraft Range',short: 'Range', Icon: Gem, primary: true, module: 'figurine' },
   { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true, module: 'products' },
   { to: '/swatch-library', label: 'Swatch Library', short: 'Swatches', Icon: Sparkles, module: 'swatch' },
-  { to: '/design/products', label: 'Product Design', short: 'Design', Icon: Palette, module: 'product_design' },
+  { to: '/design/projects', label: 'Product Design', short: 'Design', Icon: Palette, module: 'product_design' },
 
   { group: 'Sales' },
   { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true, module: 'quotes' },

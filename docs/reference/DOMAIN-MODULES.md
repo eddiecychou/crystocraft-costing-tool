@@ -187,3 +187,8 @@ copied" note above).
 ## `rangeUpload.js` — reusable Range planner (candidate)
 
 Pure `planRangeUpload`, `familyKey`, canonical SKU collision validation, stable variant identity, explicit critical references, allowlisted redacted family/component readback and needs-input/conflict reporting. No I/O; narrow field corrections only. Node transaction/approval boundary is `netlify/functions/lib/rangeUploadService.js`; normal UI reservations are `src/rangePersistence.js`. [Operator guide](../../mcp/range/README.md).
+
+
+## pdProjects.js — local candidate, not deployed
+
+`listDesignProjects`, `getDesignProject`, `designProjectHistory`, `saveDesignProject`: private project register; atomic root/history revisions with stale-write protection and idempotent event IDs. Writes only `pd_projects`. Pure validation, waiting/group/search and agent handoff parsing: `src/pdProjects.js`. No imports or deployment authorised.

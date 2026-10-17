@@ -326,6 +326,9 @@ Saved catalogue filters use `src/hooks/useCatalogueFilter.js` + `src/catalogueFi
   **Product Design, below** — see that entry for where it actually lives now.
 
 ### Product Design — brand-aware image-prompt workbench (V8.16)
+
+**Local Projects overview candidate (17 Oct, not deployed):** `/design/projects` groups design deliverables by customer/internal range, with derived waiting views, reviewable agent updates and immutable private `pd_projects` history. Existing gallery/JSON tools remain at their routes. No data migration, new MCP or catalogue/customer side effects. Read [operator/review plan](../plans/PRODUCT-DESIGN-PROJECTS-2026-10-17.md) and its draft-only starting list before any import or release.
+
 - **History:** started as this repo's own `Product Development/` folder, was
   split out to a standalone Next.js repo (`~/Developer/Product Design`,
   2026-09-12), then **folded back into this repo** under `/design/*`
