@@ -67,3 +67,15 @@ The server now offers deterministic evidence passage IDs and copies the selected
 **Transaction completed** appears on Dashboard and customer Pipeline panels. It opens an inactive-position review explaining that every buying request must be resolved and separate repeat requests keep the customer active. Cancel writes nothing; only **Confirm closure** writes the audited manual decision. Orders, invoices, tasks, notes and interactions are unchanged. No live closures/approvals are part of this repair.
 
 Verification/release evidence to be recorded after candidate and production checks.
+
+### Repair release verification — PASS
+
+Owner explicitly approved production deployment on 17 October. Application commit `2242d80fb1a3af72daa96bf60746e9c65573f0ad` is deployed on production `6ad301c8ac19256dc2ba7894`, published 2026-10-17 05:05:07 UTC / 16:05:07 AEDT. Production bundle `/assets/index-CLB16G3A.js`; sidebar V8.18 / 17 Oct 16:04. Candidate `6ad2fbd395005964a3f5fd0a` served `/assets/index-CBjkX6rK.js`.
+
+- 480 prebuild tests/checks (252 Node tests + 228 standalone checks), production build, 11 Firebase configuration tests, no-undef lint with inline plugin directives disabled, diff checks: PASS. Focused Pipeline suite: 25 tests. No Firestore/Storage rules changed or deployed.
+- GitHub Actions: branch `39003488641` and main `39004901141`, both completed successfully for the application commit.
+- Candidate AND production: fresh real-page `claude-qa@crystocraft.com` and approved `customer-qa@crystocraft.com` sign-ins PASS. Correct routing/data/access separation, refreshed sessions, 295 customer designs, no runtime errors. Customer internal `/dashboard` navigation returns to `/shop` with no Pipeline controls. Admin completion review opened and cancelled only; no live closure/approval. QA sessions signed out; owner's Chrome session preserved.
+- Both deployed URLs passed public Firebase configuration probes. Fictional-input Pipeline endpoint probes returned admin 200 with the unresolved repeat request proposed active, anonymous 401 and customer 403. Summary endpoint likewise admin 200, anonymous 401, customer 403. No probe business writes.
+- Owner-authorized production Dashboard run used the already-saved 90-day summaries and completed successfully: **3 additional suggestions**, **26 awaiting review**. A read-only before/after comparison of all 386 customer confirmed status/detail values returned identical. Three existing human-confirmed active customers remain unchanged. No suggestions approved, dismissed or closed by this release operation; tasks, orders and interactions untouched.
+- Screenshots: task evidence directory `customer-pipeline-2026-10-17/{evidence-candidate-admin,evidence-candidate-customer,evidence-production-admin,evidence-production-customer,transaction-completed-review,pipeline-evidence-fix-complete}.png`.
+- Original dirty checkout porcelain fingerprint still `fca5caf4923d0a7794ceaf571996019e4fea9602f75851e7f413dad1240bf846`. Documentation follow-up uses `[skip netlify]` to preserve the verified application build.
