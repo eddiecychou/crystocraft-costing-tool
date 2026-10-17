@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:product-search": "node --test qa/catalogue-search.test.mjs qa/quote-product-search.test.mjs qa/range-quote.test.mjs qa/catalogue-filter.test.mjs",
-    "prebuild": "npm run test:design-projects && npm run test:customer-workspace && npm run test:product-search && npm run test:quote-pdf && npm run test:quote-excel && npm run test:invoice-units && npm run test:packing-po && npm run test:ai-writer && npm run test:catalogue-cover && npm run test:seo-control-plane && node --test qa/range-upload.test.mjs qa/range-quick-entry.test.mjs",
+    "prebuild": "npm run test:oc-time && npm run test:design-projects && npm run test:customer-workspace && npm run test:product-search && npm run test:quote-pdf && npm run test:quote-excel && npm run test:invoice-units && npm run test:packing-po && npm run test:ai-writer && npm run test:catalogue-cover && npm run test:seo-control-plane && node --test qa/range-upload.test.mjs qa/range-quick-entry.test.mjs",
     "test:quote-pdf": "node --test qa/quote-pdf-units.test.mjs",
     "test:quote-excel": "node --test qa/quote-excel-units.test.mjs",
     "test:invoice-units": "node --test qa/invoice-units.test.mjs",
@@ -19,7 +19,8 @@
     "test:range-mcp": "node --test qa/range-upload.test.mjs qa/range-quick-entry.test.mjs && npm test --prefix mcp/range && npm test --prefix mcp/figurine-range",
     "test:customer-workspace": "node --test qa/local-day.test.mjs qa/customer-workspace.test.mjs qa/customer-merge.test.mjs qa/customer-pipeline.test.mjs qa/customer-summary.test.mjs",
     "test:design-projects": "node --test qa/pd-projects.test.mjs",
-    "test:workspace-sync": "node --test qa/customer-workspace-sync-emulator.mjs && node qa/customer-workspace-followups-timezones.mjs"
+    "test:workspace-sync": "node --test qa/customer-workspace-sync-emulator.mjs && node qa/customer-workspace-followups-timezones.mjs",
+    "test:oc-time": "node --test qa/oc-time-audit.test.mjs && node qa/whatsapp-import.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

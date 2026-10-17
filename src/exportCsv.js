@@ -1,3 +1,4 @@
+import { ocDateOnly } from './ocTime.js'
 // Shared CSV export. Requested by Cindy (2026-07-21) for PO, UC registry and
 // invoices — she works in Excel and PBIS, so the file has to open cleanly there
 // rather than merely be valid CSV.
@@ -30,7 +31,7 @@ const cell = (v, text) => {
   if (v == null) return '""'
   // Firestore Timestamp → ISO date; Date → ISO date. Both read cleanly in Excel.
   if (typeof v?.toDate === 'function') v = v.toDate()
-  if (v instanceof Date) return `"${Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)}"`
+  if (v instanceof Date) return `"${Number.isNaN(v.getTime()) ? '' : ocDateOnly(v)}"`
   let s = String(v)
   s = deFormula(s)
   // ="..." keeps Excel from reinterpreting a code as a number or a date.
@@ -76,11 +77,8 @@ export function exportStem(base, { from, to, type } = {}) {
 // INCLUSIVE, which is what someone picking "1 Apr to 30 Jun" means.
 export function inDateRange(value, from, to) {
   if (!from && !to) return true
-  let d = value
-  if (typeof d?.toDate === 'function') d = d.toDate()
-  if (!(d instanceof Date)) d = d ? new Date(d) : null
-  if (!d || Number.isNaN(d.getTime())) return false   // undated rows fall out of any range
-  const day = d.toISOString().slice(0, 10)
+  const day = ocDateOnly(value)
+  if (!day) return false
   if (from && day < from) return false
   if (to && day > to) return false
   return true

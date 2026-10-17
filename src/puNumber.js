@@ -1,3 +1,4 @@
+import { ocYear } from './ocTime.js'
 import { doc, runTransaction } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -17,7 +18,7 @@ export const JES_SEED_BY_YEAR = {
   '26': 47,
 }
 
-export const puYear = (d = new Date()) => String(d.getFullYear() % 100).padStart(2, '0')
+export const puYear = (d = new Date()) => String(ocYear(d) % 100).padStart(2, '0')
 export const formatPuNo = (yy, n) => `PU${yy}${String(n).padStart(4, '0')}`
 
 // Allocate the next PU number for the current year, atomically. Returns e.g.

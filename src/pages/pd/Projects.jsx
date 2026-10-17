@@ -1,10 +1,11 @@
+import { formatOcDateTime } from '../../ocTime.js'
 import {useEffect,useState} from 'react'
 import {Link,useNavigate,useParams} from 'react-router-dom'
 import {useCan} from '../../access'
 import {listRealCustomers} from '../../lib/firestore/realCustomers'
 import {listDesignProjects,getDesignProject,designProjectHistory,saveDesignProject} from '../../domain/pdProjects'
 import {PROJECT_REFERENCE_LIMIT,PROJECT_STAGES,PROJECT_LINKS,LINK_LABELS,emptyProject,cleanProject,projectCustomer,projectWaiting,projectMatches,projectGroups,projectTime,parseProjectHandoff} from '../../pdProjects'
-const displayDate=v=>projectTime(v)?new Date(projectTime(v)).toLocaleString('en-GB'):'Not saved yet'
+const displayDate=v=>projectTime(v)?formatOcDateTime(projectTime(v), {}, 'en-GB'):'Not saved yet'
 const customerNames=rows=>Object.fromEntries(rows.map(c=>[c.id,c.company_name||c.contact_name||c.erp_code||'Unnamed customer']))
 function Tools(){return <div className="flex flex-wrap gap-4 items-start mb-4"><Link className="text-sm text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/projects">Projects</Link><details className="min-w-0"><summary className="text-sm text-brand-600 underline cursor-pointer min-h-[40px] flex items-center">Gallery &amp; design tools</summary><nav aria-label="Product Design tools" className="card p-3 flex flex-wrap gap-3 text-sm"><Link className="text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/products">Gallery &amp; design sources</Link><Link className="text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/templates">JSON templates</Link><Link className="text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/generations">Generations</Link><Link className="text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/tools">Workbench guide</Link></nav></details></div>}
 

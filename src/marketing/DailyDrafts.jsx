@@ -1,3 +1,4 @@
+import { formatOcDate } from '../ocTime.js'
 import { useEffect, useMemo, useState } from 'react'
 import {
   collection, collectionGroup, doc, getDoc, getDocs, query, where,
@@ -335,7 +336,7 @@ async function checkAlreadyContacted(topicLabel) {
     const ts = data.date?.toMillis?.() ?? 0
     const prev = map.get(customerId)
     if (!prev || ts > prev.ts) {
-      map.set(customerId, { ts, dateStr: data.date?.toDate?.().toLocaleDateString() || 'previously' })
+      map.set(customerId, { ts, dateStr: formatOcDate(data.date?.toDate?.(), {}) || 'previously' })
     }
   })
   return map

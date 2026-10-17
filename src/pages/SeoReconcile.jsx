@@ -1,3 +1,4 @@
+import { formatOcDateTime, formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -10,13 +11,13 @@ import { GitCompare, AlertTriangle, Check, Download, ExternalLink } from 'lucide
 // anything drifted since T?") or an executed batch ("did our approved
 // changes land and stay?"). Same shape as WooStockReconcile.jsx.
 
-const fmtTs = (d) => (d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—')
+const fmtTs = (d) => (d ? formatOcDateTime(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }, 'en-GB') : '—')
 const fmtWhen = (d) => {
   if (!d) return ''
   const m = Math.round((Date.now() - d.getTime()) / 60000)
   if (m < 60) return `${m} min ago`
   if (m < 1440) return `${Math.round(m / 60)} h ago`
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return formatOcDate(d, { day: 'numeric', month: 'short' }, 'en-GB')
 }
 const key = (r) => `${r.kind}:${r.id}`
 

@@ -1,3 +1,4 @@
+import { ocDateOnly } from './ocTime.js'
 // Create a figurine range product from the ERP item master, instead of
 // re-typing what JES already knows. Requested 2026-07-21 to save XiangXia the
 // re-keying of FM components that are already in the ERP's BOM.
@@ -177,7 +178,7 @@ export async function applyErpProduct(preview, { selectedCodes } = {}) {
       id = await saveComponent(null, {
         code: c.code,
         name: c.name || '',
-        notes: `Imported from the JES item master on ${new Date().toISOString().slice(0, 10)} (BOM of ${preview.base}).`,
+        notes: `Imported from the JES item master on ${ocDateOnly(new Date())} (BOM of ${preview.base}).`,
       })
       created += 1
     }
@@ -198,7 +199,7 @@ export async function applyErpProduct(preview, { selectedCodes } = {}) {
     // Records where it came from, so a half-finished import is identifiable
     // later rather than looking like someone's abandoned draft.
     source: 'erp_import',
-    erp_imported_at: new Date().toISOString().slice(0, 10),
+    erp_imported_at: ocDateOnly(new Date()),
     critical_components: refs,
     createdAt: serverTimestamp(),
   }, true)

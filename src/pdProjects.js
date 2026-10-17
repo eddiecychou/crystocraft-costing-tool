@@ -1,3 +1,4 @@
+import { asOcDate } from './ocTime.js'
 export const PROJECT_REFERENCE_LIMIT=4
 export const PROJECT_STAGES=['Idea','In design','Awaiting feedback','Sourcing / costing','Ready for handoff','On hold','Completed']
 export const PROJECT_LINKS={customer:'/customers/',supplier:'/suppliers/',corp_product:'/products/',range_product:'/range/',concept:'/design/templates/'}
@@ -42,7 +43,7 @@ export function projectMatches(p,view='Active',search='',customer='all',customer
  const included={All:true,Active:active,Waiting:projectWaiting(p),'On hold':!p.archived&&p.status==='On hold',Completed:!p.archived&&p.status==='Completed',Archived:p.archived}[view]
  return !!included&&(customer==='all'||(customer==='internal'?!p.customerId:p.customerId===customer))&&[p.title,projectCustomer(p,customers),p.currentState,p.nextAction,p.waitingOn,p.status].join(' ').toLowerCase().includes(search.trim().toLowerCase())
 }
-export function projectTime(value){return value?.toMillis?.()??(value?.seconds?value.seconds*1000:Date.parse(value)||0)}
+export function projectTime(value){return value?.toMillis?.()??(value?.seconds?value.seconds*1000:asOcDate(value).getTime()||0)}
 export function projectGroups(projects,customers={}){
  const groups=new Map()
  for(const p of [...projects].sort((a,b)=>projectTime(b.updatedAt)-projectTime(a.updatedAt)||a.id.localeCompare(b.id))){const key=p.customerId||'internal';if(!groups.has(key))groups.set(key,{key,label:p.customerId?projectCustomer(p,customers):'Internal projects',projects:[]});groups.get(key).projects.push(p)}

@@ -1,3 +1,4 @@
+import { formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -82,7 +83,7 @@ export default function Enquiries({ embedded = false }) {
 }
 
 function Card({ r, set, onEdit, onDelete }) {
-  const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : ''
+  const when = r.createdAt?.toDate ? formatOcDateTime(r.createdAt.toDate(), {}) : ''
   const st = STATUS[r.status || 'new']
   const cur = r.currency || r.base_currency || 'USD'
   const [exporting, setExporting] = useState(false)

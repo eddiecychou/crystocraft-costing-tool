@@ -1,8 +1,8 @@
+import { inOcLast30Days, formatOcDate, formatOcDateTime, OC_TIME_ZONE } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { collection, collectionGroup, query, onSnapshot, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
-import { OC_TIME_ZONE } from '../ocTime'
 import LoadingBar from '../components/LoadingBar'
 import CustomerWorkspace from '../components/CustomerWorkspace'
 import PipelinePanel from '../components/CustomerPipeline'
@@ -23,42 +23,8 @@ import {
   Store, ShoppingCart, Gift, Sparkles, Smartphone, X, ChevronUp, ShoppingBag, Mail,
 } from 'lucide-react'
 
-function fmtDate(ts) {
-  if (!ts) return '—'
-  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function isOverdue(ts) {
-  if (!ts) return false
-  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
-  return d < new Date(new Date().setHours(0, 0, 0, 0))
-}
-
-function isToday(ts) {
-  if (!ts) return false
-  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
-  const today = new Date()
-  return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()
-}
-
-function isWithinDays(ts, days) {
-  if (!ts) return false
-  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
-  const now = new Date()
-  const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
-  return d >= new Date(now.setHours(0, 0, 0, 0)) && d <= end
-}
-
-// Last-30-days window for an order_date stored as a 'YYYY-MM-DD' string.
-function isDateStrLast30Days(s) {
-  if (!s) return false
-  const d = new Date(s)
-  if (isNaN(d)) return false
-  const now = new Date()
-  const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-  return d >= start && d <= now
-}
+// Thirty Hong Kong calendar days, including today.
+const isDateStrLast30Days = s => inOcLast30Days(s)
 
 const CHANNEL_BADGE = {
   'Email':             'bg-purple-100 text-purple-700',
@@ -198,7 +164,7 @@ export default function Dashboard() {
   function customerWorkspace(c) { return <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
           digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink
           summaryDays={summaryPeriod} sourceLimited={digestByCustomer.get(c.id)?.sourceLimited}
-          generatedAt={weeklySummary?.generatedAt?.toDate?.().toLocaleString('en-GB')} /> }
+          generatedAt={formatOcDateTime(weeklySummary?.generatedAt?.toDate?.(), {}, 'en-GB')} /> }
 
   const filterConfig = {
     quotes: { title:'In Production', empty:'No orders currently in production', items:inProductionOrders },
@@ -214,7 +180,7 @@ export default function Dashboard() {
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-xl md:text-2xl text-ink">Dashboard</h1>
-          <p className="text-sm text-ink-60 mt-0.5">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: OC_TIME_ZONE })} · Hong Kong time</p>
+          <p className="text-sm text-ink-60 mt-0.5">{formatOcDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: OC_TIME_ZONE }, 'en-GB')} · Hong Kong time</p>
         </div>
         <p className="text-xs text-ink-60 mt-1 max-w-40 text-right">Saved data updates automatically</p>
       </div>

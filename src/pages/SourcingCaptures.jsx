@@ -1,3 +1,4 @@
+import { formatOcDateTime } from '../ocTime.js'
 import { useEffect, useState } from 'react'
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { Link, useParams } from 'react-router-dom'
@@ -5,7 +6,7 @@ import { ExternalLink } from 'lucide-react'
 import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
 
-const formatDate = value => value?.toDate?.().toLocaleString() || 'Just captured'
+const formatDate = value => formatOcDateTime(value?.toDate?.(), {}) || 'Just captured'
 
 export default function SourcingCaptures() {
   const { id } = useParams(); const [captures, setCaptures] = useState([]); const [loading, setLoading] = useState(true)

@@ -1,3 +1,5 @@
+import { asOcDate } from '../ocTime.js'
+import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -17,13 +19,13 @@ const STATUS_STYLES = {
 }
 
 function quoteDate(q) {
-  if (q.quote_date) return new Date(q.quote_date)
+  if (q.quote_date) return asOcDate(q.quote_date)
   if (q.createdAt?.toDate) return q.createdAt.toDate()
   return new Date(0)
 }
 
 function formatDate(q) {
-  return quoteDate(q).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatOcDate(quoteDate(q), { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 function fmtAmount(q) {

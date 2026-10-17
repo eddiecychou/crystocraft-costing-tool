@@ -1,3 +1,4 @@
+import { ocYear } from './ocTime.js'
 // V8.1 email ingestion, Phase 2 — client for the two AI edge functions
 // CustomerDetail.jsx's Email Summary card and "Discover more" chat use.
 // Firestore reads (customers/{id}/email_threads) and the email_summary write
@@ -83,7 +84,7 @@ const RECENT_SHARE = 0.6 // rest goes to the oldest-on-file section
 function threadYear(t) {
   const d = t.date_range?.[1] || t.date_range?.[0]
   if (!d) return null
-  const y = new Date(d).getFullYear()
+  const y = ocYear(d)
   return Number.isNaN(y) ? null : y
 }
 

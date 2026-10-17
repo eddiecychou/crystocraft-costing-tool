@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDate } from '../ocTime.js'
 import { Document, Page, View, Text, Image, Font, StyleSheet } from '@react-pdf/renderer'
 import logoUrl from '../assets/logo.png'
 import QuestrialRegular from '../assets/fonts/Questrial-Regular.ttf'
@@ -47,7 +48,7 @@ const C = {
 }
 
 const fmtDate = d =>
-  (d ? new Date(d) : new Date()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  formatOcDate(d ? asOcDate(d) : new Date(), { day: 'numeric', month: 'long', year: 'numeric' }, 'en-GB')
 
 const s = StyleSheet.create({
   page: { paddingTop: 34, paddingBottom: 42, paddingHorizontal: 32, fontFamily: 'Questrial', color: C.black, fontSize: 9 },

@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDateTime } from '../ocTime.js'
 import { useEffect, useMemo, useState } from 'react'
 import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart, History, Warehouse, ImageOff, Download } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
@@ -632,9 +633,9 @@ function fmtSyncTime(v) {
   const iso = typeof v === 'string' && !v.includes('T') && !v.endsWith('Z')
     ? v.replace(' ', 'T')            // naive → parsed in the reader's own zone
     : v
-  const d = new Date(iso)
+  const d = asOcDate(iso)
   if (Number.isNaN(d.getTime())) return String(v).slice(0, 16)
-  return d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return formatOcDateTime(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 export default function ErpLookup() {

@@ -1,3 +1,4 @@
+import { asOcDate } from '../ocTime.js'
 import {
   collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp, serverTimestamp,
 } from 'firebase/firestore'
@@ -27,7 +28,7 @@ export async function addInteraction(collectionName, id, { description, channel,
   const clean = String(description || '').trim()
   if (!clean) throw new Error('A description is required.')
   await addDoc(collection(db, collectionName, id, 'enquiries'), {
-    date: date ? Timestamp.fromDate(new Date(date)) : Timestamp.now(),
+    date: date ? Timestamp.fromDate(asOcDate(date)) : Timestamp.now(),
     contact_id: null,
     description: clean,
     product_interest: productInterest ? [productInterest] : [],

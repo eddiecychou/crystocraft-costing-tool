@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -18,8 +19,8 @@ const STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
 
 function fmtDate(s) {
   if (!s) return ''
-  const d = new Date(s)
-  return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const d = asOcDate(s)
+  return isNaN(d) ? s : formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 // JES history for Purchase Orders — same pattern as Shipping.jsx's

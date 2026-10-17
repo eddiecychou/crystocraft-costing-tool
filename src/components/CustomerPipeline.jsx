@@ -1,3 +1,4 @@
+import { formatOcDateTime } from '../ocTime.js'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { emptyPipeline } from '../customerPipeline'
@@ -50,7 +51,7 @@ export function CustomerPipeline({ customer, showLink=false, save=savePipelineDe
       <div className="flex gap-2"><button className="btn-primary text-xs min-h-[40px]" disabled={busy}>{busy?'Saving…':editor.status==='active'?'Confirm active customer':'Confirm closure'}</button><button type="button" className="btn-secondary text-xs min-h-[40px]" disabled={busy} onClick={()=>setEditor(null)}>Cancel</button></div>
     </form>}
     {p.revision>0&&<button className="text-xs text-brand-600 underline min-h-[40px]" onClick={()=>setHistory(!history)}>{history?'Hide review record':'Show latest review record'}</button>}
-    {history&&<p className="text-xs text-ink-60">Revision {p.revision} · {p.last_action} · {p.updatedAt?.toDate?.().toLocaleString('en-GB') || 'Saving…'}. All previous decisions remain in the internal Pipeline history.</p>}
+    {history&&<p className="text-xs text-ink-60">Revision {p.revision} · {p.last_action} · {formatOcDateTime(p.updatedAt?.toDate?.(), {}, 'en-GB') || 'Saving…'}. All previous decisions remain in the internal Pipeline history.</p>}
   </section>
 }
 

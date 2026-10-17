@@ -1,3 +1,4 @@
+import { formatOcTime } from '../ocTime.js'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { collection, getDocs, doc, getDoc, query, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -698,7 +699,7 @@ export default function ProposalEditor({ customerId, customerName }) {
           </button>
         </div>
       </div>
-      {savedAt && <p className="text-2xs text-ink-60 mb-2">Saved {savedAt.toLocaleTimeString()}</p>}
+      {savedAt && <p className="text-2xs text-ink-60 mb-2">Saved {formatOcTime(savedAt, {})}</p>}
       {importing && (
         <ImportProposalModal customerId={customerId} currentStatus={proposal.status}
                               onClose={() => setImporting(false)}

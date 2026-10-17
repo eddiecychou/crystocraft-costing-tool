@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -7,8 +8,8 @@ import { Receipt, ChevronDown, ChevronUp } from 'lucide-react'
 
 const fmtDate = d => {
   if (!d) return '—'
-  const dt = new Date(d)
-  return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const dt = asOcDate(d)
+  return Number.isNaN(dt.getTime()) ? '—' : formatOcDate(dt, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 // "My Orders" — owner, 2026-08-07: "let customers be able to see their order

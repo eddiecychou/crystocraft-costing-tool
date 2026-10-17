@@ -1,3 +1,4 @@
+import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { pdf } from '@react-pdf/renderer'
@@ -321,7 +322,7 @@ export default function RangeCatalogueExport({ onClose }) {
         />,
       ).toBlob()
 
-      const stem = ['Crystocraft Range Catalogue', profile?.name || profile?.email, new Date().toISOString().slice(0, 10)]
+      const stem = ['Crystocraft Range Catalogue', profile?.name || profile?.email, ocDateOnly(new Date())]
         .filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g, '-')
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')

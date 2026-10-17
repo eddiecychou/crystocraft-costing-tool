@@ -1,3 +1,4 @@
+import { formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { colourScope, scopedVariants } from '../rangeBomScope'
 import { useParams, Link } from 'react-router-dom'
@@ -635,7 +636,7 @@ export default function RangeCosting() {
       <div className="card p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
         <div className="text-xs text-ink-60">
           {product.costing?.published_at
-            ? <span className="inline-flex items-center gap-1 text-green-600"><BadgeCheck size={14} /> Published {product.costing.published_at?.toDate?.().toLocaleString?.() || ''}</span>
+            ? <span className="inline-flex items-center gap-1 text-green-600"><BadgeCheck size={14} /> Published {formatOcDateTime(product.costing.published_at?.toDate?.(), {}) || ''}</span>
             : 'Not published yet.'}
         </div>
         <div className="flex items-center gap-2">

@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { erpLines } from '../erpApi'
 import { X, Database } from 'lucide-react'
@@ -23,8 +24,8 @@ const fmtMoney = (v) => {
 }
 const fmtDate = (d) => {
   if (!d) return '—'
-  const dt = new Date(d)
-  return isNaN(dt) ? d : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const dt = asOcDate(d)
+  return isNaN(dt) ? d : formatOcDate(dt, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 export default function ErpDocModal({ of, doc, onClose }) {

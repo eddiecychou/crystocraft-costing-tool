@@ -1,3 +1,4 @@
+import { ocYear } from './ocTime.js'
 import { doc, runTransaction } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -64,7 +65,7 @@ export const JES_SI_SEED_BY_YEAR = {
               // allocation path; corrected for the record.
 }
 
-export const soYear = (d = new Date()) => String(d.getFullYear() % 100).padStart(2, '0')
+export const soYear = (d = new Date()) => String(ocYear(d) % 100).padStart(2, '0')
 
 export const formatSoNo = (yy, n) => `SO${yy}${String(n).padStart(4, '0')}`
 export const formatSiNo = (yy, n) => `SI${yy}${String(n).padStart(4, '0')}`

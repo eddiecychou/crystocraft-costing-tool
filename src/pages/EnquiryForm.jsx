@@ -1,3 +1,4 @@
+import { asOcDate, ocDateOnly, formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useRef } from 'react'
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
@@ -11,13 +12,13 @@ import { quoteIsConfirmed } from '../quotes'
 const STATUSES  = ['Open', 'Quoted', 'Confirmed', 'Lost', 'On Hold']
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0]
+  return ocDateOnly(new Date())
 }
 
 function tsToDateStr(ts) {
   if (!ts) return ''
   const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
-  return d.toISOString().split('T')[0]
+  return ocDateOnly(d)
 }
 
 export default function EnquiryForm({ customerId, customerQuotes = [], enquiry = null, onSave, onClose }) {
@@ -132,13 +133,13 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
     setError('')
     try {
       const payload = {
-        date:             date ? Timestamp.fromDate(new Date(date)) : Timestamp.now(),
+        date:             date ? Timestamp.fromDate(asOcDate(date)) : Timestamp.now(),
         contact_id:       contactId || null,
         description:      description.trim(),
         product_interest: selectedProducts,
         channel,
         status,
-        follow_up_date:   followUpDate ? Timestamp.fromDate(new Date(followUpDate)) : null,
+        follow_up_date:   followUpDate ? Timestamp.fromDate(asOcDate(followUpDate)) : null,
         outcome_notes:    outcomeNotes.trim(),
         linked_quote_ids: linkedQuoteIds,
         updatedAt:        serverTimestamp(),
@@ -419,7 +420,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                       onChange={() => toggleQuote(q.id)}
                     />
                     <span>
-                      {q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {formatOcDate(q.createdAt?.toDate?.(), { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')}
                       {q.quote_currency ? ` · ${q.quote_currency}` : ''}
                       {' · '}<span className={`capitalize ${quoteIsConfirmed(q.status) ? 'text-green-600' : q.status === 'lost' ? 'text-red-500' : 'text-ink-60'}`}>{q.status || 'draft'}</span>
                     </span>

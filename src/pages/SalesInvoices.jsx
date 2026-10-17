@@ -1,3 +1,4 @@
+import { asOcDate, ocDateOnly, formatOcDate } from '../ocTime.js'
 import { useState, useMemo, useEffect } from 'react'
 import ExportFilterBar from '../components/ExportFilterBar'
 import { downloadCsv, exportStem, inDateRange } from '../exportCsv'
@@ -22,8 +23,8 @@ import ErpDocModal from '../components/ErpDocModal'
 
 const fmtDate = (d) => {
   if (!d) return '—'
-  const dt = new Date(d)
-  return isNaN(dt) ? d : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const dt = asOcDate(d)
+  return isNaN(dt) ? d : formatOcDate(dt, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 const fmtValue = (v) => {
   const n = Number(v)
@@ -133,7 +134,7 @@ export default function SalesInvoices() {
   async function setNoInvoice(o, reason) {
     await updateOrder(o.id, {
       no_invoice_reason: reason,
-      no_invoice_at: reason ? new Date().toISOString().slice(0, 10) : null,
+      no_invoice_at: reason ? ocDateOnly(new Date()) : null,
     })
   }
 

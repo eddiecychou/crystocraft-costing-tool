@@ -1,3 +1,4 @@
+import { formatOcDate } from '../ocTime.js'
 import { useState, useMemo, useEffect } from 'react'
 import { usePersistentState } from '../lib/usePersistentState'
 import { Link } from 'react-router-dom'
@@ -22,7 +23,7 @@ import WhatsAppArchiveInbox from './WhatsAppArchiveInbox'
 const WA_CHANNELS = CHANNELS.filter(c => c === 'WhatsApp Business' || c === 'Personal WhatsApp')
 
 function fmtDate(d) {
-  return d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+  return d ? formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB') : '—'
 }
 
 // Best-guess customer for a parsed contact name — company_name or any
@@ -800,7 +801,7 @@ export default function WhatsAppImport() {
         <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
         <h1 className="text-2xl text-ink mt-1">Import WhatsApp</h1>
         <p className="text-sm text-ink-60 mt-0.5">
-          Review ZIP files picked up from your Business and Personal archive folders, or upload a one-off export manually.
+          Review ZIP files picked up from your Business and Personal archive folders, or upload a one-off export manually. Chat export times are interpreted as Hong Kong time.
         </p>
       </div>
 

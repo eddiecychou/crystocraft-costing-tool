@@ -1,3 +1,4 @@
+import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -68,7 +69,7 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
     () => adjustReservedLine(inv, orderId, orderLabel, lineId, newQty),
     `Change the reserved quantity for ${code} to ${fmt(newQty)}? The difference is reserved or released on the ${inv.noun} ledger.`)
 
-  const dateStr = state.at?.toDate ? state.at.toDate().toLocaleDateString() : null
+  const dateStr = state.at?.toDate ? formatOcDate(state.at.toDate(), {}) : null
 
   return (
     <div className="card p-4">

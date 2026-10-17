@@ -1,3 +1,4 @@
+import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore'
@@ -17,7 +18,7 @@ export default function QuoteForm() {
   const [customerGroup, setCustomerGroup] = useState('b2b')
   const [customerSearch, setCustomerSearch] = useState('')
 
-  const todayISO = new Date().toISOString().split('T')[0]
+  const todayISO = ocDateOnly(new Date())
 
   const [form, setForm] = useState({
     client_name: '', contact_id: '', contact_name: '', contact_email: '',

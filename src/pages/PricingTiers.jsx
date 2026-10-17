@@ -1,3 +1,4 @@
+import { formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
@@ -402,7 +403,7 @@ export default function PricingTiers() {
             <p className="text-xs text-ink-60 mt-0.5">
               {!published ? 'Not published yet — customers see no corporate price until you publish.'
                 : stale ? 'Costs, tiers or markups changed since the last publish.'
-                : `Up to date · last published ${product.prices_published_at?.toDate?.().toLocaleString?.() || ''}`}
+                : `Up to date · last published ${formatOcDateTime(product.prices_published_at?.toDate?.(), {}) || ''}`}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

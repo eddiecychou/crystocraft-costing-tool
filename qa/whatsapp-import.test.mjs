@@ -74,8 +74,8 @@ const check = (name, cond, detail = '') => {
 // ── parser: 上午/下午 AM-PM and LTR-mark cleaning ───────────────────────────
 {
   const ampm = parseWhatsAppExport('[13/5/2024, 下午2:05:00] Annie Fan: afternoon msg\n[13/5/2024, 上午1:05:00] Annie Fan: morning msg')
-  check('下午 2:05 → 14:05', ampm[0].date.getHours() === 14, `got ${ampm[0].date.getHours()}`)
-  check('上午 1:05 → 01:05', ampm[1].date.getHours() === 1, `got ${ampm[1].date.getHours()}`)
+  check('下午 2:05 → 14:05', (ampm[0].date.getUTCHours()+8)%24 === 14, `got ${(ampm[0].date.getUTCHours()+8)%24}`)
+  check('上午 1:05 → 01:05', (ampm[1].date.getUTCHours()+8)%24 === 1, `got ${(ampm[1].date.getUTCHours()+8)%24}`)
 }
 {
   const msgs = parseWhatsAppExport('\u200E[13/5/2024, 10:00:00] Annie Fan: \u200EHi with marks\u200E')

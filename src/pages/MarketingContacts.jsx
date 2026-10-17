@@ -1,3 +1,4 @@
+import { asOcDate, ocDateOnly, formatOcDate } from '../ocTime.js'
 import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
@@ -22,7 +23,7 @@ import { buildMarketingTagContextRows, normalizeTagReviewDecision, proposedRevie
 
 function fmtIsoDate(iso) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatOcDate(iso, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 // Email threads (V8.9) — marketing_contacts/{id}/email_threads, written by
@@ -200,7 +201,7 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
           <span className="text-ink-60 font-normal">
             ({threads.length} chat{threads.length === 1 ? '' : 's'} imported
             {threads[0]?.date_range?.[1] && (
-              <> · latest {new Date(threads[0].date_range[1]).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</>
+              <> · latest {formatOcDate(threads[0].date_range[1], { year: 'numeric', month: 'short', day: 'numeric' })}</>
             )})
           </span>
         </span>
@@ -382,7 +383,7 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
       <div className="mb-1.5">
         {threads.length > 0 && (
           <p className="text-xs font-medium text-ink-60 mb-1">
-            Last pasted: {(threads[0].pasted_at?.toDate ? threads[0].pasted_at.toDate() : new Date(threads[0].pasted_at || Date.now())).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+            Last pasted: {formatOcDate(threads[0].pasted_at?.toDate ? threads[0].pasted_at.toDate() : new Date(threads[0].pasted_at || Date.now()), { year: 'numeric', month: 'short', day: 'numeric' })}
             {' — '}only copy what's newer than this next time.
           </p>
         )}
@@ -434,7 +435,7 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
           {threads.map(t => {
             const isOpen = expanded === t.id
             const d = t.pasted_at?.toDate ? t.pasted_at.toDate() : (t.pasted_at ? new Date(t.pasted_at) : null)
-            const dateLabel = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '(unknown date)'
+            const dateLabel = d ? formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB') : '(unknown date)'
             return (
               <div key={t.id} className="border border-warm-grey rounded-none">
                 <button
@@ -463,8 +464,8 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
 
 function fmtIsoOrTimestamp(d) {
   if (!d) return '—'
-  const dt = d.toDate ? d.toDate() : new Date(d)
-  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const dt = d.toDate ? d.toDate() : asOcDate(d)
+  return formatOcDate(dt, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 // CRM Interaction Log — quick "log a finding" (V8.9, owner's own request).
@@ -613,7 +614,7 @@ function exportCsv(rows) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `marketing_contacts_${new Date().toISOString().slice(0, 10)}.csv`
+  a.download = `marketing_contacts_${ocDateOnly(new Date())}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }

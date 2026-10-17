@@ -1,3 +1,4 @@
+import { ocDateOnly } from './ocTime.js'
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc,
@@ -324,7 +325,7 @@ export async function importStockList(rows, rangeProducts) {
   // call computes for the same item. stocktakeOp now takes the item's own next
   // seq explicitly, continuing that same per-item sequence, and the item update
   // below writes movement_seq back so postMovement picks up from the right place.
-  const importDate = new Date().toISOString().slice(0, 10)
+  const importDate = ocDateOnly(new Date())
   const stocktakeOp = (componentId, counted, prev, seq) => ({
     ref: doc(collection(db, 'range_components', componentId, 'movements')),
     data: {

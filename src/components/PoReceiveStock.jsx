@@ -1,3 +1,4 @@
+import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useCallback } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -64,7 +65,7 @@ export default function PoReceiveStock({ po }) {
     finally { setBusy(false) }
   }
 
-  const dateStr = state.at?.toDate ? state.at.toDate().toLocaleDateString() : null
+  const dateStr = state.at?.toDate ? formatOcDate(state.at.toDate(), {}) : null
 
   return (
     <div className="card p-5 mb-4">

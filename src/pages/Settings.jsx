@@ -1,3 +1,4 @@
+import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, writeBatch } from 'firebase/firestore'
@@ -503,7 +504,7 @@ function ExchangeRatesPanel() {
           </button>
           {lastSaved && (
             <p className="text-xs text-ink-60">
-              Last saved: {lastSaved.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              Last saved: {formatOcDate(lastSaved, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }, 'en-GB')}
             </p>
           )}
           {saveMsg && <p className={`text-xs ${saveMsg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{saveMsg}</p>}

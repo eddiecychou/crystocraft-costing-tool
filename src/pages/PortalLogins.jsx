@@ -1,3 +1,4 @@
+import { ocDaysSince, formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
@@ -25,7 +26,7 @@ const toDate = ts => ts?.toDate?.() || (ts instanceof Date ? ts : null)
 
 const fmtExact = ts => {
   const d = toDate(ts)
-  return d ? d.toLocaleString(undefined, {
+  return d ? formatOcDateTime(d, {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   }) : 'never signed in'
 }
@@ -34,7 +35,7 @@ const fmtExact = ts => {
 const fmtAgo = ts => {
   const d = toDate(ts)
   if (!d) return 'never'
-  const days = Math.floor((Date.now() - d.getTime()) / 86400000)
+  const days = ocDaysSince(d)
   if (days <= 0) return 'today'
   if (days === 1) return 'yesterday'
   if (days < 30) return `${days} days ago`
@@ -48,7 +49,7 @@ const fmtAgo = ts => {
 // useful question is "active / gone quiet / never", not an exact age.
 const daysSince = ts => {
   const d = toDate(ts)
-  return d ? Math.floor((Date.now() - d.getTime()) / 86400000) : null
+  return d ? ocDaysSince(d) : null
 }
 
 const STATUS_STYLE = {

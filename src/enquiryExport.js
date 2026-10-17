@@ -1,3 +1,4 @@
+import { ocDateOnly, formatOcDateTime } from './ocTime.js'
 // Excel export for a single customer enquiry — replaces the old flat CSV.
 //
 // Two sheets, matching the format CuiLing asked for (2026-08):
@@ -71,7 +72,7 @@ export async function exportEnquiryExcel(r) {
   const { default: ExcelJS } = await import('exceljs')
 
   const cur  = r.currency || r.base_currency || 'USD'
-  const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : ''
+  const when = r.createdAt?.toDate ? formatOcDateTime(r.createdAt.toDate(), {}) : ''
   const items = r.items || []
 
   const wb = new ExcelJS.Workbook()
@@ -230,7 +231,7 @@ export async function exportEnquiryExcel(r) {
   const buffer = await wb.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const safe = (r.company_name || r.email || 'enquiry').replace(/[/\\?%*:|"<>]/g, '-').trim()
-  const datePart = r.createdAt?.toDate ? r.createdAt.toDate().toISOString().slice(0, 10) : ''
+  const datePart = r.createdAt?.toDate ? ocDateOnly(r.createdAt) : ''
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
   a.download = `Enquiry - ${safe}${datePart ? ` - ${datePart}` : ''}.xlsx`

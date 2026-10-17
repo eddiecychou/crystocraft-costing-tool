@@ -1,3 +1,4 @@
+import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp, Star, CheckCircle2 } from 'lucide-react'
 import {
@@ -27,7 +28,7 @@ function blankQuote(orderId, scenario) {
     },
     breakdown: { freight: '', destination_charges: '', customs: '', duties_included: false },
     transit_days: '',
-    quote_date: new Date().toISOString().slice(0, 10),
+    quote_date: ocDateOnly(new Date()),
     source: 'manual',
     decision_notes: '',
     is_chosen: false,

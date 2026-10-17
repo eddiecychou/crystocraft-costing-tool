@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { downloadInvoiceExcel, orderInvoiceLines } from '../invoiceExcel'
@@ -88,8 +89,8 @@ export default function CustomerInvoicePrint({ profile }) {
   const money = v => `${cur} ${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const fmtDate = s => {
     if (!s) return '—'
-    const d = new Date(s)
-    return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const d = asOcDate(s)
+    return isNaN(d) ? s : formatOcDate(d, { day: '2-digit', month: 'short', year: 'numeric' }, 'en-GB')
   }
 
   const lineSum = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0)

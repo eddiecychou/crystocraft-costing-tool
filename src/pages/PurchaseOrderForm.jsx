@@ -1,3 +1,4 @@
+import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, getDocs, query, orderBy, serverTimestamp } from 'firebase/firestore'
@@ -23,7 +24,7 @@ async function toBase64(blob) {
   })
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => ocDateOnly(new Date())
 
 // Snapshot the supplier fields we print, so the PO is stable if the supplier is
 // later edited or deleted.

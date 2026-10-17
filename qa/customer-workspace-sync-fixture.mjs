@@ -3,7 +3,7 @@
 import {readFile} from 'node:fs/promises'
 import {resolve,dirname} from 'node:path'
 export async function workspaceSyncPlugin(){
- const stubs=new Map(),keep=new Set(['../components/CustomerWorkspace','../hooks/useSummaryPeriod','../hooks/useOcToday','../customerSummary','../domain/customerWorkItems','../customerWorkItems','../ocTime','../components/LoadingBar'])
+ const stubs=new Map(),keep=new Set(['../components/CustomerWorkspace','../hooks/useSummaryPeriod','../hooks/useOcToday','../customerSummary','../domain/customerWorkItems','../customerWorkItems','../ocTime','../ocTime.js','../components/LoadingBar'])
  const special={
   normalizeCustomer:'c=>({...c,contacts:c.contacts||[],tags:c.tags||[]})',RETAIL_TAG:'"Retail Customer"',
   useCan:'()=>()=>false',useRole:'()=>"admin"',useCustomerAssets:'()=>({assets:[]})',

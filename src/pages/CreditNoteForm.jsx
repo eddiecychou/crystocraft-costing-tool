@@ -1,3 +1,4 @@
+import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
@@ -13,16 +14,16 @@ import {
 import { fmtMoney } from '../currency'
 import { Trash2, Plus, Lock } from 'lucide-react'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => ocDateOnly(new Date())
 
-const blankHeader = {
+const blankHeader = () => ({
   status: 'draft', record_date: today(), accounting_date: '',
   customer_id: '', customer_name: '', channel: '',
   order_id: '', original_si_no: '', original_uc_no: '', marketplace_ref: '',
   currency: 'USD', disposition: '', reason: '', remarks: '',
   accounting_amount: '', adjustment_reason: '',
   cn_no: '', uc_id: null,
-}
+})
 
 // Credit Note editor — Sales Return / Credit Note Phase C. One combined
 // entity: the goods-return details AND the accounting document, created
@@ -59,7 +60,7 @@ export default function CreditNoteForm() {
     getDoc(doc(db, 'credit_notes', id)).then(snap => {
       if (snap.exists()) {
         const d = snap.data()
-        setHeader({ ...blankHeader, ...d })
+        setHeader({ ...blankHeader(), ...d })
         setLines((d.lines?.length ? d.lines : [{}]).map(l => ({ ...emptyLine(), ...l })))
       }
       setFetching(false)

@@ -1,3 +1,5 @@
+import { asOcDate } from '../ocTime.js'
+import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore'
@@ -44,8 +46,8 @@ function fmt(n, dec = 4) {
 
 function fmtDate(ts) {
   if (!ts) return ''
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const d = ts.toDate ? ts.toDate() : asOcDate(ts)
+  return formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 function ctnRange(c) {

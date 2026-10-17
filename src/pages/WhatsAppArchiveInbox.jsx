@@ -1,3 +1,5 @@
+import { asOcDate } from '../ocTime.js'
+import { formatOcDateTime } from '../ocTime.js'
 import { useEffect, useState } from 'react'
 import { collection, getDocs, doc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -9,11 +11,11 @@ const errorMessage = error => error?.code === 'permission-denied'
   ? 'The archive inbox is waiting for its Firestore rules to be deployed.'
   : (error?.message || 'The archive inbox could not be loaded.')
 
-const asDate = value => value?.toDate?.() || (value ? new Date(value) : null)
+const asDate = value => value?.toDate?.() || (value ? asOcDate(value) : null)
 const formatDateTime = value => {
   const date = asDate(value)
   return date && Number.isFinite(date.getTime())
-    ? date.toLocaleString('en-HK', { dateStyle: 'medium', timeStyle: 'short' })
+    ? formatOcDateTime(date, { dateStyle: 'medium', timeStyle: 'short' }, 'en-HK')
     : 'Not recorded'
 }
 

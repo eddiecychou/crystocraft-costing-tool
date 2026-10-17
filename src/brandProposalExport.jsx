@@ -1,3 +1,4 @@
+import { ocDateOnly, formatOcDate } from './ocTime.js'
 import { pdf } from '@react-pdf/renderer'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from './firebase'
@@ -116,7 +117,7 @@ export async function buildBrandProposalPdf(customerId, profile, { onProgress, a
 
   const blob = await pdf(
     <BrandProposalPDF
-      client={{ name: customerCompanyName, date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) }}
+      client={{ name: customerCompanyName, date: formatOcDate(new Date(), { day: 'numeric', month: 'long', year: 'numeric' }, 'en-GB') }}
       hero={heroDataUrl ? { image: heroDataUrl } : null}
       tagline={p.tagline}
       briefing={p.briefing}
@@ -124,7 +125,7 @@ export async function buildBrandProposalPdf(customerId, profile, { onProgress, a
     />,
   ).toBlob()
 
-  const stem = ['Crystocraft Brand Proposal', customerCompanyName, new Date().toISOString().slice(0, 10)]
+  const stem = ['Crystocraft Brand Proposal', customerCompanyName, ocDateOnly(new Date())]
     .filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g, '-')
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

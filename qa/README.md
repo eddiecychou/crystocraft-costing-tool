@@ -242,3 +242,16 @@ fictional data, actual Dashboard/shared clock, visible “Cross midnight in two
 seconds” control. Click Follow-ups Due, then that control: the real browser timer
 changes the heading date and moves Today→Overdue / Tomorrow→Today without reload.
 It never accesses live data. The clock control is only in this local QA fixture.
+
+
+## OC-wide Hong Kong time audit
+
+`npm run test:oc-time` runs seven cross-device timezone cases plus the 71 existing
+WhatsApp parser/archive checks. It is part of prebuild and GitHub Actions. It
+checks human timestamps, date-only preservation, timezone-less OC/ERP wall times,
+explicit offsets, Hong Kong year/month boundaries, inclusive CSV ranges, the
+30-calendar-day Dashboard window, AI evidence date labels, real quote PDF dates
+and SO/PU year functions. A source policy guard blocks device-local date/time
+formatters/calendar getters and UTC-derived today defaults outside `ocTime.js`.
+Numeric locale formatting, UTC storage/wire timestamps, elapsed durations and
+calendar-only UTC arithmetic are intentional. Historical records are not migrated.

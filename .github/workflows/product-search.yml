@@ -48,6 +48,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run test:design-projects
+      - run: npm run test:oc-time
       - run: npm run test:customer-workspace
       - run: npm run test:product-search
       - run: npm run test:quote-pdf

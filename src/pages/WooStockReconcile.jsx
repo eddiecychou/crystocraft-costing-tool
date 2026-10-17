@@ -1,3 +1,4 @@
+import { formatOcDate } from '../ocTime.js'
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useB2cStock, setWooLink } from '../b2cStock'
@@ -13,7 +14,7 @@ const fmtWhen = (d) => {
   if (mins < 1) return 'just now'
   if (mins < 60) return `${mins} min ago`
   if (mins < 1440) return `${Math.round(mins / 60)} h ago`
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 // WooCommerce ↔ Finished-Goods stock reconciliation (Phase 6 of

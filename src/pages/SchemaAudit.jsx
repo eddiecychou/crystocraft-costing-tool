@@ -1,3 +1,4 @@
+import { formatOcDateTime, formatOcTime } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { collection, getDocs, getDoc, doc, updateDoc, writeBatch } from 'firebase/firestore'
@@ -312,7 +313,7 @@ export default function SchemaAudit() {
 
   // Plain-text export so the list can be pasted into an email/message to a colleague.
   function copyReport() {
-    const lines = [`Schema Audit — ${new Date().toLocaleString()}`, '']
+    const lines = [`Schema Audit — ${formatOcDateTime(new Date(), {})}`, '']
     groups.forEach(g => {
       if (!g.issues.length) return
       lines.push(`## ${g.name} (${g.issues.length} issue${g.issues.length > 1 ? 's' : ''})`)
@@ -379,7 +380,7 @@ export default function SchemaAudit() {
       </div>
       <p className="text-sm text-ink-60 mb-4">
         Read-only check of every main collection against the canonical data shapes. Nothing is changed.
-        {ranAt && <span className="text-ink-60"> · last run {ranAt.toLocaleTimeString()}</span>}
+        {ranAt && <span className="text-ink-60"> · last run {formatOcTime(ranAt, {})}</span>}
       </p>
 
       <div className="flex flex-wrap gap-2 mb-5">

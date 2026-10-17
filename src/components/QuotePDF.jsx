@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDate } from '../ocTime.js'
 // On-brand quotation PDF (react-pdf). Embeds the real brand fonts (Questrial +
 // Work Sans) and a Traditional-Chinese fallback (Noto Sans TC) so Chinese client
 // names render. Layout is flexbox so images sit vertically centred with no empty
@@ -42,7 +43,7 @@ const contentFont = s => (CJK.test(String(s ?? '')) ? 'Noto Sans TC' : 'Questria
 const fmtMoney = v =>
   (Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const fmtDate = d =>
-  (d ? new Date(d) : new Date()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  formatOcDate(d ? asOcDate(d) : new Date(), { day: 'numeric', month: 'long', year: 'numeric' }, 'en-GB')
 
 // Column widths (content area ≈ 531pt on A4 with 32pt side padding)
 const W = { num: 16, photo: 72, product: 104, desc: 131, qty: 62, price: 68, amount: 78 }

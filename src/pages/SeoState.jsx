@@ -1,3 +1,4 @@
+import { formatOcDate, formatOcDateTime } from '../ocTime.js'
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { seoLanguages, seoContentPage } from '../seoStateApi'
 import { wooCataloguePage } from '../wooSyncApi'
@@ -19,10 +20,10 @@ const fmtWhen = (d) => {
   if (m < 1) return 'just now'
   if (m < 60) return `${m} min ago`
   if (m < 1440) return `${Math.round(m / 60)} h ago`
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
-const fmtDate = (s) => (s ? new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—')
-const fmtTs = (d) => (d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—')
+const fmtDate = (s) => (s ? formatOcDate(s, { day: 'numeric', month: 'short', year: '2-digit' }, 'en-GB') : '—')
+const fmtTs = (d) => (d ? formatOcDateTime(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }, 'en-GB') : '—')
 
 const STATUS_BADGE = {
   publish: 'bg-green-50 text-green-700',

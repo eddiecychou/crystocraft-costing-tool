@@ -1,3 +1,4 @@
+import { formatOcDate } from './ocTime.js'
 // V8.10 — client for refresh-alibaba-summary.js, CustomerDetail.jsx's and
 // MarketingContacts.jsx's Alibaba Messages card. Mirrors
 // whatsappSummaryApi.js's shape/split (Firestore reads happen in the
@@ -47,7 +48,7 @@ export async function savePastedAlibabaThread(collectionName, id, rawText) {
 
 function pasteDateLabel(t) {
   const d = t.pasted_at?.toDate ? t.pasted_at.toDate() : (t.pasted_at ? new Date(t.pasted_at) : null)
-  return d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '(unknown date)'
+  return d ? formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB') : '(unknown date)'
 }
 
 // alibaba_threads docs -> one text block for the model. `threads` may be

@@ -1,3 +1,4 @@
+import { formatOcDate } from '../ocTime.js'
 import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -42,9 +43,9 @@ const fmtWhen = (d) => {
   if (mins < 1) return 'just now'
   if (mins < 60) return `${mins} min ago`
   if (mins < 1440) return `${Math.round(mins / 60)} h ago`
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
-const fmtDate = (s) => (s ? new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—')
+const fmtDate = (s) => (s ? formatOcDate(s, { day: 'numeric', month: 'short', year: '2-digit' }, 'en-GB') : '—')
 const num = (v) => {
   if (v === null || v === undefined || v === '') return null // Number(null) is 0 — guard it
   const n = Number(v)

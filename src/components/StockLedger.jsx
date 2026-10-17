@@ -1,3 +1,4 @@
+import { ocDateOnly } from '../ocTime.js'
 import { useState } from 'react'
 import { MOVEMENT_TYPES, movementDelta, postMovement, useMovements } from '../stockLedger'
 import { PackagePlus, PackageMinus, ClipboardCheck, Pencil, Lock, Unlock, Factory } from 'lucide-react'
@@ -19,7 +20,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
   const [type, setType] = useState('receipt')
   const [qty, setQty] = useState('')
   const [note, setNote] = useState('')
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => ocDateOnly(new Date()))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 

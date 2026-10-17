@@ -1,3 +1,4 @@
+import { ocDateOnly } from './ocTime.js'
 // WooCommerce refund → draft Credit Note import — Phase 4
 // (docs/specs/WooCommerce_B2C_Sync_Spec.md). Same posture as wooImport.js's order
 // import: this creates a DRAFT `credit_notes/{id}` doc for Cindy to review
@@ -46,7 +47,7 @@ export function mapWooRefundToDraft(refund, order) {
     })
     .filter((l) => l.qty_returned > 0)
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = ocDateOnly(new Date())
   return {
     status: 'draft',
     // record_date: when this record was entered (today, the import moment).

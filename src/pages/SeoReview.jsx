@@ -1,3 +1,4 @@
+import { formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { collection, doc, onSnapshot, query, orderBy, limit, where, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -23,7 +24,7 @@ const STATUS_BADGE = {
 }
 const fmtTs = (t) => {
   const d = t?.toDate?.() || (t instanceof Date ? t : null)
-  return d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+  return d ? formatOcDateTime(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }, 'en-GB') : '—'
 }
 const short = (v, n = 140) => {
   const s = typeof v === 'string' ? v : JSON.stringify(v)

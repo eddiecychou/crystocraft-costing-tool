@@ -1,3 +1,4 @@
+import { ocYear } from './ocTime.js'
 // UC# invoice registry client. Now backed by Supabase (public.uc_registry) via
 // the admin-gated /api/uc edge function — one SQL table for the whole registry,
 // live + history. (The earlier Firestore version is retired.) UC#s are allocated
@@ -78,7 +79,7 @@ export const listAppInvoices = (limit = 500) =>
 // uc_no is allocated server-side by a Postgres sequence; year is derived here
 // from today's date, matching the registry's own "/YY" convention.
 export async function allocateOrderUc({ customer_name, currency } = {}) {
-  const year = '/' + String(new Date().getFullYear() % 100).padStart(2, '0')
+  const year = '/' + String(ocYear() % 100).padStart(2, '0')
   // No `source`: it is the sales channel, and allocating a number tells us
   // nothing about how the sale came in. It gets chosen when the invoice is
   // filled in. (Previously wrote 'App', which asserted a channel that does not

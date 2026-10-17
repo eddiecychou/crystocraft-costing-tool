@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
@@ -319,9 +320,9 @@ function JesOrderRow({ r, onOpen }) {
 
 function fmtOrderDate(d) {
   if (!d) return '—'
-  const dt = new Date(d)
+  const dt = asOcDate(d)
   if (isNaN(dt)) return d
-  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatOcDate(dt, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 function fmtValue(v) {

@@ -1,3 +1,4 @@
+import { ocDateOnly } from './ocTime.js'
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDocs, setDoc, addDoc, deleteDoc,
@@ -162,7 +163,7 @@ export function createInventoryClass({ collectionName, attrField, extraFields = 
       }
     }
 
-    const importDate = new Date().toISOString().slice(0, 10)
+    const importDate = ocDateOnly(new Date())
     const stocktakeOp = (id, counted, prev, seq) => ({
       ref: doc(collection(db, collectionName, id, 'movements')),
       data: {

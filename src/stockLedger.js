@@ -1,3 +1,4 @@
+import { ocDateOnly } from './ocTime.js'
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDocs, onSnapshot, query, orderBy,
@@ -45,7 +46,7 @@ export const movementTypeOf = v => MOVEMENT_TYPES.find(t => t.value === v) || MO
 const VALID_TYPES = new Set(['receipt', 'issue', 'adjustment', 'stocktake', 'reserve', 'release', 'produce'])
 
 const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => ocDateOnly(new Date())
 
 // How a movement changes the two balances. Pure — the single source of truth so
 // the transaction and any preview UI agree. `base` = { onHand, reserved }.

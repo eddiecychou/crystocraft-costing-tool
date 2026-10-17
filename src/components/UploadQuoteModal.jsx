@@ -1,3 +1,4 @@
+import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect, useRef } from 'react'
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
@@ -6,7 +7,7 @@ import { CURRENCIES } from '../constants'
 import { loadCustomers } from '../domain/customer'
 import { Image as ImageIcon, FileText, X, Paperclip } from 'lucide-react'
 
-const todayISO = () => new Date().toISOString().split('T')[0]
+const todayISO = () => ocDateOnly(new Date())
 
 export default function UploadQuoteModal({ onClose, onCreated }) {
   const [customers, setCustomers]         = useState([])

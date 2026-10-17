@@ -1,3 +1,4 @@
+import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { doc, getDoc, updateDoc, serverTimestamp, collection, getDocs, query, where, addDoc } from 'firebase/firestore'
@@ -17,7 +18,7 @@ const sameSet = (a = [], b = []) =>
 
 const fmtDate = ts => {
   const d = ts?.toDate?.() || (ts instanceof Date ? ts : null)
-  return d ? d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+  return d ? formatOcDate(d, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
 }
 
 // A portal login IS a real email — if it matches one of the linked customer's

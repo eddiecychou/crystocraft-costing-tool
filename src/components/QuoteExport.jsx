@@ -1,3 +1,4 @@
+import { ocDateOnly, formatOcDate } from '../ocTime.js'
 import { useState } from 'react'
 import ExcelJS from 'exceljs'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
@@ -112,7 +113,7 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
   // quote has no QU number or no client yet. Same helper (and so the same
   // naming convention) as the Proforma/Sales Invoice print pages.
   function exportName(ext) {
-    const date = quote.quote_date || new Date().toISOString().slice(0, 10)
+    const date = quote.quote_date || ocDateOnly(new Date())
     return `${pdfFileTitle([quote.quote_no, quote.client_name, date])}.${ext}`
   }
 
@@ -150,7 +151,7 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
       // Proforma/Sales Invoice print pages use for their own "Save as PDF" —
       // no ".pdf" here either, same as those two: the Save dialog appends
       // the extension itself, so including it here would double it up.
-      const date = quote.quote_date || new Date().toISOString().slice(0, 10)
+      const date = quote.quote_date || ocDateOnly(new Date())
       if (tab) { try { tab.document.title = pdfFileTitle([quote.quote_no, quote.client_name, date]) } catch { /* cross-origin, ignore */ } }
       if (tab) tab.location = url
       else window.open(url, '_blank')   // popup blocked — fall back
@@ -250,8 +251,8 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
       // Right side — DATE and CURRENCY (rows 3–4, cols E–F)
       ws.getRow(7).height = 7   // spacer before header row
       const dateStr = quote.quote_date
-        ? new Date(quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-        : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        ? formatOcDate(quote.quote_date, { day: 'numeric', month: 'long', year: 'numeric' }, 'en-GB')
+        : formatOcDate(new Date(), { day: 'numeric', month: 'long', year: 'numeric' }, 'en-GB')
       ws.getCell(3, COL.QTY).value   = 'DATE';     ws.getCell(3, COL.QTY).font = labelFont;  ws.getCell(3, COL.QTY).alignment = { vertical: 'middle', horizontal: 'right' }
       ws.getCell(3, COL.PRICE).value = dateStr;    ws.getCell(3, COL.PRICE).font = valueFont; ws.getCell(3, COL.PRICE).alignment = { vertical: 'middle', horizontal: 'right' }
       ws.getCell(4, COL.QTY).value   = 'CURRENCY'; ws.getCell(4, COL.QTY).font = labelFont;  ws.getCell(4, COL.QTY).alignment = { vertical: 'middle', horizontal: 'right' }

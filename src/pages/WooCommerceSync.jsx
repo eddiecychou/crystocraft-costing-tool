@@ -1,3 +1,4 @@
+import { previousOcMonth, asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useMemo, useEffect, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { listWooOrders, searchWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
@@ -23,8 +24,8 @@ import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass, Download, Che
 
 const fmtDate = (d) => {
   if (!d) return '—'
-  const dt = new Date(d)
-  return isNaN(dt) ? d : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const dt = asOcDate(d)
+  return isNaN(dt) ? d : formatOcDate(dt, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 const fmtMoney = (v) => {
   const n = Number(v)
@@ -34,16 +35,7 @@ const fmtMoney = (v) => {
 // Default range: the previous calendar month, matching the spec's §6 monthly
 // procedure ("on the 7th, sync the previous month's paid orders") — so
 // opening this page during a normal review already shows the right window.
-function defaultRange() {
-  const now = new Date()
-  const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const lastOfLastMonth = new Date(firstOfThisMonth - 1)
-  return {
-    from: firstOfLastMonth.toISOString().slice(0, 10),
-    to: lastOfLastMonth.toISOString().slice(0, 10),
-  }
-}
+function defaultRange() { return previousOcMonth() }
 
 export default function WooCommerceSync() {
   const [{ from, to }, setRange] = useState(defaultRange)

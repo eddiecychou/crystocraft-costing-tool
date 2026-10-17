@@ -1,3 +1,4 @@
+import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -385,7 +386,7 @@ export default function ShipmentForm() {
       const patch = {
         uc_no: res.uc_no || header.uc_no || '',
         erp_si_no: res.si_no,
-        invoiced_at: header.invoiced_at || new Date().toISOString().slice(0, 10),
+        invoiced_at: header.invoiced_at || ocDateOnly(new Date()),
       }
       setHeader(h => ({ ...h, ...patch }))
       // Persist immediately on a saved order so "Raise Invoice" is a complete
@@ -727,7 +728,7 @@ export default function ShipmentForm() {
           await updateOrder(orderId, {
             erp_si_no: res.si_no,
             uc_no: res.uc_no || orderData.uc_no || '',
-            invoiced_at: orderData.invoiced_at || new Date().toISOString().slice(0, 10),
+            invoiced_at: orderData.invoiced_at || ocDateOnly(new Date()),
           })
         } catch (e) {
           setExtractError(`Order created, but the invoice number could not be allocated: ${e.message || e}. Use Allocate on the order.`)

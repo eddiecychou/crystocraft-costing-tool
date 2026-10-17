@@ -1,3 +1,4 @@
+import { formatOcDate, formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
@@ -102,7 +103,7 @@ const CHANNEL_BADGE = {
 function fmtDate(ts) {
   if (!ts) return '—'
   const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 // WhatsApp thread docs (domain/whatsappImport.js) store dates as plain ISO
@@ -110,7 +111,7 @@ function fmtDate(ts) {
 // (.toDate()/.seconds) and would silently produce "Invalid Date" on a string.
 function fmtIsoDate(iso) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatOcDate(iso, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 const MERGE_FIELD_LABELS = {
@@ -551,7 +552,7 @@ export default function CustomerDetail() {
     const cached = snap.exists() ? snap.data() : null
     const item=cached?.items?.find(i => i.customerId === id)
     setSharedSummary({ digest: item?.digest, sourceLimited:item?.sourceLimited,
-      generatedAt: cached?.generatedAt?.toDate?.().toLocaleString('en-GB') })
+      generatedAt: formatOcDateTime(cached?.generatedAt?.toDate?.(), {}, 'en-GB') })
     setSharedSummaryError('')
   }, () => setSharedSummaryError('The shared summary could not load.'))}, [id,summaryPeriod])
 
@@ -1637,7 +1638,7 @@ export default function CustomerDetail() {
             {orders.map(o => {
               const piNo = o.uc_no || o.erp_pi_no || o.erp_so_no || '—'
               const dateStr = o.order_date
-                ? new Date(o.order_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                ? formatOcDate(o.order_date, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
                 : '—'
               const statusColour = {
                 draft:     'bg-ivory-dark text-ink-70',
@@ -1702,7 +1703,7 @@ export default function CustomerDetail() {
             ) : (
               <div className="divide-y divide-warm-grey">
                 {invoiceHistory.slice(0, invoiceHistoryShown).map(r => {
-                  const dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+                  const dateStr = r.date ? formatOcDate(r.date, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB') : '—'
                   const isApp = r.src === 'app'
                   const open = () => isApp ? navigate(`/shipments/${r.id}`) : setErpDoc(r.raw)
                   return (
@@ -1772,7 +1773,7 @@ export default function CustomerDetail() {
               <Link key={q.id} to={`/quotes/${q.id}`} onClick={remember} className="flex items-center justify-between px-5 py-3.5 hover:bg-ivory transition-colors">
                 <div>
                   <p className="text-sm font-medium text-ink">
-                    {q.quote_date || q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {q.quote_date || formatOcDate(q.createdAt?.toDate?.(), { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')}
                   </p>
                   <p className="text-xs text-ink-60 mt-0.5">
                     {q.item_count ? `${q.item_count} item${q.item_count > 1 ? 's' : ''}` : 'No items'}
@@ -1855,8 +1856,8 @@ export default function CustomerDetail() {
             <span className="text-xs font-normal text-ink-60">({mergedEmailThreads.length} thread{mergedEmailThreads.length === 1 ? '' : 's'} ingested)</span>
             {emailSyncStatus?.last_run_at && (
               <span className="text-xs font-normal text-ink-60"
-                    title={`Mailbox last synced ${new Date(emailSyncStatus.last_run_at).toLocaleString('en-GB')} (${emailSyncStatus.new_messages ?? '?'} new message${emailSyncStatus.new_messages === 1 ? '' : 's'} that run)`}>
-                · mailbox synced {new Date(emailSyncStatus.last_run_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    title={`Mailbox last synced ${formatOcDateTime(emailSyncStatus.last_run_at, {}, 'en-GB')} (${emailSyncStatus.new_messages ?? '?'} new message${emailSyncStatus.new_messages === 1 ? '' : 's'} that run)`}>
+                · mailbox synced {formatOcDate(emailSyncStatus.last_run_at, { day: 'numeric', month: 'short' }, 'en-GB')}
               </span>
             )}
           </span>}
@@ -1942,7 +1943,7 @@ export default function CustomerDetail() {
             <span className="text-xs font-normal text-ink-60">
               ({mergedWhatsappThreads.length} chat{mergedWhatsappThreads.length === 1 ? '' : 's'} imported
               {mergedWhatsappThreads[0]?.date_range?.[1] && (
-                <> · latest message {new Date(mergedWhatsappThreads[0].date_range[1]).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</>
+                <> · latest message {formatOcDate(mergedWhatsappThreads[0].date_range[1], { year: 'numeric', month: 'short', day: 'numeric' })}</>
               )})
             </span>
           </span>}
@@ -2106,7 +2107,7 @@ export default function CustomerDetail() {
             </p>
             {alibabaThreads.length > 0 && (
               <p className="text-xs font-medium text-ink-60 mb-1.5">
-                Last pasted: {(alibabaThreads[0].pasted_at?.toDate ? alibabaThreads[0].pasted_at.toDate() : new Date(alibabaThreads[0].pasted_at || Date.now())).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                Last pasted: {formatOcDate(alibabaThreads[0].pasted_at?.toDate ? alibabaThreads[0].pasted_at.toDate() : new Date(alibabaThreads[0].pasted_at || Date.now()), { year: 'numeric', month: 'short', day: 'numeric' })}
                 {' — '}Alibaba shows the whole conversation every time, so only copy what's newer than this date next time.
               </p>
             )}
@@ -2176,7 +2177,7 @@ export default function CustomerDetail() {
               const expanded = alibabaExpanded === t.id
               const isLinked = t._source === 'linked'
               const d = t.pasted_at?.toDate ? t.pasted_at.toDate() : (t.pasted_at ? new Date(t.pasted_at) : null)
-              const dateLabel = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '(unknown date)'
+              const dateLabel = d ? formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB') : '(unknown date)'
               return (
                 <div key={t.id} className="px-5 py-3">
                   <button

@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
@@ -31,8 +32,8 @@ const money = (v, cur) =>
 
 const fmtDate = (s) => {
   if (!s) return '—'
-  const d = new Date(s)
-  return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  const d = asOcDate(s)
+  return isNaN(d) ? s : formatOcDate(d, { day: '2-digit', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 export default function SalesInvoicePrint() {

@@ -46,7 +46,7 @@ function parseTimestamp(d, mo, y, ampm, h, min, s) {
   let hour = Number(h)
   if (ampm === '下午' && hour < 12) hour += 12
   if (ampm === '上午' && hour === 12) hour = 0
-  return new Date(Number(y), Number(mo) - 1, Number(d), hour, Number(min), Number(s))
+  return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), hour, Number(min), Number(s)) - 8 * 3600000)
 }
 
 // Raw export text -> ordered message list. Pure function, no Firebase/DOM

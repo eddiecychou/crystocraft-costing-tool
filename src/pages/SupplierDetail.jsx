@@ -1,3 +1,4 @@
+import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { doc, getDoc, deleteDoc, collection, collectionGroup, query, where, orderBy, onSnapshot, getDocs, writeBatch } from 'firebase/firestore'
@@ -53,8 +54,8 @@ const COLLAPSE_THRESHOLD = 8
 
 function fmtDate(s) {
   if (!s) return ''
-  const d = new Date(s)
-  return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const d = asOcDate(s)
+  return isNaN(d) ? s : formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
 function toArray(val) {

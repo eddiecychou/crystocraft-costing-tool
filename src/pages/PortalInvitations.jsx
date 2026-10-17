@@ -1,3 +1,4 @@
+import { formatOcDate, formatOcTime } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -13,8 +14,8 @@ import { CustomerPicker } from './CustomerAccounts'
 function fmtDate(ts) {
   if (!ts) return '—'
   const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
-    ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  return formatOcDate(d, { day: 'numeric', month: 'short', year: 'numeric' }, 'en-GB') +
+    ' ' + formatOcTime(d, { hour: '2-digit', minute: '2-digit' }, 'en-GB')
 }
 
 const STATUS_STYLE = {

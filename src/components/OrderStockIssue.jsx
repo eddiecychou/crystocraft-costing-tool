@@ -1,3 +1,4 @@
+import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useCallback } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -114,7 +115,7 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
     }))
   }
 
-  const dateStr = state.at?.toDate ? state.at.toDate().toLocaleDateString() : null
+  const dateStr = state.at?.toDate ? formatOcDate(state.at.toDate(), {}) : null
 
   // Export the components for this production order (XiangXia, 2026-07-23).
   //

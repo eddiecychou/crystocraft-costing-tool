@@ -1,3 +1,4 @@
+import { asOcDate } from '../ocTime.js'
 import { useState } from 'react'
 import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -1203,7 +1204,7 @@ const IMPORT_DATA = [
 
 function parseDateStr(s) {
   if (!s) return null
-  try { return Timestamp.fromDate(new Date(s)) } catch { return null }
+  try { return Timestamp.fromDate(asOcDate(s)) } catch { return null }
 }
 
 export default function ImportData() {
