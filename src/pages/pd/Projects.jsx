@@ -1,5 +1,5 @@
 import { formatOcDateTime } from '../../ocTime.js'
-import {useEffect,useState} from 'react'
+import {useEffect,useState,useId} from 'react'
 import {Link,useNavigate,useParams} from 'react-router-dom'
 import {useCan} from '../../access'
 import {listRealCustomers} from '../../lib/firestore/realCustomers'
@@ -7,7 +7,21 @@ import {listDesignProjects,getDesignProject,designProjectHistory,saveDesignProje
 import {PROJECT_REFERENCE_LIMIT,PROJECT_STAGES,PROJECT_LINKS,LINK_LABELS,emptyProject,cleanProject,projectCustomer,projectWaiting,projectMatches,projectGroups,projectTime,parseProjectHandoff} from '../../pdProjects'
 const displayDate=v=>projectTime(v)?formatOcDateTime(projectTime(v), {}, 'en-GB'):'Not saved yet'
 const customerNames=rows=>Object.fromEntries(rows.map(c=>[c.id,c.company_name||c.contact_name||c.erp_code||'Unnamed customer']))
-function Tools(){return <div className="flex flex-wrap gap-4 items-start mb-4"><Link className="text-sm text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/projects">Projects</Link><details className="min-w-0"><summary className="text-sm text-brand-600 underline cursor-pointer min-h-[40px] flex items-center">Gallery &amp; design tools</summary><nav aria-label="Product Design tools" className="card p-3 flex flex-wrap gap-3 text-sm"><Link className="text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/products">Gallery &amp; design sources</Link><Link className="text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/templates">JSON templates</Link><Link className="text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/generations">Generations</Link><Link className="text-brand-600 underline inline-flex items-center min-h-[40px]" to="/design/tools">Workbench guide</Link></nav></details></div>}
+function Tools(){
+ const [open,setOpen]=useState(false),panelId=useId()
+ const links=[['/design/products','Gallery & design sources'],['/design/templates','JSON templates'],['/design/generations','Generations'],['/design/tools','Workbench guide']]
+ return <div className="mb-6 min-w-0">
+  <nav aria-label="Product Design navigation" className="flex border-b border-warm-grey gap-1">
+   <Link to="/design/projects" aria-current="page" className="flex-1 sm:flex-none inline-flex justify-center items-center min-h-[44px] px-4 border-b-2 border-brand-600 text-sm font-medium text-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600">Projects</Link>
+   <button type="button" aria-expanded={open} aria-controls={panelId} onClick={()=>setOpen(v=>!v)} className={`flex-1 sm:flex-none inline-flex justify-center items-center gap-2 min-h-[44px] px-4 border-b-2 text-sm hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600 ${open?'border-transparent bg-white text-brand-600':'border-transparent text-ink-60'}`}>
+    Design tools <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={open?'rotate-180':''}><path d="m6 9 6 6 6-6"/></svg>
+   </button>
+  </nav>
+  <nav id={panelId} hidden={!open} aria-label="Product Design tools" className={open?'mt-3 card p-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1':'hidden'}>
+   {links.map(([to,label])=><Link key={to} to={to} className="min-w-0 min-h-[44px] flex items-center px-3 py-2 text-sm text-ink-70 break-words hover:bg-ivory hover:text-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600">{label}</Link>)}
+  </nav>
+ </div>
+}
 
 function useProjectCustomers(){const [state,set]=useState({rows:[],warning:''});useEffect(()=>{let live=true;listRealCustomers().then(rows=>{if(live)set({rows,warning:''})}).catch(()=>{if(live)set({rows:[],warning:'Customer lookup is unavailable with your access. Projects remain visible using saved customer names; existing links are retained.'})});return()=>{live=false}},[]);return state}
 export default function DesignProjects(){

@@ -47,3 +47,15 @@ test('draft starting list is explicitly review-only, contains four valid proposa
  for(const p of draft.projects){cleanProject(p.proposedRecord);assert.ok(p.confirmBeforeImport.length);assert.equal(p.proposedRecord.leadImageUrl,'')}
  const page=await readFile('src/pages/pd/Projects.jsx','utf8'),api=await readFile('src/domain/pdProjects.js','utf8');assert.doesNotMatch(page+api,/PRODUCT-DESIGN-PROJECTS-DRAFT|importProjects|fetch\(/)
 })
+
+test('project navigation has a selected Projects link and a full-width accessible tools disclosure',async()=>{
+ globalThis.__pdRows=[]
+ await mount(Projects,{},async h=>{
+  const navigation=h.querySelector('nav[aria-label="Product Design navigation"]'),projects=navigation.querySelector('a'),toggle=[...h.querySelectorAll('button')].find(b=>b.textContent.trim()==='Design tools')
+  assert.equal(projects.getAttribute('href'),'/design/projects');assert.equal(projects.getAttribute('aria-current'),'page');assert.ok(toggle)
+  const panel=h.querySelector('nav[aria-label="Product Design tools"]');assert.equal(toggle.getAttribute('aria-controls'),panel.id);assert.equal(panel.hidden,true);assert.equal(toggle.getAttribute('aria-expanded'),'false')
+  await act(async()=>toggle.click());assert.equal(panel.hidden,false);assert.equal(toggle.getAttribute('aria-expanded'),'true')
+  assert.deepEqual([...panel.querySelectorAll('a')].map(a=>a.getAttribute('href')),['/design/products','/design/templates','/design/generations','/design/tools'])
+  await act(async()=>toggle.click());assert.equal(panel.hidden,true)
+ })
+})
