@@ -156,6 +156,21 @@ test('Dashboard customer selection and conversation window only read saved data;
   assert.ok(!button(h,'Suggest from summaries'));assert.ok(!h.textContent.includes('Private Pipeline position'))
  });delete globalThis.__dashboardRows;delete globalThis.localStorage
 })
+test('Dashboard pins the chosen customer and task buttons above summaries even outside the type filter',async()=>{
+ globalThis.__dashboardRows={customers:[{id:'c1',company_name:'Earlier summary',crm_category:'Distributor'},{id:'c2',company_name:'Chosen customer',crm_category:'Gift / OEM'}]}
+ await mount(Dashboard,{},async h=>{
+  await act(async()=>button(h,'Distributor').click())
+  const picker=[...h.querySelectorAll('label')].find(l=>l.textContent.includes('Find a customer')).querySelector('select')
+  await act(async()=>Simulate.change(picker,{target:{value:'c2'}}))
+  const regions=[...h.querySelectorAll('section[aria-label^="Summary and to-do"]')]
+  assert.equal(regions[0].getAttribute('aria-label'),'Summary and to-do for Chosen customer')
+  assert.equal(regions.filter(r=>r.getAttribute('aria-label').includes('Chosen customer')).length,1)
+  assert.ok(button(regions[0],'Add task'));assert.ok(button(regions[0],'Add note'))
+  await act(async()=>button(regions[0],'Add task').click());assert.ok(regions[0].querySelector('textarea'));assert.match(regions[0].textContent,/Due date/)
+  await act(async()=>button(regions[0],'Cancel').click());await act(async()=>button(regions[0],'Add note').click());assert.match(regions[0].textContent,/Reference note/)
+  assert.ok(!h.querySelector('h2')?.textContent.includes('Customer Pipeline'))
+ });delete globalThis.__dashboardRows
+})
 test('both real pages use the shared Pipeline; old interaction-status count removed',async()=>{
  const dash=await readFile('src/pages/Dashboard.jsx','utf8'),detail=await readFile('src/pages/CustomerDetail.jsx','utf8');assert.match(dash,/<PipelinePanel/);assert.match(detail,/<CustomerPipeline/);assert.doesNotMatch(dash,/allEnquiries.filter\(e => e.status === 'Open'/)
 })

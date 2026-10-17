@@ -189,6 +189,11 @@ export default function Dashboard() {
     return due(a).localeCompare(due(b)) || (a.company_name || '').localeCompare(b.company_name || '')
   })
 
+  function customerWorkspace(c) { return <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
+          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink
+          summaryDays={summaryPeriod} sourceLimited={digestByCustomer.get(c.id)?.sourceLimited}
+          generatedAt={weeklySummary?.generatedAt?.toDate?.().toLocaleString('en-GB')} /> }
+
   const filterConfig = {
     quotes: { title:'In Production', empty:'No orders currently in production', items:inProductionOrders },
     won: { title:'New Orders — Last 30 Days', empty:'No orders received in the last 30 days', items:newOrdersList },
@@ -330,16 +335,15 @@ export default function Dashboard() {
               <option value="">Choose customer…</option>{[...customers].sort((a,b) => (a.company_name || '').localeCompare(b.company_name || '')).map(c => <option key={c.id} value={c.id}>{c.company_name || c.contact_name || c.id}</option>)}
             </select>
           </label>
+          <p className="text-xs text-ink-60 w-full">Choose a customer to show their Add task and Add note buttons directly below.</p>
         </div>
+        {customerMap[selectedCustomer] && customerWorkspace(customerMap[selectedCustomer])}
         {(weeklyError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{weeklyError || work.error}</p>}
         {(weeklyLoading || work.loading || loading) && <p className="text-sm text-ink-60 p-4">Loading summaries and tasks…</p>}
         {summaryProgress&&<p role="status" className="text-sm text-ink-60 p-4">{summaryProgress}</p>}
         {!weeklyLoading&&!weeklySummary&&<p className="text-sm text-ink-60 p-4">No saved summaries for this period yet. Click Update AI summaries to prepare them. Your tasks and Pipeline are unchanged.</p>}
-        {workspaceCustomers.map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
-          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink
-          summaryDays={summaryPeriod} sourceLimited={digestByCustomer.get(c.id)?.sourceLimited}
-          generatedAt={weeklySummary?.generatedAt?.toDate?.().toLocaleString('en-GB')} />)}
-        {!loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'overdue' ? 'No overdue tasks.' : 'No recent summaries or outstanding tasks. Choose a customer above to get started.'}</p>}
+        {workspaceCustomers.filter(c => c.id !== selectedCustomer).map(customerWorkspace)}
+        {!selectedCustomer && !loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'overdue' ? 'No overdue tasks.' : 'No recent summaries or outstanding tasks. Choose a customer above to get started.'}</p>}
       </div>
       )}
 
