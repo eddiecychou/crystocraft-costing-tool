@@ -44,7 +44,7 @@ Response example (fictional):
   "expires_at": "2026-10-18T01:05:00.000Z",
   "images": [{
     "image_id": "example_image",
-    "content_hash": "md5:0123456789abcdef0123456789abcdef",
+    "content_hash": "md5:<verified-file-hash>",
     "url": "https://portal.crystocraft.com/api/oc/product-image?token=<short-lived-signature>",
     "role": "primary",
     "publishable": true,
