@@ -121,7 +121,7 @@ test('anonymous and customer portal identities cannot read or change internal ta
 // Read the real tile and drilldown, never a copied implementation of its count.
 const dueCard=host=>[...host.querySelectorAll('button')].find(b=>[...b.querySelectorAll('p')].some(p=>p.textContent==='Follow-ups Due'))
 const dueCount=host=>Number(dueCard(host)?.querySelector('p')?.textContent)
-const duePanel=host=>host.querySelector('[aria-label="Overdue follow-ups"]')
+const duePanel=host=>host.querySelector('[aria-label="Follow-ups due"]')
 const PAST='2000-01-01',FUTURE='2099-01-01'
 function localToday(){const d=new globalThis.__workspaceCalendarDate();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
 async function expectDue(v,n){await eventually(()=>dueCount(v.dash)===n,`Follow-ups Due should be ${n}, saw ${dueCount(v.dash)}`)}
@@ -138,7 +138,7 @@ for(const fromDashboard of [true,false])test(`Follow-ups Due tracks the full tas
  await expectDue(v,0)
  await create(source(),'task','Counted task',{date:PAST});await mirrored(v,'Counted task',{date:PAST});await expectDue(v,1)
  await create(source(),'note','Uncounted note');await mirrored(v,'Uncounted note');await expectDue(v,1)
- for(const [date,n]of [[today,0],[PAST,1],[FUTURE,0],['',0],[PAST,1]]){
+ for(const [date,n]of [[today,1],[PAST,1],[FUTURE,0],['',0],[PAST,1]]){
   await edit(source(),'Counted task','Counted task',{date});await mirrored(v,'Counted task',{date});await expectDue(v,n)
  }
  await edit(source(),'Counted task','Counted task',{state:'waiting'});await mirrored(v,'Counted task',{state:'Waiting'});await expectDue(v,1)
@@ -156,7 +156,7 @@ for(const fromDashboard of [true,false])test(`Follow-ups Due combines native and
  await create(source(),'task','Separate task same customer',{date:PAST});await mirrored(v,'Separate task same customer',{date:PAST});await expectDue(v,2)
  await click(row(source(),'Original conversation'),'Done');await eventually(()=>!row(v.d(),'Original conversation')&&!row(v.c(),'Original conversation'),'Legacy completed in both');await expectDue(v,1)
  await click(other(),'Show completed / archived (1)');await click(row(other(),'Original conversation'),'Reopen');await mirrored(v,'Original conversation',{state:'To do'});await expectDue(v,2)
- for(const date of [localToday(),FUTURE,'']){await edit(source(),'Original conversation','Original conversation',{date});await mirrored(v,'Original conversation',{date});await expectDue(v,1)}
+ for(const date of [localToday(),FUTURE,'']){await edit(source(),'Original conversation','Original conversation',{date});await mirrored(v,'Original conversation',{date});await expectDue(v,date===localToday()?2:1)}
  await edit(source(),'Original conversation','Original conversation',{date:PAST});await mirrored(v,'Original conversation',{date:PAST});await expectDue(v,2)
  await v.remount(0);await expectDue(v,2)
  const saved=(await getDoc(doc(db,'customers',C,'enquiries/legacy'))).data();for(const field of ['description','date','follow_up_date','attachments','status'])assert.deepEqual(saved[field],legacy[field])
@@ -165,19 +165,29 @@ for(const fromDashboard of [true,false])test(`Follow-ups Due combines native and
 test('Follow-ups Due tile and already-open drilldown stay in agreement during edits on either page',async t=>{
  const v=await fixture(t);await create(v.c(),'task','First overdue',{date:PAST});await mirrored(v,'First overdue',{date:PAST});await expectDue(v,1)
  await act(async()=>dueCard(v.dash).click())
- async function panelCount(n,text){await eventually(()=>dueCount(v.dash)===n&&duePanel(v.dash)?.querySelectorAll('li').length===n&&duePanel(v.dash)?.querySelector('h2')?.textContent===`Overdue follow-ups · ${n}`&&(!text||duePanel(v.dash).textContent.includes(text)),`Tile and drilldown should both contain ${n} overdue tasks`)}
+ async function panelCount(n,text){await eventually(()=>dueCount(v.dash)===n&&duePanel(v.dash)?.querySelectorAll('li').length===n&&duePanel(v.dash)?.querySelector('h2')?.textContent===`Follow-ups Due · ${n}`&&(!text||duePanel(v.dash).textContent.includes(text)),`Tile and drilldown should both contain ${n} due tasks`)}
  await panelCount(1,'First overdue')
+ // The same task moves between groups without changing the total, from either page.
+ const group=label=>duePanel(v.dash)?.querySelector(`[aria-label="${label} tasks"]`)
+ async function grouped(overdue,today){await eventually(()=>group('Overdue')?.querySelectorAll('li').length===overdue&&group('Today')?.querySelectorAll('li').length===today&&dueCard(v.dash).textContent.includes(`${overdue} overdue · ${today} today`),'Tile breakdown and separate task groups agree')}
+ await grouped(1,0)
+ await edit(v.c(),'First overdue','First overdue',{date:localToday()});await panelCount(1);await grouped(0,1)
+ await edit(workspace(group('Today')),'First overdue','First overdue',{date:PAST});await panelCount(1);await grouped(1,0)
+ await create(v.c(),'task','Due today',{date:localToday(),state:'waiting'});await panelCount(2,'Due today');await grouped(1,1)
+ await click(row(group('Today'),'Due today'),'Done');await panelCount(1);await grouped(1,0)
+ await click(v.c(),'Show completed / archived (1)');await click(row(v.c(),'Due today'),'Reopen');await panelCount(2);await grouped(1,1)
+ await edit(v.c(),'Due today','Due today',{date:FUTURE});await panelCount(1);await grouped(1,0)
  await create(v.c(),'task','Future then overdue',{date:FUTURE});await eventually(()=>row(v.c(),'Future then overdue'),'Future saved');await panelCount(1)
  await edit(v.c(),'Future then overdue','Future then overdue',{date:PAST});await panelCount(2,'Future then overdue')
- await click(row(duePanel(v.dash),'First overdue'),'Done');await panelCount(1,'Future then overdue');await eventually(()=>!row(v.c(),'First overdue'),'Dashboard completion reaches customer')
- await edit(v.c(),'Future then overdue','Future then overdue',{date:FUTURE});await panelCount(0);assert.match(duePanel(v.dash).textContent,/No overdue follow-ups/)
- await click(v.c(),'Show completed / archived (1)');await click(row(v.c(),'First overdue'),'Reopen');await panelCount(1,'First overdue')
+ await click(row(duePanel(v.dash),'First overdue'),'Done');await panelCount(1,'Future then overdue');await eventually(()=>!!button(row(v.c(),'First overdue'),'Reopen'),'Dashboard completion reaches customer')
+ await edit(v.c(),'Future then overdue','Future then overdue',{date:FUTURE});await panelCount(0);assert.match(duePanel(v.dash).textContent,/No overdue tasks/)
+ await click(row(v.c(),'First overdue'),'Reopen');await panelCount(1,'First overdue')
  await edit(workspace(duePanel(v.dash)),'First overdue','First overdue',{date:FUTURE});await panelCount(0)
  await click(v.dash,'Back to summaries');await mirrored(v,'First overdue',{date:FUTURE});await expectDue(v,0)
 })
 test('Follow-ups Due counts tasks per filtered customer and ignores notes, completed work and summary period',async t=>{
  const v=await fixture(t,{withCategories:true})
- await create(v.d(),'task','First C task',{date:PAST});await create(v.d(),'task','Second C task',{date:PAST,state:'waiting'});await mirrored(v,'Second C task',{date:PAST});await expectDue(v,2)
+ await create(v.d(),'task','First C task',{date:PAST});await create(v.d(),'task','Second C task',{date:localToday(),state:'waiting'});await mirrored(v,'Second C task',{date:localToday()});await expectDue(v,2)
  await v.render(1,OTHER);const other=()=>workspace(v.customer,OTHER)
  await create(other(),'task','Other customer task',{date:PAST});await eventually(()=>row(workspace(v.dash,OTHER),'Other customer task'),'Other customer live');await expectDue(v,3)
  await create(other(),'task','Already completed',{date:PAST,state:'done'});await eventually(()=>button(other(),'Show completed / archived (1)'),'Completed item saved');await expectDue(v,3)

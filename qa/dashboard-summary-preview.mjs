@@ -9,7 +9,7 @@ await build({entryPoints:['qa/dashboard-summary-preview.jsx'],outfile:out+'/app.
   b.onResolve({filter:/firebase\/firestore$|\/firebase$|domain\/customerWorkItems$|domain\/customer$|domain\/weeklySummary$|domain\/customerPipeline$|\/shipping$/},a=>({path:a.path,namespace:'fixture'}))
   b.onLoad({filter:/.*/,namespace:'fixture'},a=>({loader:'js',contents:a.path==='firebase/firestore'?`export const doc=(...a)=>a.slice(1).join('/');export const collection=(...a)=>a.slice(1).join('/');export const collectionGroup=(db,name)=>'group/'+name;export const query=x=>x;export const onSnapshot=(path,fn)=>{const rows=globalThis.__dashboardRows[path]||[];fn({docs:rows.map((r,i)=>({id:r.id||String(i),data:()=>r,ref:{parent:{parent:{id:'c1',parent:{id:'customers'}}}}})),exists:()=>true,data:()=>({items:[{customerId:'c1',digest:'Fixture summary'}]})});return()=>{}};`
    :a.path.endsWith('/firebase')?'export const db={};'
-   :a.path.endsWith('customerWorkItems')?'export const useCustomerWorkItems=()=>({items:[],loading:false,error:""});export async function saveCustomerWorkItem(){};'
+   :a.path.endsWith('customerWorkItems')?'export const useCustomerWorkItems=()=>({items:globalThis.__dashboardWork||[],loading:false,error:""});export async function saveCustomerWorkItem(){};'
    :a.path.endsWith('weeklySummary')?'export async function generateWeeklySummary(days){globalThis.__dashboardAiCalls.push(days);return {items:[]}};'
    :a.path.endsWith('customerPipeline')?'export async function savePipelineDecision(){};export async function suggestCustomerPipeline(customers,progress,days){globalThis.__dashboardSuggestionCalls.push(days);return 0};'
    :a.path.endsWith('/shipping')?'export const orderStatusOf=v=>({label:v});export const orderUc=o=>o.uc_no;'

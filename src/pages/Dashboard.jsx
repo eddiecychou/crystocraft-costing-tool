@@ -78,7 +78,7 @@ export default function Dashboard() {
   const [allEnquiries, setAllEnquiries] = useState([])
   const [loading, setLoading]           = useState(true)
   const [selectedCustomer, setSelectedCustomer] = useState('')
-  const [activeFilter, setActiveFilter]     = useState(null) // 'overdue' | 'open' | 'quotes' | 'won'
+  const [activeFilter, setActiveFilter]     = useState(null) // 'due' | 'open' | 'quotes' | 'won'
   const [categoryFilter, setCategoryFilter] = useState(null) // customer category pill
   const [retailFilter, setRetailFilter] = useState(false) // Retail-tagged-only toggle — independent of category
   const [weeklySummary, setWeeklySummary] = useState(null) // { generatedAt, weekStart, items[] } | null (never generated yet)
@@ -171,18 +171,22 @@ export default function Dashboard() {
   const groupedWork = new Map(customers.map(c => [c.id, combineWorkItems(
     allEnquiries.filter(e => e.customerId === c.id), work.items.filter(i => i.customerId === c.id))]))
   const today = dateOnly(new Date())
-  const overdueList = [] // native tasks and carried follow-ups, without a recency cutoff
+  const dueList = [] // native tasks and carried follow-ups, without a recency cutoff
   for (const c of customers) {
     if ((categoryFilter && c.crm_category !== categoryFilter) || (retailFilter && !c.tags?.includes(RETAIL_TAG))) continue
     for (const item of groupedWork.get(c.id) || []) {
-      if (item.kind === 'task' && item.state !== 'done' && item.due_on && item.due_on < today) overdueList.push({ ...item, customerId: c.id })
+      if (item.kind === 'task' && item.state !== 'done' && item.due_on && item.due_on <= today) dueList.push({ ...item, customerId: c.id })
     }
   }
+  const dueGroups = [
+    { label: 'Overdue', items: dueList.filter(i => i.due_on < today), empty: 'No overdue tasks in this view.' },
+    { label: 'Today', items: dueList.filter(i => i.due_on === today), empty: 'No tasks due today in this view.' },
+  ]
   const digestByCustomer = new Map((weeklySummary?.items || []).map(i => [i.customerId, i]))
   const workspaceCustomers = customers.filter(c =>
     (!categoryFilter || c.crm_category === categoryFilter) && (!retailFilter || c.tags?.includes(RETAIL_TAG)) &&
-    (activeFilter === 'overdue'
-      ? overdueList.some(i => i.customerId === c.id)
+    (activeFilter === 'due'
+      ? dueList.some(i => i.customerId === c.id)
       : c.id === selectedCustomer || digestByCustomer.has(c.id) || hasOpenWork(groupedWork.get(c.id) || []))
   ).sort((a,b) => {
     const due = c => (groupedWork.get(c.id) || []).filter(i => i.kind === 'task' && i.state !== 'done' && i.due_on).map(i => i.due_on).sort()[0] || '9999'
@@ -266,11 +270,11 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <StatCard
           label="Follow-ups Due"
-          value={overdueList.length}
+          value={dueList.length}
           colour="red"
-          note="overdue"
-          active={activeFilter === 'overdue'}
-          onClick={() => toggleFilter('overdue')}
+          note={`${dueGroups[0].items.length} overdue · ${dueGroups[1].items.length} today`}
+          active={activeFilter === 'due'}
+          onClick={() => toggleFilter('due')}
         />
         <StatCard
           label="Pipeline"
@@ -299,12 +303,15 @@ export default function Dashboard() {
       </div>
 
       {activeFilter && <button className="text-sm text-brand-600 underline mb-4 min-h-[40px]" onClick={() => setActiveFilter(null)}>Back to summaries</button>}
-      {activeFilter === 'overdue' && <div className="card mb-6" aria-label="Overdue follow-ups">
-        <h2 className="text-base p-4 border-b border-warm-grey">Overdue follow-ups · {overdueList.length}</h2>
+      {activeFilter === 'due' && <div className="card mb-6" aria-label="Follow-ups due">
+        <h2 className="text-base p-4 border-b border-warm-grey">Follow-ups Due · {dueList.length}</h2>
         {(weeklyError || work.error) && <p role="alert" className="p-4 text-sm text-brand-600">{weeklyError || work.error}</p>}
-        {pipelineCustomers.filter(c => overdueList.some(i => i.customerId === c.id)).map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || 'Customer'}
-          items={overdueList.filter(i => i.customerId === c.id)} showLink showSummary={false} />)}
-        {!overdueList.length && <p className="p-4 text-sm text-ink-60">No overdue follow-ups in this view.</p>}
+        {dueGroups.map(group => <section key={group.label} aria-label={`${group.label} tasks`}>
+          <h3 className={`text-sm p-4 border-b border-warm-grey ${group.label === 'Overdue' ? 'text-brand-600' : 'text-ink'}`}>{group.label} · {group.items.length}</h3>
+          {pipelineCustomers.filter(c => group.items.some(i => i.customerId === c.id)).map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || 'Customer'}
+            items={group.items.filter(i => i.customerId === c.id)} showLink showSummary={false} />)}
+          {!group.items.length && <p className="p-4 text-sm text-ink-60">{group.empty}</p>}
+        </section>)}
       </div>}
       {(activeFilter === 'quotes' || activeFilter === 'won') && <div className="card mb-6" aria-label={filterConfig[activeFilter].title}>
         <h2 className="text-base p-4 border-b border-warm-grey">{filterConfig[activeFilter].title} · {filterConfig[activeFilter].items.length}</h2>
@@ -343,7 +350,7 @@ export default function Dashboard() {
         {summaryProgress&&<p role="status" className="text-sm text-ink-60 p-4">{summaryProgress}</p>}
         {!weeklyLoading&&!weeklySummary&&<p className="text-sm text-ink-60 p-4">No saved summaries for this period yet. Click Update AI summaries to prepare them. Your tasks and Pipeline are unchanged.</p>}
         {workspaceCustomers.filter(c => c.id !== selectedCustomer).map(customerWorkspace)}
-        {!selectedCustomer && !loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'overdue' ? 'No overdue tasks.' : 'No recent summaries or outstanding tasks. Choose a customer above to get started.'}</p>}
+        {!selectedCustomer && !loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'due' ? 'No tasks due today or overdue.' : 'No recent summaries or outstanding tasks. Choose a customer above to get started.'}</p>}
       </div>
       )}
 

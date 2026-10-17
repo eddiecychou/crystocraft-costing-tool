@@ -1,3 +1,5 @@
+> Superseded definition: Follow-ups Due now includes today as well as overdue. See [the Today + Overdue release](DASHBOARD-FOLLOWUPS-TODAY-2026-10-17.md). The earlier checks below record the previous overdue-only behavior.
+
 # Dashboard Follow-ups Due regression checks — 17 October 2026
 
 ## Result and count definition

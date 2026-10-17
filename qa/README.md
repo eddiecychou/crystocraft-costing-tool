@@ -212,10 +212,11 @@ this integration suite runs explicitly in the job that starts Firestore.
 
 
 The same command also runs six **Follow-ups Due** cases in UTC and
-Australia/Sydney. The tile's existing definition is overdue unfinished tasks
-(before local today), not all open tasks or distinct customers. Today/future/
-undated tasks, completed tasks and notes are excluded; Waiting overdue tasks
-remain included. Both native tasks and carried interaction follow-ups count,
+Australia/Sydney. The tile counts unfinished tasks due on or before local today,
+with separate Overdue and Today subtotals and drilldown sections. Future/undated
+tasks, completed tasks and notes are excluded; Waiting tasks due today or earlier
+remain included. Rescheduling moves tasks between the two groups without changing
+the total, and completion/reopening updates both the tile and open drilldown. Both native tasks and carried interaction follow-ups count,
 without a summary-age cutoff. Tests verify the open drilldown, category/retail
 filters, summary-period independence and rescheduling/reopening from either page.
 
@@ -223,4 +224,4 @@ The page bundle's calendar is fixed to 17 October 2026 13:30 UTC, which is
 18 October in Sydney. Firestore SDK/network clocks and test polling remain real.
 This avoids midnight flakiness while checking local-day boundaries. The timezone
 runner is `qa/customer-workspace-followups-timezones.mjs`; it inherits the same
-loopback-only emulator restriction. No production date or counter code is changed.
+loopback-only emulator restriction. The production page uses the browser’s local calendar date.
