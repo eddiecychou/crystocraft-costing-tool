@@ -1,4 +1,7 @@
-# Dashboard task picker — local correction
+# Dashboard task picker — implementation review
+
+> Released 17 October 2026. See [verified release evidence](DASHBOARD-TASK-BUTTON-RELEASE-2026-10-17.md).
+> The local-only statement below records the original implementation stage.
 
 The customer selector previously inserted the chosen workspace into the full
 summary list, sorted by earliest due date. It could appear far below the picker,
