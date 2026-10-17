@@ -5,10 +5,11 @@ import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import CustomerWorkspace from '../components/CustomerWorkspace'
 import PipelinePanel from '../components/CustomerPipeline'
+import useLocalToday from '../hooks/useLocalToday'
 import useSummaryPeriod from '../hooks/useSummaryPeriod'
 import {SUMMARY_PERIODS,summaryCacheId} from '../customerSummary'
 import { useCustomerWorkItems } from '../domain/customerWorkItems'
-import { combineWorkItems, dateOnly, hasOpenWork } from '../customerWorkItems'
+import { combineWorkItems, hasOpenWork } from '../customerWorkItems'
 import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
 import { generateWeeklySummary } from '../domain/weeklySummary'
 import { orderStatusOf, orderUc } from '../shipping'
@@ -170,7 +171,7 @@ export default function Dashboard() {
   // also means a follow-up on a non-latest thread is no longer hidden.
   const groupedWork = new Map(customers.map(c => [c.id, combineWorkItems(
     allEnquiries.filter(e => e.customerId === c.id), work.items.filter(i => i.customerId === c.id))]))
-  const today = dateOnly(new Date())
+  const today = useLocalToday()
   const dueList = [] // native tasks and carried follow-ups, without a recency cutoff
   for (const c of customers) {
     if ((categoryFilter && c.crm_category !== categoryFilter) || (retailFilter && !c.tags?.includes(RETAIL_TAG))) continue

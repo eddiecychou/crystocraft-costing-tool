@@ -14,6 +14,7 @@ import {Simulate} from 'react-dom/test-utils'
 import {JSDOM} from 'jsdom'
 import {initializeTestEnvironment,assertFails} from '@firebase/rules-unit-testing'
 import {doc,getDoc,getDocs,collection,setDoc,Timestamp} from 'firebase/firestore'
+import {calendarClock} from './local-day-clock.mjs'
 import {workspaceSyncPlugin} from './customer-workspace-sync-fixture.mjs'
 if(!/^(127\.0\.0\.1|localhost):\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST||''))throw Error('Loopback Firestore emulator required; live fixture writes forbidden.')
 let env,db,Dashboard,CustomerDetail,scratch,dom
@@ -23,14 +24,15 @@ const C='sync_customer',OTHER='sync_other',legacy={description:'Original convers
 before(async()=>{
  dom=new JSDOM('<!doctype html><body></body>',{url:'http://localhost'});for(const name of ['window','document','HTMLElement','Event','MouseEvent','localStorage'])globalThis[name]=dom.window[name]
  globalThis.IS_REACT_ACT_ENVIRONMENT=true
- globalThis.__workspaceCalendarDate=class extends Date {constructor(...args){super(...(args.length?args:[CALENDAR_NOW]))}static now(){return CALENDAR_NOW}}
+ globalThis.__workspaceCalendarNow=()=>CALENDAR_NOW
+ globalThis.__workspaceCalendarDate=class extends Date {constructor(...args){super(...(args.length?args:[globalThis.__workspaceCalendarNow()]))}static now(){return globalThis.__workspaceCalendarNow()}}
  env=await initializeTestEnvironment({projectId:'crystocraft-rbac-test',firestore:{rules:await readFile('firestore.rules','utf8')}})
  db=env.authenticatedContext('sync_admin').firestore();globalThis.__workspaceSyncDb=db
  scratch=await mkdtemp(resolve('.qa-workspace-sync-'))
  await build({entryPoints:['src/pages/Dashboard.jsx','src/pages/CustomerDetail.jsx'],outdir:scratch,outExtension:{'.js':'.mjs'},bundle:true,banner:{js:'const Date=globalThis.__workspaceCalendarDate;'},jsx:'automatic',format:'esm',platform:'node',external:['react','react-dom','react-router-dom','lucide-react','firebase/firestore','firebase/storage'],plugins:[await workspaceSyncPlugin()]})
  Dashboard=(await import(pathToFileURL(join(scratch,'Dashboard.mjs')))).default;CustomerDetail=(await import(pathToFileURL(join(scratch,'CustomerDetail.mjs')))).default
 })
-after(async()=>{await env?.cleanup();if(scratch)await rm(scratch,{recursive:true,force:true});dom?.window.close();delete globalThis.__workspaceSyncDb;delete globalThis.__workspaceCalendarDate})
+after(async()=>{await env?.cleanup();if(scratch)await rm(scratch,{recursive:true,force:true});dom?.window.close();delete globalThis.__workspaceSyncDb;delete globalThis.__workspaceCalendarDate;delete globalThis.__workspaceCalendarNow})
 async function eventually(check,label){
  let last;const until=Date.now()+10000
  while(Date.now()<until){try{let result;await act(async()=>{await delay(25);result=check()});if(result)return}catch(e){last=e}}
@@ -206,4 +208,58 @@ test('Follow-ups Due counts tasks per filtered customer and ignores notes, compl
  await click(v.dash,'Distributor');await eventually(()=>duePanel(v.dash)?.querySelectorAll('li').length===2,'Filter updates open drilldown');await expectDue(v,2)
  await edit(other(),'Other customer task','Other customer rescheduled',{date:FUTURE});await eventually(()=>row(other(),'Other customer rescheduled'),'Excluded customer changed');await expectDue(v,2)
  await click(v.dash,'Clear filter');await expectDue(v,2);assert.equal(duePanel(v.dash).querySelectorAll('li').length,2)
+})
+
+for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])test(`Follow-ups Due rolls forward without remount or writes on ${wake}`,async t=>{
+ const clock=calendarClock(new Date(2026,9,17,23,59,59).getTime()),restore=clock.installOn(window)
+ globalThis.__workspaceCalendarNow=clock.now
+ const v=await fixture(t,{withLegacy:true,withCategories:true})
+ t.after(()=>{assert.equal(clock.pending(),0,'Page unmount releases all calendar timers');restore();globalThis.__workspaceCalendarNow=()=>CALENDAR_NOW})
+ await edit(v.c(),'Original conversation','Original conversation',{date:'2026-10-17'})
+ await create(v.c(),'task','Today becomes overdue',{date:'2026-10-17',state:'waiting'})
+ await create(v.c(),'task','Tomorrow becomes today',{date:'2026-10-18',state:'waiting'})
+ await create(v.c(),'task','Undated stays excluded')
+ await create(v.c(),'task','Future stays excluded',{date:'2026-10-20'})
+ await create(v.c(),'task','Completed stays excluded',{date:'2026-10-17',state:'done'})
+ await create(v.c(),'note','Reference stays excluded')
+ await expectDue(v,2);await click(v.dash,'Distributor')
+ const period=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.includes('Conversation window')).querySelector('select')
+ await fill(period,'90');await act(async()=>dueCard(v.dash).click())
+ const panel=duePanel(v.dash),group=label=>panel.querySelector(`[aria-label="${label} tasks"]`)
+ await eventually(()=>group('Today')?.querySelectorAll('li').length===2,'Initial Today group')
+ const mountedCustomer=v.c()
+ await click(row(v.c(),'Today becomes overdue'),'Edit');await fill(v.c().querySelector('textarea'),'Unsaved reference draft')
+ const before=await getDocs(collection(db,'customers',C,'work_items')),legacyBefore=(await getDoc(doc(db,'customers',C,'enquiries/legacy'))).data()
+ if(wake==='midnight')await act(async()=>clock.advance(1000))
+ else {
+  clock.setTime(new Date(2026,9,18,9).getTime()) // sleep/system change: no timer has fired
+  assert.equal(dueCount(v.dash),2)
+  await act(async()=>{
+   if(wake==='watchdog')clock.fireIntervals()
+   else if(wake==='visibilitychange'){
+    Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'})
+    document.dispatchEvent(new window.Event('visibilitychange'));assert.equal(dueCount(v.dash),2)
+    Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'})
+    document.dispatchEvent(new window.Event('visibilitychange'))
+   }else window.dispatchEvent(new window.Event(wake))
+  })
+ }
+ await expectDue(v,3)
+ await eventually(()=>group('Overdue')?.querySelectorAll('li').length===2&&group('Today')?.querySelectorAll('li').length===1,'Midnight updates the already-open groups')
+ assert.equal(duePanel(v.dash),panel,'Dashboard panel was not remounted')
+ assert.equal(v.c(),mountedCustomer,'Customer workspace was not remounted')
+ assert.match(group('Overdue').textContent,/Today becomes overdue/);assert.match(group('Overdue').textContent,/Original conversation/)
+ assert.match(group('Today').textContent,/Tomorrow becomes today/)
+ assert.match(row(v.c(),'Today becomes overdue').textContent,/Waiting · Overdue · 2026-10-17/)
+ assert.match(row(v.c(),'Tomorrow becomes today').textContent,/Today · 2026-10-18/)
+ const order=[...v.c().querySelectorAll('li')].map(el=>el.textContent)
+ assert.ok(order.findIndex(text=>text.includes('Tomorrow becomes today'))<order.findIndex(text=>text.includes('Undated stays excluded')),'Customer tasks re-sort at midnight')
+ assert.equal(v.c().querySelector('textarea').value,'Unsaved reference draft','Calendar updates preserve unsaved edits')
+ assert.equal(period.value,'90');assert.ok(button(v.dash,'Clear filter'),'Customer filter preserved')
+ assert.ok(dueCard(v.dash).textContent.includes('2 overdue · 1 today'))
+ assert.ok(!panel.textContent.includes('Future stays excluded'));assert.ok(!panel.textContent.includes('Completed stays excluded'));assert.ok(!panel.textContent.includes('Reference stays excluded'))
+ const after=await getDocs(collection(db,'customers',C,'work_items'))
+ assert.deepEqual(after.docs.map(d=>[d.id,d.data()]),before.docs.map(d=>[d.id,d.data()]),'Calendar change does not write task data')
+ assert.deepEqual((await getDoc(doc(db,'customers',C,'enquiries/legacy'))).data(),legacyBefore,'Carried interaction unchanged')
+ await click(v.c(),'Cancel')
 })

@@ -198,7 +198,7 @@ Run with Node dependencies installed and Java 21 available:
 npx firebase-tools@15.33.0 emulators:exec --only firestore --project crystocraft-rbac-test "npm run test:workspace-sync"
 ```
 
-Fifteen cases cover creation from either page, two-way text/date/status and note
+Twenty cases cover creation from either page, two-way text/date/status and note
 edits, completion/archive/reopen in either direction, remount persistence, stale
 edit rejection with draft retention, legacy conversation preservation, customer
 isolation and anonymous/customer denial. Each case keeps both pages mounted for
@@ -211,7 +211,7 @@ are needed. The normal build's fast workspace checks remain emulator-independent
 this integration suite runs explicitly in the job that starts Firestore.
 
 
-The same command also runs six **Follow-ups Due** cases in UTC and
+The same command also runs eleven **Follow-ups Due** cases in UTC and
 Australia/Sydney. The tile counts unfinished tasks due on or before local today,
 with separate Overdue and Today subtotals and drilldown sections. Future/undated
 tasks, completed tasks and notes are excluded; Waiting tasks due today or earlier
@@ -225,3 +225,20 @@ The page bundle's calendar is fixed to 17 October 2026 13:30 UTC, which is
 This avoids midnight flakiness while checking local-day boundaries. The timezone
 runner is `qa/customer-workspace-followups-timezones.mjs`; it inherits the same
 loopback-only emulator restriction. The production page uses the browser’s local calendar date.
+
+
+Calendar regression coverage (`qa/local-day.test.mjs`, part of the normal build
+and GitHub Actions) tests one shared clock, timer/listener cleanup, focus,
+pageshow, visibility return after sleep, backwards clock correction, DST 23/25-hour
+days in Sydney and New York, and leap/year boundaries. Five real-page cases
+advance only the app calendar (SDK/network timers stay real) through midnight,
+wake events and a foreground watchdog tick. Tile counts, open groups, both page
+labels and ordering update without remount/data writes, while filters, conversation
+window and an unsaved editor survive. `test:workspace-sync` executes 20 full cases
+plus 11 each in UTC and Sydney (42 executions).
+
+Browser proof uses `node qa/dashboard-summary-preview.mjs --midnight` on port5197:
+fictional data, actual Dashboard/shared clock, visible “Cross midnight in two
+seconds” control. Click Follow-ups Due, then that control: the real browser timer
+changes the heading date and moves Today→Overdue / Tomorrow→Today without reload.
+It never accesses live data. The clock control is only in this local QA fixture.
