@@ -32,3 +32,28 @@ Fictional visual QA: `node qa/customer-pipeline-preview.mjs` (port 5191); its mo
 ## Expanded summary periods
 
 14/30/90-day source cutoffs apply to CRM, email and WhatsApp. The legacy `weekly_summary` cache remains the 30-day cache; `customer_summary_14` and `customer_summary_90` are separate. New summaries request 3–6 factual sentences covering requests, decisions and outstanding matters. Large sources use dated excerpts spread across the period, prioritizing current activity, and display a coverage notice. All active customers are processed in batches of six; nothing silently stops at 40 customers. Complete validated batches are required before replacing any saved period. A failed run preserves the previous cache. Old cached short summaries become fuller when refreshed. Pipeline suggestions record their source cache, and review verifies that exact period’s current source; changing the display period does not close or reset Pipeline/tasks.
+
+## Candidate verification — PASS
+
+- Application commit: `b2a419d82b3a9ebc060a4d5dc1dfcd49c7c53726` (includes Pipeline `5495a915`).
+- Final candidate: `6ad2e987113353641a6fb0b4`, served `/assets/index-CAhhePP7.js`, sidebar V8.18 / 17 Oct 14:19 AEDT.
+- 473 prebuild checks/tests; 112 Firestore/Storage access assertions; 7 real customer-merge cases and 7 Pipeline transaction cases; 11 Firebase-config tests; build, no-undef lint and diff checks passed.
+- Branch GitHub Actions `38998573118`: success.
+- Fresh admin email/password sign-in: PASS. OC dashboard, 297 Range products / 722 SKUs, Settings/Portal links, remembered summary period after reload, all 4 immediate tile drill-downs, customer page period choices and Add/Cancel, no runtime errors.
+- Fresh approved customer email/password sign-in: PASS. Wholesale portal, 295 designs, actual product detail/pricing/9-week lead time/MOQ, correct shell after refresh, internal dashboard URL redirects, no supplier/internal controls, no runtime errors.
+- Approved QA identities: `claude-qa@crystocraft.com` / `customer-qa@crystocraft.com`. Credentials were not recorded. Both candidate sessions signed out afterward.
+- Live AI probes used fictional input with no business writes: Pipeline 200 / repeat request proposed active; 90-day summary 200 / 565 characters. Both endpoints anonymous 401, customer 403. These probes supplement, rather than replace, browser login evidence.
+- Final Firestore rules deployed separately, hash `361ef64fec7427936723da2f670eb1f49fd68140f0ac736c65f5bbf4a3fc6ef3`; Storage unchanged.
+- Desktop review, fictional review/confirmation and narrow 375px iframe layout verified. Screenshots live in the task evidence folder `customer-pipeline-2026-10-17`.
+- Earlier candidate `6ad2e8570aef6e4e784a8f75` was superseded before release by the period-choice build; it is not the release proof.
+
+## Production verification
+
+PASS — production deployment `6ad2eab6bae85557f7dbaaeb`, application commit `b2a419d82b3a9ebc060a4d5dc1dfcd49c7c53726`, published 2026-10-17 03:29:05 UTC / 14:29:05 AEDT. Served `/assets/index-DHtoz7J3.js`; sidebar V8.18 / 17 Oct 14:28. Main GitHub Actions `38998737979` and branch `38998573118` both succeeded.
+
+- Fresh admin email/password sign-in: PASS. Correct admin shell and identity, 297 Range products / 722 SKUs; Settings/Portal navigation, remembered 90-day period after reload, 14/30/90-day controls, all four figure drill-downs replacing general summaries (4 overdue tasks, 0 confirmed Pipeline customers, 11 active orders, 12 recent orders), customer-page Pipeline form opened and cancelled without saving, no runtime errors.
+- Fresh approved customer email/password sign-in: PASS. Wholesale portal and QA company, 295 designs / 24 initial cards, real Mini Butterfly Music Box detail with prices USD 12.51/12.84, approximately 9 weeks / MOQ 100. Refresh preserved correct shell/detail. Internal dashboard URL redirected to storefront; no supplier/internal controls or runtime errors. Both QA sessions signed out afterward.
+- Both production AI endpoints passed fictional-input tests without business writes: Pipeline proposed the unresolved repeat request as active (200); 90-day summary returned a fuller 479-character digest (200). Both endpoints denied anonymous (401) and customer (403) callers. Firebase public configuration probe passed (200); this was supplemental to the real-page sign-ins.
+- Final Firestore rules hash remains `361ef64fec7427936723da2f670eb1f49fd68140f0ac736c65f5bbf4a3fc6ef3`; Storage rules unchanged/not deployed. No fixture customers, Pipeline approvals/closures, or live order/product writes were performed. Ordinary login activity may be stamped.
+- Evidence: task-local `customer-pipeline-2026-10-17/{candidate-dashboard,candidate-customer,production-dashboard,production-customer,fictional-review,fictional-mobile}.png`.
+- Original dirty checkout preserved; porcelain fingerprint `fca5caf4923d0a7794ceaf571996019e4fea9602f75851e7f413dad1240bf846`. Release record follow-up uses `[skip netlify]` to retain this verified application deployment.
