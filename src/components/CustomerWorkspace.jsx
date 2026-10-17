@@ -5,8 +5,23 @@ import { sortWorkItems } from '../customerWorkItems'
 import useOcToday from '../hooks/useOcToday'
 import {summaryPeriodLabel} from '../customerSummary'
 
+function SummaryText({ digest, collapse }) {
+  const [expanded, setExpanded] = useState(false)
+  const id = useId()
+  const long = collapse && digest.length > 500
+  const prefix = Array.from(digest).slice(0, 500).join('')
+  const boundary = prefix.search(/\s+\S*$/u)
+  const preview = boundary > 350 ? prefix.slice(0, boundary) : prefix
+  return <>
+    <p id={id} className="text-sm text-ink-70 mt-2 whitespace-pre-wrap break-words">{long && !expanded ? `${preview.trimEnd()}…` : digest}</p>
+    {long && <button type="button" aria-expanded={expanded} aria-controls={id}
+      className="text-sm text-brand-600 underline min-h-[40px]"
+      onClick={() => setExpanded(value => !value)}>{expanded ? 'Show less' : 'Show more'}</button>}
+  </>
+}
+
 const LABEL = { todo: 'To do', waiting: 'Waiting', done: 'Done' }
-export default function CustomerWorkspace({ customerId, customerName, digest, items = [], generatedAt, showLink = false, showSummary = true, summaryDays=30, sourceLimited=false, saveItem = saveCustomerWorkItem }) {
+export default function CustomerWorkspace({ customerId, customerName, digest, items = [], generatedAt, showLink = false, showSummary = true, collapseSummary = false, summaryDays=30, sourceLimited=false, saveItem = saveCustomerWorkItem }) {
   const uid = useId()
   const [editor, setEditor] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -39,7 +54,8 @@ export default function CustomerWorkspace({ customerId, customerName, digest, it
         <button className="btn-secondary text-xs min-h-[40px] px-3" onClick={() => open('note')}>Add note</button>
       </div>
     </div>
-    {showSummary && <p className="text-sm text-ink-70 mt-2 whitespace-pre-wrap break-words">{digest || 'No recent summary. You can still add tasks and notes.'}</p>}
+    {showSummary && <SummaryText key={`${customerId}:${summaryDays}:${digest || ''}`} collapse={collapseSummary}
+      digest={digest || 'No recent summary. You can still add tasks and notes.'} />}
     {showSummary && digest && <p className="text-xs text-ink-60 mt-1">AI draft · Last {summaryPeriodLabel(summaryDays)}{generatedAt ? ` · Updated ${generatedAt}` : ''} · Tasks and notes are saved separately.</p>}
     {showSummary&&sourceLimited&&<p className="text-xs text-ink-60 mt-1">High activity: selected conversation excerpts were used. Check the original history for full detail.</p>}
     {error && <p role="alert" className="text-sm text-brand-600 mt-2">{error}</p>}

@@ -162,7 +162,7 @@ export default function Dashboard() {
   })
 
   function customerWorkspace(c) { return <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
-          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink
+          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink collapseSummary
           summaryDays={summaryPeriod} sourceLimited={digestByCustomer.get(c.id)?.sourceLimited}
           generatedAt={formatOcDateTime(weeklySummary?.generatedAt?.toDate?.(), {}, 'en-GB')} /> }
 

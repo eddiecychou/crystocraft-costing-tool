@@ -73,3 +73,26 @@ test('completed tasks can be reopened without deleting the record',async()=>moun
 test('both real pages use the same workflow and legacy carry-over; dashboard no longer has a second follow-up list',async()=>{
  const dashboard=await readFile('src/pages/Dashboard.jsx','utf8'), customer=await readFile('src/pages/CustomerDetail.jsx','utf8');for(const source of [dashboard,customer]){assert.match(source,/<CustomerWorkspace/);assert.match(source,/combineWorkItems/);assert.match(source,/useCustomerWorkItems/)}assert.doesNotMatch(dashboard,/Priority Follow-ups/);assert.match(customer,/Interaction history/);assert.match(customer,/defaultOpen=\{false\}/)
 })
+
+const longSummary = 'Recent customer discussions and quotation requests. '.repeat(18) + 'Unique final detail.'
+test('Dashboard summary preview expands and collapses without hiding tasks or saving data',async()=>mount(async host=>{
+ const more=button(host,'Show more');assert.ok(more);assert.equal(more.getAttribute('aria-expanded'),'false')
+ const paragraph=host.querySelector(`[id="${more.getAttribute('aria-controls')}"]`)
+ assert.ok(paragraph.textContent.length<=501);assert.ok(paragraph.textContent.endsWith('…'));assert.doesNotMatch(paragraph.textContent,/Unique final detail/)
+ assert.match(host.textContent,/Original quote conversation/);assert.ok(button(host,'Add task'));assert.ok(button(host,'Add note'))
+ await act(async()=>more.click());assert.equal(paragraph.textContent,longSummary);assert.equal(button(host,'Show less').getAttribute('aria-expanded'),'true')
+ await act(async()=>button(host,'Show less').click());assert.doesNotMatch(paragraph.textContent,/Unique final detail/)
+},{digest:longSummary,collapseSummary:true,items:legacyWorkItems([legacy]),saveItem:async()=>assert.fail('Expanding must not save')}))
+test('short/empty summaries need no expansion; customer page retains its full summary',async()=>{
+ for(const props of [{digest:'Short summary',collapseSummary:true},{digest:'',collapseSummary:true},{digest:longSummary}])await mount(async host=>{
+ assert.equal(button(host,'Show more'),undefined);assert.equal(button(host,'Show less'),undefined)
+ assert.match(host.textContent,new RegExp(props.digest?'Short summary|Unique final detail':'No recent summary'))
+ },props)
+})
+test('new summary or conversation window resets expansion and does not retain the old text',async()=>mount(async(host,root)=>{
+ await act(async()=>button(host,'Show more').click())
+ const fresh=longSummary.replace('Unique final detail.','Replacement final detail.')
+ await act(async()=>root.render(React.createElement(MemoryRouter,null,React.createElement(Workspace,{customerId:'c1',customerName:'QA customer',collapseSummary:true,summaryDays:180,digest:fresh}))))
+ assert.equal(button(host,'Show more').getAttribute('aria-expanded'),'false');assert.doesNotMatch(host.textContent,/Unique final detail|Replacement final detail/)
+ await act(async()=>button(host,'Show more').click());assert.match(host.textContent,/Replacement final detail/)
+},{digest:longSummary,collapseSummary:true}))
