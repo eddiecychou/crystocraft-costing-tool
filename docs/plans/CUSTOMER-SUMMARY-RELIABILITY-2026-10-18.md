@@ -1,7 +1,7 @@
 # Customer summary periods and reliability — 18 October 2026
 
 Release preparation authorized by the owner on 18 October 2026.
-Candidate/production evidence will be recorded after the two-role gates pass.
+Candidate and production two-role gates passed; see `SUMMARY-RELEASE-2026-10-18.md`.
 No production AI summary generation or customer cache update has been performed.
 
 ## Changes

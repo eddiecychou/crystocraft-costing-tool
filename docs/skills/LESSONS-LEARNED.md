@@ -1173,7 +1173,7 @@ same-entity work remains possible. Released in app commit dc3aa98f after fresh c
 
 ### Customer summary errors need distinct diagnostics and bounded source batches
 
-18 October 2026 (local fix, not deployed): the shared digest's catch-all 502
+18 October 2026 (released `4cbaddf0`, both role gates passed): the shared digest's catch-all 502
 concealed timeouts, output truncation, malformed/missing customer results and
 provider failures. Two identical six-customer attempts could each contain
 144,000 source characters; one failed batch blocked the whole refresh. The
