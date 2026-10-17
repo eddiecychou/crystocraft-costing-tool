@@ -51,4 +51,17 @@ and both-day-boundary checks pass without any production code change. Existing
 workspace tests, syntax and whitespace checks pass. All data stayed in the local
 emulator; the primary dirty checkout remains untouched.
 
-GitHub Actions verification is recorded after the test-only push.
+## GitHub Actions — PASS
+
+Test revision `b1904a253f6c2346af1864bee72003fe26fd68b8` is pushed to main and
+the working branch. Both full workflows passed, including the existing security,
+customer workflows, Product Design and all count/timezone cases:
+
+- Main: https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/39028175078
+- Branch: https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/39028174955
+
+The test commit used [skip netlify]. Production remains deploy
+`6ad348169572266f246d358f`, app source `5e68a07a`. No application/rules deployment,
+production logic change, live test records or live writes were needed.
+Original dirty checkout status SHA-256 unchanged:
+`fca5caf4923d0a7794ceaf571996019e4fea9602f75851e7f413dad1240bf846`.
