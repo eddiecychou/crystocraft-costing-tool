@@ -27,3 +27,29 @@ Customer merge refuses to delete a duplicate that has native saved tasks/notes: 
 - RBAC emulator: 102 passed, 0 failed (Firestore and Storage), including 20 added work-item assertions.
 - New workflow tests run in prebuild and GitHub Actions.
 - Production build, changed-code no-undef lint and fresh candidate/production two-role verification required before release closeout; evidence appended below.
+
+## Candidate evidence
+
+Application commit: `c685a5bc171c8173e912273f603755f2adc9eec6`.
+Candidate: `6ad2d8e044f35119aac84255`, https://6ad2d8e044f35119aac84255--ua-product-manager.netlify.app . Served `/assets/index-GVS4yXH5.js`, Firebase configuration probe HTTP 200.
+
+- Admin `claude-qa@crystocraft.com`: fresh email/password sign-in PASS, correct OC shell and Settings navigation, dashboard 23 shared workspace cards and exactly 4 carried legacy follow-ups. Widdop customer record shows matching summary/task and Interaction history (6); editor opened and cancelled without saving. Refresh persistence PASS; Range 297 products/722 SKUs. Runtime errors: none.
+- Approved customer `customer-qa@crystocraft.com`: fresh email/password sign-in PASS, correct QA company/USD storefront. Range 295 eligible designs/24 initial cards. Mini Butterfly Music Box detail loads prices, finishes and made-to-order ~9 weeks/MOQ100 after availability resolves; refresh PASS. Internal CRM URL redirects to `/shop`; no workspace heading or Settings link. Runtime errors: none. Signed out after checks.
+- No live task/product test records, customer-message sends, summary regeneration or approvals performed. Save/retry/conflict/completion semantics exercised in the isolated regression suite; actual authorization exercised in the emulator. Ordinary login activity stamps may occur.
+- Full locked-dependency prebuild: 441 reported checks/tests passed; 11 Firebase login-config tests passed; Vite production build passed (existing large-chunk warnings). Changed-code no-undef lint and diff checks passed.
+- Firestore rules `c593373aa54b13a0deecb6a4b5c65cee5fb36d5512cece01f8f9bd08d941bf08` compiled/uploaded and released to the existing crystocraft-costing default native instance before app publication. Storage rules unchanged/not deployed.
+- GitHub Actions main run: https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/38994060572 — success.
+- Primary dirty-checkout porcelain fingerprint remains `fca5caf4923d0a7794ceaf571996019e4fea9602f75851e7f413dad1240bf846`; no unrelated changes staged or reset.
+
+## Production evidence — PASS
+
+Production deploy `6ad2d9bcff2cbe081abb5749`, application commit `c685a5bc171c8173e912273f603755f2adc9eec6`, published 17 October 2026 13:16:38 AEDT (02:16:38 UTC). Served `/assets/index-CAlizMgv.js`; sidebar V8.18 · 17 Oct, 13:16. Public Firebase configuration probe HTTP 200.
+
+- Admin `claude-qa@crystocraft.com`: fresh email/password sign-in PASS, correct OC shell and Settings navigation. Dashboard has 23 workspace cards, exactly 4 carried legacy follow-ups; overdue filter narrows to 4 cards. Widdop record shows same cached summary/task and Interaction history (6). Reference-note editor opened/cancelled without any record writes. Refresh retained correct admin route/data. Range loads 297 products/722 SKUs. Runtime errors: none. Signed out afterward.
+- Responsive customer-record task editor: viewport 375 px, document width 375 px, workspace width 341 px, textarea/date/status right edges 329 px; no horizontal overflow. Temporary viewport reset.
+- Customer `customer-qa@crystocraft.com`: fresh email/password sign-in PASS; correct approved QA company/USD storefront, 295 eligible Range designs and product detail. Mini Butterfly Music Box loads finish prices USD12.51/12.84 and resolves availability to ~9 weeks/MOQ100. Refresh PASS. Internal CRM URL redirects to `/shop`, with no workspace heading or Settings link. Runtime errors: none. Signed out afterward.
+- Main and feature branch GitHub Actions both completed successfully: main `38994060572`, branch `38994057227`.
+- Save/complete/reopen/retry/conflict verification was isolated/emulated; production feature verification was read-only (editors cancelled), with no customer work records or live task fixtures created/modified.
+- Evidence screenshots: `production-dashboard.png`, `production-customer-record.png`, `production-mobile-editor.png`, `production-portal.png`, plus corresponding candidate screenshots; delivered in the task's visualization evidence folder.
+
+Local application commit, remote main, Firestore rules release and Netlify app publication are separate verified states. This documentation-only follow-up uses `[skip netlify]` and does not replace the browser-verified production app.
