@@ -1,9 +1,9 @@
 import { ocDateOnly } from './ocTime.js'
-export const SUMMARY_PERIODS = [{days:14,label:'2 weeks'},{days:30,label:'1 month'},{days:90,label:'3 months'}]
-export function summaryDays(value=30){const days=Number(value);if(!SUMMARY_PERIODS.some(p=>p.days===days))throw Error('Choose 2 weeks, 1 month or 3 months.');return days}
+export const SUMMARY_PERIODS = [{days:14,label:'2 weeks'},{days:30,label:'1 month'},{days:90,label:'3 months'},{days:180,label:'6 months'},{days:365,label:'1 year'}]
+export function summaryDays(value=30){const days=Number(value);if(!SUMMARY_PERIODS.some(p=>p.days===days))throw Error('Choose 2 weeks, 1 month, 3 months, 6 months or 1 year.');return days}
 export const summaryCacheId = days => summaryDays(days)===30?'weekly_summary':`customer_summary_${summaryDays(days)}`
 export const summaryPeriodLabel = days => SUMMARY_PERIODS.find(p=>p.days===Number(days))?.label || '1 month'
-export const validSummaryCache = id => ['weekly_summary','customer_summary_14','customer_summary_90'].includes(id)
+export const validSummaryCache = id => SUMMARY_PERIODS.some(p=>summaryCacheId(p.days)===id)
 // Prioritize current activity while reserving a spread of earlier evidence for long periods.
 export function summarySource(enquiries=[],emails=[],whatsapp=[],budget=24000){
  const events=[...enquiries.map(e=>({date:e.date?.toISOString?.()||'',text:`CRM ${e.channel || ''}: ${e.description || ''}`})),

@@ -381,6 +381,6 @@ function ConversationWindow({value, onChange, disabled, pipeline = false}) {
     </label>
     <p className="text-xs text-ink-60 mt-2">{pipeline
       ? 'Selects the saved conversation summaries used for AI suggestions. Confirmed Pipeline positions do not expire with this window.'
-      : 'Shows saved summaries of conversations from this window. Changing it does not run AI. Tasks and dashboard figures are unaffected.'}</p>
+      : 'Shows saved summaries of email, WhatsApp and interactions from this window (6 months = 180 days; 1 year = 365 days). Changing it does not run AI. Tasks and dashboard figures are unaffected.'}</p>
   </div>
 }

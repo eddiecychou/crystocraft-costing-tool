@@ -58,3 +58,14 @@ test('review uses the proposal’s original period cache, not the current displa
  await api.savePipelineDecision('pipeline_two',1,'confirm',{sourceKey:hash,detail:'Repeat quotation remains active'},'period-confirm')
  assert.equal((await getDoc(doc(admin,'customers/pipeline_two'))).data().sales_pipeline.status,'active')
 })
+
+test('six-month and one-year caches support suggestions without changing confirmed positions or portal access',async()=>{
+ for(const days of [180,365]){
+  const id='period_'+days,cache='customer_summary_'+days,digest='Requested a new sample and quotation.',hash=await summaryKey(digest)
+  await env.withSecurityRulesDisabled(async c=>{await setDoc(doc(c.firestore(),'customers',id),{company_name:'Fictional period QA'});await setDoc(doc(c.firestore(),'dashboard_cache',cache),{items:[{customerId:id,digest}]})})
+  await api.savePipelineDecision(id,0,'suggest',{suggestion:{...suggestion,source_key:hash,source_cache:cache}},'period-stage-'+days)
+  assert.equal((await getDoc(doc(admin,'customers',id))).data().sales_pipeline.status,'inactive')
+  await assertFails(getDoc(doc(customer,'dashboard_cache',cache)))
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),'dashboard_cache',cache)))
+ }
+})

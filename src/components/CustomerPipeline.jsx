@@ -26,7 +26,7 @@ export function CustomerPipeline({ customer, showLink=false, save=savePipelineDe
     <p className="text-xs text-ink-60 mt-1">One customer, one position. Confirming an order does not close other buying requests.</p>
     {proposal&&<div className="mt-3 p-3 bg-ivory border border-warm-grey">
       <p className="label">AI suggestion · Awaiting your confirmation</p>
-      <p className="text-xs text-ink-60 mt-1">Source: last {summaryPeriodLabel(proposal.source_cache==='customer_summary_14'?14:proposal.source_cache==='customer_summary_90'?90:30)}</p>
+      <p className="text-xs text-ink-60 mt-1">Source: last {summaryPeriodLabel(proposal.source_cache?.startsWith('customer_summary_')?Number(proposal.source_cache.slice(17)):30)}</p>
       <p className="text-sm mt-2">{proposal.status==='active'?(p.status==='active'?'Update active position':'Add to Pipeline'):'Close active position'}</p>
       <p className="text-sm whitespace-pre-wrap break-words mt-1">{proposal.detail}</p>
       <p className="text-xs text-ink-60 mt-2">{proposal.reason}</p>

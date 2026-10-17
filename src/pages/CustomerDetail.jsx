@@ -1242,7 +1242,7 @@ export default function CustomerDetail() {
 
       <div className="card mb-4">
         <CustomerPipeline key={`pipeline-${id}`} customer={customer} />
-        <label className="block text-sm p-4">Summary period<select className="input mt-1 max-w-xs" value={summaryPeriod} onChange={e=>setSummaryPeriod(e.target.value)}>{SUMMARY_PERIODS.map(p=><option key={p.days} value={p.days}>{p.label}</option>)}</select></label>
+        <label className="block text-sm p-4">Summary period<select className="input mt-1 max-w-xs" value={summaryPeriod} onChange={e=>setSummaryPeriod(e.target.value)}>{SUMMARY_PERIODS.map(p=><option key={p.days} value={p.days}>{p.label}</option>)}</select><span className="block text-xs text-ink-60 mt-2">Email, WhatsApp and interactions. 6 months covers 180 days; 1 year covers 365 days. Changing the period shows its saved summary without running AI.</span></label>
         {(work.error || sharedSummaryError) && <p role="alert" className="text-sm text-brand-600 p-4">{work.error || sharedSummaryError}</p>}
         {work.loading && <p className="text-sm text-ink-60 p-4">Loading tasks…</p>}
         <CustomerWorkspace key={id} customerId={id} customerName={customer.company_name || customer.contact_name || 'Customer'}

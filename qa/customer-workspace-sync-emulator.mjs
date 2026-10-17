@@ -263,3 +263,14 @@ for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])
  assert.deepEqual((await getDoc(doc(db,'customers',C,'enquiries/legacy'))).data(),legacyBefore,'Carried interaction unchanged')
  await click(v.c(),'Cancel')
 })
+
+test('both real pages expose six months and one year and load their independent saved summaries',async t=>{
+ const v=await fixture(t)
+ await env.withSecurityRulesDisabled(async ctx=>{for(const days of [180,365])await setDoc(doc(ctx.firestore(),'dashboard_cache','customer_summary_'+days),{lookbackDays:days,items:[{customerId:C,digest:'Saved '+days+' day customer context'}]})})
+ for(const [host,label] of [[v.dash,'Conversation window'],[v.customer,'Summary period']]){
+  const select=[...host.querySelectorAll('label')].find(l=>l.textContent.includes(label)).querySelector('select')
+  assert.deepEqual([...select.options].map(o=>o.value),['14','30','90','180','365'])
+  for(const days of [180,365]){await fill(select,String(days));await eventually(()=>workspace(host).textContent.includes('Saved '+days+' day customer context'),'Selected long-period saved summary appears')}
+ }
+ assert.equal((await getDoc(doc(db,'dashboard_cache/weekly_summary'))).data().items[0].digest,'Current saved summary')
+})

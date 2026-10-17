@@ -3,7 +3,7 @@ import { db, authedUser } from '../firebase'
 import { NOT_CUSTOMER_TAG, RETAIL_TAG } from './customer'
 import { summaryDays, summaryCacheId, summarySource } from '../customerSummary'
 
-// On-demand shared CRM/email/WhatsApp summaries for 14, 30 or 90 days.
+// On-demand shared CRM/email/WhatsApp summaries for 14, 30, 90, 180 or 365 days.
 // Each period has its own cache; generating summaries never changes saved tasks
 // or confirmed Pipeline. All customers are processed in bounded AI batches.
 const CACHE_DOC = days => doc(db, 'dashboard_cache', summaryCacheId(days))
@@ -22,7 +22,11 @@ async function authedPost(path, body) {
   })
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+  if (!res.ok) {
+    const error=new Error(data.error || `Summary service failed (${res.status}). Saved summaries are unchanged.`)
+    error.retryable=data.retryable===true || (!data.code && [502,503,504].includes(res.status))
+    throw error
+  }
   return data
 }
 
@@ -84,17 +88,35 @@ function isExcludedSender(from) {
   return EXCLUDED_SENDER_PATTERNS.some(p => f.includes(p))
 }
 
+export function summaryThreadHistory(docs) {
+  const byId=new Map(docs.map(d=>[d.id,d.data()]))
+  return docs.flatMap(d=>{
+    const parent=d.data()
+    if(parent.history_parent_id || parent.migrated_to)return []
+    const ids=parent.history_part_ids || []
+    if(!Array.isArray(ids)||new Set(ids).size!==ids.length)throw Error('Conversation history is incomplete. Saved summaries are unchanged.')
+    const parts=ids.map(id=>{
+      const part=byId.get(id)
+      if(!part||part.history_parent_id!==d.id)throw Error('Conversation history is incomplete. Saved summaries are unchanged.')
+      return part
+    })
+    return [{id:d.id,data:()=>({...parent,messages:[...(parent.messages||[]),...parts.flatMap(p=>p.messages||[])]}),ref:d.ref}]
+  })
+}
+
 async function activityFromEmailThreads(cutoffDate) {
   const cutoffIso = cutoffDate.toISOString()
-  // synced_at is a plain ISO string (email-sync/sync.py), not a Firestore
-  // Timestamp — string comparison sorts correctly for zero-padded ISO 8601.
+  // Read parents and history pages together, then filter actual message dates.
+  // Import time is not the conversation date and must not hide older evidence.
   const snap = await getDocs(
-    query(collectionGroup(db, 'email_threads'), where('synced_at', '>=', cutoffIso)),
+    collectionGroup(db, 'email_threads'),
   )
   const byCustomer = new Map()
-  for (const d of snap.docs) {
+  const customerDocs=snap.docs.filter(d=>customerIdOf(d))
+  const groups=new Map()
+  for(const d of customerDocs){const id=customerIdOf(d);if(!groups.has(id))groups.set(id,[]);groups.get(id).push(d)}
+  for (const docs of groups.values()) for (const d of summaryThreadHistory(docs)) {
     const customerId = customerIdOf(d)
-    if (!customerId) continue
     const r = d.data()
     const recentMessages = (r.messages || [])
       .filter(m => m.date && m.date >= cutoffIso)
@@ -123,9 +145,8 @@ async function activityFromWhatsappThreads(cutoffDate) {
   const customers = await getDocs(collection(db, 'customers'))
   for (const c of customers.docs) {
     const snap = await getDocs(collection(db, 'customers', c.id, 'whatsapp_threads'))
-    for (const d of snap.docs) {
+    for (const d of summaryThreadHistory(snap.docs)) {
       const r = d.data()
-      if (r.migrated_to) continue
       const recentMessages = (r.messages || []).filter(m => m.date && m.date >= cutoffIso)
       if (recentMessages.length === 0) continue
       if (!byCustomer.has(c.id)) byCustomer.set(c.id, [])
@@ -197,9 +218,8 @@ export async function findActiveCustomers(days = 30) {
   return entries.filter(Boolean).sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))
 }
 
-// Step 2 — one batched DeepSeek call covering every active customer (not
-// one call each), then cache the result. Called from the Dashboard's
-// "Refresh" button.
+// Step 2 — bounded AI batches covering every active customer; save only after
+// all batches validate. Called by Update AI summaries, never on page load.
 export async function generateWeeklySummary(days = 30, onProgress = () => {}) {
   days=summaryDays(days)
   const entries = await findActiveCustomers(days)
@@ -210,13 +230,28 @@ export async function generateWeeklySummary(days = 30, onProgress = () => {}) {
   }
 
   const digests=[]
-  for(let start=0;start<entries.length;start+=6){
-    const batch=entries.slice(start,start+6)
-    const data=await authedPost('/api/weekly-digest',{lookbackDays:days,customers:batch.map(e=>({id:e.customerId,name:e.customerName,text:e.text}))})
-    const wanted=new Set(batch.map(e=>e.customerId))
-    if(!Array.isArray(data.digests)||data.digests.length!==batch.length||new Set(data.digests.map(d=>d.id)).size!==batch.length||data.digests.some(d=>!wanted.has(d.id)||typeof d.digest!=='string'||!d.digest.trim()))throw Error('Incomplete summaries returned. Previous saved summaries are unchanged; please retry.')
-    digests.push(...data.digests);onProgress(Math.min(start+6,entries.length),entries.length)
+  async function summarize(batch) {
+    try {
+      const data=await authedPost('/api/weekly-digest',{lookbackDays:days,customers:batch.map(e=>({id:e.customerId,name:e.customerName,text:e.text}))})
+      const wanted=new Set(batch.map(e=>e.customerId))
+      if(!Array.isArray(data.digests)||data.digests.length!==batch.length||new Set(data.digests.map(d=>d?.id)).size!==batch.length||data.digests.some(d=>!d||!wanted.has(d.id)||typeof d.digest!=='string'||!d.digest.trim()||d.digest.length>6000)) {
+        const error=Error('Incomplete summaries returned. Saved summaries are unchanged.');error.retryable=true;throw error
+      }
+      return data.digests
+    } catch(error) {
+      if(!error.retryable||batch.length===1)throw error
+      const middle=Math.ceil(batch.length/2)
+      return [...await summarize(batch.slice(0,middle)),...await summarize(batch.slice(middle))]
+    }
   }
+  // Bound total source text as well as customer count; split only recoverable failures.
+  let batch=[],characters=0,completed=0
+  async function flush(){if(!batch.length)return;digests.push(...await summarize(batch));completed+=batch.length;onProgress(completed,entries.length);batch=[];characters=0}
+  for(const entry of entries){
+    if(batch.length && (batch.length===3 || characters+entry.text.length>24000))await flush()
+    batch.push(entry);characters+=entry.text.length
+  }
+  await flush()
   const digestById = new Map(digests.map(d => [d.id, d.digest]))
 
   const items = entries.map(e => ({

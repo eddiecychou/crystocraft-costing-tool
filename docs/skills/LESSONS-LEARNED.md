@@ -1169,3 +1169,22 @@ same-entity work remains possible. Released in app commit dc3aa98f after fresh c
 ### Pipeline AI evidence errors can be contradictory state changes
 
 17 October 2026: a real six-customer batch returned active/none, then inactive for an already-inactive customer; the generic evidence error concealed both. Keep the validator strict. Prompt for changes only, explicitly omit completed transactions with no outstanding request, and feed safe validation instructions into the bounded retry. Evidence passage IDs must resolve to exact original digest text; never repair an invented quote. Use small calls and singleton fallback so one unsupported response cannot block all remaining customers. No AI operation confirms or closes a Pipeline position. Regression coverage: `qa/customer-pipeline.test.mjs`; operator notes: `../plans/CUSTOMER-PIPELINE-2026-10-17.md`.
+
+
+### Customer summary errors need distinct diagnostics and bounded source batches
+
+18 October 2026 (local fix, not deployed): the shared digest's catch-all 502
+concealed timeouts, output truncation, malformed/missing customer results and
+provider failures. Two identical six-customer attempts could each contain
+144,000 source characters; one failed batch blocked the whole refresh. The
+screenshot does not establish which failure occurred, because the old response
+retained no diagnostic category. Do not claim a measured provider root cause
+without evidence. Bound new requests by both count (three) and source characters
+(24,000); split only recoverable failures, with singleton termination. Expose safe
+failure categories without provider bodies or customer text. Keep exact-ID and
+nonempty/length validation and the final save only after all batches pass.
+Imported conversation history pages must be assembled by customer and parent
+before filtering message dates; sync timestamps are not message dates. Missing
+referenced pages fail closed. Tests cover preservation, split recovery, provider
+failures, long windows, page history and real-page period selection. Rules only
+extend the existing Pipeline source-cache allowlist; no new role access.

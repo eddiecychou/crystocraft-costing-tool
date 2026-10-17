@@ -760,7 +760,7 @@ service cloud.firestore {
         && s.reason is string && s.reason.size() > 0 && s.reason.size() <= 1000
         && s.evidence is string && s.evidence.size() > 0 && s.evidence.size() <= 1500
         && s.source_key is string && s.source_key.matches('^[a-f0-9]{64}$')
-        && s.get('source_cache','weekly_summary') in ['weekly_summary','customer_summary_14','customer_summary_90']
+        && s.get('source_cache','weekly_summary') in ['weekly_summary','customer_summary_14','customer_summary_90','customer_summary_180','customer_summary_365']
         && s.based_on_revision is int && s.based_on_revision >= 0);
     }
     function validPipeline(customerId) {
