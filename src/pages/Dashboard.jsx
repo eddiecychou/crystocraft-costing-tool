@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { collection, collectionGroup, query, onSnapshot, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
+import { OC_TIME_ZONE } from '../ocTime'
 import LoadingBar from '../components/LoadingBar'
 import CustomerWorkspace from '../components/CustomerWorkspace'
 import PipelinePanel from '../components/CustomerPipeline'
-import useLocalToday from '../hooks/useLocalToday'
+import useOcToday from '../hooks/useOcToday'
 import useSummaryPeriod from '../hooks/useSummaryPeriod'
 import {SUMMARY_PERIODS,summaryCacheId} from '../customerSummary'
 import { useCustomerWorkItems } from '../domain/customerWorkItems'
@@ -171,7 +172,7 @@ export default function Dashboard() {
   // also means a follow-up on a non-latest thread is no longer hidden.
   const groupedWork = new Map(customers.map(c => [c.id, combineWorkItems(
     allEnquiries.filter(e => e.customerId === c.id), work.items.filter(i => i.customerId === c.id))]))
-  const today = useLocalToday()
+  const today = useOcToday()
   const dueList = [] // native tasks and carried follow-ups, without a recency cutoff
   for (const c of customers) {
     if ((categoryFilter && c.crm_category !== categoryFilter) || (retailFilter && !c.tags?.includes(RETAIL_TAG))) continue
@@ -213,7 +214,7 @@ export default function Dashboard() {
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-xl md:text-2xl text-ink">Dashboard</h1>
-          <p className="text-sm text-ink-60 mt-0.5">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p className="text-sm text-ink-60 mt-0.5">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: OC_TIME_ZONE })} · Hong Kong time</p>
         </div>
         <p className="text-xs text-ink-60 mt-1 max-w-40 text-right">Saved data updates automatically</p>
       </div>

@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { saveCustomerWorkItem } from '../domain/customerWorkItems'
 import { sortWorkItems } from '../customerWorkItems'
-import useLocalToday from '../hooks/useLocalToday'
+import useOcToday from '../hooks/useOcToday'
 import {summaryPeriodLabel} from '../customerSummary'
 
 const LABEL = { todo: 'To do', waiting: 'Waiting', done: 'Done' }
@@ -12,7 +12,7 @@ export default function CustomerWorkspace({ customerId, customerName, digest, it
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [showDone, setShowDone] = useState(false)
-  const today = useLocalToday()
+  const today = useOcToday()
   const completed = items.filter(i => i.state === 'done')
   const visible = sortWorkItems(items.filter(i => showDone || i.state !== 'done'), today)
   function open(kind, item = null) {

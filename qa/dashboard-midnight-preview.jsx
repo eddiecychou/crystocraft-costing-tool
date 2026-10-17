@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import Dashboard from '../src/pages/Dashboard'
 
 const NativeDate = Date
-let start = new NativeDate(2026, 9, 17, 12).getTime(), elapsed = performance.now()
+let start = NativeDate.parse('2026-10-17T04:00:00Z'), elapsed = performance.now()
 window.Date = class extends NativeDate {
   constructor(...args) { super(...(args.length ? args : [start + performance.now() - elapsed])) }
   static now() { return start + performance.now() - elapsed }
@@ -17,7 +17,7 @@ globalThis.__dashboardWork = [
   { id: 'qa-tomorrow', customerId: 'c1', kind: 'task', state: 'todo', text: 'Tomorrow task moves to Today', due_on: '2026-10-18' },
 ]
 function startMidnight() {
-  start = new NativeDate(2026, 9, 17, 23, 59, 58).getTime(); elapsed = performance.now()
+  start = NativeDate.parse('2026-10-17T15:59:58Z'); elapsed = performance.now()
   window.dispatchEvent(new Event('focus')) // reschedule the actual midnight timer
 }
 createRoot(document.getElementById('root')).render(<MemoryRouter>

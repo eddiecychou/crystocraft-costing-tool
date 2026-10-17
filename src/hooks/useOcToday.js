@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react'
-import { createLocalDayStore } from '../localDay'
+import { createOcDayStore } from '../ocDay'
 
-const calendar = createLocalDayStore()
+const calendar = createOcDayStore()
 
-export default function useLocalToday() {
+export default function useOcToday() {
   return useSyncExternalStore(calendar.subscribe, calendar.getSnapshot, calendar.getSnapshot)
 }

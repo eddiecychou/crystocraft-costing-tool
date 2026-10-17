@@ -212,7 +212,7 @@ this integration suite runs explicitly in the job that starts Firestore.
 
 
 The same command also runs eleven **Follow-ups Due** cases in UTC and
-Australia/Sydney. The tile counts unfinished tasks due on or before local today,
+Australia/Sydney and America/Los_Angeles. The tile counts unfinished tasks due on or before today in Hong Kong,
 with separate Overdue and Today subtotals and drilldown sections. Future/undated
 tasks, completed tasks and notes are excluded; Waiting tasks due today or earlier
 remain included. Rescheduling moves tasks between the two groups without changing
@@ -221,21 +221,21 @@ without a summary-age cutoff. Tests verify the open drilldown, category/retail
 filters, summary-period independence and rescheduling/reopening from either page.
 
 The page bundle's calendar is fixed to 17 October 2026 13:30 UTC, which is
-18 October in Sydney. Firestore SDK/network clocks and test polling remain real.
-This avoids midnight flakiness while checking local-day boundaries. The timezone
+17 October in Hong Kong even when the device is already on 18 October in Sydney. Firestore SDK/network clocks and test polling remain real.
+This avoids midnight flakiness while checking Hong Kong day boundaries. The timezone
 runner is `qa/customer-workspace-followups-timezones.mjs`; it inherits the same
-loopback-only emulator restriction. The production page uses the browser’s local calendar date.
+loopback-only emulator restriction. The production page uses the Hong Kong business date.
 
 
 Calendar regression coverage (`qa/local-day.test.mjs`, part of the normal build
 and GitHub Actions) tests one shared clock, timer/listener cleanup, focus,
-pageshow, visibility return after sleep, backwards clock correction, DST 23/25-hour
-days in Sydney and New York, and leap/year boundaries. Five real-page cases
-advance only the app calendar (SDK/network timers stay real) through midnight,
+pageshow, visibility return after sleep, backwards clock correction, Hong Kong midnight remaining stable across device DST
+changes in Sydney and New York, and leap/year boundaries. Five real-page cases
+advance only the app calendar (SDK/network timers stay real) through Hong Kong midnight,
 wake events and a foreground watchdog tick. Tile counts, open groups, both page
 labels and ordering update without remount/data writes, while filters, conversation
 window and an unsaved editor survive. `test:workspace-sync` executes 20 full cases
-plus 11 each in UTC and Sydney (42 executions).
+plus 11 each in UTC, Sydney and Los Angeles (53 executions).
 
 Browser proof uses `node qa/dashboard-summary-preview.mjs --midnight` on port5197:
 fictional data, actual Dashboard/shared clock, visible “Cross midnight in two

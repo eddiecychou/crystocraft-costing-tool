@@ -1,12 +1,8 @@
+import { ocDateOnly as dateOnly } from './ocTime.js'
+export { dateOnly }
+
 // Pure CRM projections shared by both screens. Legacy interactions remain intact.
 export const WORK_STATES = ['todo', 'waiting', 'done']
-export function dateOnly(value) {
-  if (!value) return ''
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-  const d = value.toDate?.() || new Date(value.seconds != null ? value.seconds * 1000 : value)
-  if (Number.isNaN(d.getTime())) return ''
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-}
 export function cleanWorkItem(input) {
   const text = String(input.text || '').trim()
   if (!text || text.length > 4000) throw new Error('Enter a task or note of up to 4,000 characters.')

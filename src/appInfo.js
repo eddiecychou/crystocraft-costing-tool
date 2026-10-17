@@ -1,3 +1,5 @@
+import { formatOcDateTime } from './ocTime.js'
+
 // Name and version of the internal admin app, in one place.
 //
 // Renamed from "Product Manager" (2026-07-19) — that stopped being true around
@@ -28,8 +30,8 @@ export function versionLabel() {
   if (!BUILD_TIME) return APP_VERSION
   const d = new Date(BUILD_TIME)
   if (Number.isNaN(d.getTime())) return APP_VERSION
-  const stamp = d.toLocaleString(undefined, {
+  const stamp = formatOcDateTime(d, {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   })
-  return `${APP_VERSION} · ${stamp}`
+  return `${APP_VERSION} · ${stamp} HKT`
 }

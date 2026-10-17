@@ -1,24 +1,17 @@
-import { dateOnly } from './customerWorkItems.js'
-
-// Calendar arithmetic follows local midnight, including 23/25-hour DST days.
-export function untilLocalMidnight(now) {
-  const next = new Date(now)
-  next.setHours(24, 0, 0, 0)
-  return Math.max(1, next.getTime() - now.getTime())
-}
+import { ocDateOnly, untilHongKongMidnight } from './ocTime.js'
 
 // One clock per app, shared by every workspace. Nothing is saved or fetched.
-export function createLocalDayStore({ now = () => new Date(), host = globalThis.window, doc = globalThis.document } = {}) {
-  let day = dateOnly(now()), midnight, watchdog
+export function createOcDayStore({ now = () => new Date(), host = globalThis.window, doc = globalThis.document } = {}) {
+  let day = ocDateOnly(now()), midnight, watchdog
   const listeners = new Set()
   function refresh() {
-    const current = now(), nextDay = dateOnly(current)
+    const current = now(), nextDay = ocDateOnly(current)
     if (nextDay !== day) {
       day = nextDay
       listeners.forEach(listener => listener())
     }
     host.clearTimeout(midnight)
-    midnight = host.setTimeout(refresh, untilLocalMidnight(current))
+    midnight = host.setTimeout(refresh, untilHongKongMidnight(current))
   }
   function visible() { if (doc.visibilityState === 'visible') refresh() }
   return {
@@ -27,7 +20,7 @@ export function createLocalDayStore({ now = () => new Date(), host = globalThis.
       listeners.add(listener)
       if (listeners.size === 1 && host) {
         refresh()
-        // Catch clock/timezone changes even if the page never loses focus.
+        // Catch system clock changes even if the page never loses focus.
         watchdog = host.setInterval(refresh, 60_000)
         host.addEventListener('focus', refresh)
         host.addEventListener('pageshow', refresh)

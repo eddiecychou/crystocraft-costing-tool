@@ -125,7 +125,7 @@ const dueCard=host=>[...host.querySelectorAll('button')].find(b=>[...b.querySele
 const dueCount=host=>Number(dueCard(host)?.querySelector('p')?.textContent)
 const duePanel=host=>host.querySelector('[aria-label="Follow-ups due"]')
 const PAST='2000-01-01',FUTURE='2099-01-01'
-function localToday(){const d=new globalThis.__workspaceCalendarDate();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+function hkToday(){return new Date(globalThis.__workspaceCalendarNow()+8*3600000).toISOString().slice(0,10)}
 async function expectDue(v,n){await eventually(()=>dueCount(v.dash)===n,`Follow-ups Due should be ${n}, saw ${dueCount(v.dash)}`)}
 async function mirrored(v,text,{date,state}={}){
  await eventually(()=>[v.d(),v.c()].every(w=>{
@@ -135,8 +135,8 @@ async function mirrored(v,text,{date,state}={}){
  }),`Both pages must show current ${text}`)
 }
 for(const fromDashboard of [true,false])test(`Follow-ups Due tracks the full task lifecycle from ${fromDashboard?'Dashboard':'customer page'}`,async t=>{
- const v=await fixture(t),source=fromDashboard?v.d:v.c,other=fromDashboard?v.c:v.d,today=localToday()
- if(process.env.WORKSPACE_EXPECT_TODAY)assert.equal(today,process.env.WORKSPACE_EXPECT_TODAY,'Same instant must use the runner’s local calendar date')
+ const v=await fixture(t),source=fromDashboard?v.d:v.c,other=fromDashboard?v.c:v.d,today=hkToday()
+ if(process.env.WORKSPACE_EXPECT_TODAY)assert.equal(today,process.env.WORKSPACE_EXPECT_TODAY,'Same instant must use the Hong Kong business date')
  await expectDue(v,0)
  await create(source(),'task','Counted task',{date:PAST});await mirrored(v,'Counted task',{date:PAST});await expectDue(v,1)
  await create(source(),'note','Uncounted note');await mirrored(v,'Uncounted note');await expectDue(v,1)
@@ -158,7 +158,7 @@ for(const fromDashboard of [true,false])test(`Follow-ups Due combines native and
  await create(source(),'task','Separate task same customer',{date:PAST});await mirrored(v,'Separate task same customer',{date:PAST});await expectDue(v,2)
  await click(row(source(),'Original conversation'),'Done');await eventually(()=>!row(v.d(),'Original conversation')&&!row(v.c(),'Original conversation'),'Legacy completed in both');await expectDue(v,1)
  await click(other(),'Show completed / archived (1)');await click(row(other(),'Original conversation'),'Reopen');await mirrored(v,'Original conversation',{state:'To do'});await expectDue(v,2)
- for(const date of [localToday(),FUTURE,'']){await edit(source(),'Original conversation','Original conversation',{date});await mirrored(v,'Original conversation',{date});await expectDue(v,date===localToday()?2:1)}
+ for(const date of [hkToday(),FUTURE,'']){await edit(source(),'Original conversation','Original conversation',{date});await mirrored(v,'Original conversation',{date});await expectDue(v,date===hkToday()?2:1)}
  await edit(source(),'Original conversation','Original conversation',{date:PAST});await mirrored(v,'Original conversation',{date:PAST});await expectDue(v,2)
  await v.remount(0);await expectDue(v,2)
  const saved=(await getDoc(doc(db,'customers',C,'enquiries/legacy'))).data();for(const field of ['description','date','follow_up_date','attachments','status'])assert.deepEqual(saved[field],legacy[field])
@@ -173,9 +173,9 @@ test('Follow-ups Due tile and already-open drilldown stay in agreement during ed
  const group=label=>duePanel(v.dash)?.querySelector(`[aria-label="${label} tasks"]`)
  async function grouped(overdue,today){await eventually(()=>group('Overdue')?.querySelectorAll('li').length===overdue&&group('Today')?.querySelectorAll('li').length===today&&dueCard(v.dash).textContent.includes(`${overdue} overdue · ${today} today`),'Tile breakdown and separate task groups agree')}
  await grouped(1,0)
- await edit(v.c(),'First overdue','First overdue',{date:localToday()});await panelCount(1);await grouped(0,1)
+ await edit(v.c(),'First overdue','First overdue',{date:hkToday()});await panelCount(1);await grouped(0,1)
  await edit(workspace(group('Today')),'First overdue','First overdue',{date:PAST});await panelCount(1);await grouped(1,0)
- await create(v.c(),'task','Due today',{date:localToday(),state:'waiting'});await panelCount(2,'Due today');await grouped(1,1)
+ await create(v.c(),'task','Due today',{date:hkToday(),state:'waiting'});await panelCount(2,'Due today');await grouped(1,1)
  await click(row(group('Today'),'Due today'),'Done');await panelCount(1);await grouped(1,0)
  await click(v.c(),'Show completed / archived (1)');await click(row(v.c(),'Due today'),'Reopen');await panelCount(2);await grouped(1,1)
  await edit(v.c(),'Due today','Due today',{date:FUTURE});await panelCount(1);await grouped(1,0)
@@ -189,7 +189,7 @@ test('Follow-ups Due tile and already-open drilldown stay in agreement during ed
 })
 test('Follow-ups Due counts tasks per filtered customer and ignores notes, completed work and summary period',async t=>{
  const v=await fixture(t,{withCategories:true})
- await create(v.d(),'task','First C task',{date:PAST});await create(v.d(),'task','Second C task',{date:localToday(),state:'waiting'});await mirrored(v,'Second C task',{date:localToday()});await expectDue(v,2)
+ await create(v.d(),'task','First C task',{date:PAST});await create(v.d(),'task','Second C task',{date:hkToday(),state:'waiting'});await mirrored(v,'Second C task',{date:hkToday()});await expectDue(v,2)
  await v.render(1,OTHER);const other=()=>workspace(v.customer,OTHER)
  await create(other(),'task','Other customer task',{date:PAST});await eventually(()=>row(workspace(v.dash,OTHER),'Other customer task'),'Other customer live');await expectDue(v,3)
  await create(other(),'task','Already completed',{date:PAST,state:'done'});await eventually(()=>button(other(),'Show completed / archived (1)'),'Completed item saved');await expectDue(v,3)
@@ -211,7 +211,7 @@ test('Follow-ups Due counts tasks per filtered customer and ignores notes, compl
 })
 
 for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])test(`Follow-ups Due rolls forward without remount or writes on ${wake}`,async t=>{
- const clock=calendarClock(new Date(2026,9,17,23,59,59).getTime()),restore=clock.installOn(window)
+ const clock=calendarClock(Date.parse('2026-10-17T15:59:59Z')),restore=clock.installOn(window)
  globalThis.__workspaceCalendarNow=clock.now
  const v=await fixture(t,{withLegacy:true,withCategories:true})
  t.after(()=>{assert.equal(clock.pending(),0,'Page unmount releases all calendar timers');restore();globalThis.__workspaceCalendarNow=()=>CALENDAR_NOW})
@@ -232,7 +232,7 @@ for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])
  const before=await getDocs(collection(db,'customers',C,'work_items')),legacyBefore=(await getDoc(doc(db,'customers',C,'enquiries/legacy'))).data()
  if(wake==='midnight')await act(async()=>clock.advance(1000))
  else {
-  clock.setTime(new Date(2026,9,18,9).getTime()) // sleep/system change: no timer has fired
+  clock.setTime(Date.parse('2026-10-18T01:00:00Z')) // sleep/system change: no timer has fired
   assert.equal(dueCount(v.dash),2)
   await act(async()=>{
    if(wake==='watchdog')clock.fireIntervals()
