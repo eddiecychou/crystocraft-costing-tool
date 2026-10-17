@@ -29,3 +29,29 @@ The merge automatically continues in bounded server requests for large histories
 Release commit, deploys, test counts and two-role login evidence appended after verification.
 
 Local verification: 446 prebuild checks passed; 17 customer-workspace/merge unit and UI tests included. Firestore/Storage RBAC suite: 112 passed, zero failed. Merge emulator: seven actual-transaction cases, including both survivor directions, 505 entries and concurrent request refusal. Production Vite build, changed-code no-undef lint, 11 Firebase configuration tests and diff checks passed. Release browser checks follow.
+
+## Candidate evidence — PASS
+
+Application commit `175f8818658abe0e1bec23671f1ddd2eaeea6951`.
+Candidate deploy `6ad2de6dcaa270ee15f2250d`, https://6ad2de6dcaa270ee15f2250d--ua-product-manager.netlify.app ; served `/assets/index-DqEk8YuA.js`; public Firebase configuration probe HTTP 200.
+
+- Fresh admin email/password sign-in (`claude-qa@crystocraft.com`): correct OC dashboard and admin navigation, four carried follow-ups, shared customer workspace and preserved history. Read-only merge preview shows the retained-history promise and full counts; preview cancelled without submission. Customer-record refresh PASS; Range 297 products/722 SKUs. No runtime errors.
+- Fresh approved customer email/password sign-in (`customer-qa@crystocraft.com`): correct QA company/USD storefront; Range 295 designs and product detail/finish prices. Refresh PASS; availability resolves to ~9 weeks/MOQ100. Internal customer-record URL redirects to `/shop`; no Settings/admin navigation. No runtime errors. Both QA sessions signed out.
+- Real endpoint authorization probes (supplemental to browser sign-ins): anonymous 401; valid admin with identical source/target IDs 400 before merge; valid customer 403 before merge. No merge or business-record writes possible for those requests. Auth tokens/credentials kept private.
+- Firestore rules hash `f2d79f127524f1b53940359822ea28b778ae6a05efe477f1ba63e017476ea2ec` compiled/uploaded and released before app publication. Storage rules unchanged/not deployed.
+- Feature branch GitHub Actions run `38995458218`: success, including the new emulator job.
+
+All destructive-transfer tests used local emulator fixtures. No real customer records were merged during release verification. Normal QA login activity may be stamped.
+
+## Production evidence — PASS
+
+Production application deploy `6ad2df5106849e348ff19c3c`, commit `175f8818658abe0e1bec23671f1ddd2eaeea6951`, published 17 October 2026 13:40:11 AEDT (02:40:11 UTC). Served `/assets/index-BdWKraA0.js`; sidebar V8.18 · 17 Oct, 13:39. Public Firebase configuration probe HTTP 200.
+
+- Admin `claude-qa@crystocraft.com`: fresh real-page email/password sign-in PASS; correct OC shell/admin navigation, four carried follow-ups and no workspace alert. Widdop customer record history (6) remains accessible. Merge preview shows the retained-history promise and full source counts (799 email threads at verification); cancelled without submitting. Refresh PASS; Range 297 products/722 SKUs. Runtime errors: none. Signed out.
+- Approved customer `customer-qa@crystocraft.com`: fresh real-page email/password sign-in PASS; correct approved QA company/USD storefront. Range 295 designs and Mini Butterfly Music Box finish prices/lead time load. Product refresh PASS; availability resolves to ~9 weeks/MOQ100. Internal customer-record URL redirects to `/shop`; no Settings link or merge controls. Runtime errors: none. Signed out.
+- Production real-token endpoint checks: admin invalid same-record input returns 400 before any merge; customer returns 403 before any merge. These supplement, not replace, fresh browser sign-ins. No business-record writes.
+- GitHub Actions main `38995627078` and release branch `38995458218` both success, including the new merge-emulator job. Local tests: 446 prebuild checks, 112 Firestore/Storage assertions, 7 actual-transaction emulator scenarios, 11 Firebase config tests, production build and changed-code lint passed.
+- Firestore rules were separately released at hash `f2d79f127524f1b53940359822ea28b778ae6a05efe477f1ba63e017476ea2ec`. Storage rules unchanged/not deployed.
+- Screenshots: candidate/production preview (preview-only, cancelled), customer-record view and customer portal, in the task's visualization evidence folder. No live customers or work items were created, merged or modified for QA; ordinary login-activity stamps may occur.
+
+Primary checkout remains untouched (porcelain fingerprint `fca5caf4923d0a7794ceaf571996019e4fea9602f75851e7f413dad1240bf846`). Evidence-only follow-up uses `[skip netlify]`; the verified application deployment remains unchanged.
