@@ -95,7 +95,7 @@ export default function SpecSheetEditorForm({
   }
 
   return (
-    <div className="grid grid-cols-[380px_1fr] gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)] gap-6 items-start">
       {/* Scoped to this component (previously lived in global index.css's
           @media print, which unconditionally hid `body *` and forced
           `@page { size: A4 landscape; margin: 0 }` on every print job in
@@ -114,7 +114,7 @@ export default function SpecSheetEditorForm({
           @page { size: A4 landscape; margin: 0; }
         }
       `}</style>
-      <div className="card p-4 flex flex-col gap-4 print:hidden">
+      <div className="card min-w-0 p-4 flex flex-col gap-4 print:hidden">
         <div>
           <label className="label">Sheet Name</label>
           <input
@@ -209,7 +209,7 @@ export default function SpecSheetEditorForm({
           (#spec-sheet-print-target) is what html-to-image/print actually
           capture, so PNG export and printing stay full resolution
           regardless of on-screen preview size. */}
-      <div className="overflow-auto">
+      <div className="min-w-0 overflow-auto">
         <div
           className="spec-sheet-outer border border-line rounded"
           style={{ width: SHEET_W * PREVIEW_SCALE, height: SHEET_H * PREVIEW_SCALE, overflow: "hidden" }}

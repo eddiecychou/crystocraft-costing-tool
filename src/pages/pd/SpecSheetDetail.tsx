@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getProduct } from "@/lib/firestore/products";
@@ -10,7 +11,7 @@ export default function SpecSheetDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [sheet, setSheet] = useState<SpecSheetTemplate | null | "loading">("loading");
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<Product | null | "loading">("loading");
   const [value, setValue] = useState<SpecSheetFormValue | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -43,15 +44,16 @@ export default function SpecSheetDetailPage() {
     if (!ok) return;
     setDeleting(true);
     await deleteSpecSheet(id);
-    navigate(product ? `/design/products/${product.id}` : "/design");
+    navigate(product && product !== "loading" ? `/design/products/${product.id}` : "/design");
   }
 
-  if (sheet === "loading" || !value) return <main className="p-10 text-ink-60">Loading…</main>;
-  if (!sheet || !product) return <main className="p-10 text-ink-60">Spec sheet not found.</main>;
+  if (sheet === "loading" || (sheet && product === "loading")) return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Loading…</p></main>;
+  if (!sheet || product === "loading" || !product || !value) return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Spec sheet not found.</p></main>;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
-      <div className="flex items-center justify-between mb-6 print:hidden">
+      <ProductDesignNav />
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-6 print:hidden">
         <h1 className="text-2xl">{product.name} — Spec Sheet</h1>
         <button type="button" className="btn btn-secondary text-red-700" onClick={handleDelete} disabled={deleting}>
           {deleting ? "Deleting…" : "Delete"}

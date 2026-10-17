@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useState, type FormEvent, Suspense } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { createProduct } from "@/lib/firestore/products";
@@ -33,9 +34,10 @@ function NewProductForm() {
   }
 
   return (
-    <main className="mx-auto max-w-lg px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      <ProductDesignNav />
       <h1 className="text-2xl mb-6">New Product</h1>
-      <form onSubmit={handleSubmit} className="card p-6 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="card max-w-lg p-6 flex flex-col gap-4">
         <div>
           <label className="label" htmlFor="supplier">Supplier</label>
           <select
@@ -73,7 +75,7 @@ function NewProductForm() {
 
 export default function NewProductPage() {
   return (
-    <Suspense fallback={<main className="p-10 text-ink-60">Loading…</main>}>
+    <Suspense fallback={<main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Loading…</p></main>}>
       <NewProductForm />
     </Suspense>
   );

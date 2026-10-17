@@ -281,12 +281,13 @@ test. The normal workspace tests remain in prebuild/GitHub Actions.
 ## Shared Product Design navigation
 
 `npm run test:design-projects` mounts the actual Projects, Gallery, Templates,
-Generations, Workbench guide, and product/template detail and edit pages with
+Generations, Workbench guide, product/template detail and edit pages, new product/template, and new/existing
+spec sheet pages with
 fictional reads and blocked writers. Loading and missing-record navigation is
 also covered.
 It checks current-route selection, tool-to-tool navigation and Projects return.
 For real browser layout: run `node qa/pd-navigation-preview.mjs`, open
-`http://127.0.0.1:5200/audit` and Run desktop and mobile checks. All36 combinations
-(nine pages ×320/375/414/1280px) must PASS. This checks alignment,44px targets,
+`http://127.0.0.1:5200/audit` and Run desktop and mobile checks. All52 combinations
+(thirteen pages ×320/375/414/1280px) must PASS. This checks alignment,44px targets,
 open/close, all four tool links, selected route and return to Projects without
 using credentials, production data or a physical-device claim.

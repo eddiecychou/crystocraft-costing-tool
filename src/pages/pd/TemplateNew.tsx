@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useState, type FormEvent, Suspense } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { pdApiFetch } from "@/lib/pdApi";
@@ -173,12 +174,13 @@ function NewTemplateForm() {
     navigate(`/design/templates/${id}`);
   }
 
-  if (product === "loading") return <main className="p-10 text-ink-60">Loading…</main>;
-  if (!product) return <main className="p-10 text-ink-60">Product not found.</main>;
+  if (product === "loading") return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Loading…</p></main>;
+  if (!product) return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Product not found.</p></main>;
 
   if (product.images.length === 0) {
     return (
-      <main className="mx-auto max-w-lg px-6 py-10">
+      <main className="mx-auto max-w-5xl px-6 py-10">
+      <ProductDesignNav />
         <h1 className="text-2xl mb-4">New Template</h1>
         <div className="card p-8 text-center">
           <p className="text-ink-70 mb-4">
@@ -195,6 +197,7 @@ function NewTemplateForm() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
+      <ProductDesignNav />
       <h1 className="text-2xl mb-1">New Template</h1>
       <p className="text-xs text-ink-60 mb-6">for {product.name}.</p>
 
@@ -256,9 +259,9 @@ function NewTemplateForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap gap-2 items-center justify-between mb-2">
               <h2 className="eyebrow">Base Analysis (read-only)</h2>
               <button
                 type="button"
@@ -286,9 +289,9 @@ function NewTemplateForm() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap gap-2 items-center justify-between mb-2">
               <h2 className="eyebrow">Final Prompt JSON (editable)</h2>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -332,7 +335,7 @@ function NewTemplateForm() {
                 area to the top-right and shrink it 20%,&rdquo; not &ldquo;make
                 the logo better.&rdquo; Everything else stays untouched.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <input
                   id="tweak"
                   className="input flex-1"
@@ -364,7 +367,7 @@ function NewTemplateForm() {
 
 export default function NewTemplatePage() {
   return (
-    <Suspense fallback={<main className="p-10 text-ink-60">Loading…</main>}>
+    <Suspense fallback={<main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Loading…</p></main>}>
       <NewTemplateForm />
     </Suspense>
   );

@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getProduct } from "@/lib/firestore/products";
@@ -32,11 +33,12 @@ export default function NewSpecSheetPage() {
     navigate(`/design/spec-sheets/${newId}`);
   }
 
-  if (product === "loading" || !value) return <main className="p-10 text-ink-60">Loading…</main>;
-  if (!product) return <main className="p-10 text-ink-60">Product not found.</main>;
+  if (product === "loading") return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Loading…</p></main>;
+  if (!product || !value) return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Product not found.</p></main>;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      <ProductDesignNav />
       <h1 className="text-2xl mb-6 print:hidden">New Spec Sheet — {product.name}</h1>
       <SpecSheetEditorForm product={product} value={value} onChange={setValue} onSave={handleSave} saving={saving} />
     </main>
