@@ -19,7 +19,7 @@
     "test:range-mcp": "node --test qa/range-upload.test.mjs qa/range-quick-entry.test.mjs && npm test --prefix mcp/range && npm test --prefix mcp/figurine-range",
     "test:customer-workspace": "node --test qa/customer-workspace.test.mjs qa/customer-merge.test.mjs qa/customer-pipeline.test.mjs qa/customer-summary.test.mjs",
     "test:design-projects": "node --test qa/pd-projects.test.mjs",
-    "test:workspace-sync": "node --test qa/customer-workspace-sync-emulator.mjs"
+    "test:workspace-sync": "node --test qa/customer-workspace-sync-emulator.mjs && node qa/customer-workspace-followups-timezones.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

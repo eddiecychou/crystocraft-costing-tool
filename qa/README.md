@@ -198,7 +198,7 @@ Run with Node dependencies installed and Java 21 available:
 npx firebase-tools@15.33.0 emulators:exec --only firestore --project crystocraft-rbac-test "npm run test:workspace-sync"
 ```
 
-Nine cases cover creation from either page, two-way text/date/status and note
+Fifteen cases cover creation from either page, two-way text/date/status and note
 edits, completion/archive/reopen in either direction, remount persistence, stale
 edit rejection with draft retention, legacy conversation preservation, customer
 isolation and anonymous/customer denial. Each case keeps both pages mounted for
@@ -209,3 +209,18 @@ the RBAC, customer merge, Pipeline and Product Design suites on applicable pushe
 pull requests and manual runs. No CI secrets, production deploy or live fixtures
 are needed. The normal build's fast workspace checks remain emulator-independent;
 this integration suite runs explicitly in the job that starts Firestore.
+
+
+The same command also runs six **Follow-ups Due** cases in UTC and
+Australia/Sydney. The tile's existing definition is overdue unfinished tasks
+(before local today), not all open tasks or distinct customers. Today/future/
+undated tasks, completed tasks and notes are excluded; Waiting overdue tasks
+remain included. Both native tasks and carried interaction follow-ups count,
+without a summary-age cutoff. Tests verify the open drilldown, category/retail
+filters, summary-period independence and rescheduling/reopening from either page.
+
+The page bundle's calendar is fixed to 17 October 2026 13:30 UTC, which is
+18 October in Sydney. Firestore SDK/network clocks and test polling remain real.
+This avoids midnight flakiness while checking local-day boundaries. The timezone
+runner is `qa/customer-workspace-followups-timezones.mjs`; it inherits the same
+loopback-only emulator restriction. No production date or counter code is changed.

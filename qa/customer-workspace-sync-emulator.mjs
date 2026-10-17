@@ -17,17 +17,20 @@ import {doc,getDoc,getDocs,collection,setDoc,Timestamp} from 'firebase/firestore
 import {workspaceSyncPlugin} from './customer-workspace-sync-fixture.mjs'
 if(!/^(127\.0\.0\.1|localhost):\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST||''))throw Error('Loopback Firestore emulator required; live fixture writes forbidden.')
 let env,db,Dashboard,CustomerDetail,scratch,dom
+// Freeze only the bundled page calendar. SDK/network timers and polling stay real.
+const CALENDAR_NOW=Date.parse('2026-10-17T13:30:00Z')
 const C='sync_customer',OTHER='sync_other',legacy={description:'Original conversation',status:'Quoted',date:Timestamp.fromMillis(1000),follow_up_date:Timestamp.fromMillis(2000),attachments:[{name:'original.pdf'}]}
 before(async()=>{
  dom=new JSDOM('<!doctype html><body></body>',{url:'http://localhost'});for(const name of ['window','document','HTMLElement','Event','MouseEvent','localStorage'])globalThis[name]=dom.window[name]
  globalThis.IS_REACT_ACT_ENVIRONMENT=true
+ globalThis.__workspaceCalendarDate=class extends Date {constructor(...args){super(...(args.length?args:[CALENDAR_NOW]))}static now(){return CALENDAR_NOW}}
  env=await initializeTestEnvironment({projectId:'crystocraft-rbac-test',firestore:{rules:await readFile('firestore.rules','utf8')}})
  db=env.authenticatedContext('sync_admin').firestore();globalThis.__workspaceSyncDb=db
  scratch=await mkdtemp(resolve('.qa-workspace-sync-'))
- await build({entryPoints:['src/pages/Dashboard.jsx','src/pages/CustomerDetail.jsx'],outdir:scratch,outExtension:{'.js':'.mjs'},bundle:true,jsx:'automatic',format:'esm',platform:'node',external:['react','react-dom','react-router-dom','lucide-react','firebase/firestore','firebase/storage'],plugins:[await workspaceSyncPlugin()]})
+ await build({entryPoints:['src/pages/Dashboard.jsx','src/pages/CustomerDetail.jsx'],outdir:scratch,outExtension:{'.js':'.mjs'},bundle:true,banner:{js:'const Date=globalThis.__workspaceCalendarDate;'},jsx:'automatic',format:'esm',platform:'node',external:['react','react-dom','react-router-dom','lucide-react','firebase/firestore','firebase/storage'],plugins:[await workspaceSyncPlugin()]})
  Dashboard=(await import(pathToFileURL(join(scratch,'Dashboard.mjs')))).default;CustomerDetail=(await import(pathToFileURL(join(scratch,'CustomerDetail.mjs')))).default
 })
-after(async()=>{await env?.cleanup();if(scratch)await rm(scratch,{recursive:true,force:true});dom?.window.close();delete globalThis.__workspaceSyncDb})
+after(async()=>{await env?.cleanup();if(scratch)await rm(scratch,{recursive:true,force:true});dom?.window.close();delete globalThis.__workspaceSyncDb;delete globalThis.__workspaceCalendarDate})
 async function eventually(check,label){
  let last;const until=Date.now()+10000
  while(Date.now()<until){try{let result;await act(async()=>{await delay(25);result=check()});if(result)return}catch(e){last=e}}
@@ -38,18 +41,18 @@ const workspace=(host,id=C)=>host.querySelector(`section[aria-label="Summary and
 const row=(host,text)=>[...host.querySelectorAll('li')].find(li=>li.textContent.includes(text))
 async function click(host,text){const b=button(host,text);assert.ok(b,`Missing button ${text}`);await act(async()=>b.click())}
 async function fill(el,value){assert.ok(el);await act(async()=>{el.value=value;Simulate.change(el,{target:{value}})})}
-async function save(host){await act(async()=>host.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));await eventually(()=>!host.querySelector('form')||host.querySelector('[role="alert"]'),'Save must finish')}
+async function save(host){await act(async()=>host.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));await eventually(()=>!host.isConnected||!host.querySelector('form')||host.querySelector('[role="alert"]'),'Save must finish')}
 async function choose(host,id){const select=[...host.querySelectorAll('label')].find(l=>l.textContent.includes('Find a customer')).querySelector('select');await fill(select,id)}
 function CustomerNavigation({id}) {
  const navigate=useNavigate()
  React.useEffect(()=>{navigate(`/customers/${id}`,{replace:true})},[id,navigate])
  return null
 }
-async function fixture(t,{withLegacy=false}={}){
+async function fixture(t,{withLegacy=false,withCategories=false}={}){
  await env.clearFirestore();localStorage.clear()
  await env.withSecurityRulesDisabled(async ctx=>{
   const admin=ctx.firestore();await setDoc(doc(admin,'users/sync_admin'),{role:'admin'})
-  for(const id of [C,OTHER])await setDoc(doc(admin,'customers',id),{company_name:id,contacts:[],tags:[],channels:[]})
+  for(const id of [C,OTHER])await setDoc(doc(admin,'customers',id),{company_name:id,contacts:[],tags:withCategories&&id===C?['Retail Customer']:[],channels:[],...(withCategories?{crm_category:id===C?'Distributor':'Gift / OEM'}:{})})
   await setDoc(doc(admin,'dashboard_cache/weekly_summary'),{items:[{customerId:C,digest:'Current saved summary'},{customerId:OTHER,digest:'Other customer summary'}]})
   if(withLegacy)await setDoc(doc(admin,'customers',C,'enquiries/legacy'),legacy)
  })
@@ -59,7 +62,7 @@ async function fixture(t,{withLegacy=false}={}){
  await render(0);await choose(hosts[0],C);await render(1)
  return {dash:hosts[0],customer:hosts[1],d:()=>workspace(hosts[0]),c:()=>workspace(hosts[1]),render,remount:async(index,id=C)=>{await act(async()=>roots[index].unmount());roots[index]=createRoot(hosts[index]);await render(index,id);if(!index)await choose(hosts[index],id)}}
 }
-async function create(w,kind,text){await click(w,kind==='task'?'Add task':'Add note');await fill(w.querySelector('textarea'),text);await save(w)}
+async function create(w,kind,text,{date,state}={}){await click(w,kind==='task'?'Add task':'Add note');await fill(w.querySelector('textarea'),text);if(date!==undefined)await fill(w.querySelector('input[type=date]'),date);if(state)await fill(w.querySelector('form select'),state);await save(w)}
 async function edit(w,text,next,{date,state}={}){await click(row(w,text),'Edit');await fill(w.querySelector('textarea'),next);if(date!==undefined)await fill(w.querySelector('input[type=date]'),date);if(state)await fill(w.querySelector('form select'),state);await save(w)}
 for(const fromDashboard of [true,false])test(`real pages create task and note from ${fromDashboard?'Dashboard':'customer'} and sync without remount`,async t=>{
  const v=await fixture(t),source=fromDashboard?v.d:v.c,target=fromDashboard?v.c:v.d
@@ -112,4 +115,85 @@ test('anonymous and customer portal identities cannot read or change internal ta
  await env.withSecurityRulesDisabled(async ctx=>setDoc(doc(ctx.firestore(),'users/sync_portal'),{role:'customer',status:'approved',customer_id:C}))
  for(const unsafe of [env.unauthenticatedContext().firestore(),env.authenticatedContext('sync_portal').firestore()]){await assertFails(getDoc(doc(unsafe,snap.ref.path)));await assertFails(setDoc(doc(unsafe,snap.ref.path),{...snap.data(),text:'Overwritten'}))}
  assert.equal((await getDoc(snap.ref)).data().text,'Internal note')
+})
+
+
+// Read the real tile and drilldown, never a copied implementation of its count.
+const dueCard=host=>[...host.querySelectorAll('button')].find(b=>[...b.querySelectorAll('p')].some(p=>p.textContent==='Follow-ups Due'))
+const dueCount=host=>Number(dueCard(host)?.querySelector('p')?.textContent)
+const duePanel=host=>host.querySelector('[aria-label="Overdue follow-ups"]')
+const PAST='2000-01-01',FUTURE='2099-01-01'
+function localToday(){const d=new globalThis.__workspaceCalendarDate();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+async function expectDue(v,n){await eventually(()=>dueCount(v.dash)===n,`Follow-ups Due should be ${n}, saw ${dueCount(v.dash)}`)}
+async function mirrored(v,text,{date,state}={}){
+ await eventually(()=>[v.d(),v.c()].every(w=>{
+  const item=row(w,text);if(!item)return false
+  if(date!==undefined&&(date?!item.textContent.includes(date):/\d{4}-\d{2}-\d{2}/.test(item.textContent)))return false
+  return !state||item.textContent.includes(state)
+ }),`Both pages must show current ${text}`)
+}
+for(const fromDashboard of [true,false])test(`Follow-ups Due tracks the full task lifecycle from ${fromDashboard?'Dashboard':'customer page'}`,async t=>{
+ const v=await fixture(t),source=fromDashboard?v.d:v.c,other=fromDashboard?v.c:v.d,today=localToday()
+ if(process.env.WORKSPACE_EXPECT_TODAY)assert.equal(today,process.env.WORKSPACE_EXPECT_TODAY,'Same instant must use the runner’s local calendar date')
+ await expectDue(v,0)
+ await create(source(),'task','Counted task',{date:PAST});await mirrored(v,'Counted task',{date:PAST});await expectDue(v,1)
+ await create(source(),'note','Uncounted note');await mirrored(v,'Uncounted note');await expectDue(v,1)
+ for(const [date,n]of [[today,0],[PAST,1],[FUTURE,0],['',0],[PAST,1]]){
+  await edit(source(),'Counted task','Counted task',{date});await mirrored(v,'Counted task',{date});await expectDue(v,n)
+ }
+ await edit(source(),'Counted task','Counted task',{state:'waiting'});await mirrored(v,'Counted task',{state:'Waiting'});await expectDue(v,1)
+ await click(row(source(),'Counted task'),'Done');await eventually(()=>!row(v.d(),'Counted task')&&!row(v.c(),'Counted task'),'Completed task hidden in both');await expectDue(v,0)
+ await click(other(),'Show completed / archived (1)');await click(row(other(),'Counted task'),'Reopen');await mirrored(v,'Counted task',{date:PAST,state:'To do'});await expectDue(v,1)
+ // Reopening a future-dated task must not add it back to the overdue total.
+ await edit(source(),'Counted task','Counted task',{date:FUTURE});await mirrored(v,'Counted task',{date:FUTURE});await expectDue(v,0)
+ await click(row(source(),'Counted task'),'Done');await eventually(()=>!!button(row(other(),'Counted task'),'Reopen'),'Future task completed')
+ await click(row(other(),'Counted task'),'Reopen');await mirrored(v,'Counted task',{date:FUTURE,state:'To do'});await expectDue(v,0)
+ await v.remount(0);await expectDue(v,0)
+})
+for(const fromDashboard of [true,false])test(`Follow-ups Due combines native and old interaction tasks when changed from ${fromDashboard?'Dashboard':'customer page'}`,async t=>{
+ const v=await fixture(t,{withLegacy:true}),source=fromDashboard?v.d:v.c,other=fromDashboard?v.c:v.d
+ await mirrored(v,'Original conversation');await expectDue(v,1)
+ await create(source(),'task','Separate task same customer',{date:PAST});await mirrored(v,'Separate task same customer',{date:PAST});await expectDue(v,2)
+ await click(row(source(),'Original conversation'),'Done');await eventually(()=>!row(v.d(),'Original conversation')&&!row(v.c(),'Original conversation'),'Legacy completed in both');await expectDue(v,1)
+ await click(other(),'Show completed / archived (1)');await click(row(other(),'Original conversation'),'Reopen');await mirrored(v,'Original conversation',{state:'To do'});await expectDue(v,2)
+ for(const date of [localToday(),FUTURE,'']){await edit(source(),'Original conversation','Original conversation',{date});await mirrored(v,'Original conversation',{date});await expectDue(v,1)}
+ await edit(source(),'Original conversation','Original conversation',{date:PAST});await mirrored(v,'Original conversation',{date:PAST});await expectDue(v,2)
+ await v.remount(0);await expectDue(v,2)
+ const saved=(await getDoc(doc(db,'customers',C,'enquiries/legacy'))).data();for(const field of ['description','date','follow_up_date','attachments','status'])assert.deepEqual(saved[field],legacy[field])
+ assert.equal((await getDocs(collection(db,'customers',C,'work_items'))).size,1,'No duplicate carried follow-up was created')
+})
+test('Follow-ups Due tile and already-open drilldown stay in agreement during edits on either page',async t=>{
+ const v=await fixture(t);await create(v.c(),'task','First overdue',{date:PAST});await mirrored(v,'First overdue',{date:PAST});await expectDue(v,1)
+ await act(async()=>dueCard(v.dash).click())
+ async function panelCount(n,text){await eventually(()=>dueCount(v.dash)===n&&duePanel(v.dash)?.querySelectorAll('li').length===n&&duePanel(v.dash)?.querySelector('h2')?.textContent===`Overdue follow-ups · ${n}`&&(!text||duePanel(v.dash).textContent.includes(text)),`Tile and drilldown should both contain ${n} overdue tasks`)}
+ await panelCount(1,'First overdue')
+ await create(v.c(),'task','Future then overdue',{date:FUTURE});await eventually(()=>row(v.c(),'Future then overdue'),'Future saved');await panelCount(1)
+ await edit(v.c(),'Future then overdue','Future then overdue',{date:PAST});await panelCount(2,'Future then overdue')
+ await click(row(duePanel(v.dash),'First overdue'),'Done');await panelCount(1,'Future then overdue');await eventually(()=>!row(v.c(),'First overdue'),'Dashboard completion reaches customer')
+ await edit(v.c(),'Future then overdue','Future then overdue',{date:FUTURE});await panelCount(0);assert.match(duePanel(v.dash).textContent,/No overdue follow-ups/)
+ await click(v.c(),'Show completed / archived (1)');await click(row(v.c(),'First overdue'),'Reopen');await panelCount(1,'First overdue')
+ await edit(workspace(duePanel(v.dash)),'First overdue','First overdue',{date:FUTURE});await panelCount(0)
+ await click(v.dash,'Back to summaries');await mirrored(v,'First overdue',{date:FUTURE});await expectDue(v,0)
+})
+test('Follow-ups Due counts tasks per filtered customer and ignores notes, completed work and summary period',async t=>{
+ const v=await fixture(t,{withCategories:true})
+ await create(v.d(),'task','First C task',{date:PAST});await create(v.d(),'task','Second C task',{date:PAST,state:'waiting'});await mirrored(v,'Second C task',{date:PAST});await expectDue(v,2)
+ await v.render(1,OTHER);const other=()=>workspace(v.customer,OTHER)
+ await create(other(),'task','Other customer task',{date:PAST});await eventually(()=>row(workspace(v.dash,OTHER),'Other customer task'),'Other customer live');await expectDue(v,3)
+ await create(other(),'task','Already completed',{date:PAST,state:'done'});await eventually(()=>button(other(),'Show completed / archived (1)'),'Completed item saved');await expectDue(v,3)
+ // Defensive historic data: a reference note is never a task, even if it has a date.
+ await env.withSecurityRulesDisabled(async ctx=>setDoc(doc(ctx.firestore(),'customers',C,'work_items/dated_note'),{kind:'note',text:'Dated reference note',due_on:PAST,state:'todo',revision:1,created_by:'sync_admin',updated_by:'sync_admin'}))
+ await eventually(()=>row(v.d(),'Dated reference note'),'Dated note delivered to Dashboard');await expectDue(v,3)
+ await click(v.dash,'Distributor');await expectDue(v,2)
+ await click(v.dash,'Gift / OEM');await expectDue(v,1)
+ await click(v.dash,'Retail Customer');await expectDue(v,0)
+ await click(v.dash,'Gift / OEM');await expectDue(v,2)
+ await click(v.dash,'Retail Customer');await expectDue(v,3)
+ const period=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.includes('Conversation window')).querySelector('select')
+ for(const days of ['14','90','30']){await fill(period,days);await expectDue(v,3)}
+ await act(async()=>dueCard(v.dash).click());await eventually(()=>duePanel(v.dash)?.querySelectorAll('li').length===3,'Unfiltered drilldown contains all three tasks')
+ assert.ok(!duePanel(v.dash).textContent.includes('Dated reference note'));assert.ok(!duePanel(v.dash).textContent.includes('Already completed'))
+ await click(v.dash,'Distributor');await eventually(()=>duePanel(v.dash)?.querySelectorAll('li').length===2,'Filter updates open drilldown');await expectDue(v,2)
+ await edit(other(),'Other customer task','Other customer rescheduled',{date:FUTURE});await eventually(()=>row(other(),'Other customer rescheduled'),'Excluded customer changed');await expectDue(v,2)
+ await click(v.dash,'Clear filter');await expectDue(v,2);assert.equal(duePanel(v.dash).querySelectorAll('li').length,2)
 })

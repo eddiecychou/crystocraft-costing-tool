@@ -1,5 +1,9 @@
 # Customer workspace sync regressions — 17 October 2026
 
+> Extended with six Follow-ups Due cases and UTC/Sydney checks. See
+> [count regression evidence](DASHBOARD-FOLLOWUP-COUNT-REGRESSIONS-2026-10-17.md).
+> The original nine-case verification below remains the initial release record.
+
 Test-only update. No production source, rules or data changes; no app deployment.
 
 ## Coverage
