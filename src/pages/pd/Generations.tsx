@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
@@ -32,6 +33,7 @@ export default function GenerationsPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
+      <ProductDesignNav />
       <h1 className="text-2xl mb-1">Generations</h1>
       <p className="text-xs text-ink-60 mb-6">
         Every rendered result, across every template — uploaded from a

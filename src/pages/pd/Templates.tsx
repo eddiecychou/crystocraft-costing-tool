@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
@@ -29,6 +30,7 @@ export default function TemplatesPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
+      <ProductDesignNav />
       <h1 className="text-2xl mb-1">Prompt Templates</h1>
       <p className="text-xs text-ink-60 mb-6">
         Created from a product&rsquo;s own page — pick a product with at

@@ -57,5 +57,5 @@ test('project navigation has a selected Projects link and a full-width accessibl
   await act(async()=>toggle.click());assert.equal(panel.hidden,false);assert.equal(toggle.getAttribute('aria-expanded'),'true')
   assert.deepEqual([...panel.querySelectorAll('a')].map(a=>a.getAttribute('href')),['/design/products','/design/templates','/design/generations','/design/tools'])
   await act(async()=>toggle.click());assert.equal(panel.hidden,true)
- })
+ },'/design/projects')
 })

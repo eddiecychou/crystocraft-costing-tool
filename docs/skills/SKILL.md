@@ -346,7 +346,7 @@ emulator job. App and private read-only credentials deployed with fresh two-role
 
 ### Product Design — brand-aware image-prompt workbench (V8.16)
 
-Project list/detail/editor navigation uses a selected Projects link and accessible Design tools disclosure. Its full-width tools grid is a sibling below the top row, not a nested floating flex item; links wrap into one/two/four columns with 44px targets. Existing gallery/template/generation/guide routes are retained. Regression: `qa/pd-projects.test.mjs`.
+Shared `src/components/ProductDesignNav.jsx` appears on project list/detail/editor, Gallery, JSON templates, Generations and Workbench guide. It keeps Projects reachable, highlights the current section/tool, and opens the tools grid by default on tool pages. Projects navigation uses a selected Projects link and accessible Design tools disclosure. Its full-width tools grid is a sibling below the top row, not a nested floating flex item; links wrap into one/two/four columns with 44px targets. Existing gallery/template/generation/guide routes are retained. Regression: `qa/pd-projects.test.mjs`.
 
 **Local Projects overview candidate (17 Oct, not deployed):** `/design/projects` groups design deliverables by customer/internal range, with derived waiting views, reviewable agent updates and immutable private `pd_projects` history. Existing gallery/JSON tools remain at their routes. No data migration, new MCP or catalogue/customer side effects. Read [operator/review plan](../plans/PRODUCT-DESIGN-PROJECTS-2026-10-17.md) and its draft-only starting list before any import or release.
 

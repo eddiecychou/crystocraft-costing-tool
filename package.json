@@ -18,7 +18,7 @@
     "test:seo-control-plane": "node seo-control-plane/validate-payload.test.mjs && node seo-control-plane/safe-write.test.mjs && node qa/seo-batch-guard.test.mjs && node --test qa/seo-elementor-layout.test.mjs qa/seo-write-safety.test.mjs qa/seo-dsh-followup.test.mjs qa/seo-review-queue.test.mjs qa/seo-body-gate-followup.test.mjs",
     "test:range-mcp": "node --test qa/range-upload.test.mjs qa/range-quick-entry.test.mjs && npm test --prefix mcp/range && npm test --prefix mcp/figurine-range",
     "test:customer-workspace": "node --test qa/local-day.test.mjs qa/customer-workspace.test.mjs qa/customer-merge.test.mjs qa/customer-pipeline.test.mjs qa/customer-summary.test.mjs",
-    "test:design-projects": "node --test qa/pd-projects.test.mjs",
+    "test:design-projects": "node --test qa/pd-projects.test.mjs qa/pd-navigation.test.mjs",
     "test:workspace-sync": "node --test qa/customer-workspace-sync-emulator.mjs && node qa/customer-workspace-followups-timezones.mjs",
     "test:oc-time": "node --test qa/oc-time-audit.test.mjs && node qa/whatsapp-import.test.mjs && npm run test:scheduled-time",
     "test:scheduled-time": "python3 qa/scheduled-jobs.test.py && node --test qa/outreach-time.test.mjs",

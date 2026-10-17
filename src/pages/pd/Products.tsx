@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listProducts, deleteProduct } from "@/lib/firestore/products";
@@ -110,8 +111,9 @@ export default function ProductsPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
+      <ProductDesignNav />
       <div className="flex items-center justify-between mb-6">
-        <div><h1 className="text-2xl">Gallery &amp; design sources</h1><Link to="/design/projects" className="text-sm text-brand-600 underline">Back to projects</Link></div>
+        <h1 className="text-2xl">Gallery &amp; design sources</h1>
         {products && products.length > 0 && (
           <Link to="/design/products/new" className="btn btn-primary">New Product</Link>
         )}

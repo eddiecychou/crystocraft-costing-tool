@@ -1,27 +1,14 @@
 import { formatOcDateTime } from '../../ocTime.js'
-import {useEffect,useState,useId} from 'react'
+import {useEffect,useState} from 'react'
 import {Link,useNavigate,useParams} from 'react-router-dom'
+import ProductDesignNav from '../../components/ProductDesignNav'
 import {useCan} from '../../access'
 import {listRealCustomers} from '../../lib/firestore/realCustomers'
 import {listDesignProjects,getDesignProject,designProjectHistory,saveDesignProject} from '../../domain/pdProjects'
 import {PROJECT_REFERENCE_LIMIT,PROJECT_STAGES,PROJECT_LINKS,LINK_LABELS,emptyProject,cleanProject,projectCustomer,projectWaiting,projectMatches,projectGroups,projectTime,parseProjectHandoff} from '../../pdProjects'
 const displayDate=v=>projectTime(v)?formatOcDateTime(projectTime(v), {}, 'en-GB'):'Not saved yet'
 const customerNames=rows=>Object.fromEntries(rows.map(c=>[c.id,c.company_name||c.contact_name||c.erp_code||'Unnamed customer']))
-function Tools(){
- const [open,setOpen]=useState(false),panelId=useId()
- const links=[['/design/products','Gallery & design sources'],['/design/templates','JSON templates'],['/design/generations','Generations'],['/design/tools','Workbench guide']]
- return <div className="mb-6 min-w-0">
-  <nav aria-label="Product Design navigation" className="flex border-b border-warm-grey gap-1">
-   <Link to="/design/projects" aria-current="page" className="flex-1 sm:flex-none inline-flex justify-center items-center min-h-[44px] px-4 border-b-2 border-brand-600 text-sm font-medium text-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600">Projects</Link>
-   <button type="button" aria-expanded={open} aria-controls={panelId} onClick={()=>setOpen(v=>!v)} className={`flex-1 sm:flex-none inline-flex justify-center items-center gap-2 min-h-[44px] px-4 border-b-2 text-sm hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600 ${open?'border-transparent bg-white text-brand-600':'border-transparent text-ink-60'}`}>
-    Design tools <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={open?'rotate-180':''}><path d="m6 9 6 6 6-6"/></svg>
-   </button>
-  </nav>
-  <nav id={panelId} hidden={!open} aria-label="Product Design tools" className={open?'mt-3 card p-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1':'hidden'}>
-   {links.map(([to,label])=><Link key={to} to={to} className="min-w-0 min-h-[44px] flex items-center px-3 py-2 text-sm text-ink-70 break-words hover:bg-ivory hover:text-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600">{label}</Link>)}
-  </nav>
- </div>
-}
+
 
 function useProjectCustomers(){const [state,set]=useState({rows:[],warning:''});useEffect(()=>{let live=true;listRealCustomers().then(rows=>{if(live)set({rows,warning:''})}).catch(()=>{if(live)set({rows:[],warning:'Customer lookup is unavailable with your access. Projects remain visible using saved customer names; existing links are retained.'})});return()=>{live=false}},[]);return state}
 export default function DesignProjects(){
@@ -29,7 +16,7 @@ export default function DesignProjects(){
  const lookup=useProjectCustomers(),names=customerNames(lookup.rows)
  useEffect(()=>{let live=true;setProjects(null);setError('');listDesignProjects().then(p=>{if(live)setProjects(p)}).catch(()=>{if(live)setError('Projects could not load. Check your Product Design access and try again.')});return()=>{live=false}},[attempt])
  const visible=(projects||[]).filter(p=>projectMatches(p,view,search,customer,names)),groups=projectGroups(visible,names),options=new Map((projects||[]).filter(p=>p.customerId).map(p=>[p.customerId,projectCustomer(p,names)]))
- return <main className="max-w-6xl mx-auto p-4 md:p-6"><Tools/><div className="flex flex-wrap items-start justify-between gap-3 mb-4"><div><h1 className="text-2xl">Design projects</h1><p className="text-sm text-ink-60 mt-1">What we’re working on, where it stands, and what happens next.</p></div><Link className="btn-primary" to="/design/projects/new">New project</Link></div>
+ return <main className="max-w-6xl mx-auto p-4 md:p-6"><ProductDesignNav/><div className="flex flex-wrap items-start justify-between gap-3 mb-4"><div><h1 className="text-2xl">Design projects</h1><p className="text-sm text-ink-60 mt-1">What we’re working on, where it stands, and what happens next.</p></div><Link className="btn-primary" to="/design/projects/new">New project</Link></div>
   {lookup.warning&&<p role="status" className="text-sm text-ink-60 mb-3">{lookup.warning}</p>}
   <div className="card p-4 mb-4 grid gap-3 md:grid-cols-3"><label className="text-sm">Search projects<input className="input mt-1" type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Project, customer or next action"/></label><label className="text-sm">View<select className="input mt-1" value={view} onChange={e=>setView(e.target.value)}>{['Active','Waiting','On hold','Completed','Archived','All'].map(v=><option key={v}>{v}</option>)}</select></label><label className="text-sm">Customer / internal<select className="input mt-1" value={customer} onChange={e=>setCustomer(e.target.value)}><option value="all">All customers and internal</option><option value="internal">Internal projects</option>{[...options].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label></div>
   <p className="text-xs text-ink-60 mb-4">Active includes waiting work. Waiting is derived from the stage or “waiting on”; it is not a second status. Project completion never changes customer Pipeline or product publication.</p>
@@ -64,7 +51,7 @@ export function DesignProjectDetail(){
  async function save(input,decision,eventId){await saveDesignProject(id||newId,project,input,decision,eventId);if(!id)navigate(`/design/projects/${newId}`,{replace:true});else{setEditing(false);setRetry(n=>n+1)}}
  async function addNote(e){e.preventDefault();setBusy(true);setError('');try{await saveDesignProject(id,project,project,note,noteId,'note');setNote('');setNoteId(crypto.randomUUID());setRetry(n=>n+1)}catch(err){setError(err.message||'Could not save. Your note is still here.')}finally{setBusy(false)}}
  async function moreHistory(){setBusy(true);try{const h=await designProjectHistory(id,historyError?null:history.cursor);setHistory(p=>({...h,items:historyError?h.items:[...p.items,...h.items]}));setHistoryError('')}catch{setHistoryError('History could not load. Try again.')}finally{setBusy(false)}}
- return <main className="max-w-5xl mx-auto p-4 md:p-6"><Tools/>{lookup.warning&&<p role="status" className="text-sm text-ink-60 mb-3">{lookup.warning}</p>}{error&&<div role="alert" className="card p-4 mb-4"><p>{error}</p>{!project&&<button className="btn-secondary mt-2" onClick={()=>setRetry(n=>n+1)}>Try again</button>}</div>}{!loaded&&<p role="status">Loading project…</p>}{loaded&&!isNew&&!project&&!error&&<div className="card p-6"><h1 className="text-2xl">Project not found</h1><p className="mt-2">Check the link or return to Projects.</p></div>}
+ return <main className="max-w-5xl mx-auto p-4 md:p-6"><ProductDesignNav/>{lookup.warning&&<p role="status" className="text-sm text-ink-60 mb-3">{lookup.warning}</p>}{error&&<div role="alert" className="card p-4 mb-4"><p>{error}</p>{!project&&<button className="btn-secondary mt-2" onClick={()=>setRetry(n=>n+1)}>Try again</button>}</div>}{!loaded&&<p role="status">Loading project…</p>}{loaded&&!isNew&&!project&&!error&&<div className="card p-6"><h1 className="text-2xl">Project not found</h1><p className="mt-2">Check the link or return to Projects.</p></div>}
  {loaded&&(isNew||editing)?<><h1 className="text-2xl mb-4">{isNew?'New design project':'Edit design project'}</h1><ProjectEditor key={id||newId} project={project} customers={lookup.rows} onSave={save} onCancel={()=>{if(isNew)navigate('/design/projects');else{setEditing(false);setRetry(n=>n+1)}}}/></>:loaded&&project&&<>
  <section className="card p-4 md:p-6 mb-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h1 className="text-2xl break-words">{project.title}</h1><p className="text-sm text-ink-60 mt-2">{projectCustomer(project,names)} · Design: {project.status}{project.archived?' · Archived':''}</p></div><button className="btn-primary" onClick={()=>setEditing(true)}>Edit / apply agent update</button></div>{project.leadImageUrl&&<img src={project.leadImageUrl} alt="" className="max-w-full h-48 object-contain mt-4" referrerPolicy="no-referrer"/>}
  {project.brief&&<p className="text-sm whitespace-pre-wrap break-words mt-4">{project.brief}</p>}<h2 className="label mt-4">Current state</h2><p className="text-sm whitespace-pre-wrap break-words mt-1">{project.currentState||'Not added yet.'}</p><h2 className="label mt-4">Next action</h2><p className="text-sm whitespace-pre-wrap break-words mt-1">{project.nextAction||'Not added yet.'}</p>{project.waitingOn&&<p className="text-sm mt-3">Waiting on: {project.waitingOn}</p>}<p className="text-xs text-ink-60 mt-4">Updated {displayDate(project.updatedAt)} · Revision {project.revision}</p>
