@@ -5,15 +5,16 @@ import { sortWorkItems } from '../customerWorkItems'
 import useOcToday from '../hooks/useOcToday'
 import {summaryPeriodLabel} from '../customerSummary'
 
-function SummaryText({ digest, collapse }) {
+export function SummaryText({ digest = '', collapse = true, className = 'text-sm text-ink-70 mt-2 whitespace-pre-wrap break-words' }) {
   const [expanded, setExpanded] = useState(false)
   const id = useId()
-  const long = collapse && digest.length > 500
-  const prefix = Array.from(digest).slice(0, 500).join('')
+  const text = typeof digest === 'string' ? digest : ''
+  const long = collapse && text.length > 500
+  const prefix = Array.from(text).slice(0, 500).join('')
   const boundary = prefix.search(/\s+\S*$/u)
   const preview = boundary > 350 ? prefix.slice(0, boundary) : prefix
   return <>
-    <p id={id} className="text-sm text-ink-70 mt-2 whitespace-pre-wrap break-words">{long && !expanded ? `${preview.trimEnd()}…` : digest}</p>
+    <p id={id} className={className}>{long && !expanded ? `${preview.trimEnd()}…` : text}</p>
     {long && <button type="button" aria-expanded={expanded} aria-controls={id}
       className="text-sm text-brand-600 underline min-h-[40px]"
       onClick={() => setExpanded(value => !value)}>{expanded ? 'Show less' : 'Show more'}</button>}

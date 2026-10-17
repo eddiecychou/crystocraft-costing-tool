@@ -13,7 +13,7 @@ import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
-import CustomerWorkspace from '../components/CustomerWorkspace'
+import CustomerWorkspace, { SummaryText } from '../components/CustomerWorkspace'
 import { CustomerPipeline } from '../components/CustomerPipeline'
 import useSummaryPeriod from '../hooks/useSummaryPeriod'
 import {SUMMARY_PERIODS,summaryCacheId} from '../customerSummary'
@@ -1245,7 +1245,7 @@ export default function CustomerDetail() {
         <label className="block text-sm p-4">Summary period<select className="input mt-1 max-w-xs" value={summaryPeriod} onChange={e=>setSummaryPeriod(e.target.value)}>{SUMMARY_PERIODS.map(p=><option key={p.days} value={p.days}>{p.label}</option>)}</select><span className="block text-xs text-ink-60 mt-2">Email, WhatsApp and interactions. 6 months covers 180 days; 1 year covers 365 days. Changing the period shows its saved summary without running AI.</span></label>
         {(work.error || sharedSummaryError) && <p role="alert" className="text-sm text-brand-600 p-4">{work.error || sharedSummaryError}</p>}
         {work.loading && <p className="text-sm text-ink-60 p-4">Loading tasks…</p>}
-        <CustomerWorkspace key={id} customerId={id} customerName={customer.company_name || customer.contact_name || 'Customer'}
+        <CustomerWorkspace key={id} collapseSummary customerId={id} customerName={customer.company_name || customer.contact_name || 'Customer'}
           digest={sharedSummary?.digest} generatedAt={sharedSummary?.generatedAt}
           summaryDays={summaryPeriod} sourceLimited={sharedSummary?.sourceLimited}
           items={combineWorkItems(enquiries, work.items)} />
@@ -1876,11 +1876,11 @@ export default function CustomerDetail() {
               <p className="text-sm text-ink-60">Not generated yet — click {emailSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the ingested threads.</p>
             ) : (
               <>
-                <p className="text-sm text-ink-80">{customer.email_summary.summary}</p>
+                <SummaryText key={`${id}:email:summary:${customer.email_summary.summary}`} digest={customer.email_summary.summary} className="text-sm text-ink-80 whitespace-pre-wrap break-words" />
                 {customer.email_summary.recent_activity && (
                   <div>
                     <h4 className="text-xs text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
-                    <p className="text-sm text-ink-70">{customer.email_summary.recent_activity}</p>
+                    <SummaryText key={`${id}:email:recent_activity:${customer.email_summary.recent_activity}`} digest={customer.email_summary.recent_activity} className="text-sm text-ink-70 whitespace-pre-wrap break-words" />
                   </div>
                 )}
                 {customer.email_summary.open_commitments?.length > 0 && (
@@ -1962,11 +1962,11 @@ export default function CustomerDetail() {
               <p className="text-sm text-ink-60">Not generated yet — click {whatsappSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the imported chats.</p>
             ) : (
               <>
-                <p className="text-sm text-ink-80">{customer.whatsapp_summary.summary}</p>
+                <SummaryText key={`${id}:whatsapp:summary:${customer.whatsapp_summary.summary}`} digest={customer.whatsapp_summary.summary} className="text-sm text-ink-80 whitespace-pre-wrap break-words" />
                 {customer.whatsapp_summary.recent_activity && (
                   <div>
                     <h4 className="text-xs text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
-                    <p className="text-sm text-ink-70">{customer.whatsapp_summary.recent_activity}</p>
+                    <SummaryText key={`${id}:whatsapp:recent_activity:${customer.whatsapp_summary.recent_activity}`} digest={customer.whatsapp_summary.recent_activity} className="text-sm text-ink-70 whitespace-pre-wrap break-words" />
                   </div>
                 )}
                 {customer.whatsapp_summary.open_commitments?.length > 0 && (
@@ -2150,11 +2150,11 @@ export default function CustomerDetail() {
             <p className="text-sm text-ink-60">Not generated yet — click {alibabaSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the pasted messages.</p>
           ) : (
             <>
-              <p className="text-sm text-ink-80">{customer.alibaba_summary.summary}</p>
+              <SummaryText key={`${id}:alibaba:summary:${customer.alibaba_summary.summary}`} digest={customer.alibaba_summary.summary} className="text-sm text-ink-80 whitespace-pre-wrap break-words" />
               {customer.alibaba_summary.recent_activity && (
                 <div>
                   <h4 className="text-xs text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
-                  <p className="text-sm text-ink-70">{customer.alibaba_summary.recent_activity}</p>
+                  <SummaryText key={`${id}:alibaba:recent_activity:${customer.alibaba_summary.recent_activity}`} digest={customer.alibaba_summary.recent_activity} className="text-sm text-ink-70 whitespace-pre-wrap break-words" />
                 </div>
               )}
               {customer.alibaba_summary.open_commitments?.length > 0 && (

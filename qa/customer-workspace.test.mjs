@@ -10,7 +10,7 @@ import { Simulate } from 'react-dom/test-utils'
 import { MemoryRouter } from 'react-router-dom'
 import { JSDOM } from 'jsdom'
 import { cleanWorkItem, legacyWorkItems, combineWorkItems, sortWorkItems, dateOnly, assertRevision } from '../src/customerWorkItems.js'
-let scratch, Workspace, api, dom
+let scratch, Workspace, SummaryText, api, dom
 before(async () => {
   scratch = await mkdtemp(resolve('node_modules/.customer-workspace-'))
   dom = new JSDOM('<!doctype html><html><body></body></html>', {url:'http://localhost/'})
@@ -24,7 +24,7 @@ before(async () => {
     export const serverTimestamp=()=> 'SERVER_TIME';export const onSnapshot=()=>()=>{};
     export const runTransaction=async(db,fn)=>fn({get:async(path)=>({exists:()=>!!globalThis.__workDb[path],data:()=>globalThis.__workDb[path]}),set:(path,value)=>{globalThis.__workDb[path]=value},update:(path,value)=>{globalThis.__workDb[path]={...globalThis.__workDb[path],...value}}});`}))
   }}]})
-  Workspace=(await import(pathToFileURL(join(scratch,'workspace.mjs')))).default
+  const workspaceModule=await import(pathToFileURL(join(scratch,'workspace.mjs'))); Workspace=workspaceModule.default; SummaryText=workspaceModule.SummaryText
   api=await import(pathToFileURL(join(scratch,'api.mjs')))
 })
 after(async()=>{dom.window.close();await rm(scratch,{recursive:true,force:true});delete globalThis.__workDb})
@@ -75,15 +75,15 @@ test('both real pages use the same workflow and legacy carry-over; dashboard no 
 })
 
 const longSummary = 'Recent customer discussions and quotation requests. '.repeat(18) + 'Unique final detail.'
-test('Dashboard summary preview expands and collapses without hiding tasks or saving data',async()=>mount(async host=>{
+for(const showLink of [true,false])test(`${showLink?'Dashboard':'customer-page'} summary preview expands and collapses without hiding tasks or saving data`,async()=>mount(async host=>{
  const more=button(host,'Show more');assert.ok(more);assert.equal(more.getAttribute('aria-expanded'),'false')
  const paragraph=host.querySelector(`[id="${more.getAttribute('aria-controls')}"]`)
  assert.ok(paragraph.textContent.length<=501);assert.ok(paragraph.textContent.endsWith('…'));assert.doesNotMatch(paragraph.textContent,/Unique final detail/)
  assert.match(host.textContent,/Original quote conversation/);assert.ok(button(host,'Add task'));assert.ok(button(host,'Add note'))
  await act(async()=>more.click());assert.equal(paragraph.textContent,longSummary);assert.equal(button(host,'Show less').getAttribute('aria-expanded'),'true')
  await act(async()=>button(host,'Show less').click());assert.doesNotMatch(paragraph.textContent,/Unique final detail/)
-},{digest:longSummary,collapseSummary:true,items:legacyWorkItems([legacy]),saveItem:async()=>assert.fail('Expanding must not save')}))
-test('short/empty summaries need no expansion; customer page retains its full summary',async()=>{
+},{showLink,digest:longSummary,collapseSummary:true,items:legacyWorkItems([legacy]),saveItem:async()=>assert.fail('Expanding must not save')}))
+test('short/empty summaries need no expansion; explicitly uncollapsed callers retain full text',async()=>{
  for(const props of [{digest:'Short summary',collapseSummary:true},{digest:'',collapseSummary:true},{digest:longSummary}])await mount(async host=>{
  assert.equal(button(host,'Show more'),undefined);assert.equal(button(host,'Show less'),undefined)
  assert.match(host.textContent,new RegExp(props.digest?'Short summary|Unique final detail':'No recent summary'))
@@ -96,3 +96,18 @@ test('new summary or conversation window resets expansion and does not retain th
  assert.equal(button(host,'Show more').getAttribute('aria-expanded'),'false');assert.doesNotMatch(host.textContent,/Unique final detail|Replacement final detail/)
  await act(async()=>button(host,'Show more').click());assert.match(host.textContent,/Replacement final detail/)
 },{digest:longSummary,collapseSummary:true}))
+
+test('channel summary text previews independently, expands completely and collapses without affecting commitments',async()=>{
+ const host=document.createElement('div');document.body.append(host);const root=createRoot(host)
+ try{
+ await act(async()=>root.render(React.createElement('section',null,React.createElement(SummaryText,{digest:longSummary}),React.createElement(SummaryText,{digest:'Short recent activity'}),React.createElement(SummaryText,{digest:null}),React.createElement('p',null,'Open commitment stays visible'))))
+ assert.equal(host.querySelectorAll('button').length,1);assert.match(host.textContent,/Short recent activity/);assert.match(host.textContent,/Open commitment stays visible/)
+ await act(async()=>button(host,'Show more').click());assert.match(host.textContent,/Unique final detail/);assert.equal(button(host,'Show less').getAttribute('aria-expanded'),'true')
+ await act(async()=>button(host,'Show less').click());assert.doesNotMatch(host.textContent,/Unique final detail/);assert.match(host.textContent,/Open commitment stays visible/)
+ }finally{await act(async()=>root.unmount());host.remove()}
+})
+test('customer page enables previews for combined and individual conversation summary text',async()=>{
+ const source=await readFile('src/pages/CustomerDetail.jsx','utf8')
+ assert.match(source,/<CustomerWorkspace key=\{id\} collapseSummary/)
+ for(const channel of ['email','whatsapp','alibaba'])for(const field of ['summary','recent_activity'])assert.ok(source.includes(`digest={customer.${channel}_summary.${field}}`))
+})
