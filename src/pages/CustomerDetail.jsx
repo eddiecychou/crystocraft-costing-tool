@@ -5,7 +5,7 @@ import {
   onSnapshot, deleteDoc as deleteDocument, serverTimestamp,
 } from 'firebase/firestore'
 import { db, storage, authHeader } from '../firebase'
-import { useCan } from '../access'
+import { useCan, useRole } from '../access'
 import BrandQuickView from '../components/BrandQuickView'
 import { listApprovedConcepts } from '../lib/pdConcepts'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
@@ -159,11 +159,11 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={() => {if (!busy) onClose()}}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className=" text-ink">Merge “{customer.company_name}” into…</h2>
-          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
+          <button disabled={busy} onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3">
           {error && (
@@ -174,7 +174,7 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
           <label className="block">
             <span className="text-xs text-ink-60">The surviving record — search by company name</span>
             <input className="input w-full mt-0.5" placeholder="Search customers…" value={search}
-              onChange={e => { setSearch(e.target.value); setSurvivorId('') }} autoFocus />
+              onChange={e => { setSearch(e.target.value); setSurvivorId('') }} disabled={busy} autoFocus />
           </label>
           {search && !survivorId && (
             <div className="border border-warm-grey rounded-none max-h-48 overflow-y-auto">
@@ -200,9 +200,13 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
                 <strong>{preview.accountsCount}</strong> portal account{preview.accountsCount === 1 ? '' : 's'} will move to{' '}
                 <strong>{preview.survivor.company_name}</strong>.
               </p>
-              {(preview.assetsCount > 0 || preview.interactionsCount > 0 || preview.brandedImagesCount > 0 || preview.emailThreadsCount > 0) && (
+              {(preview.tasksCount > 0 || preview.notesCount > 0 || preview.whatsappThreadsCount > 0 || preview.alibabaThreadsCount > 0 || preview.assetsCount > 0 || preview.interactionsCount > 0 || preview.brandedImagesCount > 0 || preview.emailThreadsCount > 0) && (
                 <p>
                   {[
+                    preview.tasksCount > 0 && `${preview.tasksCount} task(s), including completed tasks`,
+                    preview.notesCount > 0 && `${preview.notesCount} note(s), including archived notes`,
+                    preview.whatsappThreadsCount > 0 && `${preview.whatsappThreadsCount} WhatsApp thread(s)`,
+                    preview.alibabaThreadsCount > 0 && `${preview.alibabaThreadsCount} Alibaba thread(s)`,
                     preview.interactionsCount > 0 && `${preview.interactionsCount} interaction log entr${preview.interactionsCount === 1 ? 'y' : 'ies'}`,
                     preview.assetsCount > 0 && `${preview.assetsCount} Brand Gallery asset${preview.assetsCount === 1 ? '' : 's'}`,
                     preview.emailThreadsCount > 0 && `${preview.emailThreadsCount} email thread${preview.emailThreadsCount === 1 ? '' : 's'}`,
@@ -212,11 +216,11 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
               )}
               <p className="text-xs text-amber-800">
                 {Object.keys(preview.fieldsToFill).length > 0
-                  ? <>{preview.survivor.company_name} will gain: {Object.keys(preview.fieldsToFill).map(f => MERGE_FIELD_LABELS[f] || f).join(', ')} — nothing it already has is overwritten.</>
+                  ? <>{preview.survivor.company_name} will gain: {Object.keys(preview.fieldsToFill).map(f => MERGE_FIELD_LABELS[f] || f).join(', ')} — existing tasks, notes and history are preserved.</>
                   : <>No fields to fill in — the surviving record already has everything this one does.</>}
               </p>
               <p className="text-xs text-amber-700 font-medium">
-                “{customer.company_name}” will be deleted once merged. This cannot be undone.
+                Both records’ tasks, notes and history will be kept. The duplicate customer will leave the list only after the transfer is verified.
               </p>
             </div>
           )}
@@ -524,6 +528,7 @@ export default function CustomerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const can = useCan()
+  const role = useRole()
 
   const [customer, setCustomer]         = useState(null)
   // SU-07A — "Invite to portal" per-contact busy/result state, keyed by
@@ -1223,7 +1228,7 @@ export default function CustomerDetail() {
           </div>
           <div className="flex gap-2 shrink-0 flex-wrap">
             <Link to={`/customers/${id}/edit`} onClick={remember} className="btn-secondary text-sm">Edit</Link>
-            <button className="btn-secondary text-sm" onClick={() => setMerging(true)}>Merge…</button>
+            {role === 'admin' && <button className="btn-secondary text-sm" onClick={() => setMerging(true)}>Merge…</button>}
             <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
           </div>
         </div>

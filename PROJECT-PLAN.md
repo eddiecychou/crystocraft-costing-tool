@@ -1,3 +1,7 @@
+# 17 October 2026 — Customer merge preserves both workspaces
+
+Admin-reviewed server transfer replaces the task merge restriction, preserves both histories/notes and handles same-ID collisions and retries. See [release evidence](docs/plans/CUSTOMER-MERGE-WORKSPACE-2026-10-17.md).
+
 # 17 October 2026 — Customer Summary & To-do
 
 Shared dashboard/customer tasks and reference notes, legacy follow-up carry-over without rewriting history, revision-protected saves and internal CRM rules. Release evidence: [Customer Summary & To-do](docs/plans/CUSTOMER-SUMMARY-TODO-2026-10-17.md).

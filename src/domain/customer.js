@@ -1,9 +1,10 @@
+import { customerMergeFields } from '../customerMergeFields'
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
   onSnapshot, serverTimestamp, query, where, writeBatch,
 } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, authHeader } from '../firebase'
 import { str, cleanArray, result, addError, addWarning } from './validation'
 
 // Canonical Customer module — the customers collection previously had NO domain
@@ -510,72 +511,15 @@ export async function getCustomer(id) {
 
 // ── Merging two duplicate customer records ──────────────────────────────────
 // The survivor is the record you choose to keep; the duplicate is deleted.
-// Conflict rule: survivor wins, fill gaps only — a blank field on the survivor
-// is filled from the duplicate, array fields are unioned (never dropped), and a
-// boolean flag OR's (a true on either side survives). Nothing on the survivor
-// that already has a value is ever overwritten.
-// contact_name/contact_emails/contact_phones/contact_whatsapps/contact_wechats
-// are DERIVED from contacts[] now (see normalizeCustomer) — merging them here
-// would just be re-deriving stale values, so they're deliberately absent from
-// these lists. contacts[] itself is merged by mergeContactLists() below.
-const MERGE_SCALAR_FIELDS = [
-  'website', 'address', 'country',
-  'crm_category', 'crm_status', 'source', 'segment', 'erp_code', 'notes', 'folder_path',
-]
-const MERGE_ARRAY_FIELDS = ['tags', 'channels']
-const MERGE_BOOL_FIELDS = ['is_vip', 'is_personal_wa', 'sensitive']
-
-function unionArrays(a, b) {
-  const seen = new Set(); const out = []
-  for (const v of [...(a || []), ...(b || [])]) {
-    const k = String(v).trim().toLowerCase()
-    if (k && !seen.has(k)) { seen.add(k); out.push(v) }
-  }
-  return out
-}
-
-// Union two contact lists, treating the same email (or, failing that, the
-// same name) as the same person so a contact already on the survivor isn't
-// duplicated. The survivor's own contacts are never altered or dropped; only
-// genuinely new people are appended, and never as a second primary — the
-// survivor's existing primary (or, if it had none, the first contact) stays
-// primary.
-function mergeContactLists(survivorContacts, duplicateContacts) {
-  const survivor = survivorContacts || []
-  const out = [...survivor]
-  const seenEmails = new Set(survivor.map(c => c.email.toLowerCase()).filter(Boolean))
-  const seenNames = new Set(survivor.map(c => c.name.toLowerCase()).filter(Boolean))
-  for (const c of (duplicateContacts || [])) {
-    const emailKey = c.email.toLowerCase()
-    const nameKey = c.name.toLowerCase()
-    const isSamePerson = (emailKey && seenEmails.has(emailKey)) || (!emailKey && nameKey && seenNames.has(nameKey))
-    if (isSamePerson) continue
-    out.push({ ...normalizeContact(c), is_primary: false })
-    if (emailKey) seenEmails.add(emailKey)
-    if (nameKey) seenNames.add(nameKey)
-  }
-  if (out.length && !out.some(c => c.is_primary)) out[0].is_primary = true
-  return dedupeContactIds(out)
-}
-
+// Existing scalar fields stay on the survivor; notes from both records and
+// every distinct contact are preserved by the shared preview/server policy.
 // What would change on the survivor if merged with the duplicate — the fields
 // to write, so the UI can show "X will gain: …" before anyone commits to it.
-function fieldsToFillFrom(survivor, duplicate) {
-  const out = {}
-  for (const f of MERGE_SCALAR_FIELDS) {
-    if (!str(survivor[f]) && str(duplicate[f])) out[f] = duplicate[f]
-  }
-  for (const f of MERGE_ARRAY_FIELDS) {
-    const merged = unionArrays(survivor[f], duplicate[f])
-    if (merged.length !== (survivor[f] || []).length) out[f] = merged
-  }
-  for (const f of MERGE_BOOL_FIELDS) {
-    if (!survivor[f] && duplicate[f]) out[f] = true
-  }
-  const mergedContacts = mergeContactLists(survivor.contacts, duplicate.contacts)
-  if (mergedContacts.length !== (survivor.contacts || []).length) out.contacts = mergedContacts
-  return out
+function unionArrays(a,b) {
+  const seen = new Set()
+  return [...(a || []), ...(b || [])].filter(value => {const key=String(value).trim().toLowerCase();if(!key || seen.has(key))return false;seen.add(key);return true})
 }
+function fieldsToFillFrom(survivor, duplicate) { return customerMergeFields(survivor, duplicate) }
 
 // The three collections that reference a customer by id — everything a merge
 // has to repoint. (favourites/customer_designs/the TOP-LEVEL enquiries
@@ -610,24 +554,6 @@ async function brandedImageDocs(customerId) {
   return perProduct.flatMap(s => s.docs)
 }
 
-// Copy every doc of a customer subcollection onto another customer, under the
-// SAME doc ids (safe — Firestore auto-ids are effectively collision-free
-// across parents), then delete the originals. Shared by Brand Gallery assets
-// and the CRM Interaction Log — both are customers/{id}/{sub} subcollections
-// that a plain deleteDoc(customers/{id}) would otherwise silently orphan.
-async function copySubcollection(subcollection, fromCustomerId, toCustomerId) {
-  const snap = await getDocs(collection(db, 'customers', fromCustomerId, subcollection))
-  for (let i = 0; i < snap.docs.length; i += 400) {
-    const batch = writeBatch(db)
-    for (const d of snap.docs.slice(i, i + 400)) {
-      batch.set(doc(db, 'customers', toCustomerId, subcollection, d.id), d.data())
-      batch.delete(d.ref)
-    }
-    await batch.commit()
-  }
-  return snap.size
-}
-
 // Read-only — never writes. Lets the UI show what a merge would do before
 // anyone commits to it: how many orders/quotes/portal-accounts move, and which
 // fields the survivor would gain.
@@ -641,10 +567,13 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
   const duplicate = { id: duplicateId, ...normalizeCustomer(dupSnap.data()) }
   const survivor  = { id: survivorId, ...normalizeCustomer(survSnap.data()) }
   const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
-  const [assetsSnap, interactionsSnap, emailThreadsSnap, brandedImages] = await Promise.all([
+  const [assetsSnap, interactionsSnap, emailThreadsSnap, workItemsSnap, whatsappSnap, alibabaSnap, brandedImages] = await Promise.all([
     getDocs(collection(db, 'customers', duplicateId, 'assets')),
     getDocs(collection(db, 'customers', duplicateId, 'enquiries')),
     getDocs(collection(db, 'customers', duplicateId, 'email_threads')),
+    getDocs(collection(db, 'customers', duplicateId, 'work_items')),
+    getDocs(collection(db, 'customers', duplicateId, 'whatsapp_threads')),
+    getDocs(collection(db, 'customers', duplicateId, 'alibaba_threads')),
     brandedImageDocs(duplicateId),
   ])
   return {
@@ -656,74 +585,26 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
     assetsCount: assetsSnap.size,
     interactionsCount: interactionsSnap.size,
     emailThreadsCount: emailThreadsSnap.size,
+    tasksCount: workItemsSnap.docs.filter(d=>d.data().kind === 'task').length,
+    notesCount: workItemsSnap.docs.filter(d=>d.data().kind === 'note').length,
+    whatsappThreadsCount: whatsappSnap.size,
+    alibabaThreadsCount: alibabaSnap.size,
     brandedImagesCount: brandedImages.length,
   }
 }
 
-// Execute the merge: repoint every order/quote/portal-account from the
-// duplicate onto the survivor, fill the survivor's blank fields from the
-// duplicate, then delete the duplicate. Chunked batches (Firestore's 500-write
-// limit) — in practice one customer's related docs are far fewer than that.
-//
-// Beyond the original three collections, three more things get carried
-// across — the duplicate's Firestore doc gets deleted at the end, and none of
-// these survives that on its own:
-//   - Brand Gallery assets (customers/{id}/assets, V7.21), the CRM
-//     Interaction Log (customers/{id}/enquiries — found missing 2026-08-05,
-//     same bug shape), and email_threads (V8.1) — all SUBcollections, so
-//     deleting the parent customer doc does NOT delete them; each would be
-//     silently orphaned (unreachable — nothing ever queries a dangling
-//     customer id again) rather than actually removed. All copied via
-//     copySubcollection() above. Any Storage files they reference are NOT
-//     moved — the copied docs' URLs/paths still point at the originals,
-//     which is fine; moving metadata doesn't require moving the blob.
-//     email_summary itself (a generated field, not a subcollection) is
-//     deliberately NOT carried across — it's a stale draft either way once
-//     the survivor's thread set changes; hit Refresh after merging instead
-//     of trusting a merged-but-not-regenerated summary.
-//   - branded_for_customer_id tags on product images (see
-//     firestore.rules viewerIsSensitive()) — repointed to the survivor so a
-//     photo already tagged for the duplicate doesn't silently stop matching
-//     anyone (which would either wrongly hide it from the survivor if later
-//     marked sensitive, or just leave a tag nothing can ever resolve again).
+// The server preserves metadata and handles collisions, resumable transfers and
+// portal-account repointing. Browser code never deletes history documents.
 export async function mergeCustomers(duplicateId, survivorId) {
-  const preview = await previewCustomerMerge(duplicateId, survivorId)
-  const workItems = await getDocs(collection(db, 'customers', duplicateId, 'work_items'))
-  if (!workItems.empty) throw new Error('This customer has saved tasks or notes. Keep this customer as the surviving record when merging, so its workspace is preserved.')
-  const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
-  const brandedImages = await brandedImageDocs(duplicateId)
-
-  await copySubcollection('assets', duplicateId, survivorId)
-  await copySubcollection('enquiries', duplicateId, survivorId)
-  await copySubcollection('email_threads', duplicateId, survivorId)
-
-  const allRefs = [...ordersSnap.docs, ...quotesSnap.docs, ...usersSnap.docs].map(d => d.ref)
-  const brandedRefs = brandedImages.map(d => d.ref)
-  const hasFields = Object.keys(preview.fieldsToFill).length > 0
-  const CHUNK = 400
-
-  // Fill the survivor's blank fields once, up front — independent of which
-  // (if any) of the two repoint loops below actually runs.
-  if (hasFields) {
-    await updateDoc(doc(db, 'customers', survivorId), { ...preview.fieldsToFill, updatedAt: serverTimestamp() })
+  // Continuations resume the same approved operation; no new customer choice.
+  for (;;) {
+    const response = await fetch('/api/customer-merge', { method:'POST', headers:{'Content-Type':'application/json',...await authHeader()}, body:JSON.stringify({sourceId:duplicateId,targetId:survivorId}) })
+    let result
+    try { result = await response.json() } catch { throw new Error('Merge response was interrupted. Reopen this same merge to continue safely.') }
+    if (!response.ok) throw new Error(result.error || 'Merge paused safely. Retry this same merge to continue.')
+    if (result.complete) return result
+    if (response.status !== 202) throw new Error('Merge needs verification. Retry the same merge before changing these customers.')
   }
-  // customer_id on orders/quotes/users.
-  for (let i = 0; i < allRefs.length; i += CHUNK) {
-    const batch = writeBatch(db)
-    allRefs.slice(i, i + CHUNK).forEach(ref => batch.update(ref, { customer_id: survivorId }))
-    await batch.commit()
-  }
-  // branded_for_customer_id on product images — same repoint, different field
-  // name and collection, so its own loop rather than forcing one field name
-  // across both.
-  for (let i = 0; i < brandedRefs.length; i += CHUNK) {
-    const batch = writeBatch(db)
-    brandedRefs.slice(i, i + CHUNK).forEach(ref => batch.update(ref, { branded_for_customer_id: survivorId }))
-    await batch.commit()
-  }
-
-  await deleteDoc(doc(db, 'customers', duplicateId))
-  return preview
 }
 
 // Live customer list (same client-side sort, same no-orderBy safety).

@@ -151,3 +151,5 @@ on focus and every 30s while visible. Firestore customer permissions unchanged.
 ## Reusable Range MCP (local candidate, not deployed)
 
 Node `netlify/functions/mcp-range.js`, `/api/mcp-range`: separate scoped Firebase identity for five allowlisted read/prepare/commit operations. Human-only exact-preview approval is a separate admin operation, not an MCP tool. Admin SDK boundary, no-store responses, revoked-token verification, signed previews, private expiring control and write flag, transactional reservations/audit/receipts. See [operator guide](../../mcp/range/README.md). Existing B0016 and Corporate Gifts endpoints unchanged.
+
+- `customer-merge` (`/api/customer-merge`, Node function): admin-only, revoked Firebase token checked. POST sourceId/targetId only; 202 continuations or 200 complete. Preserves both workspaces and message/interaction history with server-only audit snapshots, collisions/retries/locks. See `docs/plans/CUSTOMER-MERGE-WORKSPACE-2026-10-17.md`.

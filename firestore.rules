@@ -739,6 +739,10 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    function customerWorkspaceWritable(customerId) {
+      return exists(/databases/$(database)/documents/customers/$(customerId))
+        && get(/databases/$(database)/documents/customers/$(customerId)).data.get('customer_merge_lock', '') == '';
+    }
     function validWorkItem() {
       let d = request.resource.data;
       return d.keys().hasOnly(['kind','text','state','due_on','revision','created_by','updated_by','createdAt','updatedAt'])
@@ -749,14 +753,18 @@ service cloud.firestore {
         && d.revision is int && d.updated_by == request.auth.uid && d.updatedAt == request.time;
     }
     match /customers/{customerId} {
-      allow read, write: if can('customers');
+      allow read: if can('customers');
+      allow create: if can('customers') && !request.resource.data.keys().hasAny(['customer_merge_lock']);
+      allow update: if can('customers') && resource.data.get('customer_merge_lock', '') == ''
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['customer_merge_lock']);
+      allow delete: if can('customers') && resource.data.get('customer_merge_lock', '') == '';
       match /work_items/{itemId} {
         allow read: if can('customers');
-        allow create: if can('customers') && validWorkItem()
+        allow create: if can('customers') && customerWorkspaceWritable(customerId) && validWorkItem()
           && request.resource.data.created_by == request.auth.uid
           && request.resource.data.createdAt == request.time
           && request.resource.data.revision == 1;
-        allow update: if can('customers') && validWorkItem()
+        allow update: if can('customers') && customerWorkspaceWritable(customerId) && validWorkItem()
           && request.resource.data.created_by == resource.data.created_by
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.kind == resource.data.kind
@@ -764,16 +772,20 @@ service cloud.firestore {
         allow delete: if false;
       }
       match /enquiries/{enquiryId} {
-        allow read, write: if can('customers');
+        allow read: if can('customers');
+        allow write: if can('customers') && customerWorkspaceWritable(customerId);
       }
       match /email_threads/{threadId} {
-        allow read, write: if can('customers');
+        allow read: if can('customers');
+        allow write: if can('customers') && customerWorkspaceWritable(customerId);
       }
       match /whatsapp_threads/{threadId} {
-        allow read, write: if can('customers');
+        allow read: if can('customers');
+        allow write: if can('customers') && customerWorkspaceWritable(customerId);
       }
       match /alibaba_threads/{threadId} {
-        allow read, write: if can('customers');
+        allow read: if can('customers');
+        allow write: if can('customers') && customerWorkspaceWritable(customerId);
       }
       // Brand Gallery assets — a logged-in customer may read ONLY their own
       // linked customer's non-internal assets.

@@ -17,7 +17,7 @@ import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from '@firebase/rules-unit-testing'
 import {
-  doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, serverTimestamp, writeBatch,
+  doc, getDoc, getDocs, collection, collectionGroup, setDoc, deleteDoc, updateDoc, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadString } from 'firebase/storage'
 
@@ -238,6 +238,20 @@ await ok('revision-skipping update denied', assertFails(updateDoc(doc(admin,'cus
 await ok('revisioned task completion allowed', assertSucceeds(updateDoc(doc(admin,'customers/c1/work_items/task'),{state:'done',revision:2,updatedAt:serverTimestamp()})))
 await ok('stale update denied', assertFails(updateDoc(doc(admin,'customers/c1/work_items/task'),{state:'todo',revision:2,updatedAt:serverTimestamp()})))
 await ok('customer denied completion', assertFails(updateDoc(doc(cust,'customers/c1/work_items/task'),{state:'done',revision:3,updated_by:'cust1',updatedAt:serverTimestamp()})))
+
+// Merge locks are server-owned and block stale-tab writes, including recreation
+// of a task under a customer that has already been merged away.
+await env.withSecurityRulesDisabled(async ctx=>{const d=ctx.firestore();await setDoc(doc(d,'customers/merge_locked'),{company_name:'Locked',customer_merge_lock:'merge_locked'});await setDoc(doc(d,'customers/merge_locked/work_items/task'),{...workPayload('admin1'),createdAt:new Date(),updatedAt:new Date()});await setDoc(doc(d,'customers/merge_locked/enquiries/e'),{description:'Original conversation'});await setDoc(doc(d,'customer_merges/merge_locked/history/entry'),{text:'Private original history'})})
+await ok('admin denied client-created merge lock',assertFails(updateDoc(doc(admin,'customers/c1'),{customer_merge_lock:'fake'})))
+await ok('admin denied clearing live merge lock',assertFails(updateDoc(doc(admin,'customers/merge_locked'),{customer_merge_lock:''})))
+await ok('admin denied deleting locked customer',assertFails(deleteDoc(doc(admin,'customers/merge_locked'))))
+await ok('admin denied creating task while merge locked',assertFails(setDoc(doc(admin,'customers/merge_locked/work_items/new'),workPayload('admin1'))))
+await ok('admin denied editing task while merge locked',assertFails(updateDoc(doc(admin,'customers/merge_locked/work_items/task'),{text:'Overwrite',revision:2,updatedAt:serverTimestamp()})))
+await ok('admin denied interaction write while merge locked',assertFails(updateDoc(doc(admin,'customers/merge_locked/enquiries/e'),{description:'Overwrite'})))
+await ok('admin denied orphan task creation',assertFails(setDoc(doc(admin,'customers/merged_away/work_items/new'),workPayload('admin1'))))
+await ok('admin denied orphan interaction creation',assertFails(setDoc(doc(admin,'customers/merged_away/enquiries/e'),{description:'Orphan'})))
+await ok('customer denied merge audit read',assertFails(getDoc(doc(cust,'customer_merges/merge_locked/history/entry'))))
+await ok('CRM staff denied merge audit write',assertFails(setDoc(doc(broad,'customer_merges/merge_locked'),{state:'complete'})))
 
 await env.cleanup()
 console.log(`\n${pass} passed, ${fail} failed`)

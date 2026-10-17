@@ -19,7 +19,7 @@ Same `can('customers')` capability as CRM history, including collection-group re
 
 Transactions compare revisions and legacy projected values. A form UUID stays stable across retry, avoiding duplicate creates after uncertain success. Errors preserve the open draft. Both screens use live listeners. Dashboard uses aggregate reads rather than a separate task listener for every customer.
 
-Customer merge refuses to delete a duplicate that has native saved tasks/notes: keep that record as the survivor. This prevents silent orphaning without adding a destructive task migration to this release. Existing interaction merge remains unchanged.
+Superseded by `CUSTOMER-MERGE-WORKSPACE-2026-10-17.md`: either record can now survive; a resumable admin-only server transfer preserves both workspaces, interaction/message history and audit metadata.
 
 ## Verification
 

@@ -190,3 +190,7 @@ Backend-only writes: `range_upload_controls/service` (separate capability/window
 ## Customer workspace (17 October 2026)
 
 `customers/{customerId}/work_items/{uuid}` — internal task/reference note, state, optional due_on, revision and creator/updater server audit fields. Read/write uses customers capability; customer portal never reads it. Archive/reopen, no hard delete. Legacy enquiry follow-ups remain in enquiries with additive todo_* fields. Details: `docs/plans/CUSTOMER-SUMMARY-TODO-2026-10-17.md`.
+
+## Customer merge audit and locks
+
+`customer_merges/{sourceId}` + `snapshots`, `history`, `entries`: server-only lease, pre-merge customer snapshots, unmodified original history and fingerprint/destination receipts. No client grant. `customers/{id}.customer_merge_lock` is server-owned; clients may read but not forge/clear it or mutate locked workspaces. Either customer may survive a merge.

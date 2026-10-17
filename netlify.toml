@@ -268,3 +268,7 @@ path = "/api/mcp-catalogue"
   from = "/*"
   to = "/index.html"
   status = 200
+
+[functions."customer-merge"]
+  node_bundler = "esbuild"
+  external_node_modules = ["firebase-admin"]

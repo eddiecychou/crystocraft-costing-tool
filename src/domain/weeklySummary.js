@@ -211,6 +211,7 @@ export async function findActiveCustomers() {
     // B2B" — e.g. Tiffany Mak). Same RETAIL_TAG ProductDetail.jsx's "branded
     // for" picker already filters on — B2C is a tag, not a crm_category, so
     // this can't be a query filter and has to be this same read-then-check.
+    if (!custSnap.exists()) return null
     if (custSnap.exists()) {
       const tags = custSnap.data().tags || []
       if (tags.includes(NOT_CUSTOMER_TAG) || tags.includes(RETAIL_TAG)) return null

@@ -17,7 +17,7 @@
     "test:catalogue-cover": "node --test qa/catalogue-cover.test.mjs",
     "test:seo-control-plane": "node seo-control-plane/validate-payload.test.mjs && node seo-control-plane/safe-write.test.mjs && node qa/seo-batch-guard.test.mjs && node --test qa/seo-elementor-layout.test.mjs qa/seo-write-safety.test.mjs qa/seo-dsh-followup.test.mjs qa/seo-review-queue.test.mjs qa/seo-body-gate-followup.test.mjs",
     "test:range-mcp": "node --test qa/range-upload.test.mjs qa/range-quick-entry.test.mjs && npm test --prefix mcp/range && npm test --prefix mcp/figurine-range",
-    "test:customer-workspace": "node --test qa/customer-workspace.test.mjs"
+    "test:customer-workspace": "node --test qa/customer-workspace.test.mjs qa/customer-merge.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -37,6 +37,7 @@
     "react-router-dom": "^6.30.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "4.0.1",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.10.0",

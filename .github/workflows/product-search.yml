@@ -9,6 +9,9 @@ on:
       - 'netlify/functions/**'
       - 'seo-control-plane/**'
       - 'qa/**'
+      - 'firestore.rules'
+      - 'storage.rules'
+      - 'firebase.json'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/product-search.yml'
@@ -21,6 +24,9 @@ on:
       - 'netlify/functions/**'
       - 'seo-control-plane/**'
       - 'qa/**'
+      - 'firestore.rules'
+      - 'storage.rules'
+      - 'firebase.json'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/product-search.yml'
@@ -53,3 +59,20 @@ jobs:
       - run: npm ci --prefix mcp/range --no-audit --no-fund
       - run: npm ci --prefix mcp/figurine-range --no-audit --no-fund
       - run: npm run test:range-mcp
+  customer-merge-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci --no-audit --no-fund
+      - run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node --test qa/customer-merge-emulator.mjs"
