@@ -131,3 +131,60 @@ test('every real Dashboard figure immediately replaces general summaries with it
 test('both real pages use the shared Pipeline; old interaction-status count removed',async()=>{
  const dash=await readFile('src/pages/Dashboard.jsx','utf8'),detail=await readFile('src/pages/CustomerDetail.jsx','utf8');assert.match(dash,/<PipelinePanel/);assert.match(detail,/<CustomerPipeline/);assert.doesNotMatch(dash,/allEnquiries.filter\(e => e.status === 'Open'/)
 })
+
+test('completed transaction with request kind none cannot become an active proposal',()=>{
+ assert.throws(()=>validatePipelineSuggestions({suggestions:[{...suggestion,request_kind:'none'}]},input),/unresolved buying request/)
+ assert.match(PIPELINE_SYSTEM,/completed transaction/);assert.match(PIPELINE_SYSTEM,/Do not relabel fulfilment/)
+})
+test('contradictory active/none response receives targeted retry feedback',async()=>{
+ let calls=0
+ const response=await pipelineSuggestions(request(input),'key',async(url,opts)=>{
+  calls++;const prompt=JSON.parse(opts.body).messages[0].content
+  if(calls===1)return ai({suggestions:[{...suggestion,request_kind:'none'}]})
+  assert.match(prompt,/Previous response was rejected: Active suggestions require/)
+  return ai({suggestions:[]})
+ });assert.equal(response.status,200);assert.equal(calls,2);assert.deepEqual((await response.json()).suggestions,[])
+})
+test('server copies referenced evidence exactly and rejects unknown references',async()=>{
+ const {pipelineEvidence}=await import('../netlify/edge-functions/lib/pipelineEvidence.js')
+ const long='Buyer requested “engraving” and prices. '.repeat(100)
+ assert.equal(pipelineEvidence(long).map(p=>p.text).join(''),long)
+ for(const p of pipelineEvidence(long)){assert.ok(p.text.length<=900);assert.ok(long.includes(p.text))}
+ const good=await pipelineSuggestions(request(input),'key',async()=>ai({suggestions:[{...suggestion,evidence:undefined,evidence_ref:'E1'}]}))
+ assert.equal(good.status,200);assert.equal((await good.json()).suggestions[0].evidence,digest)
+ const bad=await pipelineSuggestions(request(input),'key',async()=>ai({suggestions:[{...suggestion,evidence_ref:'E999'}]}))
+ assert.equal(bad.status,502);assert.equal((await bad.json()).code,'invalid_evidence_or_output')
+})
+test('batch failure falls back to individuals and continues past unsupported customers',async()=>{
+ const {runPipelineSuggestions}=await import('../src/pipelineSuggestionRun.js')
+ const entries=['c1','c2','c3'].map(id=>({...input[0],id})),saved=[],calls=[],progress=[]
+ await assert.rejects(runPipelineSuggestions(entries,{
+  request:async batch=>{calls.push(batch.map(c=>c.id));return batch.length>1||batch[0].id==='c2'?{ok:false,status:502,data:{code:'invalid_evidence_or_output'}}:{ok:true,status:200,data:{suggestions:[{...suggestion,id:batch[0].id}]}}},
+  save:async s=>saved.push(s.id),onProgress:(n,total)=>progress.push([n,total]),
+ }),/2 suggestions prepared; 1 customer summaries/)
+ assert.deepEqual(saved,['c1','c3']);assert.deepEqual(calls,[['c1','c2'],['c1'],['c2'],['c3']]);assert.deepEqual(progress.at(-1),[3,3])
+})
+test('authorization, stale revisions and malformed success responses never get bypassed',async()=>{
+ const {runPipelineSuggestions}=await import('../src/pipelineSuggestionRun.js');let saves=0
+ for(const response of [{ok:false,status:403,data:{error:'Forbidden'}},{ok:true,status:200,data:{suggestions:[{...suggestion,evidence:'invented'}]}}])await assert.rejects(runPipelineSuggestions(input,{request:async()=>response,save:async()=>saves++}))
+ await assert.rejects(runPipelineSuggestions(input,{request:async()=>({ok:true,status:200,data:{suggestions:[suggestion]}}),save:async()=>{throw Error('Pipeline changed')}}),/Pipeline changed/)
+ assert.equal(saves,0)
+})
+
+test('Transaction completed opens closure review without saving; cancel preserves requests',async()=>{
+ const saves=[],customer={id:'c1',company_name:'QA',sales_pipeline:{...emptyPipeline(),status:'active',detail:'Separate repeat request',revision:7}}
+ await mount(Component,{customer,save:async(...args)=>saves.push(args)},async h=>{
+  await act(async()=>button(h,'Transaction completed').click())
+  assert.equal(saves.length,0);assert.match(h.textContent,/repeat-order request remains/);assert.ok(button(h,'Confirm closure'))
+  assert.equal(h.querySelector('select').value,'inactive');assert.equal(h.querySelector('select').disabled,true)
+  await act(async()=>button(h,'Cancel').click());assert.equal(saves.length,0);assert.match(h.textContent,/Separate repeat request/)
+  await act(async()=>button(h,'Transaction completed').click());await act(async()=>h.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})))
+  assert.equal(saves.length,1);assert.equal(saves[0][1],7);assert.equal(saves[0][2],'manual');assert.equal(saves[0][3].status,'inactive')
+ })
+})
+test('completed inactive customers are omitted on targeted retry, never staged as closure',async()=>{
+ let calls=0;const response=await pipelineSuggestions(request(input),'key',async(url,opts)=>{
+  calls++;if(calls===1)return ai({suggestions:[{...suggestion,status:'inactive',request_kind:'none',all_requests_resolved:true}]})
+  assert.match(JSON.parse(opts.body).messages[0].content,/already inactive: omit/);return ai({suggestions:[]})
+ });assert.equal(response.status,200);assert.deepEqual((await response.json()).suggestions,[]);assert.equal(calls,2)
+})

@@ -1,6 +1,7 @@
 import { doc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db, authedUser } from '../firebase'
-import { emptyPipeline, pipelineTransition, summaryKey, validatePipelineSuggestions } from '../customerPipeline'
+import { emptyPipeline, pipelineTransition, summaryKey } from '../customerPipeline'
+import {runPipelineSuggestions} from '../pipelineSuggestionRun'
 import {summaryCacheId, validSummaryCache} from '../customerSummary'
 
 export async function savePipelineDecision(customerId, expectedRevision, action, input, eventId = crypto.randomUUID()) {
@@ -46,19 +47,13 @@ export async function suggestCustomerPipeline(customers, onProgress = () => {}, 
     if (pipeline.last_reviewed_source === key || pipeline.suggestion?.source_key === key) continue
     entries.push({id:c.id,name:c.company_name || '',digest:item.digest,source_key:key,source_cache:cacheId,pipeline:{revision:pipeline.revision,status:pipeline.status,detail:pipeline.detail}})
   }
-  let saved=0
-  for (let start=0;start<entries.length;start+=6) {
-    const batch = entries.slice(start,start+6)
-    const token = await user.getIdToken()
-    const response = await fetch('/api/pipeline-suggestions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({customers:batch})})
-    const data = await response.json().catch(()=>({}))
-    if (!response.ok) throw Error(data.error || 'Could not prepare Pipeline suggestions. Reviewed positions are unchanged; retry to resume.')
-    const suggestions = validatePipelineSuggestions(data,batch)
-    for (const s of suggestions) {
-      await savePipelineDecision(s.id,s.based_on_revision,'suggest',{suggestion:{status:s.status,detail:s.detail,reason:s.reason,evidence:s.evidence,source_key:s.source_key,source_cache:s.source_cache,based_on_revision:s.based_on_revision}})
-      saved++
-    }
-    onProgress(Math.min(start+6,entries.length),entries.length)
-  }
-  return saved
+  return runPipelineSuggestions(entries,{
+    onProgress,
+    request:async batch=>{
+      const token=await user.getIdToken()
+      const response=await fetch('/api/pipeline-suggestions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({customers:batch})})
+      return {ok:response.ok,status:response.status,data:await response.json().catch(()=>({}))}
+    },
+    save:async s=>savePipelineDecision(s.id,s.based_on_revision,'suggest',{suggestion:{status:s.status,detail:s.detail,reason:s.reason,evidence:s.evidence,source_key:s.source_key,source_cache:s.source_cache,based_on_revision:s.based_on_revision}}),
+  })
 }

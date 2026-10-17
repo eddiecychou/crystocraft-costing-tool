@@ -10,6 +10,8 @@ export function validatePipelineSuggestions(result, customers) {
   const allowed = new Map(customers.map(c => [c.id, c])), seen = new Set()
   return result.suggestions.map(s => {
     const c = allowed.get(s?.id)
+    if(c && s?.status==='inactive' && c.pipeline?.status!=='active') throw Error('Inactive suggestions only apply to currently active customers. This customer is already inactive: omit the suggestion. Completed transactions do not need a Pipeline change.')
+    if(s?.status==='active' && !['product','sample','price','quotation'].includes(s.request_kind)) throw Error('Active suggestions require an unresolved buying request. Omit customers whose only activity is an order, payment, shipment or completed transaction; request_kind none cannot be active.')
     if (!c || seen.has(s.id) || !['active','inactive'].includes(s.status)
       || !bounded(s.detail,2000) || !bounded(s.reason,1000) || !bounded(s.evidence,1500)
       || !c.digest.includes(s.evidence)

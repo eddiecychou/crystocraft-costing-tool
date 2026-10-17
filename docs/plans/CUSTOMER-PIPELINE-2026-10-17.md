@@ -57,3 +57,13 @@ PASS — production deployment `6ad2eab6bae85557f7dbaaeb`, application commit `b
 - Final Firestore rules hash remains `361ef64fec7427936723da2f670eb1f49fd68140f0ac736c65f5bbf4a3fc6ef3`; Storage rules unchanged/not deployed. No fixture customers, Pipeline approvals/closures, or live order/product writes were performed. Ordinary login activity may be stamped.
 - Evidence: task-local `customer-pipeline-2026-10-17/{candidate-dashboard,candidate-customer,production-dashboard,production-customer,fictional-review,fictional-mobile}.png`.
 - Original dirty checkout preserved; porcelain fingerprint `fca5caf4923d0a7794ceaf571996019e4fea9602f75851e7f413dad1240bf846`. Release record follow-up uses `[skip netlify]` to retain this verified application deployment.
+
+## Evidence-check repair and completed transactions — 17 October
+
+The read-only reproduction of the failed six-customer batch returned HTTP 200 from DeepSeek but proposed `active` with `request_kind:none` twice. After clarifying that rule, the model proposed `inactive` for an already-inactive customer. Both were correctly rejected; the generic error hid the actual contradiction. Completed transactions and fulfilment alone are not new buying requests or state changes. The corrected prompt and targeted validation feedback passed the same approved six-summary diagnostic with an empty suggestion list, no business writes.
+
+The server now offers deterministic evidence passage IDs and copies the selected passage verbatim from the source digest. Unknown references, invented quotes, invalid IDs, unsupported closures and incomplete responses still fail closed. Legacy verbatim output remains strictly validated. Small two-customer calls split into singleton calls on AI 502 errors; an unsupported individual cannot stop unrelated customers. Remaining failures are reported explicitly with safe failure codes. Staging remains proposal-only with unchanged transaction/revision/hash/merge-lock safeguards.
+
+**Transaction completed** appears on Dashboard and customer Pipeline panels. It opens an inactive-position review explaining that every buying request must be resolved and separate repeat requests keep the customer active. Cancel writes nothing; only **Confirm closure** writes the audited manual decision. Orders, invoices, tasks, notes and interactions are unchanged. No live closures/approvals are part of this repair.
+
+Verification/release evidence to be recorded after candidate and production checks.

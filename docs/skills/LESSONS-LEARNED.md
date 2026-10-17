@@ -1165,3 +1165,7 @@ possible-write warning. Never retry a possibly completed write blindly or replac
 the reviewed baseline. Stale review guards retain their transactional refusal and
 now provide Reload queue. Claimed/refused receipts are inert audit history; fresh
 same-entity work remains possible. Released in app commit dc3aa98f after fresh candidate/production admin and customer checks.
+
+### Pipeline AI evidence errors can be contradictory state changes
+
+17 October 2026: a real six-customer batch returned active/none, then inactive for an already-inactive customer; the generic evidence error concealed both. Keep the validator strict. Prompt for changes only, explicitly omit completed transactions with no outstanding request, and feed safe validation instructions into the bounded retry. Evidence passage IDs must resolve to exact original digest text; never repair an invented quote. Use small calls and singleton fallback so one unsupported response cannot block all remaining customers. No AI operation confirms or closes a Pipeline position. Regression coverage: `qa/customer-pipeline.test.mjs`; operator notes: `../plans/CUSTOMER-PIPELINE-2026-10-17.md`.
