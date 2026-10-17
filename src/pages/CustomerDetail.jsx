@@ -267,12 +267,12 @@ function Collapsible({ storageKey, title, right, defaultOpen = true, children, c
   }
   return (
     <div className={className}>
-      <div className={`flex items-center justify-between gap-2 px-5 py-4 cursor-pointer select-none ${!collapsed ? 'border-b border-warm-grey' : ''}`} onClick={toggle}>
+      <div className={`flex flex-wrap items-center justify-between gap-2 px-5 py-4 cursor-pointer select-none ${!collapsed ? 'border-b border-warm-grey' : ''}`} onClick={toggle}>
         <div className="flex items-center gap-1.5 min-w-0">
           {collapsed ? <ChevronRight size={15} className="text-ink-60 shrink-0" /> : <ChevronDown size={15} className="text-ink-60 shrink-0" />}
           <h2 className="text-sm text-ink-80 truncate">{title}</h2>
         </div>
-        {right && <div onClick={e => e.stopPropagation()} className="shrink-0 flex items-center gap-2">{right}</div>}
+        {right && <div onClick={e => e.stopPropagation()} className="shrink-0 max-w-full flex flex-wrap items-center gap-2">{right}</div>}
       </div>
       {!collapsed && <div className={bodyClassName}>{children}</div>}
     </div>
@@ -1187,7 +1187,7 @@ export default function CustomerDetail() {
   const followUpEnquiries = enquiries.filter(e => e.follow_up_date && e.todo_status !== 'done')
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl">
+    <div className="p-4 md:p-6 max-w-2xl w-full min-w-0">
       <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
 
       {/* Header */}
@@ -1198,9 +1198,9 @@ export default function CustomerDetail() {
             full-width row below the title there. */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl md:text-2xl text-ink">{customer.company_name}</h1>
+            <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full">
+              <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full">
+          <h1 className="text-xl md:text-2xl text-ink min-w-0 max-w-full [overflow-wrap:anywhere]">{customer.company_name}</h1>
           {customer.erp_code && (
             <span className="text-xs font-mono px-2 py-0.5 rounded-none bg-ivory-dark text-ink-60 border border-warm-grey">{customer.erp_code}</span>
           )}

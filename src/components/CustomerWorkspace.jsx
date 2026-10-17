@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useState, useRef, useLayoutEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { saveCustomerWorkItem } from '../domain/customerWorkItems'
 import { sortWorkItems } from '../customerWorkItems'
@@ -7,17 +7,25 @@ import {summaryPeriodLabel} from '../customerSummary'
 
 export function SummaryText({ digest = '', collapse = true, className = 'text-sm text-ink-70 mt-2 whitespace-pre-wrap break-words' }) {
   const [expanded, setExpanded] = useState(false)
+  const paragraph = useRef(null)
+  const restorePreview = useRef(false)
   const id = useId()
+  useLayoutEffect(() => {
+    if (!expanded && restorePreview.current) {
+      restorePreview.current = false
+      paragraph.current?.scrollIntoView?.({ block: 'start', behavior: 'auto' })
+    }
+  }, [expanded])
   const text = typeof digest === 'string' ? digest : ''
   const long = collapse && text.length > 500
   const prefix = Array.from(text).slice(0, 500).join('')
   const boundary = prefix.search(/\s+\S*$/u)
   const preview = boundary > 350 ? prefix.slice(0, boundary) : prefix
   return <>
-    <p id={id} className={className}>{long && !expanded ? `${preview.trimEnd()}…` : text}</p>
+    <p ref={paragraph} id={id} className={`${className} min-w-0 [overflow-wrap:anywhere]`}>{long && !expanded ? `${preview.trimEnd()}…` : text}</p>
     {long && <button type="button" aria-expanded={expanded} aria-controls={id}
-      className="text-sm text-brand-600 underline min-h-[40px]"
-      onClick={() => setExpanded(value => !value)}>{expanded ? 'Show less' : 'Show more'}</button>}
+      className="text-sm text-brand-600 underline min-h-[44px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+      onClick={() => { restorePreview.current = expanded; setExpanded(value => !value) }}>{expanded ? 'Show less' : 'Show more'}</button>}
   </>
 }
 

@@ -264,3 +264,16 @@ Fictional commands/temp checkpoints only: no mail, Firestore, AI or imports.
 Covers HKT midnight vs 03:00, Sunday/year/leap/DST boundaries, four host zones,
 sleep catch-up, duplicate/clock-rollback prevention, failure retry/shared email
 lock, no run on install, elapsed outreach cooldowns and legacy timestamp parsing.
+
+
+## Summary preview mobile layout
+
+Run `node qa/summary-mobile-preview.mjs`, open `http://127.0.0.1:5199/audit`,
+and click **Run mobile regression checks**. This bundles the actual Dashboard,
+CustomerDetail, shared summary controls and Layout with fictional reads and
+blocked writers; it uses no credentials or live API. All six combinations
+(two pages × 320/375/414px) must PASS. Checks cover collapsed/expanded body and
+main-scroll widths, unbroken names/URLs, full text and exact collapse restoration,
+44px targets, keyboard focus, task/note controls and visible commitments. This
+is a repeatable browser layout gate, not a jsdom measurement or physical-device
+test. The normal workspace tests remain in prebuild/GitHub Actions.

@@ -111,3 +111,21 @@ test('customer page enables previews for combined and individual conversation su
  assert.match(source,/<CustomerWorkspace key=\{id\} collapseSummary/)
  for(const channel of ['email','whatsapp','alibaba'])for(const field of ['summary','recent_activity'])assert.ok(source.includes(`digest={customer.${channel}_summary.${field}}`))
 })
+
+test('long unbroken references and multilingual summary text retain full content through toggles',async()=>{
+ const digest='Repeat-order update. '.repeat(30)+'https://example.invalid/'+ 'reference'.repeat(100)+' 客戶跟進 🔹 Final detail.'
+ await mount(async host=>{
+  await act(async()=>button(host,'Show more').click());assert.equal(host.querySelector('p[id]').textContent,digest)
+  const control=button(host,'Show less');assert.equal(control.getAttribute('aria-controls'),host.querySelector('p[id]').id)
+  await act(async()=>control.click());assert.ok(host.querySelector('p[id]').textContent.endsWith('…'));assert.ok(button(host,'Add note'))
+ },{digest,collapseSummary:true})
+})
+
+test('collapsing returns the shortened summary to view, expansion does not force a scroll',async()=>{
+ const calls=[],original=dom.window.HTMLElement.prototype.scrollIntoView
+ dom.window.HTMLElement.prototype.scrollIntoView=function(options){calls.push({id:this.id,options})}
+ try{await mount(async host=>{
+  await act(async()=>button(host,'Show more').click());assert.equal(calls.length,0)
+  await act(async()=>button(host,'Show less').click());assert.equal(calls.length,1);assert.equal(calls[0].id,host.querySelector('p[id]').id);assert.equal(calls[0].options.block,'start')
+ },{digest:longSummary,collapseSummary:true})}finally{dom.window.HTMLElement.prototype.scrollIntoView=original}
+})
