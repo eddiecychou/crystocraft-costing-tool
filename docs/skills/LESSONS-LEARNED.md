@@ -1202,5 +1202,7 @@ block customer branding independently, and pin object generation. ImageGallery
 Save as new previously omitted the branding tag while copying visibility;
 inherit the tag and require fresh Public approval for edited bytes, including
 hero mirrors. Local tests use fictional records/files and real Storage/Firestore
-emulators, not production catalogue fixtures. Feature remains disabled pending
-release and private credential provisioning approval.
+emulators, not production catalogue fixtures. Released 18 October under explicit
+owner authorization with private read-only credentials and fresh candidate/production
+two-role login gates. Existing gallery approval metadata remained unchanged; no
+WordPress uploads or publishing were performed. See DSH-IMAGE-ACCESS-RELEASE-2026-10-18.md.

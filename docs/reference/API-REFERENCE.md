@@ -157,7 +157,7 @@ Node `netlify/functions/mcp-range.js`, `/api/mcp-range`: separate scoped Firebas
 - `customer-merge` (`/api/customer-merge`, Node function): admin-only, revoked Firebase token checked. POST sourceId/targetId only; 202 continuations or 200 complete. Preserves both workspaces and message/interaction history with server-only audit snapshots, collisions/retries/locks. See `docs/plans/CUSTOMER-MERGE-WORKSPACE-2026-10-17.md`.
 
 
-### DSH approved product images (local candidate — disabled)
+### DSH approved product images (deployed 18 October 2026)
 
 - `netlify/functions/product-images.js` (Node / Firebase Admin Storage):
   `GET /api/oc/product-images?product_id=<products document ID>` requires the
@@ -168,6 +168,6 @@ Node `netlify/functions/mcp-range.js`, `/api/mcp-range`: separate scoped Firebas
   object generation before bounded, hash/signature-verified byte download.
 - Default disabled (`OC_PRODUCT_IMAGES_ENABLED`), separate server-only signing
   secret, no Firebase account/module grants or rule changes. Existing public
-  download/image-proxy endpoints are not repurposed. No endpoint is enabled by
-  this local implementation. Full operator contract and DSH media dedupe key:
+  download/image-proxy endpoints are not repurposed. Enabled in production and
+  the isolated QA branch under owner authorization. Full operator contract and DSH media dedupe key:
   [DSH-PRODUCT-IMAGE-ACCESS-2026-10-18](../plans/DSH-PRODUCT-IMAGE-ACCESS-2026-10-18.md).

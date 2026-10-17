@@ -595,7 +595,7 @@ The separate scoped UID `mcp-range-upload-service` must never receive admin/ordi
 
 ### Approved image export is distinct from legacy display visibility
 
-The DSH image route (local candidate, disabled) must require the **stored**
+The DSH image route (deployed 18 October 2026) must require the **stored**
 `visibility === 'public'`, reject any nonempty/unknown customer-branding value,
 and never inherit the legacy public fallback. Explicit approval of generic
 images is not consent to expose a branded mockup. A separate machine token only

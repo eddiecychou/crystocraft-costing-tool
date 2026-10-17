@@ -1,8 +1,9 @@
 # DSH product image access — implementation and operator contract
 
-Status: owner-authorized release preparation. Dedicated read-only credential
-provisioned privately; candidate/production verification pending. Product/image
-settings, accounts, WordPress pages and media remain unchanged.
+Status: deployed and verified 18 October 2026. Dedicated read-only credentials
+provisioned privately; fresh candidate and production admin/customer login gates
+passed. Product/image approvals, WordPress pages and media remain unchanged.
+Release evidence: [DSH-IMAGE-ACCESS-RELEASE-2026-10-18.md](DSH-IMAGE-ACCESS-RELEASE-2026-10-18.md).
 Based on the owner's approval to implement the reusable read-only route and
 `OC-IMAGE-ACCESS-REQUIREMENT-2026-10-16.md`.
 
@@ -173,7 +174,7 @@ this workflow to it.
 
 Branch `codex/dsh-product-image-access` in `/private/tmp/costing-summary-release`,
 based on deployed-summary documentation commit `b6b1e8b9`. The original dirty
-checkout is untouched. Release evidence will distinguish source, credentials
+checkout is untouched. The linked release evidence distinguishes source, credentials
 and candidate/production verification.
 
 - 23 focused endpoint/gallery checks passed, including actual rendered Gallery
@@ -184,11 +185,10 @@ and candidate/production verification.
   approval revocation and no changes to unrelated product data or source bytes.
 - Full prebuild regression suites and production build passed; standard no-undef
   lint, Node handler packaging and diff whitespace checks passed.
-- Tests are added to GitHub Actions; release run IDs/results will be recorded.
-- Firestore/Storage rule files unchanged; no live rule or application deployment.
+- GitHub Actions passed: branch run `39046800701`, main code run `39047403232`.
+- Firestore/Storage rule files unchanged and not deployed. App deployed as `6ad39c4b2d77a8ba493e6378`, source `78182c6c` (app code `7a9500d0`).
 - Dedicated read token added to the existing private DSH `.env` (0600); the
   separate signing secret exists only on Netlify. Both secret variables are
-  marked secret and scoped to Functions in production/deploy-preview only.
+  marked secret and scoped to Functions in production and the specific QA branch only; separate QA signing secret.
   No account, Public image approval or WordPress media change is performed.
-- Fresh candidate/production admin and customer sign-ins are required before
-  closing the release. No DSH WordPress upload/publication is part of QA.
+- Fresh candidate/production admin and customer sign-ins passed. Production read-only API/download checks passed; target image metadata fingerprint unchanged. No DSH WordPress upload/publication was performed.

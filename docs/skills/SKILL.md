@@ -168,7 +168,7 @@ Saved catalogue filters use `src/hooks/useCatalogueFilter.js` + `src/catalogueFi
 - "Square as standard" is a **content convention, not enforced.** Brand proposal **banner** is NOT a product image — it's `proposal.hero_asset_id` → a `customers/{id}/assets` doc (`src/customerAssets.js`, Storage prefix `customer-assets/…`).
 - ⚠️ **Before changing product/card image display, read `MARKETING-WORKFLOW.md` §6.5** — external DeepSeek editorial art (full-bleed, borderless, text-free) must not be square-cropped, letterboxed, or captioned in ways that fight the composition.
 
-### DSH approved product image access — local candidate, disabled
+### DSH approved product image access — deployed 18 October 2026
 
 `netlify/functions/product-images.js` / `lib/productImages.js` provide read-only
 `GET /api/oc/product-images?product_id=...` and five-minute signed byte downloads
@@ -181,7 +181,7 @@ Stable image ID + actual content MD5 is DSH's dedupe key, never a signed URL has
 Edited/copied images preserve branding and need Public approval again; hero
 visibility mirrors edits. Guide/status: `../plans/DSH-PRODUCT-IMAGE-ACCESS-2026-10-18.md`.
 Tests `qa/product-images*.mjs`, `npm run test:product-images`, existing Actions
-emulator job. No live credentials, records, publishing or deployment performed.
+emulator job. App and private read-only credentials deployed with fresh two-role candidate/production gates; no product/image approvals, catalogue writes or WordPress publishing. See the linked release evidence.
 
 ### Components & BOM costing
 - Pages: `Components.jsx`, `ComponentDetail.jsx`, `ComponentForm.jsx`, `ComponentRequirements.jsx`, `ComponentCodeAudit.jsx`
