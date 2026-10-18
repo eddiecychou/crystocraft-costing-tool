@@ -45,7 +45,7 @@ export default function CustomerLayout({ children, profile }) {
     // Grouped right after Corporate Gifts (owner request) — related content,
     // and only shown once we know the customer actually has something in it.
     ...(customerId && hasBrandContent ? [{ to: '/shop/brand-portal', label: 'Brand Portal', short: 'Brand', Icon: Images }] : []),
-    { to: '/shop/swatches', label: 'Swatch Library', short: 'Swatches', Icon: Sparkles },
+    { to: '/shop/crystal-components', label: 'Crystal Components', short: 'Crystals', Icon: Sparkles },
     { to: '/shop/favourites', label: 'Favourites', short: 'Saved', Icon: Heart, badge: fav?.count },
     { to: '/shop/enquiry', label: 'Enquiry', short: 'Enquiry', Icon: ClipboardList, badge: cart?.count },
     // Only linked customers have order history to show.

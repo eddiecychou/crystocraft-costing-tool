@@ -29,6 +29,34 @@ service firebase.storage {
       return isAdmin() || (pExists() && (m in moduleList()));
     }
 
+    // Product photographs: immutable objects, current published revisions only.
+    match /crystal-products/{pid}/{iid}/{revision}/{filename} {
+      function image() { return firestore.get(/databases/(default)/documents/crystal_products/$(pid)/images/$(iid)).data; }
+      function publishedPhoto() {
+        let p=firestore.get(/databases/(default)/documents/crystal_products/$(pid)).data;
+        let i=image();
+        let path='crystal-products/'+pid+'/'+iid+'/'+revision+'/'+filename;
+        return p.publication=='published' && i.publication=='published' && i.media!=null
+          && path in [i.media.original,i.media.display,i.media.thumbnail];
+      }
+      allow get: if can('swatch') || (pExists() && pDoc().role=='customer' && pDoc().status=='approved' && publishedPhoto());
+      allow create: if can('swatch') && resource==null
+        && firestore.exists(/databases/(default)/documents/crystal_products/$(pid)/images/$(iid))
+        && revision.matches('[a-f0-9]{64}') && filename.matches('(original[.](jpg|png|webp)|display[.]jpg|thumbnail[.]jpg)')
+        && request.resource.size>0 && request.resource.size<=20971520
+        && request.resource.contentType in ['image/jpeg','image/png','image/webp'];
+      allow list, update, delete: if false;
+    }
+    // Drawings stay private to the submitting approved account and OC admin.
+    match /enquiry-files/{uid}/{eid}/{file} {
+      allow get: if isAdmin() || (pExists() && request.auth.uid==uid && pDoc().role=='customer' && pDoc().status=='approved');
+      allow create: if resource==null && pExists() && request.auth.uid==uid && pDoc().role=='customer' && pDoc().status=='approved'
+        && eid.matches('[A-Za-z0-9_-]{1,128}') && file.matches('[A-Za-z0-9_-]{1,128}[.](pdf|jpg|png|webp)')
+        && request.resource.size>0 && request.resource.size<=20971520
+        && request.resource.contentType in ['application/pdf','image/jpeg','image/png','image/webp'];
+      allow list, update, delete: if false;
+    }
+
     // Immutable swatch revisions. Read publication on every request, including
     // old revisions after replacement. Never expose migration extras/archives.
     match /crystal-swatches/{sampleId}/{revision}/{filename} {

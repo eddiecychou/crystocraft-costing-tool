@@ -1,3 +1,16 @@
+# V8.19 — Crystal Components catalogue — 19 October 2026
+
+The owner requested the third catalogue after the Firebase swatch delivery.
+OC product/variant/photo management, separate Supply-reviewed canonical stock links,
+approved-customer browse/details/favourites, enquiry snapshots, private project drawings
+and branded unpriced PDF downloads are implemented. Own producible parts and original
+Swarovski / Strass stock-only clearance are separate immutable origins. No stock counts,
+reservations, movements or selling prices are created by catalogue edits/enquiries.
+The owner has no clearance codes available now: original stock remains unlisted until
+its identity, condition and count are reviewed. Existing Swatch Library URLs remain.
+See [catalogue release evidence](docs/plans/V8.19-CRYSTAL-CATALOGUE-RELEASE.md)
+for exact staged/live states and role verification.
+
 # V8.19 — Firebase swatch migration and OC uploader — 19 October 2026
 
 Owner agreed the Crystal Components business direction and requested an
@@ -20,8 +33,8 @@ parked. No stock or selling prices changed. App source `7c8389c6`, production
 Fresh admin/customer checks passed on candidate and production at all four
 widths, including loaded photos and sample enquiry “On quotation”. See
 [release evidence](docs/plans/V8.19-SWATCH-MIGRATION-RELEASE.md).
-The full third catalogue, inventory links and project-quote flow remain later
-phases; fabric quotes use actual drawings and application details.
+The third catalogue continuation is recorded above; fabric quotes still use actual
+drawings and application details. Automatic order/stock fulfilment remains operator-reviewed.
 
 
 # 17 October 2026 — Customer merge preserves both workspaces

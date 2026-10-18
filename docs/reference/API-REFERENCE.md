@@ -171,3 +171,16 @@ Node `netlify/functions/mcp-range.js`, `/api/mcp-range`: separate scoped Firebas
   download/image-proxy endpoints are not repurposed. Enabled in production and
   the isolated QA branch under owner authorization. Full operator contract and DSH media dedupe key:
   [DSH-PRODUCT-IMAGE-ACCESS-2026-10-18](../plans/DSH-PRODUCT-IMAGE-ACCESS-2026-10-18.md).
+
+
+## V8.19 Crystal Components
+
+- POST /api/crystal-availability (Node function): verifies revoked-token status and profile,
+  accepts one exact productId/variantId, requires both published and variant confirmed,
+  resolves private Supply-reviewed crystals mapping, returns only available quantity,
+  unit, check time and customer message. Admin, swatch staff or approved customer;
+  pending/anonymous/supply-only denied. Private no-store. No writes/reservations.
+- GET /api/swatch-library?action=image&file=… also serves strict crystal-products paths
+  with the caller Firebase token and underlying publication-aware Storage rules.
+  action=attachment serves only strict enquiry-files paths, forces attachment download
+  and PDF/JPEG/PNG/WebP MIME allowlist. Same fixed bucket, no redirects, no public tokens.

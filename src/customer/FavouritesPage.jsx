@@ -23,11 +23,11 @@ export default function FavouritesPage() {
       <h1 className="text-xl md:text-2xl mb-4">Favourites <span className="text-ink-60 text-base">({items.length})</span></h1>
       <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
         {items.map(it => {
-          const to = it.type === 'figurine' ? `/shop/figurine/${it.id}` : `/shop/corporate/${it.id}`
+          const to = it.type === 'crystal_component' ? '/shop/crystal-components/'+it.id : it.type === 'figurine' ? `/shop/figurine/${it.id}` : `/shop/corporate/${it.id}`
           const Icon = it.type === 'figurine' ? Gem : Package
           // Figurines need plating/colour chosen on the detail page, so only
           // corporate (single-SKU) favourites can report an in-enquiry state here.
-          const inCart = it.type !== 'figurine' && cart?.has({ type: it.type, id: it.id })
+          const inCart = !['figurine','crystal_component'].includes(it.type) && cart?.has({ type: it.type, id: it.id })
           return (
             <div key={`${it.type}-${it.id}`} className="mosaic-tile group flex flex-col">
               <Link to={to}
@@ -41,7 +41,7 @@ export default function FavouritesPage() {
                 <div className="mt-auto pt-2 flex items-center gap-2">
                   {inCart ? (
                     <span className="text-xs px-3 min-h-[40px] inline-flex items-center rounded-none border border-ivory-dark text-ink-60">In enquiry</span>
-                  ) : it.type === 'figurine' ? (
+                  ) : ['figurine','crystal_component'].includes(it.type) ? (
                     <Link to={to}
                       className="text-xs px-3 min-h-[40px] inline-flex items-center rounded-none border border-brand-500 text-brand-600 hover:bg-brand-50">
                       Select options

@@ -949,6 +949,102 @@ service cloud.firestore {
       }
     }
 
+    // V8.19 third catalogue: public-safe fields only; supply mappings separate.
+    function crystalText(d, key, max) { return d[key] is string && d[key].size() <= max; }
+    function crystalUnit(u) { return u in ['pcs','sheet','metre','sqm','project']; }
+    function crystalRevisionCreate() {
+      return request.resource.data.revision == 1 && request.resource.data.created_at == request.time;
+    }
+    function crystalRevisionUpdate() {
+      return request.resource.data.created_at == resource.data.created_at
+        && request.resource.data.revision == resource.data.revision + 1;
+    }
+    function crystalPublished(pid) {
+      return get(/databases/$(database)/documents/crystal_products/$(pid)).data.publication == 'published';
+    }
+    function validCrystalProduct(d, pid) {
+      return d.keys().hasOnly(['schema_version','code','name','description','family','origin','supply','shape','article_reference','condition','provenance_reviewed','unit','publication','hero_id','primary_variant_id','sort_order','revision','created_at','updated_at'])
+        && d.schema_version == 1 && crystalText(d,'code',100) && d.code.size()>0
+        && crystalText(d,'name',200) && d.name.size()>0 && crystalText(d,'description',2000)
+        && d.family in ['cut','fabric','surface'] && d.origin in ['crystocraft','swarovski_strass']
+        && d.supply in ['made_to_order','stock_and_made','stock_only']
+        && (d.origin != 'swarovski_strass' || d.supply == 'stock_only')
+        && crystalText(d,'shape',100) && crystalText(d,'article_reference',100)
+        && crystalText(d,'condition',500) && d.provenance_reviewed is bool
+        && crystalUnit(d.unit) && d.publication in ['draft','published','archived']
+        && crystalText(d,'hero_id',128) && crystalText(d,'primary_variant_id',128)
+        && d.sort_order is int && d.sort_order>=0 && d.sort_order<=100000
+        && d.revision is int && d.revision>0 && d.created_at is timestamp && d.updated_at==request.time
+        && (d.publication != 'published' || (
+          d.hero_id.matches('[A-Za-z0-9_-]{1,128}') && d.primary_variant_id.matches('[A-Za-z0-9_-]{1,128}')
+          && getAfter(/databases/$(database)/documents/crystal_products/$(pid)/images/$(d.hero_id)).data.publication == 'published'
+          && getAfter(/databases/$(database)/documents/crystal_products/$(pid)/variants/$(d.primary_variant_id)).data.publication == 'published'
+          && (d.origin != 'swarovski_strass' || (d.provenance_reviewed && d.condition.size()>0 && d.article_reference.size()>0
+            && getAfter(/databases/$(database)/documents/crystal_product_private/$(pid)/variants/$(d.primary_variant_id)).data.reviewed==true
+            && getAfter(/databases/$(database)/documents/crystal_product_private/$(pid)/variants/$(d.primary_variant_id)).data.catalogue_unit
+              ==getAfter(/databases/$(database)/documents/crystal_products/$(pid)/variants/$(d.primary_variant_id)).data.unit))
+        ));
+    }
+    function validCrystalVariant(d) {
+      return d.keys().hasOnly(['code','label','size','colour','effect','holes','backing','unit','sample_id','confirmed','publication','revision','created_at','updated_at'])
+        && crystalText(d,'code',100) && d.code.size()>0 && crystalText(d,'label',200) && d.label.size()>0
+        && crystalText(d,'size',100) && crystalText(d,'colour',100) && crystalText(d,'effect',100)
+        && crystalText(d,'holes',100) && crystalText(d,'backing',100) && crystalUnit(d.unit)
+        && crystalText(d,'sample_id',128) && (d.sample_id=='' || d.sample_id.matches('[A-Za-z0-9_-]{1,128}'))
+        && d.confirmed is bool && d.publication in ['draft','published','archived']
+        && (d.publication!='published' || d.confirmed)
+        && d.revision is int && d.revision>0 && d.created_at is timestamp && d.updated_at==request.time;
+    }
+    match /crystal_products/{pid} {
+      allow read: if can('swatch') || (isApprovedCustomer() && resource.data.publication=='published');
+      allow create: if can('swatch') && pid.matches('[A-Za-z0-9_-]{1,128}')
+        && validCrystalProduct(request.resource.data,pid) && crystalRevisionCreate() && request.resource.data.publication=='draft';
+      allow update: if can('swatch') && validCrystalProduct(request.resource.data,pid) && crystalRevisionUpdate()
+        && request.resource.data.origin == resource.data.origin;
+      allow delete: if false;
+      match /variants/{vid} {
+        allow read: if can('swatch') || (isApprovedCustomer() && crystalPublished(pid) && resource.data.publication=='published');
+        allow create: if can('swatch') && vid.matches('[A-Za-z0-9_-]{1,128}')
+          && existsAfter(/databases/$(database)/documents/crystal_products/$(pid))
+          && validCrystalVariant(request.resource.data) && crystalRevisionCreate();
+        allow update: if can('swatch') && validCrystalVariant(request.resource.data) && crystalRevisionUpdate()
+          && (request.resource.data.publication=='published'
+            || getAfter(/databases/$(database)/documents/crystal_products/$(pid)).data.publication!='published'
+            || getAfter(/databases/$(database)/documents/crystal_products/$(pid)).data.primary_variant_id!=vid);
+        allow delete: if false;
+      }
+      match /images/{iid} {
+        function validImage(d) {
+          return d.keys().hasOnly(['alt','publication','media','revision','created_at','updated_at'])
+            && crystalText(d,'alt',200) && d.publication in ['draft','published','archived']
+            && d.revision is int && d.revision>0 && d.created_at is timestamp && d.updated_at==request.time
+            && ((d.media==null && d.publication=='draft') || validCrystalPhotoMetadata('crystal-products/'+pid+'/'+iid,d.media));
+        }
+        allow read: if can('swatch') || (isApprovedCustomer() && crystalPublished(pid) && resource.data.publication=='published');
+        allow create: if can('swatch') && iid.matches('[A-Za-z0-9_-]{1,128}')
+          && existsAfter(/databases/$(database)/documents/crystal_products/$(pid))
+          && validImage(request.resource.data) && crystalRevisionCreate() && request.resource.data.publication=='draft';
+        allow update: if can('swatch') && validImage(request.resource.data) && crystalRevisionUpdate()
+          && (request.resource.data.publication=='published'
+            || getAfter(/databases/$(database)/documents/crystal_products/$(pid)).data.publication!='published'
+            || getAfter(/databases/$(database)/documents/crystal_products/$(pid)).data.hero_id!=iid);
+        allow delete: if false;
+      }
+    }
+    match /crystal_product_private/{pid}/variants/{vid} {
+      allow read: if can('supply');
+      allow create, update: if can('supply') && request.resource.data.keys().hasOnly(['collection','inventory_id','stock_unit','catalogue_unit','stock_per_unit','reviewed','notes','updated_at'])
+        && request.resource.data.collection=='crystals' && request.resource.data.stock_unit=='pcs'
+        && request.resource.data.inventory_id is string && request.resource.data.inventory_id.matches('[A-Za-z0-9_-]{1,128}')
+        && exists(/databases/$(database)/documents/crystals/$(request.resource.data.inventory_id))
+        && crystalUnit(request.resource.data.catalogue_unit)
+        && getAfter(/databases/$(database)/documents/crystal_products/$(pid)/variants/$(vid)).data.unit == request.resource.data.catalogue_unit
+        && request.resource.data.stock_per_unit is number && request.resource.data.stock_per_unit>0
+        && request.resource.data.stock_per_unit<=1000000 && request.resource.data.reviewed is bool
+        && crystalText(request.resource.data,'notes',2000) && request.resource.data.updated_at==request.time;
+      allow delete: if false;
+    }
+
     // V8.19 customer-safe samples only. Internal migration/calibration data
     // stays in crystal_migration_runs. Missing fields and extra private fields
     // fail closed on both create and update.
@@ -972,14 +1068,15 @@ service cloud.firestore {
         && d.created_at is timestamp && d.updated_at == request.time
         && ((d.media == null && d.publication == 'draft') || validCrystalMedia(id, d.media));
     }
-    function validCrystalMedia(id, m) {
+    function validCrystalMedia(id, m) { return validCrystalPhotoMetadata('crystal-swatches/'+id,m); }
+    function validCrystalPhotoMetadata(prefix, m) {
       return m is map && m.keys().hasOnly(['original','display','thumbnail','sha256','display_sha256','thumbnail_sha256','mime','bytes','width','height'])
         && m.sha256 is string && m.sha256.matches('[a-f0-9]{64}')
         && m.display_sha256 is string && m.display_sha256.matches('[a-f0-9]{64}')
         && m.thumbnail_sha256 is string && m.thumbnail_sha256.matches('[a-f0-9]{64}')
-        && m.original is string && m.original.matches('crystal-swatches/' + id + '/[a-f0-9]{64}/original[.](jpg|png|webp)')
-        && m.display is string && m.display.matches('crystal-swatches/' + id + '/[a-f0-9]{64}/display[.]jpg')
-        && m.thumbnail is string && m.thumbnail.matches('crystal-swatches/' + id + '/[a-f0-9]{64}/thumbnail[.]jpg')
+        && m.original is string && m.original.matches(prefix + '/[a-f0-9]{64}/original[.](jpg|png|webp)')
+        && m.display is string && m.display.matches(prefix + '/[a-f0-9]{64}/display[.]jpg')
+        && m.thumbnail is string && m.thumbnail.matches(prefix + '/[a-f0-9]{64}/thumbnail[.]jpg')
         && m.mime in ['image/jpeg','image/png','image/webp']
         && m.bytes is int && m.bytes > 0 && m.bytes <= 20971520
         && m.width is int && m.width > 0 && m.width <= 12000

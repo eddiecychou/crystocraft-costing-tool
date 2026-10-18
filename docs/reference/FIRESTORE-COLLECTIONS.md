@@ -203,3 +203,21 @@ Backend-only writes: `range_upload_controls/service` (separate capability/window
 ## pd_projects — local candidate, not deployed
 
 Private Product Design project register and `/updates/{eventId}` immutable revision history. Existing `product_design` capability only; no customer/anonymous/unrelated-staff/MCP grant. Root create/update must atomically append actor-stamped snapshots; bounded optional fields and four typed references; creator immutable, revision checked. Queries list roots and page history ordered by revision descending (50 per page). No delete, importer, product/customer/price/gallery side effect. Owner: `src/domain/pdProjects.js`. See `../plans/PRODUCT-DESIGN-PROJECTS-2026-10-17.md`.
+
+
+## V8.19 Crystal Components catalogue
+
+- crystal_products/{id}: strict customer-safe product fields, immutable origin, publication
+  and revision; swatch manages, approved customers read published only. Child variants
+  hold only explicit combinations; child images hold immutable verified Firebase media.
+  Publishing requires a real cover and confirmed primary variant. No delete permissions.
+- crystal_product_private/{productId}/variants/{variantId}: Supply-only canonical crystals
+  ID, explicit stock pieces per catalogue unit, review and private provenance notes.
+  No editable balances. Original-stock publication requires this reviewed primary mapping.
+- Storage crystal-products/{productId}/{imageId}/{hash}/: immutable original/display/thumb;
+  customer reads require both current published parent and current published image paths.
+- Storage enquiry-files/{uid}/{enquiryId}/{fileId}.{ext}: immutable private PDF/image drawing,
+  approved submitting user or admin reads; approved submitting user creates. No token URLs.
+- enquiries: component lines snapshot source_collection=crystal_products, variant and sample
+  IDs/revisions, unit, description, application and image path. attachments stores private
+  paths, original filenames and content hashes. All-unpriced estimated_total is null.

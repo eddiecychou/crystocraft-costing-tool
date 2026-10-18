@@ -5,6 +5,8 @@ import { db } from '../firebase'
 import { Gem, Package, Mail, Download, Pencil, Trash2, X } from 'lucide-react'
 import { fmtMoney } from '../currency'
 import { exportEnquiryExcel } from '../enquiryExport'
+import {downloadEnquiryAttachment} from '../crystalEnquiries'
+import SwatchPhoto from '../components/SwatchPhoto'
 import LoadingBar from '../components/LoadingBar'
 import ConfirmDialog from '../components/ConfirmDialog'
 
@@ -118,20 +120,24 @@ function Card({ r, set, onEdit, onDelete }) {
           return (
             <div key={idx} className="flex items-center gap-3 py-2">
               <div className="w-10 h-10 bg-white border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden shrink-0">
-                {i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain" /> : <Icon size={16} className="text-platinum" />}
+                {i.type==='crystal_component'&&i.image_path?<SwatchPhoto path={i.image_path} alt={i.name}/>:i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain" /> : <Icon size={16} className="text-platinum" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink truncate">{i.name}</p>
-                <p className="text-2xs text-ink-60">
+                <p className="text-2xs text-ink-60 break-words">
                   {i.code ? `${i.code} · ` : ''}{i.type}
                   {i.finish ? ` · ${i.finish}` : ''}
                   {(i.color_name || i.color) ? ` · ${i.color_name || i.color}` : ''}
+                  {i.description_snapshot ? ' · '+i.description_snapshot : ''}
+                  {i.application ? ' · Application: '+i.application : ''}
+                  {i.variant_id ? ' · Variant: '+i.variant_id+' (r'+i.variant_revision+')' : ''}
+                  {i.swatch_sample_id ? ' · Sample: '+i.swatch_sample_id+' (r'+i.swatch_revision+')' : ''}
                   {i.note ? ` · ${i.note}` : ''}
                 </p>
               </div>
               <div className="text-right shrink-0">
                 <p className="text-sm text-ink-70">
-                  {Number(i.qty || 1).toLocaleString()} pcs
+                  {Number(i.qty || 1).toLocaleString()} {i.unit||'pcs'}
                   {Number(i.pcs_per_carton) > 0 && Number(i.cartons) > 0 && <span className="text-ink-60"> · {i.cartons} ctn</span>}
                 </p>
                 {Number(i.moq) > 0 && Number(i.qty || 1) < Number(i.moq) &&
@@ -145,6 +151,7 @@ function Card({ r, set, onEdit, onDelete }) {
         })}
       </div>
 
+      {!!r.attachments?.length&&<div className="mt-3 space-y-2"><p className="eyebrow">Private drawing / reference</p>{r.attachments.map(a=><button key={a.path} className="btn-secondary min-h-11 text-sm break-words" onClick={()=>downloadEnquiryAttachment(a).catch(e=>alert(e.message))}>{a.name}</button>)}</div>}
       {r.estimated_total != null && (
         <div className="mt-2 flex items-center justify-end gap-3 text-sm">
           <span className="text-ink-60">Estimated total ({cur})</span>

@@ -7,15 +7,19 @@ export function createSwatchImageHandler({bucket,fetcher=fetch}) {
     if(!token)return error('Please sign in.',401)
     if(!bucket || !/^[a-z0-9.-]+$/.test(bucket))return error('Image storage is not configured.',503)
     const url=new URL(req.url),path=url.searchParams.get('file')||''
-    if(url.searchParams.get('action')!=='image' || !/^crystal-swatches\/sw_[a-zA-Z0-9_-]{16,80}\/[a-f0-9]{64}\/(original\.(jpg|png|webp)|display\.jpg|thumbnail\.jpg)$/.test(path))return error('Invalid photograph.',400)
+    const action=url.searchParams.get('action')
+    const photograph=action==='image' && (/^crystal-swatches\/sw_[a-zA-Z0-9_-]{16,80}\/[a-f0-9]{64}\/(original\.(jpg|png|webp)|display\.jpg|thumbnail\.jpg)$/.test(path)
+      || /^crystal-products\/[A-Za-z0-9_-]{1,128}\/[A-Za-z0-9_-]{1,128}\/[a-f0-9]{64}\/(original\.(jpg|png|webp)|display\.jpg|thumbnail\.jpg)$/.test(path))
+    const attachment=action==='attachment' && /^enquiry-files\/[A-Za-z0-9_-]{1,128}\/[A-Za-z0-9_-]{1,128}\/[A-Za-z0-9_-]{1,128}\.(pdf|jpg|png|webp)$/.test(path)
+    if(!photograph && !attachment)return error('Invalid photograph.',400)
     try {
       const upstream=await fetcher(`https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media`,{
         headers:{Authorization:`Firebase ${token}`},redirect:'error',signal:AbortSignal.timeout(25000),
       })
       if(!upstream.ok)return error('Photograph unavailable.',[401,403,404].includes(upstream.status)?upstream.status:502)
       const type=upstream.headers.get('Content-Type')?.split(';')[0]
-      if(!['image/jpeg','image/png','image/webp'].includes(type))return error('Invalid photograph format.',502)
-      return new Response(upstream.body,{headers:{...headers,'Content-Type':type}})
+      if(!(attachment?['application/pdf','image/jpeg','image/png','image/webp']:['image/jpeg','image/png','image/webp']).includes(type))return error('Invalid photograph format.',502)
+      return new Response(upstream.body,{headers:{...headers,'Content-Type':type,...(attachment?{'Content-Disposition':'attachment'}:{})}})
     }catch{return error('Photo could not be loaded. Please retry.',502)}
   }
 }

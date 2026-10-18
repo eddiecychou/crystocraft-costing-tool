@@ -29,7 +29,7 @@ const nav = [
   { group: 'Catalogue' },
   { to: '/range',      label: 'Crystocraft Range',short: 'Range', Icon: Gem, primary: true, module: 'figurine' },
   { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true, module: 'products' },
-  { to: '/swatch-library', label: 'Swatch Library', short: 'Swatches', Icon: Sparkles, module: 'swatch' },
+  { to: '/crystal-components', label: 'Crystal Components', short: 'Crystals', Icon: Sparkles, module: 'swatch' },
   { to: '/design/projects', label: 'Product Design', short: 'Design', Icon: Palette, module: 'product_design' },
 
   { group: 'Sales' },

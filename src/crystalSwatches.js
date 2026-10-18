@@ -35,7 +35,7 @@ async function storeVerified(path, blob, expectedHash) {
   if (await sha256(await readback.arrayBuffer()) !== expectedHash) throw Error('Uploaded photo failed checksum verification. Nothing was published.')
 }
 
-async function photoAssets(id, file, croppedBlob) {
+export async function photoAssets(id, file, croppedBlob, pathsFor = swatchPaths) {
   const bytes = await file.arrayBuffer()
   validatePhoto(bytes,file.type)
   const bitmap = await createImageBitmap(file)
@@ -48,7 +48,7 @@ async function photoAssets(id, file, croppedBlob) {
   const displayHash=await sha256(await display.arrayBuffer()), thumbHash=await sha256(await thumbnail.arrayBuffer())
   // Crop bytes also determine immutable revision identity; originals stay intact.
   const revisionHash = await sha256(new TextEncoder().encode(JSON.stringify([hash,displayHash,thumbHash])))
-  const paths = swatchPaths(id,revisionHash,file.type)
+  const paths = pathsFor(id,revisionHash,file.type)
   const uploads = await Promise.allSettled([['original',file,hash],['display',display,displayHash],['thumbnail',thumbnail,thumbHash]].map(([key,blob,checksum]) => storeVerified(paths[key],blob,checksum)))
   const failed = uploads.find(r => r.status === 'rejected')
   if (failed) throw failed.reason

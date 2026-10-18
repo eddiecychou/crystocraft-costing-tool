@@ -1,3 +1,12 @@
+# V8.19 component catalogue domain
+
+src/domain/crystalProducts.js owns customer-safe product/variant allowlists, actual
+combination labels, catalogue filtering, exact enquiry snapshots, reviewed stock-unit
+availability projection and non-inferential stock draft preparation. src/crystalProducts.js
+owns revision-guarded transactions and original/derived media verification; src/crystalEnquiries.js
+owns selection freshness checks and private immutable drawing upload/readback.
+No ledger writer or selling-price logic is added. See the catalogue release record.
+
 # V8.19 swatch domain
 
 `src/domain/crystalSwatches.js` — customer-safe sample validation, deterministic exact legacy-tuple IDs, original format/size validation, immutable paths, grouped browser projection and full backup/manifest verification. `src/crystalSwatches.js` — Firebase transactions, revision guard, original/derived byte verification, resumable admin-reviewed import. No inventory balances, prices, project quote calculator or renderer calibration UI. Release state: [swatch migration](../plans/V8.19-SWATCH-MIGRATION-RELEASE.md).

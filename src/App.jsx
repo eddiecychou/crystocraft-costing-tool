@@ -14,6 +14,8 @@ const Storefront = lazy(() => import('./customer/Storefront'))
 const PendingScreen = lazy(() => import('./customer/PendingScreen'))
 const Products = lazy(() => import('./pages/Products'))
 const MarketingCopyBulk = lazy(() => import('./pages/MarketingCopyBulk'))
+const CrystalComponents = lazy(() => import('./pages/CrystalComponents'))
+const CrystalComponentForm = lazy(() => import('./pages/CrystalComponentForm'))
 const Range = lazy(() => import('./pages/Range'))
 const RangeForm = lazy(() => import('./pages/RangeForm'))
 const RangeCosting = lazy(() => import('./pages/RangeCosting'))
@@ -251,6 +253,8 @@ function AdminApp({ user, profile, role }) {
                 <Route path="/inventory" element={<Gate module="supply"><InventoryStatus /></Gate>} />
                 <Route path="/erp-lookup" element={<Gate module="erp"><ErpLookup /></Gate>} />
                 <Route path="/uc-registry" element={<Gate module="uc"><UcRegistry /></Gate>} />
+                <Route path="/crystal-components" element={<Gate module="swatch"><CrystalComponents /></Gate>} />
+                <Route path="/crystal-components/:id" element={<Gate module="swatch"><CrystalComponentForm /></Gate>} />
                 <Route path="/swatch-library" element={<Gate module="swatch"><SwatchLibrary /></Gate>} />
                 <Route path="/components/critical/new" element={<Gate module="supply"><RangeComponentForm /></Gate>} />
                 <Route path="/components/critical/:id/quotes/new" element={<Gate module="supply"><RangeQuoteForm /></Gate>} />

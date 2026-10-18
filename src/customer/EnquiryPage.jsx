@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { Gem, Package, Trash2, ClipboardList, CheckCircle2, Plus, Minus } from 'lucide-react'
 import { useCart, designGroupKey, formatGroupKey, formatCodeOf, designNumberOf } from './store'
 import { useFormatMoq } from '../formatMoq'
 import { RANGE_FORMAT_CODES } from '../constants'
 import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
+import {crystalEnquirySnapshot,CRYSTAL_UNITS} from '../domain/crystalProducts'
+import {validateCrystalEnquirySelections,uploadEnquiryDrawing} from '../crystalEnquiries'
+import SwatchPhoto from '../components/SwatchPhoto'
 import { notifyEmail } from '../notify'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
@@ -17,6 +20,9 @@ export default function EnquiryPage({ profile }) {
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
   const factor = wsPriceFactor(profile)
+  const [drawing,setDrawing]=useState(null)
+  const [drawingId,setDrawingId]=useState(()=>crypto.randomUUID())
+  const [enquiryId]=useState(()=>doc(collection(db,'enquiries')).id)
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
@@ -35,7 +41,7 @@ export default function EnquiryPage({ profile }) {
   const total = items.reduce((s, i) => s + (lineTotal(i) || 0), 0)
   const hasIndicative = items.some(i => !isConcept(i) && unitPrice(i) == null)
   const hasConcept = items.some(isConcept)
-  const swatchOnly = items.length > 0 && items.every(i => i.type === 'swatch_sample')
+  const swatchOnly = items.length > 0 && items.every(i => lineTotal(i)==null)
 
   // MOQ is a per-design (metal-part) minimum. All plating/colour variations AND
   // formats (freestand, music box, bible…) that share the same design number
@@ -60,7 +66,10 @@ export default function EnquiryPage({ profile }) {
     if (!items.length) return
     setSending(true); setError('')
     try {
-      await addDoc(collection(db, 'enquiries'), {
+      await validateCrystalEnquirySelections(items)
+      const attachments=drawing?[await uploadEnquiryDrawing(enquiryId,drawing,drawingId)]:[]
+      await setDoc(doc(db, 'enquiries',enquiryId), {
+        attachments,
         uid: auth.currentUser?.uid || profile?.id || null,
         company_name: profile?.company_name || '',
         contact_name: profile?.contact_name || '',
@@ -70,6 +79,7 @@ export default function EnquiryPage({ profile }) {
           type: i.type, id: i.id, name: i.name || '', code: i.code || '', design_no: i.design_no || '', format_code: i.format_code || '',
           image: i.image || '', qty: Number(i.qty) || 1, note: i.note || '',
           finish: i.finish || '', color: i.color || '', color_name: i.color_name || '',
+          ...(i.type === 'crystal_component' ? crystalEnquirySnapshot(i) : {}),
           ...(i.type === 'swatch_sample' && i.swatch_sample_id ? { swatch_sample_id:i.swatch_sample_id, swatch_revision:i.swatch_revision || null } : {}),
           ws_price_usd: i.ws_price_usd ?? null,
           pcs_per_carton: Number(i.pcs_per_carton) || 0,
@@ -93,8 +103,8 @@ export default function EnquiryPage({ profile }) {
       })
       cart.clear()
       setSent(true)
-    } catch {
-      setError('Could not send your enquiry. Please try again.')
+    } catch (e) {
+      setError(e.message || 'Could not send your enquiry. Please try again.')
     } finally {
       setSending(false)
     }
@@ -146,17 +156,17 @@ export default function EnquiryPage({ profile }) {
           const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.key, { cartons: c, qty: c * ppc }) }
           const setPcs = n => cart.update(i.key, { qty: Math.max(1, Math.floor(n) || 1) })
           return (
-            <div key={i.key} className="flex items-start gap-3 p-3">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden shrink-0">
-                {i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain p-1" />
+            <div key={i.key} className="grid grid-cols-[64px_minmax(0,1fr)] sm:grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-3 p-3">
+              <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden shrink-0">
+                {i.type==='crystal_component'&&i.image_path ? <SwatchPhoto path={i.image_path} alt={i.name}/> : i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain p-1" />
                   : <Icon size={28} className="text-platinum" />}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="text-sm text-ink truncate">{i.name}</p>
+                  <p className="text-sm text-ink break-words">{i.name}</p>
                   {concept && <span className="badge bg-purple-100 text-purple-700 shrink-0">Concept</span>}
                 </div>
-                {i.code && <p className="text-xs text-ink-60 font-mono">{i.code}</p>}
+                {i.code && <p className="text-xs text-ink-60 font-mono break-words">{i.code}</p>}
                 {concept && (
                   <p className="text-xs text-purple-600 mt-0.5">
                     Under development — not yet in production. Let us know your estimated interest below.
@@ -169,11 +179,14 @@ export default function EnquiryPage({ profile }) {
                     {(i.color_name || i.color) && <span>{i.color_name || i.color}</span>}
                   </p>
                 )}
+                {i.description_snapshot&&<p className="text-xs text-ink-60 mt-1 break-words">{i.description_snapshot}</p>}
+                {i.application&&<p className="text-xs text-ink-70 mt-1 break-words">Application: {i.application}</p>}
+                {i.type==='crystal_component'&&<Link className="text-xs text-brand-600 inline-flex min-h-10 items-center" to={'/shop/crystal-components/'+i.id}>Change component selection</Link>}
                 <input type="text" placeholder="Note (extra customisation, deadlines…)"
                   value={i.note || ''} onChange={e => cart.update(i.key, { note: e.target.value })}
                   className="input py-2 text-xs mt-1 w-full" />
               </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
+              <div className="col-span-2 sm:col-span-1 flex flex-wrap sm:flex-col justify-end items-center sm:items-end gap-3 sm:gap-1">
                 <span className="text-xs text-ink-60">
                   {unitPrice(i) != null ? `${fmtMoney(unitPrice(i), cur)} ea` : 'On enquiry'}
                 </span>
@@ -191,7 +204,7 @@ export default function EnquiryPage({ profile }) {
                     <span className="text-xs text-ink-60">{cartons} ctn · {qtyPcs.toLocaleString()} pcs</span>
                   </div>
                 ) : (
-                  <label className="text-xs text-ink-60">{concept ? 'Estimated qty' : 'Qty (pcs)'}
+                  <label className="text-xs text-ink-60">{concept ? 'Estimated qty' : 'Qty ('+(CRYSTAL_UNITS[i.unit]||'pcs')+')'}
                     <input type="number" min="1" value={qtyPcs}
                       onChange={e => setPcs(Number(e.target.value))}
                       className="input py-2 w-20 ml-1 inline-block" />
@@ -229,7 +242,8 @@ export default function EnquiryPage({ profile }) {
       <textarea className="input min-h-[90px]" placeholder="Tell us about quantities, deadlines, branding or any questions…"
         value={message} onChange={e => setMessage(e.target.value)} />
 
-      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+      {items.some(i=>i.type==='crystal_component'||i.type==='swatch_sample')&&<label className="block mt-4"><span className="label block mb-1">Drawing / reference file (optional)</span><input disabled={sending} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="input" onChange={e=>{setDrawing(e.target.files?.[0]||null);setDrawingId(crypto.randomUUID())}}/><span className="text-xs text-ink-60">PDF or photograph up to 20 MB. Private to your enquiry. Fabric pricing is reviewed from your drawing and application.</span></label>}
+      {error && <p role="alert" className="text-sm text-red-600 mt-2">{error}</p>}
 
       <div className="flex items-center gap-3 mt-4">
         <button onClick={submit} disabled={sending} className="btn-primary">

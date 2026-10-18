@@ -53,6 +53,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: npm run test:crystal-products
       - run: npm run test:crystal-swatches
       - run: npm run test:design-projects
       - run: npm run test:oc-time

@@ -11,6 +11,8 @@ const EnquiryPage = lazy(() => import('./EnquiryPage'))
 const CustomizerPage = lazy(() => import('./CustomizerPage'))
 const BrandPortalPage = lazy(() => import('./BrandPortalPage'))
 const OrderHistoryPage = lazy(() => import('./OrderHistoryPage'))
+const CrystalComponentsShop = lazy(() => import('./CrystalComponentsShop'))
+const CrystalComponentDetail = lazy(() => import('./CrystalComponentDetail'))
 const SwatchLibraryPage = lazy(() => import('./SwatchLibraryPage'))
 const CustomerInvoicePrint = lazy(() => import('./CustomerInvoicePrint'))
 const ProposalPrint = lazy(() => import('./ProposalPrint'))
@@ -46,6 +48,8 @@ export default function Storefront({ profile }) {
                 <Route path="/shop/brand-gallery" element={<Navigate to="/shop/brand-portal" replace />} />
                 <Route path="/shop/proposal" element={<Navigate to="/shop/brand-portal" replace />} />
                 <Route path="/shop/orders" element={<OrderHistoryPage profile={profile} />} />
+                <Route path="/shop/crystal-components" element={<CrystalComponentsShop profile={profile} />} />
+                <Route path="/shop/crystal-components/:id" element={<CrystalComponentDetail profile={profile} />} />
                 <Route path="/shop/swatches" element={<SwatchLibraryPage profile={profile} />} />
                 <Route path="/customize/:productId" element={<CustomizerPage profile={profile} />} />
                 <Route path="*" element={<Navigate to="/shop" replace />} />

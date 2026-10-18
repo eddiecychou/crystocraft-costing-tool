@@ -23,6 +23,10 @@
 [functions]
   directory = "netlify/functions"
 
+[functions."crystal-availability"]
+  node_bundler = "esbuild"
+  external_node_modules = ["firebase-admin"]
+
 [functions."customer-availability"]
   node_bundler = "esbuild"
   external_node_modules = ["firebase-admin"]

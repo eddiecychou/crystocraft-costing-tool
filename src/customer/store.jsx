@@ -6,7 +6,7 @@ const sameItem = (a, t, id) => a.type === t && a.id === id
 
 // A cart line is one orderable SKU: design + plating finish + crystal colour.
 // Two variations of the same design are therefore distinct lines.
-export const cartKey = i => `${i.type}:${i.id}:${i.finish || ''}:${i.color || ''}`
+export const cartKey = i => i.type==='crystal_component' ? JSON.stringify([i.type,i.id,i.variant_id||'',i.swatch_sample_id||'']) : `${i.type}:${i.id}:${i.finish || ''}:${i.color || ''}`
 
 // MOQ groups every variation AND format that shares one design body. The design
 // number is taken from design_no (falling back to the middle of the item code,

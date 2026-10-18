@@ -24,7 +24,7 @@ export const MODULE_GROUPS = [
   { group: 'Catalogue', keys: [
     { key: 'products',    label: 'Corp Gifts' },
     { key: 'figurine',    label: 'Crystocraft Range (catalogue + costing)' },
-    { key: 'swatch',      label: 'Swatch Library' },
+    { key: 'swatch',      label: 'Crystal Components' },
     { key: 'catalogues',  label: 'Printed Catalogues' },
     { key: 'product_design', label: 'Product Design — brand mockups + spec sheets' },
     { key: 'pricing',     label: 'Pricing — corp-gift tier editor', sensitive: true },

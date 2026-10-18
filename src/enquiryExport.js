@@ -12,6 +12,7 @@ import { ocDateOnly, formatOcDateTime } from './ocTime.js'
 // components/QuoteExport.jsx (Netlify /api/download-image proxy first, direct
 // fetch as the local-dev fallback). ExcelJS is dynamically imported so its
 // weight stays out of the Enquiries page bundle until someone actually exports.
+import {readSwatchPhoto} from './crystalSwatches'
 import { RANGE_PLATINGS } from './constants'
 
 // ── Brand theme (subset of QuoteExport's) ──────────────────────────────────
@@ -42,6 +43,7 @@ function platingCode(finish) {
   return byName ? byName.code : ''
 }
 function variantCode(it) {
+  if(it.type==='crystal_component')return it.code||''
   const base = (it.code || '').trim()
   const suffix = `${platingCode(it.finish)}${(it.color || '').trim().toUpperCase()}`
   return suffix ? `${base}-${suffix}` : base
@@ -128,10 +130,10 @@ export async function exportEnquiryExcel(r) {
 
     rr.getCell(COL.PRODUCT).value = it.name || ''
     rr.getCell(COL.CODE).value    = variantCode(it)
-    rr.getCell(COL.TYPE).value    = it.type || ''
+    rr.getCell(COL.TYPE).value    = (it.type || '')+(it.unit?' / '+it.unit:'')
     rr.getCell(COL.FINISH).value  = it.finish || ''
     rr.getCell(COL.COLOUR).value  = it.color_name || it.color || ''
-    rr.getCell(COL.NOTE).value    = it.note || ''
+    rr.getCell(COL.NOTE).value    = [it.description_snapshot,it.application&&'Application: '+it.application,it.note,it.variant_id&&'Variant: '+it.variant_id+' r'+it.variant_revision,it.swatch_sample_id&&'Sample: '+it.swatch_sample_id+' r'+it.swatch_revision].filter(Boolean).join(' · ')
     rr.getCell(COL.QTY).value     = qty
     if (unit != null) { rr.getCell(COL.UNIT).value = unit; rr.getCell(COL.UNIT).numFmt = '#,##0.00' }
     if (it.line_total != null) { rr.getCell(COL.TOTAL).value = Number(it.line_total); rr.getCell(COL.TOTAL).numFmt = '#,##0.00' }
@@ -148,7 +150,7 @@ export async function exportEnquiryExcel(r) {
     }
 
     // Embed the product photo, centred in the Picture cell.
-    const img = await fetchImage(it.image)
+    const img = it.type==='crystal_component'&&it.image_path ? await readSwatchPhoto(it.image_path).then(async b=>({buffer:await b.arrayBuffer(),extension:'jpeg'})).catch(()=>null) : await fetchImage(it.image)
     if (img) {
       try {
         const id = wb.addImage(img)
@@ -207,6 +209,7 @@ export async function exportEnquiryExcel(r) {
     ['Date',     when],
     ['Currency', cur],
     ['Message',  r.message || ''],
+    ['Drawings', (r.attachments||[]).map(a=>a.name+' · SHA256 '+a.sha256).join('\n')],
   ]
   let cr = 2
   for (const [label, value] of info) {

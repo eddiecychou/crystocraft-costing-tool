@@ -499,3 +499,17 @@ Separate `mcp/range` five-tool server, `/api/mcp-range` Node endpoint, pure `src
 ### Simple Range entry — owner and agent
 
 Read [RANGE-PRODUCT-ENTRY.md](RANGE-PRODUCT-ENTRY.md) before new Range product work. Both entry points are supported: OC Quick Add and one natural-language agent brief. Keep optional details out of the way, gather blocking facts in one question, review/read back once, correct the same product, and retain reusable lessons. MCP live writes stay disabled until an actual product preview is approved.
+
+
+### Crystal Components — V8.19 third catalogue
+
+OC /crystal-components and /crystal-components/:id; approved portal
+/shop/crystal-components and detail. Existing swatch capability now labelled Crystal
+Components, with Swatch Library linked and old routes preserved. Products/actual variants
+and immutable real photos are managed through src/crystalProducts.js; Supply-only mappings
+resolve the existing crystals ledger via /api/crystal-availability. Original Swarovski /
+Strass stock-only origin cannot be changed or published without provenance/condition,
+photo, confirmed primary variant and reviewed stock mapping. No opening balances, ledger
+movements, stock reservations, prices or automatic quote/order adapter are added.
+Customer cart/enquiry/favourites and protected drawing/PDF exports have explicit third-source
+handling. See ../plans/V8.19-CRYSTAL-CATALOGUE-RELEASE.md for staged/live evidence.

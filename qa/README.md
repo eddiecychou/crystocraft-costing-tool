@@ -314,3 +314,24 @@ creation: use only for the owner's authorized verified-backup migration.
 The optional `qa/curl-release-probe-transport.mjs` changes only the network
 transport of the existing configuration probe when Node HTTPS times out. It does
 not replace the password-login gate. See the release evidence for exact IDs/state.
+
+## Crystal Components — V8.19
+
+npm run test:crystal-products runs customer-safe domain, exact snapshot and read-only
+availability/protected-proxy regressions. qa/crystal-products-rules.test.mjs requires
+both local emulators and covers publication, private mappings and drawing ownership;
+run it with the existing RBAC and swatch suites. No live QA fixtures.
+
+node qa/crystal-products-preview.mjs serves the real pages with fictional browser-only
+data on 5202; node qa/crystal-products-browser.mjs checks six routes at four widths,
+exact cart/submitted enquiry snapshots, drawing references, favourites and stock-link
+review without changing a balance. qa/render-crystal-catalogue.jsx exercises the actual
+PDF component (12 products, including a 24-variant product) for rendered visual review.
+qa/verify-crystal-catalogue-release.mjs <https-url> performs fresh admin/customer checks
+on candidate/current production, actual protected photos and PDF download, read-only
+availability, exact local enquiry selection, role separation and refresh. It never sends
+a live enquiry or saves a live QA product/drawing/stock record.
+
+scripts/setup-crystal-catalogue.mjs is separate owner-requested business setup, not QA:
+default prints the reviewed local manifest; --apply uses the real OC editor for only the
+three reviewed own components. It never imports original stock or posts a ledger movement.

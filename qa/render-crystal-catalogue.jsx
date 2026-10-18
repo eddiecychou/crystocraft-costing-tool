@@ -1,0 +1,7 @@
+import {renderToFile} from '@react-pdf/renderer'
+import CrystalCataloguePDF from '../src/components/CrystalCataloguePDF'
+import {readFileSync,readdirSync} from 'node:fs'
+const dir='migration/crystal-swatches-v819.local/data/colors',file=readdirSync(dir).find(f=>f.endsWith('.jpg'))
+const photo='data:image/jpeg;base64,'+readFileSync(dir+'/'+file).toString('base64')
+const products=Array.from({length:12},(_,n)=>({id:'fictional_product_'+n,code:'CC-EXAMPLE-'+n,name:n%3===0?'Original Swarovski / Strass clearance crystal with a longer title':'Crystocraft Octagon Crystal 14 mm',origin:n%3===0?'swarovski_strass':'crystocraft',condition:'Inspected original stock. Original packaging, subject to final count and condition confirmation.',description:'Fictional QA catalogue using a real private sample photograph to verify image placement. Component supply for lighting, decorative applications and crystal giftware.',article_reference:'EXAMPLE REFERENCE',photo,variants:Array.from({length:n===3?24:4},(_,v)=>({id:'variant_'+v,code:'CC-EXAMPLE-'+n+'-'+v,label:v===2?'Custom blue effect with a long descriptive label for a real photographed combination':'Clear octagon',size:'14 mm',colour:'Crystal',effect:v===2?'AB effect':'',holes:'2',backing:'',unit:'pcs'}))}))
+await renderToFile(<CrystalCataloguePDF products={products} title="Crystal Components — layout verification"/>,process.argv[2]||'/private/tmp/crystal-catalogue-qa.pdf')
