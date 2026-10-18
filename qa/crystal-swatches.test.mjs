@@ -41,7 +41,7 @@ test('only customer-safe fields survive normalization; invalid input fails',()=>
 })
 test('colour browsing never drops duplicate backing labels or renames sample identities',()=>{
  const a={...cleanSwatch(values),id:'sw_'+hash,revision:2,media:swatchPaths('sw_'+hash,hash,'image/jpeg')}
- const reg=swatchesToRegistry([a,{...a,id:'sw_other_sample_123456',notes_key:'Crystal AB'}]);assert.equal(Object.keys(reg).length,1);assert.equal(Object.keys(reg['Crystal AB'].slots.fabric).length,2)
+ const reg=swatchesToRegistry([a,{...a,id:'sw_other_sample_replacement',notes_key:'Crystal AB'}]);assert.equal(Object.keys(reg).length,1);assert.equal(Object.keys(reg['Crystal AB'].slots.fabric).length,2)
  assert.equal(reg['Crystal AB'].notes_key,'Crystal AB');assert.equal(reg['Crystal AB'].slots.fabric['01'].sample_id,a.id)
 })
 test('stale edits fail rather than overwrite another operator',()=>{assertSampleRevision({revision:2},2);assert.throws(()=>assertSampleRevision({revision:3},2),/another window/)})
