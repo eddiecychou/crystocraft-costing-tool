@@ -1,3 +1,4 @@
+import ProductDesignNav from "../../components/ProductDesignNav";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { pdApiFetch } from "@/lib/pdApi";
@@ -275,12 +276,13 @@ export default function CustomerBrandPage() {
     setMergeReview(null);
   }
 
-  if (customer === "loading") return <main className="p-10 text-ink-60">Loading…</main>;
-  if (!customer) return <main className="p-10 text-ink-60">Customer not found.</main>;
+  if (customer === "loading") return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Loading…</p></main>;
+  if (!customer) return <main className="mx-auto max-w-6xl px-6 py-10"><ProductDesignNav /><p className="text-ink-60">Customer not found.</p></main>;
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <div className="flex items-center justify-between mb-1">
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      <ProductDesignNav />
+      <div className="flex flex-wrap gap-2 items-center justify-between mb-1">
         <h1 className="text-2xl">Brand Profile</h1>
         <button type="button" className="btn btn-primary" onClick={handleSave} disabled={busy}>
           {busy ? "Saving…" : saved ? "Saved ✓" : hasExisting ? "Save Changes" : "Create Brand Profile"}
@@ -292,8 +294,8 @@ export default function CustomerBrandPage() {
         not part of the costing-tool CRM record.
       </p>
 
-      <div className="grid grid-cols-2 gap-6">
-        <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="min-w-0 flex flex-col gap-6">
           <div className="card p-4">
             <label className="label" htmlFor="summary">Summary</label>
             <textarea
@@ -307,7 +309,7 @@ export default function CustomerBrandPage() {
           </div>
 
           <div className="card p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap gap-2 items-center justify-between mb-3">
               <h2 className="eyebrow">Color Palette</h2>
               {profile.color_palette.length > 1 && (
                 <button
@@ -330,15 +332,15 @@ export default function CustomerBrandPage() {
               ))}
               {profile.color_palette.length === 0 && <p className="text-xs text-ink-60">No colors yet.</p>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} className="h-8 w-8 border border-warm-grey" />
-              <input className="input flex-1" value={newColor} onChange={(e) => setNewColor(e.target.value)} placeholder="#RRGGBB" />
+              <input className="input flex-1 min-w-0" value={newColor} onChange={(e) => setNewColor(e.target.value)} placeholder="#RRGGBB" />
               <button type="button" className="btn btn-secondary" onClick={addColor}>Add</button>
             </div>
           </div>
 
           <div className="card p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap gap-2 items-center justify-between mb-3">
               <h2 className="eyebrow">Core Motifs</h2>
               {profile.core_motifs.length > 1 && (
                 <button
@@ -364,9 +366,9 @@ export default function CustomerBrandPage() {
               ))}
               {profile.core_motifs.length === 0 && <p className="text-xs text-ink-60">No motifs yet.</p>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input
-                className="input flex-1"
+                className="input flex-1 min-w-0"
                 value={newMotif}
                 onChange={(e) => setNewMotif(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addMotif(); } }}
@@ -416,9 +418,9 @@ export default function CustomerBrandPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="min-w-0 flex flex-col gap-4">
           <div className="card p-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap gap-2 items-center justify-between mb-2">
               <h2 className="eyebrow">Reference Images</h2>
               <input
                 ref={fileInputRef}
@@ -476,9 +478,9 @@ export default function CustomerBrandPage() {
               clearly here if a site can&rsquo;t be reached rather than
               guessing.
             </p>
-            <div className="flex gap-2 mb-3">
+            <div className="flex flex-wrap gap-2 mb-3">
               <input
-                className="input flex-1"
+                className="input flex-1 min-w-0"
                 value={newWebsiteUrl}
                 onChange={(e) => setNewWebsiteUrl(e.target.value)}
                 placeholder="https://example.com"
@@ -493,7 +495,7 @@ export default function CustomerBrandPage() {
               <div className="flex flex-col gap-2">
                 {sourceWebsites.map((site) => (
                   <div key={site.id} className="flex items-center justify-between border border-warm-grey px-2 py-1.5">
-                    <span className="text-xs truncate flex-1">{site.url}</span>
+                    <span className="text-xs truncate flex-1 min-w-0">{site.url}</span>
                     <button
                       type="button"
                       className="text-2xs text-ink-60 uppercase tracking-wide hover:text-ink ml-2"
@@ -569,7 +571,7 @@ export default function CustomerBrandPage() {
                   </label>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button type="button" className="btn btn-secondary" onClick={applyMerges}>
                   Apply Merges
                 </button>
@@ -665,7 +667,7 @@ export default function CustomerBrandPage() {
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button type="button" className="btn btn-secondary" onClick={acceptSelected}>
                   Add Selected
                 </button>

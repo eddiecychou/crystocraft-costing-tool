@@ -2,7 +2,8 @@
 import React from 'react'
 import {createRoot} from 'react-dom/client'
 import {BrowserRouter,Routes,Route} from 'react-router-dom'
-import Projects from '../src/pages/pd/Projects'
+import Projects,{DesignProjectDetail} from '../src/pages/pd/Projects'
+import CustomerBrand from '../src/pages/pd/CustomerBrand'
 import Gallery from '../src/pages/pd/Products'
 import Templates from '../src/pages/pd/Templates'
 import Generations from '../src/pages/pd/Generations'
@@ -15,4 +16,4 @@ import ProductNew from '../src/pages/pd/ProductNew'
 import TemplateNew from '../src/pages/pd/TemplateNew'
 import SpecSheetNew from '../src/pages/pd/SpecSheetNew'
 import SpecSheetDetail from '../src/pages/pd/SpecSheetDetail'
-createRoot(document.getElementById('root')).render(<BrowserRouter><p className="p-2 text-xs bg-ivory-dark">Local QA · Fictional data · No production connection</p><Routes>{[['/design/products/new',ProductNew],['/design/products/:id/templates/new',TemplateNew],['/design/products/:id/spec-sheet/new',SpecSheetNew],['/design/spec-sheets/:id',SpecSheetDetail],['/design/products/:id',ProductDetail],['/design/products/:id/edit',ProductEdit],['/design/templates/:id',TemplateDetail],['/design/templates/:id/edit',TemplateEdit],['/design/projects',Projects],['/design/products',Gallery],['/design/templates',Templates],['/design/generations',Generations],['/design/tools',Guide]].map(([path,Page])=><Route key={path} path={path} element={<Page/>}/>)}</Routes></BrowserRouter>)
+createRoot(document.getElementById('root')).render(<BrowserRouter><p className="p-2 text-xs bg-ivory-dark">Local QA · Fictional data · No production connection</p><Routes>{[['/design/customers/:id/brand',CustomerBrand],['/design/projects/new',DesignProjectDetail],['/design/projects/:id',DesignProjectDetail],['/design/products/new',ProductNew],['/design/products/:id/templates/new',TemplateNew],['/design/products/:id/spec-sheet/new',SpecSheetNew],['/design/spec-sheets/:id',SpecSheetDetail],['/design/products/:id',ProductDetail],['/design/products/:id/edit',ProductEdit],['/design/templates/:id',TemplateDetail],['/design/templates/:id/edit',TemplateEdit],['/design/projects',Projects],['/design/products',Gallery],['/design/templates',Templates],['/design/generations',Generations],['/design/tools',Guide]].map(([path,Page])=><Route key={path} path={path} element={<Page/>}/>)}</Routes></BrowserRouter>)
