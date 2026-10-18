@@ -1,5 +1,24 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## L-62 · Product photos exceeded live Storage's two-document budget
+
+- **Symptom (19 Oct 2026, candidate only):** staff could upload verified photographs,
+  but approved-customer card photos returned 403 and catalogue PDF download failed.
+- **Root cause:** Storage rules read the user, product and image documents. Live
+  cross-service rules permit two distinct Firestore documents; the local emulator
+  accepted three and gave a false positive. The fresh customer byte/PDF gate caught
+  this before any app production push.
+- **Fix:** customer product bytes use the narrow Node /api/crystal-product-media gate:
+  revoked-token check, current profile/capability, published parent/image and exact
+  current immutable path, fixed bucket, image MIME/size allowlist, private no-store.
+  Direct customer Storage reads stay denied. Staff can verify pending bytes under
+  existing product/image identities. 35 catalogue/media tests and 218 combined
+  emulator assertions pass, and both actual candidate roles/photos/PDF now pass.
+  **MUST NOT** add a third cross-service document to a Storage rule; **MUST** verify
+  actual customer bytes and document exports on the candidate/current production.
+  Source: netlify/functions/lib/crystalMedia.js; evidence:
+  ../plans/V8.19-CRYSTAL-CATALOGUE-RELEASE.md.
+
 ## L-61 · A masked build key broke login and was reported as a bad password
 
 - **Symptom (15 Oct 2026):** Eddie could not sign in after the B0016 app release.

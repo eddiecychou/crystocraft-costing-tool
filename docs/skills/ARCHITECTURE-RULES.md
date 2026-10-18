@@ -607,3 +607,13 @@ Edited/copied photo bytes require Public approval again and keep branding tags;
 hero visibility follows replacements. Gallery saves must transactionally re-read
 current privacy labels and refuse a changed source, rather than overwrite newer
 labels/hero selection from an open editor. See the image-access operator contract.
+
+### Cloud Storage cross-service document budget (V8.19)
+
+Cloud Storage permits only two distinct Firestore documents per request evaluation.
+Repeated reads of one path can cache, but user profile + product + image is three and
+fails on production even though this emulator accepted it. Product image reads therefore
+use the explicit revoked-token/profile/parent/image/current-path Node gate at
+/api/crystal-product-media; direct customer Storage access stays denied. Do not add a
+third Firestore lookup to Storage rules or replace publication checks with a UI-only gate.
+Always test actual customer bytes/PDF downloads, not just metadata/emulator permission.

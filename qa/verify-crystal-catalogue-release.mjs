@@ -97,6 +97,7 @@ try {
    assert.equal(selection.length,1);assert.equal(selection[0].type,'crystal_component');assert.ok(selection[0].variant_id);assert.ok(selection[0].product_revision)
    assert.equal(await page.getByRole('button',{name:'Review stock link',exact:true}).count(),0)
    await page.locator('img[src^="blob:"]').first().waitFor({timeout:60000})
+   await page.waitForFunction(()=>[...document.querySelectorAll('img[src^="blob:"]')].every(i=>i.complete&&i.naturalWidth>0),null,{timeout:60000})
    await page.screenshot({path:out+'/customer-component-'+new URL(base).hostname+'.png',fullPage:true})
    for(const width of [320,375,414,1280]){
     await page.setViewportSize({width,height:900});await page.waitForTimeout(100)
@@ -108,6 +109,15 @@ try {
   }
   await navigate(base+(role==='ADMIN'?'/crystal-components':'/shop/crystal-components'))
   await page.reload();await page.getByRole('heading',{name:'Crystal Components',exact:true}).waitFor()
+  const cardPrefix=role==='ADMIN'?'/crystal-components/cp_':'/shop/crystal-components/cp_'
+  const componentCards=page.locator('a[href^="'+cardPrefix+'"]')
+  await componentCards.first().waitFor({timeout:60000})
+  for(const card of await componentCards.all()){
+   if(await card.getByText('Photograph pending',{exact:true}).count())continue
+   await card.scrollIntoViewIfNeeded()
+   await page.waitForFunction(el=>el.querySelector('img')?.naturalWidth>0,await card.elementHandle(),{timeout:60000})
+  }
+  await page.evaluate(()=>{window.scrollTo(0,0);document.getElementById('main-scroll')?.scrollTo(0,0)})
   for(const width of [320,375,414,1280]){
    await page.setViewportSize({width,height:900});await page.waitForTimeout(100)
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
