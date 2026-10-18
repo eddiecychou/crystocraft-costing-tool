@@ -1,6 +1,6 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
-## L-62 · Product photos exceeded live Storage's two-document budget
+## L-66 · Product photos exceeded live Storage's two-document budget
 
 - **Symptom (19 Oct 2026, candidate only):** staff could upload verified photographs,
   but approved-customer card photos returned 403 and catalogue PDF download failed.

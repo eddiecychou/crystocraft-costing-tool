@@ -8,8 +8,14 @@ Swarovski / Strass stock-only clearance are separate immutable origins. No stock
 reservations, movements or selling prices are created by catalogue edits/enquiries.
 The owner has no clearance codes available now: original stock remains unlisted until
 its identity, condition and count are reviewed. Existing Swatch Library URLs remain.
-See [catalogue release evidence](docs/plans/V8.19-CRYSTAL-CATALOGUE-RELEASE.md)
-for exact staged/live states and role verification.
+Released: three own components (octagon 14mm, heart 14mm, pear 22mm), each with a
+real Clear variant and verified Firebase photos. No guessed inventory links or prices.
+Original-stock tools are ready; actual Swarovski/Strass listings await the owner's
+stock references and review. The extra setup draft was archived with owner approval.
+Production a96cb1ca / Netlify 6ad50a91bb8fe7eec5c9e5cb is verified with fresh admin
+and customer sign-ins, actual PDF download, protected photos, refresh and four widths.
+All 322 crystal balances/reservations/movement sequences are unchanged.
+See [catalogue release evidence](docs/plans/V8.19-CRYSTAL-CATALOGUE-RELEASE.md).
 
 # V8.19 — Firebase swatch migration and OC uploader — 19 October 2026
 
