@@ -24,7 +24,7 @@
     "test:scheduled-time": "python3 qa/scheduled-jobs.test.py && node --test qa/outreach-time.test.mjs",
     "test:product-images": "node --test qa/product-images.test.mjs qa/product-images-gallery.test.mjs",
     "test:crystal-swatches": "node --test qa/crystal-swatches.test.mjs qa/crystal-swatches-api.test.mjs",
-    "test:crystal-products": "node --test qa/crystal-products.test.mjs"
+    "test:crystal-products": "node --test qa/crystal-products.test.mjs qa/crystal-media.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

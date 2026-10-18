@@ -180,7 +180,15 @@ Node `netlify/functions/mcp-range.js`, `/api/mcp-range`: separate scoped Firebas
   resolves private Supply-reviewed crystals mapping, returns only available quantity,
   unit, check time and customer message. Admin, swatch staff or approved customer;
   pending/anonymous/supply-only denied. Private no-store. No writes/reservations.
-- GET /api/swatch-library?action=image&file=… also serves strict crystal-products paths
-  with the caller Firebase token and underlying publication-aware Storage rules.
+- GET /api/swatch-library?action=image&file=… retains staff readback for strict crystal-products paths. Customer product bytes
+  instead use the server gate below to respect the Storage two-document lookup limit.
   action=attachment serves only strict enquiry-files paths, forces attachment download
   and PDF/JPEG/PNG/WebP MIME allowlist. Same fixed bucket, no redirects, no public tokens.
+
+- GET /api/crystal-product-media?file=… (Node): fixed bucket and strict product/image/hash
+  path, revoked-token and live profile check, parent + image publication and exact current
+  media path check for approved customers. Swatch staff/admin may verify pending uploads
+  under existing product/image identities. Only JPEG/PNG/WebP bytes up to 20 MB, private
+  no-store, no signed or permanent public URL. The server reads bytes only after these
+  checks. Direct product Storage reads remain swatch-staff-only; the three-document
+  authorization cannot fit Storage's two distinct Firestore document limit.

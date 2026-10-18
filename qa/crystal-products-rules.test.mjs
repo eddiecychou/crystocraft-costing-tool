@@ -50,7 +50,7 @@ try{
  await ok('orphan variant denied',assertFails(setDoc(doc(d('cat_editor'),'crystal_products','cp_missing_example','variants','v_example'),variant)))
  await ok('supply mapping update allowed',assertSucceeds(setDoc(doc(d('cat_supply'),'crystal_product_private',pid,'variants',vid),mapping)))
  for(const patch of [{stock_per_unit:0},{stock_per_unit:-1},{collection:'products'},{inventory_id:'missing_example'},{catalogue_unit:'sheet'},{stock_qty:100}])await ok('invalid mapping denied',assertFails(setDoc(doc(d('cat_supply'),'crystal_product_private',pid,'variants',vid),{...mapping,...patch})))
- await ok('customer current published photo allowed',assertSucceeds(getMetadata(ref(st('cat_customer'),media.display))))
+ await ok('customer direct product photo denied; server gate required',assertFails(getMetadata(ref(st('cat_customer'),media.display))))
  for(const uid of ['cat_pending','cat_supply'])await ok(uid+' product photo denied',assertFails(getMetadata(ref(st(uid),media.display))))
  await ok('anonymous photo denied',assertFails(getMetadata(ref(env.unauthenticatedContext().storage(),media.display))))
  await ok('unreferenced image denied',assertFails(getMetadata(ref(st('cat_customer'),root+'/old.jpg'))))

@@ -215,7 +215,8 @@ Private Product Design project register and `/updates/{eventId}` immutable revis
   ID, explicit stock pieces per catalogue unit, review and private provenance notes.
   No editable balances. Original-stock publication requires this reviewed primary mapping.
 - Storage crystal-products/{productId}/{imageId}/{hash}/: immutable original/display/thumb;
-  customer reads require both current published parent and current published image paths.
+  customer bytes go through /api/crystal-product-media, which checks the live profile,
+  published parent and current published image path. Direct customer Storage reads denied.
 - Storage enquiry-files/{uid}/{enquiryId}/{fileId}.{ext}: immutable private PDF/image drawing,
   approved submitting user or admin reads; approved submitting user creates. No token URLs.
 - enquiries: component lines snapshot source_collection=crystal_products, variant and sample

@@ -24,6 +24,6 @@ export default function SwatchPhoto({ path, alt, className = 'w-full h-full obje
     return()=>{alive=false;controller.abort();if(objectUrl)URL.revokeObjectURL(objectUrl)}
   },[path,enabled,inView,retry])
   return <div ref={element} className="w-full h-full flex items-center justify-center">{url ? <img src={url} alt={alt} className={className} /> : <div className="p-2 text-xs text-ink-60 text-center" role={error?'alert':undefined}>
-    {error ? <><p>Photo unavailable</p><button type="button" className="btn-ghost min-h-10" onClick={e=>{e.stopPropagation();setRetry(n=>n+1)}}>Retry photo</button></> : 'Loading photo…'}
+    {error ? <><p>Photo unavailable</p><button type="button" className="btn-ghost min-h-10" onClick={e=>{e.stopPropagation();e.preventDefault();setRetry(n=>n+1)}}>Retry photo</button></> : 'Loading photo…'}
   </div>}</div>
 }

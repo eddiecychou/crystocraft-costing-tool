@@ -19,7 +19,7 @@ try {
     catch(e){if(attempt || !/net::ERR_/.test(e.message))throw e;console.log(role,'retrying navigation connection');await page.waitForTimeout(1000)}
    }
   }
-  page.on('pageerror',e=>errors.push(e.message))
+  page.on('pageerror',e=>{errors.push(e.message);console.log(role,'runtime:',e.message)})
   page.on('console',m=>{if(m.type()==='error' && /permission-denied|FirebaseError|ChunkLoadError|Failed to fetch dynamically imported/.test(m.text()))errors.push(m.text())})
   await navigate(base+'/login');await page.locator('input[type=email]').fill(env['QA_'+role+'_EMAIL']);await page.locator('input[type=password]').fill(env['QA_'+role+'_PASSWORD']);await page.locator('form button[type=submit]').click()
   await page.waitForURL(url=>url.pathname!=='/login',{timeout:60000})
@@ -68,6 +68,7 @@ try {
    if(width===375)await page.screenshot({path:out+'/'+role.toLowerCase()+'-375-'+new URL(base).hostname.split('.')[0]+'.png',fullPage:true})
   }
   await page.screenshot({path:out+'/'+role.toLowerCase()+'-'+new URL(base).hostname.split('.')[0]+'.png',fullPage:true})
+  console.log(role,'checking Crystal Components')
   await navigate(base+(role==='ADMIN'?'/crystal-components':'/shop/crystal-components'))
   await page.getByRole('heading',{name:'Crystal Components',exact:true}).waitFor()
   if(role==='ADMIN'){
@@ -83,7 +84,7 @@ try {
    await component.waitFor({timeout:60000})
    const pdfDownload=page.waitForEvent('download',{timeout:120000})
    await page.getByRole('button',{name:'Download this catalogue (PDF)',exact:true}).click()
-   const downloaded=await pdfDownload;assert.equal(await downloaded.failure(),null)
+   const downloaded=await Promise.race([pdfDownload,page.getByRole('alert').first().waitFor({timeout:120000}).then(async()=>{throw Error('Catalogue export: '+await page.getByRole('alert').first().textContent())})]);assert.equal(await downloaded.failure(),null)
    await downloaded.saveAs(out+'/actual-catalogue-'+new URL(base).hostname+'.pdf')
    await component.click()
    await page.getByLabel('Select an actual variant').waitFor()
@@ -118,4 +119,4 @@ try {
   await ctx.close()
  }
  await writeFile(out+'/release-'+new URL(base).hostname+'.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report))
-}finally{await browser.close()}
+}catch(e){console.log('Release failed:',e.message);throw e}finally{await browser.close()}

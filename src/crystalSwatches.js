@@ -15,7 +15,8 @@ export async function listCrystalSwatches({ includeDrafts = false } = {}) {
 export async function readSwatchPhoto(path, forceRefresh = false, signal) {
   const user = await authedUser()
   if (!user) throw Error('Please sign in.')
-  const res = await fetch(`/api/swatch-library?action=image&file=${encodeURIComponent(path)}`, {
+  const endpoint=path.startsWith('crystal-products/')?'/api/crystal-product-media?file=':'/api/swatch-library?action=image&file='
+  const res = await fetch(endpoint+encodeURIComponent(path), {
     headers:{Authorization:`Bearer ${await user.getIdToken(forceRefresh)}`}, cache:'no-store', signal,
   })
   if (res.status === 401 && !forceRefresh) return readSwatchPhoto(path,true,signal)

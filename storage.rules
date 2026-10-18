@@ -31,15 +31,9 @@ service firebase.storage {
 
     // Product photographs: immutable objects, current published revisions only.
     match /crystal-products/{pid}/{iid}/{revision}/{filename} {
-      function image() { return firestore.get(/databases/(default)/documents/crystal_products/$(pid)/images/$(iid)).data; }
-      function publishedPhoto() {
-        let p=firestore.get(/databases/(default)/documents/crystal_products/$(pid)).data;
-        let i=image();
-        let path='crystal-products/'+pid+'/'+iid+'/'+revision+'/'+filename;
-        return p.publication=='published' && i.publication=='published' && i.media!=null
-          && path in [i.media.original,i.media.display,i.media.thumbnail];
-      }
-      allow get: if can('swatch') || (pExists() && pDoc().role=='customer' && pDoc().status=='approved' && publishedPhoto());
+      // Customer bytes pass /api/crystal-product-media's three-document gate.
+      // Direct reads remain staff-only: Storage permits at most two Firestore docs.
+      allow get: if can('swatch');
       allow create: if can('swatch') && resource==null
         && firestore.exists(/databases/(default)/documents/crystal_products/$(pid)/images/$(iid))
         && revision.matches('[a-f0-9]{64}') && filename.matches('(original[.](jpg|png|webp)|display[.]jpg|thumbnail[.]jpg)')
