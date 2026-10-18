@@ -29,6 +29,31 @@ service firebase.storage {
       return isAdmin() || (pExists() && (m in moduleList()));
     }
 
+    // Immutable swatch revisions. Read publication on every request, including
+    // old revisions after replacement. Never expose migration extras/archives.
+    match /crystal-swatches/{sampleId}/{revision}/{filename} {
+      function sample() {
+        return firestore.get(/databases/(default)/documents/crystal_swatches/$(sampleId)).data;
+      }
+      function sampleExists() {
+        return firestore.exists(/databases/(default)/documents/crystal_swatches/$(sampleId));
+      }
+      function publishedImage() {
+        let s = sample();
+        let path = 'crystal-swatches/' + sampleId + '/' + revision + '/' + filename;
+        return s.publication == 'published' && s.media != null
+          && path in [s.media.original, s.media.display, s.media.thumbnail];
+      }
+      allow get: if can('swatch') || (pExists() && pDoc().role == 'customer'
+        && pDoc().status == 'approved' && sampleExists() && publishedImage());
+      allow create: if can('swatch') && sampleExists() && resource == null
+        && sampleId.matches('sw_[a-zA-Z0-9_-]{16,80}') && revision.matches('[a-f0-9]{64}')
+        && filename.matches('(original[.](jpg|png|webp)|display[.]jpg|thumbnail[.]jpg)')
+        && request.resource.size > 0 && request.resource.size <= 20971520
+        && request.resource.contentType in ['image/jpeg','image/png','image/webp'];
+      allow list, update, delete: if false;
+    }
+
     // Product images + BOM-component images + quote attachments (products/{id}/…).
     match /products/{productId}/{allPaths=**} {
       allow read, write: if can('products') || can('supply');

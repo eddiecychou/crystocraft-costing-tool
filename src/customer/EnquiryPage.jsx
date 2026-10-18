@@ -35,6 +35,7 @@ export default function EnquiryPage({ profile }) {
   const total = items.reduce((s, i) => s + (lineTotal(i) || 0), 0)
   const hasIndicative = items.some(i => !isConcept(i) && unitPrice(i) == null)
   const hasConcept = items.some(isConcept)
+  const swatchOnly = items.length > 0 && items.every(i => i.type === 'swatch_sample')
 
   // MOQ is a per-design (metal-part) minimum. All plating/colour variations AND
   // formats (freestand, music box, bible…) that share the same design number
@@ -69,6 +70,7 @@ export default function EnquiryPage({ profile }) {
           type: i.type, id: i.id, name: i.name || '', code: i.code || '', design_no: i.design_no || '', format_code: i.format_code || '',
           image: i.image || '', qty: Number(i.qty) || 1, note: i.note || '',
           finish: i.finish || '', color: i.color || '', color_name: i.color_name || '',
+          ...(i.type === 'swatch_sample' && i.swatch_sample_id ? { swatch_sample_id:i.swatch_sample_id, swatch_revision:i.swatch_revision || null } : {}),
           ws_price_usd: i.ws_price_usd ?? null,
           pcs_per_carton: Number(i.pcs_per_carton) || 0,
           cartons: Number(i.cartons) || 0,
@@ -77,7 +79,7 @@ export default function EnquiryPage({ profile }) {
           unit_price: unitPrice(i), line_total: lineTotal(i),
         })),
         currency: cur,
-        estimated_total: total,
+        estimated_total: swatchOnly ? null : total,
         message,
         status: 'new',
         createdAt: serverTimestamp(),
@@ -86,7 +88,7 @@ export default function EnquiryPage({ profile }) {
         company_name: profile?.company_name || '',
         contact_name: profile?.contact_name || '',
         currency: cur,
-        estimated_total: total,
+        estimated_total: swatchOnly ? null : total,
         items: items.map(i => ({ name: i.name || i.code || '', qty: Number(i.qty) || 1 })),
       })
       cart.clear()
@@ -213,11 +215,11 @@ export default function EnquiryPage({ profile }) {
       <div className="card p-4 mb-5">
         <div className="flex items-center justify-between">
           <span className="text-sm text-ink-70">Estimated total <span className="text-ink-60">({cur})</span></span>
-          <span className="text-lg font-medium text-ink">{fmtMoney(total, cur)}</span>
+          <span className="text-lg font-medium text-ink">{swatchOnly ? 'On quotation' : fmtMoney(total, cur)}</span>
         </div>
         <p className="text-xs text-ink-60 mt-2">
           Ex-factory prices — freight not included.{' '}
-          {hasIndicative && 'Made-to-order corporate items are quoted separately and not included in this total. '}
+          {hasIndicative && 'Sample requests and made-to-order items are quoted separately and not included in this total. '}
           {hasConcept && 'Concept items are not yet in production and are excluded from this total — they register your estimated interest only. '}
           Final pricing, MOQ and availability are confirmed on quotation.
         </p>

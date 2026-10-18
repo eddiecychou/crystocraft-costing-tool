@@ -949,6 +949,57 @@ service cloud.firestore {
       }
     }
 
+    // V8.19 customer-safe samples only. Internal migration/calibration data
+    // stays in crystal_migration_runs. Missing fields and extra private fields
+    // fail closed on both create and update.
+    function validCrystalSwatch(id) {
+      let d = request.resource.data;
+      return id.matches('sw_[a-zA-Z0-9_-]{16,80}')
+        && d.keys().hasOnly(['schema_version','color_name','notes_key','style','backing_label','description','rgb','sort_order','publication','revision','media','created_at','updated_at'])
+        && d.schema_version == 1
+        && d.color_name is string && d.color_name.size() > 0 && d.color_name.size() <= 100
+        && d.notes_key is string && d.notes_key.size() > 0 && d.notes_key.size() <= 100
+        && d.backing_label is string && d.backing_label.size() > 0 && d.backing_label.size() <= 100
+        && d.description is string && d.description.size() <= 1000
+        && d.style in ['fabric','rock','fine_rock']
+        && d.publication in ['draft','published','archived']
+        && d.sort_order is int && d.sort_order >= 0 && d.sort_order <= 100000
+        && d.revision is int && d.revision > 0
+        && d.rgb is list && d.rgb.size() == 3
+        && d.rgb[0] is number && d.rgb[0] >= 0 && d.rgb[0] <= 1
+        && d.rgb[1] is number && d.rgb[1] >= 0 && d.rgb[1] <= 1
+        && d.rgb[2] is number && d.rgb[2] >= 0 && d.rgb[2] <= 1
+        && d.created_at is timestamp && d.updated_at == request.time
+        && ((d.media == null && d.publication == 'draft') || validCrystalMedia(id, d.media));
+    }
+    function validCrystalMedia(id, m) {
+      return m is map && m.keys().hasOnly(['original','display','thumbnail','sha256','display_sha256','thumbnail_sha256','mime','bytes','width','height'])
+        && m.sha256 is string && m.sha256.matches('[a-f0-9]{64}')
+        && m.display_sha256 is string && m.display_sha256.matches('[a-f0-9]{64}')
+        && m.thumbnail_sha256 is string && m.thumbnail_sha256.matches('[a-f0-9]{64}')
+        && m.original is string && m.original.matches('crystal-swatches/' + id + '/[a-f0-9]{64}/original[.](jpg|png|webp)')
+        && m.display is string && m.display.matches('crystal-swatches/' + id + '/[a-f0-9]{64}/display[.]jpg')
+        && m.thumbnail is string && m.thumbnail.matches('crystal-swatches/' + id + '/[a-f0-9]{64}/thumbnail[.]jpg')
+        && m.mime in ['image/jpeg','image/png','image/webp']
+        && m.bytes is int && m.bytes > 0 && m.bytes <= 20971520
+        && m.width is int && m.width > 0 && m.width <= 12000
+        && m.height is int && m.height > 0 && m.height <= 12000;
+    }
+    match /crystal_swatches/{sampleId} {
+      allow read: if can('swatch') || (isApprovedCustomer() && resource.data.publication == 'published');
+      allow create: if can('swatch') && validCrystalSwatch(sampleId) && request.resource.data.revision == 1
+        && request.resource.data.publication == 'draft' && request.resource.data.created_at == request.time;
+      allow update: if can('swatch') && validCrystalSwatch(sampleId)
+        && request.resource.data.created_at == resource.data.created_at
+        && request.resource.data.notes_key == resource.data.notes_key
+        && request.resource.data.revision == resource.data.revision + 1;
+      allow delete: if false;
+    }
+    match /crystal_migration_runs/{runId} {
+      allow read, create, update: if isAdmin();
+      allow delete: if false;
+    }
+
     // Crystal Fabric Studio swatch notes — read opened to approved portal
     // customers (designer matching an old Swarovski article no.) + the swatch
     // module; editing behind `swatch`.

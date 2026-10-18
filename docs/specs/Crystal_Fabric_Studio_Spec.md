@@ -1,5 +1,13 @@
 # Crystal Fabric Studio — V7.22 Plan
 
+> **V8.19 planning update, 19 October 2026:** the owner selected Firebase Storage
+> for catalogue swatch images and independent OC sample management. The new
+> [Crystal Components implementation plan](../plans/V8.19-CRYSTAL-COMPONENTS-PLAN.md)
+> supersedes this historical plan's Fly-only catalogue storage requirement.
+> The renderer stays a parked prototype; its source assets and workbench are
+> preserved. Firebase migration/uploader implementation and the separate live
+> states are tracked in the [release evidence](../plans/V8.19-SWATCH-MIGRATION-RELEASE.md).
+
 Written 2026-08-06. Origin: a Perplexity-drafted brief
 (`CrystalFabricPlan.md`, kept on the owner's Desktop as the origin note, not
 the build contract) proposing a "Crystal Fabric Studio" — a product

@@ -1,29 +1,20 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Gem, Search, X, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import SwatchEditor from '../components/SwatchEditor'
+import SwatchMigration from '../components/SwatchMigration'
+import { listCrystalSwatches } from '../crystalSwatches'
+import { swatchesToRegistry, SWATCH_STYLES } from '../domain/crystalSwatches'
+import { useRole } from '../access'
+import SwatchPhoto from '../components/SwatchPhoto'
 import LoadingBar from '../components/LoadingBar'
-import { fetchSwatchRegistry, fetchSwatchImageUrl, loadSwatchNotes, saveSwatchNotes } from '../swatchLibraryApi'
+import { loadSwatchNotes, saveSwatchNotes } from '../swatchLibraryApi'
 
-// Admin-facing browser over the render service's photographed swatch
-// registry — see docs/specs/Crystal_Fabric_Studio_Spec.md §5a. Built for a sales rep
-// to pull up mid-call, not for public/portal use. Reads the SAME registry
-// admin.html's photo-capture tool writes (via /api/swatch-library, proxying
-// GET /swatches on the Fly service) — no separate Firestore copy of the
-// photo data, so there's nothing to drift out of sync here.
-const STYLE_LABEL = { fabric: 'Crystal Fabric', rock: 'Fine Rock / Rock' }
+const STYLE_LABEL = SWATCH_STYLES
 
 function SwatchThumb({ filename, alt }) {
-  const [url, setUrl] = useState(null)
-  useEffect(() => {
-    let alive = true
-    let objUrl = null
-    fetchSwatchImageUrl(filename).then(u => { if (alive) { objUrl = u; setUrl(u) } }).catch(() => {})
-    return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
-  }, [filename])
-  return (
-    <div className="aspect-square bg-ivory-dark rounded-none overflow-hidden flex items-center justify-center">
-      {url ? <img src={url} alt={alt} className="w-full h-full object-cover" /> : <Gem size={20} className="text-platinum" />}
-    </div>
-  )
+  return <div className="aspect-square bg-ivory-dark overflow-hidden flex items-center justify-center">
+    <SwatchPhoto path={filename} alt={alt} />
+  </div>
 }
 
 // Flattened [{ style, backfilm, file }] list for one colour, every captured
@@ -46,16 +37,8 @@ function photosOf(entry) {
 function SwatchCardCarousel({ name, entry }) {
   const photos = useMemo(() => photosOf(entry), [entry])
   const [i, setI] = useState(0)
-  const [url, setUrl] = useState(null)
   const current = photos[i]
 
-  useEffect(() => {
-    if (!current) { setUrl(null); return }
-    let alive = true
-    let objUrl = null
-    fetchSwatchImageUrl(current.file).then(u => { if (alive) { objUrl = u; setUrl(u) } }).catch(() => {})
-    return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
-  }, [current?.file])
 
   const step = (dir, e) => {
     e.stopPropagation()
@@ -65,16 +48,16 @@ function SwatchCardCarousel({ name, entry }) {
 
   return (
     <div className="aspect-square bg-ivory-dark relative overflow-hidden group">
-      {url ? <img src={url} alt={`${name} — ${current.style} on ${current.backfilm}`} className="w-full h-full object-cover" />
-        : <div className="w-full h-full flex items-center justify-center"><Gem size={20} className="text-platinum" /></div>}
+      {current && <SwatchPhoto path={current.file} alt={`${name} — ${current.style} on ${current.backfilm}`} />}
+
       {photos.length > 1 && (
         <>
-          <button type="button" onClick={e => step(-1, e)}
-            className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <button type="button" aria-label="Previous swatch photo" onClick={e => step(-1, e)}
+            className="absolute left-1 top-1/2 -translate-y-1/2 min-w-10 min-h-10 rounded-none bg-black/40 text-white flex items-center justify-center focus-visible:ring-2 focus-visible:ring-brand-500">
             <ChevronLeft size={14} />
           </button>
-          <button type="button" onClick={e => step(1, e)}
-            className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <button type="button" aria-label="Next swatch photo" onClick={e => step(1, e)}
+            className="absolute right-1 top-1/2 -translate-y-1/2 min-w-10 min-h-10 rounded-none bg-black/40 text-white flex items-center justify-center focus-visible:ring-2 focus-visible:ring-brand-500">
             <ChevronRight size={14} />
           </button>
           <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-2xs text-white bg-black/40 rounded-full px-1.5 py-0.5">
@@ -118,16 +101,17 @@ function TagEditor({ label, values, onChange, placeholder }) {
   )
 }
 
-function SwatchDetail({ name, entry, onClose }) {
+function SwatchDetail({ name, entry, onClose, onEdit }) {
   const [notes, setNotes] = useState(null)
+  const [notesError, setNotesError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { loadSwatchNotes(name).then(setNotes) }, [name])
+  useEffect(() => { loadSwatchNotes(entry.notes_key || name).then(setNotes).catch(e => setNotesError(e.message)) }, [name])
 
   const persist = useCallback(async next => {
     setNotes(next)
     setSaving(true)
-    try { await saveSwatchNotes(name, next) } finally { setSaving(false) }
+    try { await saveSwatchNotes(entry.notes_key || name, next);setNotesError('') } catch(e) { setNotesError(e.message) } finally { setSaving(false) }
   }, [name])
 
   return (
@@ -138,7 +122,7 @@ function SwatchDetail({ name, entry, onClose }) {
             <span className="w-4 h-4 rounded-full border border-ivory-dark shrink-0" style={{ background: entry.rgb ? `rgb(${entry.rgb.map(c => Math.round(c * 255)).join(',')})` : '#ccc' }} />
             {name}
           </h2>
-          <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
+          <button aria-label="Close swatch details" onClick={onClose} className="btn-ghost min-h-11 min-w-11"><X size={18} /></button>
         </div>
 
         {Object.entries(entry.slots || {}).map(([style, backfilms]) => (
@@ -148,8 +132,9 @@ function SwatchDetail({ name, entry, onClose }) {
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {Object.entries(backfilms).map(([bf, slot]) => (
                   <div key={bf}>
-                    <SwatchThumb filename={slot.file} alt={`${name} ${style} on ${bf}`} />
-                    <p className="text-2xs text-ink-60 mt-1 text-center truncate">{bf}</p>
+                    <SwatchThumb filename={slot.display || slot.file} alt={`${name} ${style} on ${bf}`} />
+                    <p className="text-xs text-ink-60 mt-1 text-center break-words">{slot.backing_label || bf}</p>
+                    <button type="button" className="btn-ghost w-full min-h-11" onClick={() => onEdit(slot.sample_id)}>Edit sample</button>
                   </div>
                 ))}
               </div>
@@ -157,6 +142,7 @@ function SwatchDetail({ name, entry, onClose }) {
           )
         ))}
 
+        {notesError && <p role="alert" className="text-sm text-brand-700">{notesError}</p>}
         {notes ? (
           <div className="space-y-4 pt-2 border-t border-ivory-dark">
             <TagEditor label="Legacy Swarovski references" values={notes.legacy_swarovski_refs}
@@ -171,14 +157,20 @@ function SwatchDetail({ name, entry, onClose }) {
 }
 
 export default function SwatchLibrary() {
+  const role = useRole()
+  const [samples, setSamples] = useState([])
+  const [editing, setEditing] = useState(null)
+  const [importing, setImporting] = useState(false)
   const [registry, setRegistry] = useState(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
 
-  useEffect(() => {
-    fetchSwatchRegistry().then(setRegistry).catch(e => setError(e.message))
+  const reload = useCallback(async () => {
+    const rows = await listCrystalSwatches({ includeDrafts: true })
+    setSamples(rows); setRegistry(swatchesToRegistry(rows.filter(s => s.publication === 'published' && s.media))); setError('')
   }, [])
+  useEffect(() => { reload().catch(e => setError(e.message)) }, [reload])
 
   const entries = useMemo(() => {
     if (!registry) return []
@@ -193,11 +185,22 @@ export default function SwatchLibrary() {
       <div className="mb-2">
         <h1 className="text-xl md:text-2xl flex items-center gap-2"><Gem size={20} className="text-brand-500" /> Swatch Library</h1>
         <p className="text-sm text-ink-60 mt-0.5">
-          The live crystal registry — for sales calls, not customer-facing. Photos come straight from
-          the render service; add use-case notes and legacy Swarovski references below.
+          Manage photographed materials, colours and backings. Published samples are visible to approved customers; new uploads start as drafts.
         </p>
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button className="btn-primary min-h-11" onClick={() => setEditing({})}>Upload swatch</button>
+        {role === 'admin' && <button className="btn-secondary min-h-11" onClick={() => setImporting(v => !v)}>Import Fly backup</button>}
+      </div>
+      {importing && role === 'admin' && <SwatchMigration onDone={reload} onClose={() => setImporting(false)} />}
+      {samples.some(s => s.publication !== 'published') && <section className="card p-3 mb-4">
+        <h2 className="eyebrow mb-2">Drafts and archived samples</h2>
+        {samples.filter(s => s.publication !== 'published').map(s => <div key={s.id} className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-warm-grey py-2 text-sm">
+          <div className="min-w-0 break-words">{s.color_name} · {STYLE_LABEL[s.style]} · {s.backing_label}<span className="block text-xs text-ink-60">{s.publication}{!s.media ? ' · photo pending' : ''}</span></div>
+          <button className="btn-secondary min-h-11" onClick={() => setEditing(s)}>Edit</button>
+        </div>)}
+      </section>}
       {error && <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}</div>}
 
       <div className="relative mb-5">
@@ -207,7 +210,7 @@ export default function SwatchLibrary() {
       </div>
 
       {!registry && !error ? <LoadingBar /> : entries.length === 0 ? (
-        <div className="text-center py-20 text-ink-60">No swatches match.</div>
+        <div className="text-center py-20 text-ink-60">No published swatches match. Upload a photograph or adjust your search.</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {entries.map(([name, entry]) => {
@@ -231,7 +234,8 @@ export default function SwatchLibrary() {
         </div>
       )}
 
-      {selected && <SwatchDetail name={selected[0]} entry={selected[1]} onClose={() => setSelected(null)} />}
+      {editing && <SwatchEditor sample={editing.id ? editing : null} onSaved={reload} onClose={() => setEditing(null)} />}
+      {selected && <SwatchDetail name={selected[0]} entry={selected[1]} onClose={() => setSelected(null)} onEdit={id => { setSelected(null); setEditing(samples.find(s => s.id === id)) }} />}
     </div>
   )
 }

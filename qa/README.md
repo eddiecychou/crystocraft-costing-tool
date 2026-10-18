@@ -292,3 +292,25 @@ For real browser layout: run `node qa/pd-navigation-preview.mjs`, open
 (sixteen routes ×320/375/414/1280px) must PASS. This checks alignment,44px targets,
 open/close, all four tool links, selected route and return to Projects without
 using credentials, production data or a physical-device claim.
+
+
+## V8.19 Firebase swatches
+
+`npm run test:crystal-swatches` tests manifest corruption, stable identities,
+protected image proxy, byte-verified uploads, revision guards and resumable batch
+failure. Both local emulators are required for `node qa/crystal-swatches-rules.test.mjs`;
+run it alongside `qa/rbac-rules.test.mjs`. These suites use fictional records only.
+
+`node qa/crystal-swatches-preview.mjs` serves the actual feature pages with a
+fictional data boundary at `127.0.0.1:5201`; the ignored verified source backup
+provides a photograph. `node qa/crystal-swatches-browser.mjs` checks four widths,
+upload failure/retry, optional crop, draft default and exact sample selection.
+Evidence is ignored under `qa/out/swatch-v819/`.
+
+`node qa/verify-swatch-release.mjs HTTPS_URL` performs fresh authorized admin and
+customer real-page sign-ins and read checks. The `--import` option is a real
+production data operation through the reviewed OC migration screen, not QA fixture
+creation: use only for the owner's authorized verified-backup migration.
+The optional `qa/curl-release-probe-transport.mjs` changes only the network
+transport of the existing configuration probe when Node HTTPS times out. It does
+not replace the password-login gate. See the release evidence for exact IDs/state.

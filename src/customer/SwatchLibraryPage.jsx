@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Sparkles, Search, X, ChevronLeft, ChevronRight, PackageCheck } from 'lucide-react'
+import SwatchPhoto from '../components/SwatchPhoto'
 import LoadingBar from '../components/LoadingBar'
-import { fetchSwatchRegistry, fetchSwatchImageUrl, loadSwatchNotes } from '../swatchLibraryApi'
+import { fetchSwatchRegistry, loadSwatchNotes } from '../swatchLibraryApi'
 import { useCart } from './store'
 
 // Portal-facing swatch browser — docs/specs/Crystal_Fabric_Studio_Spec.md §5b. Same
 // registry the admin Swatch Library reads (src/pages/SwatchLibrary.jsx),
-// same /api/swatch-library proxy, now open to any approved customer. What's
+// Firebase sample records and protected image proxy, available to approved customers. What's
 // different from the admin version: no note-editing (legacy refs are
 // read-only here), and the detail panel's primary action is "Request a
 // sample" — per §4, physical samples are the actual conversion event, not
@@ -21,7 +22,7 @@ import { useCart } from './store'
 // existing /shop/enquiry flow (EnquiryPage.jsx), so a sample request can
 // ride along with a real product enquiry in one submission, same as
 // everything else in the cart.
-const STYLE_LABEL = { fabric: 'Crystal Fabric', rock: 'Fine Rock / Rock' }
+const STYLE_LABEL = { fabric: 'Crystal Fabric', rock: 'Fine Rock / Rock', fine_rock: 'Fine Rock' }
 
 function photosOf(entry) {
   const out = []
@@ -31,7 +32,7 @@ function photosOf(entry) {
   return out
 }
 
-// Fires an authed fetch (JWT verify + Firestore role check + Fly.io proxy —
+// Fires an authenticated Firebase image fetch (Storage publication/role rules —
 // see swatch-library.js) per photo, with no pagination on the grid below —
 // on a page with dozens of colours that's dozens of concurrent round trips
 // at once, which is what made the swatch library "very slow" on mobile.
@@ -53,36 +54,18 @@ function useInViewOnce() {
 }
 
 function SwatchThumb({ filename, alt }) {
-  const [url, setUrl] = useState(null)
   const [ref, inView] = useInViewOnce()
-  useEffect(() => {
-    if (!inView) return
-    let alive = true
-    let objUrl = null
-    fetchSwatchImageUrl(filename).then(u => { if (alive) { objUrl = u; setUrl(u) } }).catch(() => {})
-    return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
-  }, [filename, inView])
-  return (
-    <div ref={ref} className="aspect-square bg-ivory rounded-none overflow-hidden flex items-center justify-center">
-      {url ? <img src={url} alt={alt} className="w-full h-full object-cover" /> : <Sparkles size={20} className="text-platinum" />}
-    </div>
-  )
+  return <div ref={ref} className="aspect-square bg-ivory-dark overflow-hidden flex items-center justify-center">
+    <SwatchPhoto path={filename} alt={alt} enabled={inView} />
+  </div>
 }
 
 function SwatchCardCarousel({ name, entry }) {
   const photos = useMemo(() => photosOf(entry), [entry])
   const [i, setI] = useState(0)
-  const [url, setUrl] = useState(null)
   const current = photos[i]
   const [ref, inView] = useInViewOnce()
 
-  useEffect(() => {
-    if (!current || !inView) { if (!current) setUrl(null); return }
-    let alive = true
-    let objUrl = null
-    fetchSwatchImageUrl(current.file).then(u => { if (alive) { objUrl = u; setUrl(u) } }).catch(() => {})
-    return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
-  }, [current?.file, inView])
 
   const step = (dir, e) => {
     e.stopPropagation(); e.preventDefault()
@@ -91,16 +74,16 @@ function SwatchCardCarousel({ name, entry }) {
 
   return (
     <div ref={ref} className="aspect-square bg-ivory relative overflow-hidden group">
-      {url ? <img src={url} alt={`${name} — ${current.style} on ${current.backfilm}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-        : <div className="w-full h-full flex items-center justify-center"><Sparkles size={20} className="text-platinum" /></div>}
+      {current && <SwatchPhoto path={current.file} alt={`${name} — ${current.style} on ${current.backfilm}`} enabled={inView} />}
+
       {photos.length > 1 && (
         <>
-          <button type="button" onClick={e => step(-1, e)}
-            className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <button type="button" aria-label="Previous swatch photo" onClick={e => step(-1, e)}
+            className="absolute left-1 top-1/2 -translate-y-1/2 min-w-10 min-h-10 rounded-none bg-black/40 text-white flex items-center justify-center focus-visible:ring-2 focus-visible:ring-brand-500">
             <ChevronLeft size={14} />
           </button>
-          <button type="button" onClick={e => step(1, e)}
-            className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <button type="button" aria-label="Next swatch photo" onClick={e => step(1, e)}
+            className="absolute right-1 top-1/2 -translate-y-1/2 min-w-10 min-h-10 rounded-none bg-black/40 text-white flex items-center justify-center focus-visible:ring-2 focus-visible:ring-brand-500">
             <ChevronRight size={14} />
           </button>
           <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs text-white bg-black/40 rounded-full px-1.5 py-0.5">
@@ -115,18 +98,23 @@ function SwatchCardCarousel({ name, entry }) {
 function SwatchDetail({ name, entry, onClose }) {
   const cart = useCart()
   const [notes, setNotes] = useState(null)
-  const [pickedStyle, setPickedStyle] = useState(null)
+  const [notesError, setNotesError] = useState('')
+  const [pickedSample, setPickedSample] = useState('')
   const [note, setNote] = useState('')
   const [added, setAdded] = useState(false)
 
-  useEffect(() => { loadSwatchNotes(name).then(setNotes) }, [name])
+  useEffect(() => { loadSwatchNotes(entry.notes_key || name).then(setNotes).catch(e => setNotesError(e.message)) }, [name])
 
   const styles = Object.entries(entry.slots || {}).filter(([, bf]) => Object.keys(bf).length)
+  const choices = styles.flatMap(([style, slots]) => Object.entries(slots).map(([backing, slot]) => ({...slot, style, backing:slot.backing_label || backing})))
+  const chosen = choices.find(slot => slot.sample_id === pickedSample)
 
   const addToEnquiry = () => {
+    if (!chosen) return
     cart.add({
-      type: 'swatch_sample', id: name, name, code: '', image: '',
-      finish: pickedStyle ? (STYLE_LABEL[pickedStyle] || pickedStyle) : '',
+      type: 'swatch_sample', id: chosen.sample_id, name, code: '', image: '',
+      swatch_sample_id: chosen.sample_id, swatch_revision: chosen.revision,
+      finish: STYLE_LABEL[chosen.style] || chosen.style, color: chosen.backing,
       note, qty: 1,
     })
     setAdded(true)
@@ -140,7 +128,7 @@ function SwatchDetail({ name, entry, onClose }) {
             <span className="w-4 h-4 rounded-full border border-ivory-dark shrink-0" style={{ background: entry.rgb ? `rgb(${entry.rgb.map(c => Math.round(c * 255)).join(',')})` : '#ccc' }} />
             {name}
           </h2>
-          <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
+          <button aria-label="Close swatch details" onClick={onClose} className="btn-ghost min-h-11 min-w-11"><X size={18} /></button>
         </div>
 
         {styles.map(([style, backfilms]) => (
@@ -149,14 +137,16 @@ function SwatchDetail({ name, entry, onClose }) {
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {Object.entries(backfilms).map(([bf, slot]) => (
                 <div key={bf}>
-                  <SwatchThumb filename={slot.file} alt={`${name} ${style} on ${bf}`} />
-                  <p className="text-xs text-ink-60 mt-1 text-center truncate">{bf}</p>
+                  <SwatchThumb filename={slot.display || slot.file} alt={`${name} ${style} on ${bf}`} />
+                  <p className="text-xs text-ink-60 mt-1 text-center break-words">{slot.backing_label || bf}</p>
+                  {slot.description && <p className="text-xs text-ink-60 mt-1">{slot.description}</p>}
                 </div>
               ))}
             </div>
           </div>
         ))}
 
+        {notesError && <p role="alert" className="text-sm text-brand-700">{notesError}</p>}
         {notes?.legacy_swarovski_refs?.length > 0 && (
           <div className="mb-4">
             <p className="label mb-1.5">Closest legacy Swarovski references</p>
@@ -177,15 +167,15 @@ function SwatchDetail({ name, entry, onClose }) {
           ) : (
             <>
               <p className="label mb-2">Request a physical sample</p>
-              {styles.length > 1 && (
-                <select className="input w-full mb-2 text-sm" value={pickedStyle || ''} onChange={e => setPickedStyle(e.target.value || null)}>
-                  <option value="">Any crystal type</option>
-                  {styles.map(([s]) => <option key={s} value={s}>{STYLE_LABEL[s] || s}</option>)}
+              <label className="block mb-2"><span className="label block mb-1">Photographed sample</span>
+                <select className="input text-sm" value={pickedSample} onChange={e=>setPickedSample(e.target.value)}>
+                  <option value="">Choose material and backing</option>
+                  {choices.map(slot=><option key={slot.sample_id} value={slot.sample_id}>{STYLE_LABEL[slot.style]} · {slot.backing}</option>)}
                 </select>
-              )}
+              </label>
               <textarea className="input w-full text-sm" rows={2} value={note} onChange={e => setNote(e.target.value)}
                 placeholder="What are you making, and how many? (optional)" />
-              <button onClick={addToEnquiry} className="btn-primary mt-2.5 w-full sm:w-auto">
+              <button disabled={!chosen} onClick={addToEnquiry} className="btn-primary mt-2.5 w-full sm:w-auto">
                 Add sample request to enquiry
               </button>
             </>

@@ -155,14 +155,13 @@ Don't suggest installing `gh` or setting up a token; just use `git` directly.
 
 ## Netlify
 
-**Not logged in** via CLI (`npx netlify-cli status` → "Not logged in") — don't
-assume `netlify deploy` or `netlify env` commands will work without first
-walking through `netlify login`. Deploys happen automatically instead: this
-repo is linked to a specific Netlify site (`.netlify/state.json`, gitignored,
-siteId `4a234708-a213-477f-91a5-97cdc939c1db`) via its GitHub integration — a
-`git push` to `main` is what triggers the deploy, not a CLI command. This
-matches CLAUDE.md's "pushing deploys via Netlify" convention; no separate
-Netlify action is normally needed.
+**CLI login rechecked 19 October 2026:** logged in and linked to
+`ua-product-manager`, site ID `4a234708-a213-477f-91a5-97cdc939c1db`.
+Draft CLI deploys were used for V8.19 verification; check the current login before
+assuming it persists on the other Mac. `.netlify/state.json` stays gitignored.
+`git push` to `main` remains the normal production deployment path.
+For the current cached CLI, `deploy --no-build --dir dist --json` deploys an
+already verified build; `--context` is accepted only with `--build`.
 
 ### But `git push` succeeding is NOT a deploy — check it (verified 2026-10-03)
 

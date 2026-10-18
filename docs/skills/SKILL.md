@@ -329,6 +329,20 @@ emulator job. App and private read-only credentials deployed with fresh two-role
   scope, then run the pipeline to translate it.
 
 ### Customizer / Crystal Fabric Studio / swatches → see `MARKETING-WORKFLOW.md` §Artgen
+
+**V8.19, 19 October 2026:** Firebase swatch migration and simple OC uploader
+are implemented as a candidate; see [release evidence](../plans/V8.19-SWATCH-MIGRATION-RELEASE.md)
+for actual rules/import/app states. Existing swatch routes and capability remain.
+`src/domain/crystalSwatches.js` owns normalization/manifest verification;
+`src/crystalSwatches.js` owns transactions/verified uploads/import; `SwatchEditor`,
+`SwatchMigration`, `SwatchPhoto` provide the UI. `crystal_swatches` is customer-safe;
+`crystal_migration_runs` is admin-only; existing `crystal_swatch_notes` is retained.
+`swatch-library` now forwards authenticated Firebase image reads, with no Fly
+password, token URL or bucket CORS change. Fly renderer/template calls stay parked.
+The third Crystal Components catalogue is still planned. Crystal fabric quotes
+use drawings/application, with area/adhesive/effects as internal estimates and no
+customer calculator. [Implementation plan](../plans/V8.19-CRYSTAL-COMPONENTS-PLAN.md).
+
 - Pages: `SwatchLibrary.jsx`, `FrontPageConfig.jsx`, `FrontPageProductPicker.jsx`
 - Logic: `src/customizerApi.js`, `src/customizerEngines.js`, `src/swatchLibraryApi.js` · Edge fns: `customizer-render`, `customizer-palette` (both **no auth check** — `TECH-DEBT.md`)
 - Render service: `render-service/` (Fly.io, PROTOTYPE). Specs: `../specs/Corp_Gift_Customizer_Spec.md`, `../plans/Customizer_Build_Plan.md`, `../specs/Crystal_Fabric_Studio_Spec.md`.

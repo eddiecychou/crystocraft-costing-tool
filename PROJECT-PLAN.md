@@ -1,3 +1,22 @@
+# V8.19 — Firebase swatch migration and OC uploader — 19 October 2026
+
+Owner agreed the Crystal Components business direction and requested an
+implementation plan, including Firebase Storage for swatch photographs. Launch
+is enquiry first; approved selling prices follow later where appropriate.
+Crystal fabric is quoted against actual drawings and application, with area,
+adhesive and effects used for internal estimates; keep the customer brief simple
+and do not build an automatic area-price calculator. The plan covers the
+existing producible crystal parts, fabric/surface samples and separately
+identified original Swarovski/Strass clearance stock, sharing existing physical
+inventory where applicable. Start with the verified Fly export and independent
+Firebase swatch management, then the third catalogue and enquiry/PDF workflow.
+See [V8.19 implementation plan](docs/plans/V8.19-CRYSTAL-COMPONENTS-PLAN.md).
+V8.19 implementation is in progress: verified backup, Firebase sample/media
+code, OC uploader and reviewed resumable import are built and tested. Additive
+rules are deployed; import and final app gates are tracked separately in
+[release evidence](docs/plans/V8.19-SWATCH-MIGRATION-RELEASE.md). The full third
+catalogue, inventory links and project-quote flow remain later phases.
+
 # 17 October 2026 — Customer merge preserves both workspaces
 
 ## Customer-based Pipeline — 17 October 2026
