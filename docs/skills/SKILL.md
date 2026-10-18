@@ -513,3 +513,14 @@ photo, confirmed primary variant and reviewed stock mapping. No opening balances
 movements, stock reservations, prices or automatic quote/order adapter are added.
 Customer cart/enquiry/favourites and protected drawing/PDF exports have explicit third-source
 handling. See ../plans/V8.19-CRYSTAL-CATALOGUE-RELEASE.md for staged/live evidence.
+
+### V8.19 Crystal Fabric catalogue consolidation
+
+Crystal Fabric is one sample-backed range in Crystal Components, not a second set
+of crystal_products records or photo variants. src/domain/crystalFabric.js owns its
+catalogue projection and crystal_fabric enquiry snapshots; SwatchLibraryPage.jsx is
+the canonical customer Fabric page at /shop/crystal-components/fabric. /shop/swatches
+redirects there; /swatch-library remains the OC uploader reached from the single
+Fabric card. The project/sample intent selector shares exact Firebase references.
+No area-price calculator or stock mapping is added. Release evidence:
+docs/plans/V8.19-CRYSTAL-FABRIC-RELEASE.md.

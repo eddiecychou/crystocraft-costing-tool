@@ -1,3 +1,4 @@
+import {Link} from 'react-router-dom'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Gem, Search, X, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import SwatchEditor from '../components/SwatchEditor'
@@ -183,6 +184,8 @@ export default function SwatchLibrary() {
   return (
     <div className="p-4 md:p-6">
       <div className="mb-2">
+        <Link to="/crystal-components" className="text-sm text-brand-600 inline-flex min-h-11 items-center">← Crystal Components</Link>
+        <p className="eyebrow mb-1">Crystal Fabric</p>
         <h1 className="text-xl md:text-2xl flex items-center gap-2"><Gem size={20} className="text-brand-500" /> Swatch Library</h1>
         <p className="text-sm text-ink-60 mt-0.5">
           Manage photographed materials, colours and backings. Published samples are visible to approved customers; new uploads start as drafts.

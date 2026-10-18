@@ -1,28 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Sparkles, Search, X, ChevronLeft, ChevronRight, PackageCheck } from 'lucide-react'
+import { Search, X, ChevronLeft, ChevronRight, PackageCheck } from 'lucide-react'
 import SwatchPhoto from '../components/SwatchPhoto'
 import LoadingBar from '../components/LoadingBar'
 import { fetchSwatchRegistry, loadSwatchNotes } from '../swatchLibraryApi'
 import { useCart } from './store'
 
-// Portal-facing swatch browser — docs/specs/Crystal_Fabric_Studio_Spec.md §5b. Same
-// registry the admin Swatch Library reads (src/pages/SwatchLibrary.jsx),
-// Firebase sample records and protected image proxy, available to approved customers. What's
-// different from the admin version: no note-editing (legacy refs are
-// read-only here), and the detail panel's primary action is "Request a
-// sample" — per §4, physical samples are the actual conversion event, not
-// a rendered image, so this page never shows a price.
-//
-// "Request a sample" adds a `type: 'swatch_sample'` line to the SAME
-// enquiry cart Corporate/Crystocraft Range use (useCart, store.jsx) rather
-// than submitting straight to Firestore on its own — owner, 2026-08-11:
-// tried it and it "doesn't go to the enquiry tab" the way adding a product
-// does. Review/submit/combine-with-other-items now all go through the
-// existing /shop/enquiry flow (EnquiryPage.jsx), so a sample request can
-// ride along with a real product enquiry in one submission, same as
-// everything else in the cart.
-const STYLE_LABEL = { fabric: 'Crystal Fabric', rock: 'Fine Rock / Rock', fine_rock: 'Fine Rock' }
+// The Fabric range reuses the same Firebase registry as the OC uploader.
+// One page handles project quotations and optional physical sample requests.
+import {FABRIC_STYLE_LABELS as STYLE_LABEL, fabricEnquiryLine} from '../domain/crystalFabric'
 
 function photosOf(entry) {
   const out = []
@@ -96,132 +82,116 @@ function SwatchCardCarousel({ name, entry }) {
 }
 
 function SwatchDetail({ name, entry, onClose }) {
-  const cart = useCart()
+  const cart = useCart(), dialog = useRef(null)
   const [notes, setNotes] = useState(null)
   const [notesError, setNotesError] = useState('')
   const [pickedSample, setPickedSample] = useState('')
+  const [intent, setIntent] = useState('project')
+  const [application, setApplication] = useState('')
   const [note, setNote] = useState('')
-  const [added, setAdded] = useState(false)
 
-  useEffect(() => { loadSwatchNotes(entry.notes_key || name).then(setNotes).catch(e => setNotesError(e.message)) }, [name])
-
-  const styles = Object.entries(entry.slots || {}).filter(([, bf]) => Object.keys(bf).length)
+  useEffect(() => { dialog.current.showModal() }, [])
+  useEffect(() => {
+    let active = true
+    if (entry) loadSwatchNotes(entry.notes_key || name).then(n => { if(active)setNotes(n) }).catch(e => { if(active)setNotesError(e.message) })
+    return () => { active = false }
+  }, [name, entry])
+  const styles = Object.entries(entry?.slots || {}).filter(([, bf]) => Object.keys(bf).length)
   const choices = styles.flatMap(([style, slots]) => Object.entries(slots).map(([backing, slot]) => ({...slot, style, backing:slot.backing_label || backing})))
   const chosen = choices.find(slot => slot.sample_id === pickedSample)
-
-  const addToEnquiry = () => {
-    if (!chosen) return
-    cart.add({
-      type: 'swatch_sample', id: chosen.sample_id, name, code: '', image: '',
-      swatch_sample_id: chosen.sample_id, swatch_revision: chosen.revision,
-      finish: STYLE_LABEL[chosen.style] || chosen.style, color: chosen.backing,
-      note, qty: 1,
-    })
-    setAdded(true)
-  }
-
+  const reference = chosen ? {id:chosen.sample_id, revision:chosen.revision, publication:'published', color_name:name, style:chosen.style, backing_label:chosen.backing, media:{thumbnail:chosen.file}} : null
+  const line = intent === 'project' ? fabricEnquiryLine(reference, {application,note}) : chosen ? {
+    type:'swatch_sample', id:chosen.sample_id, name, code:'', image:'',
+    swatch_sample_id:chosen.sample_id, swatch_revision:chosen.revision,
+    finish:STYLE_LABEL[chosen.style] || chosen.style, color:chosen.backing, note, qty:1,
+  } : null
+  const added = line && cart.has(line)
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card max-w-2xl w-full max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg text-ink flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full border border-ivory-dark shrink-0" style={{ background: entry.rgb ? `rgb(${entry.rgb.map(c => Math.round(c * 255)).join(',')})` : '#ccc' }} />
-            {name}
-          </h2>
-          <button aria-label="Close swatch details" onClick={onClose} className="btn-ghost min-h-11 min-w-11"><X size={18} /></button>
-        </div>
-
-        {styles.map(([style, backfilms]) => (
-          <div key={style} className="mb-4">
-            <p className="label mb-2">{STYLE_LABEL[style] || style}</p>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {Object.entries(backfilms).map(([bf, slot]) => (
-                <div key={bf}>
-                  <SwatchThumb filename={slot.display || slot.file} alt={`${name} ${style} on ${bf}`} />
-                  <p className="text-xs text-ink-60 mt-1 text-center break-words">{slot.backing_label || bf}</p>
-                  {slot.description && <p className="text-xs text-ink-60 mt-1">{slot.description}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {notesError && <p role="alert" className="text-sm text-brand-700">{notesError}</p>}
-        {notes?.legacy_swarovski_refs?.length > 0 && (
-          <div className="mb-4">
-            <p className="label mb-1.5">Closest legacy Swarovski references</p>
-            <div className="flex flex-wrap gap-1.5">
-              {notes.legacy_swarovski_refs.map((v, i) => (
-                <span key={i} className="badge bg-brand-50 text-brand-700">{v}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="pt-3 border-t border-ivory-dark">
-          {added ? (
-            <div className="flex items-center gap-2 text-emerald-700 text-sm py-2">
-              <PackageCheck size={16} /> Added to your enquiry.{' '}
-              <Link to="/shop/enquiry" className="underline hover:text-emerald-900">Review &amp; send it</Link>
-            </div>
-          ) : (
-            <>
-              <p className="label mb-2">Request a physical sample</p>
-              <label className="block mb-2"><span className="label block mb-1">Photographed sample</span>
-                <select className="input text-sm" value={pickedSample} onChange={e=>setPickedSample(e.target.value)}>
-                  <option value="">Choose material and backing</option>
-                  {choices.map(slot=><option key={slot.sample_id} value={slot.sample_id}>{STYLE_LABEL[slot.style]} · {slot.backing}</option>)}
-                </select>
-              </label>
-              <textarea className="input w-full text-sm" rows={2} value={note} onChange={e => setNote(e.target.value)}
-                placeholder="What are you making, and how many? (optional)" />
-              <button disabled={!chosen} onClick={addToEnquiry} className="btn-primary mt-2.5 w-full sm:w-auto">
-                Add sample request to enquiry
-              </button>
-            </>
-          )}
-        </div>
+    <dialog ref={dialog} aria-labelledby="fabric-enquiry-title" onCancel={onClose}
+      onClick={e => { if(e.target === e.currentTarget)onClose() }}
+      className="m-auto w-[calc(100%_-_2rem)] max-w-2xl max-h-[85vh] overflow-y-auto card p-5 backdrop:bg-black/40">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <h2 id="fabric-enquiry-title" className="text-lg text-ink">{name || 'Crystal Fabric enquiry'}</h2>
+        <button aria-label="Close swatch details" onClick={onClose} className="btn-ghost min-h-11 min-w-11"><X size={18}/></button>
       </div>
-    </div>
+      {styles.map(([style, backfilms]) => (
+        <div key={style} className="mb-4">
+          <p className="label mb-2">{STYLE_LABEL[style] || style}</p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {Object.entries(backfilms).map(([bf, slot]) => <div key={bf}>
+              <SwatchThumb filename={slot.display || slot.file} alt={name+' '+style+' on '+bf}/>
+              <p className="text-xs text-ink-60 mt-1 text-center break-words">{slot.backing_label || bf}</p>
+              {slot.description && <p className="text-xs text-ink-60 mt-1">{slot.description}</p>}
+            </div>)}
+          </div>
+        </div>
+      ))}
+      {notesError && <p role="alert" className="text-sm text-brand-700">{notesError}</p>}
+      {notes?.legacy_swarovski_refs?.length > 0 && <div className="mb-4"><p className="label mb-1.5">Closest legacy Swarovski references</p><div className="flex flex-wrap gap-1.5">{notes.legacy_swarovski_refs.map((v,i)=><span key={i} className="badge bg-brand-50 text-brand-700">{v}</span>)}</div></div>}
+      <div className="pt-3 border-t border-ivory-dark space-y-3">
+        {choices.length > 0 && <>
+          <label className="block"><span className="label block mb-1">Enquiry type</span>
+            <select className="input" value={intent} onChange={e=>setIntent(e.target.value)}><option value="project">Quotation for my project</option><option value="sample">Physical sample request</option></select>
+          </label>
+          <label className="block"><span className="label block mb-1">Photographed sample</span>
+            <select className="input text-sm" value={pickedSample} onChange={e=>setPickedSample(e.target.value)}>
+              <option value="">{intent==='project'?'Not sure yet — discuss with us':'Choose material and backing'}</option>
+              {choices.map(slot=><option key={slot.sample_id} value={slot.sample_id}>{STYLE_LABEL[slot.style]} · {slot.backing}</option>)}
+            </select>
+          </label>
+        </>}
+        {intent==='project' && <>
+          <p className="text-sm text-ink-70">Quoted from your actual drawing and intended application. Attach your drawing on the enquiry page, or discuss your idea with us first.</p>
+          <label className="block"><span className="label block mb-1">Intended application</span><textarea className="input text-sm" rows={2} value={application} onChange={e=>setApplication(e.target.value)} placeholder="How and where will the fabric be used? (if known)"/></label>
+        </>}
+        <label className="block"><span className="label block mb-1">Project notes (optional)</span><textarea className="input w-full text-sm" rows={2} value={note} onChange={e=>setNote(e.target.value)} placeholder="Quantity, dimensions, adhesive, effects or deadline — if known"/></label>
+        {added ? <div role="status" className="flex flex-wrap items-center gap-2 text-ink text-sm py-2"><PackageCheck size={16}/> Added to your enquiry. <Link to="/shop/enquiry" className="underline">Review &amp; send it</Link></div>
+          : <button disabled={!line} onClick={()=>cart.add(line)} className="btn-primary min-h-11 w-full sm:w-auto">{intent==='project'?'Add fabric project to enquiry':'Add sample request to enquiry'}</button>}
+      </div>
+    </dialog>
   )
 }
 
-export default function SwatchLibraryPage({ profile }) {
+export default function SwatchLibraryPage() {
   const [registry, setRegistry] = useState(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [material, setMaterial] = useState('')
   const [selected, setSelected] = useState(null)
 
-  useEffect(() => {
-    fetchSwatchRegistry().then(setRegistry).catch(e => setError(e.message))
-  }, [])
+  const load = () => { setError(''); fetchSwatchRegistry().then(setRegistry).catch(() => setError('The fabric swatches could not be loaded. Please retry.')) }
+  useEffect(load, [])
 
   const entries = useMemo(() => {
     if (!registry) return []
     const q = search.trim().toLowerCase()
     return Object.entries(registry)
+      .map(([name,entry]) => [name, {...entry,slots:Object.fromEntries(Object.entries(entry.slots || {}).filter(([style])=>!material || style===material))}])
+      .filter(([,entry]) => Object.keys(entry.slots).length)
       .filter(([name]) => !q || name.toLowerCase().includes(q))
       .sort(([a], [b]) => a.localeCompare(b))
-  }, [registry, search])
+  }, [registry, search, material])
 
   return (
-    <div>
-      <div className="mb-2">
-        <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Materials</p>
-        <h1 className="text-2xl md:text-3xl text-ink">Swatch Library</h1>
+    <div className="py-8 space-y-5">
+      <Link to="/shop/crystal-components" className="text-sm text-brand-600 inline-flex min-h-11 items-center">← Crystal Components</Link>
+      <div className="space-y-3">
+        <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Crystocraft Crystal Components</p>
+        <h1 className="text-2xl md:text-3xl text-ink">Crystal Fabric</h1>
         <p className="text-sm text-ink-60 mt-0.5">
-          Real photographed crystal swatches — browse colours and crystal types, then request a physical sample.
+          Explore our existing photographed colours, materials and backings for your project. Pricing is confirmed from the actual drawing and intended application.
         </p>
+        <button className="btn-secondary min-h-11" disabled={!registry || !!error} onClick={()=>setSelected(['',null])}>Enquire without a swatch</button>
       </div>
 
-      {error && <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}</div>}
+      {error && <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}<button className="btn-ghost min-h-11" onClick={load}>Retry swatches</button></div>}
 
-      <div className="relative mb-5">
+      <div className="grid sm:grid-cols-2 gap-3"><label className="relative block"><span className="sr-only">Search colour</span>
         <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-60" />
         <input type="text" placeholder="Search colour name…" className="input w-full pl-8"
           value={search} onChange={e => setSearch(e.target.value)} />
-      </div>
-
+      </label><label><span className="sr-only">Material</span><select className="input" value={material} onChange={e=>setMaterial(e.target.value)}><option value="">All photographed materials</option>{Object.entries(STYLE_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label></div>
+      <p className="text-xs text-ink-60">Photographs are reference samples. Backing labels follow the photographed samples; final construction, adhesive and effects are agreed for your application.</p>
       {!registry && !error ? <LoadingBar /> : entries.length === 0 ? (
         <div className="text-center py-16">
           <p className="eyebrow text-ink-60 mb-1.5">No matches</p>

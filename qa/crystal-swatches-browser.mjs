@@ -14,7 +14,7 @@ try {
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
   if(width===375 || width===1280)await page.screenshot({path:`qa/out/swatch-v819/uploader-${width}.png`,fullPage:true})
   await page.getByRole('button',{name:'Close swatch editor'}).click();report.push({width,admin:'PASS',uploader:'PASS'})
-  await page.goto('http://127.0.0.1:5201?view=portal');await page.getByRole('heading',{name:'Swatch Library'}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
+  await page.goto('http://127.0.0.1:5201?view=portal');await page.getByRole('heading',{name:'Crystal Fabric'}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
   report.at(-1).portal='PASS'
  }
  await page.goto('http://127.0.0.1:5201');await page.getByRole('button',{name:'Upload swatch',exact:true}).click()
@@ -28,7 +28,7 @@ try {
  assert.equal(await page.evaluate(()=>window.__lastSave.values.publication),'draft')
  assert.ok(await page.getByText('QA new colour · Crystal Fabric · Clear').isVisible())
  await page.goto('http://127.0.0.1:5201?view=portal');await page.getByText('Crystal AB',{exact:true}).click()
- await page.getByRole('button',{name:'Add sample request to enquiry'}).waitFor();assert.ok(await page.getByRole('button',{name:'Add sample request to enquiry'}).isDisabled())
+ await page.getByLabel('Enquiry type').selectOption('sample');await page.getByRole('button',{name:'Add sample request to enquiry'}).waitFor();assert.ok(await page.getByRole('button',{name:'Add sample request to enquiry'}).isDisabled())
  await page.getByLabel('Photographed sample').selectOption('sw_'+'1'.repeat(64));await page.getByRole('button',{name:'Add sample request to enquiry'}).click()
  const line=await page.evaluate(()=>window.__cart[0]);assert.equal(line.swatch_sample_id,'sw_'+'1'.repeat(64));assert.equal(line.color,'Black');assert.equal(line.finish,'Fine Rock / Rock')
  await page.goto('http://127.0.0.1:5201?staff=1');await page.getByRole('button',{name:'Upload swatch',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Import Fly backup'}).count(),0)

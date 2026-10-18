@@ -41,11 +41,11 @@ export const pillars = [
   },
   {
     key: 'crystal',
-    title: 'Crystal Materials',
-    description: 'Crystal embellishment materials and visual applications for designers and brands.',
-    ctaLabel: 'Explore Crystal Materials',
-    to: '/shop/swatches',
-    metadata: 'Design materials · Swatches and applications',
+    title: 'Crystal Components',
+    description: 'Cut crystals, Crystal Fabric and selected original Swarovski / Strass clearance stock.',
+    ctaLabel: 'Explore Crystal Components',
+    to: '/shop/crystal-components',
+    metadata: 'Components · Fabric · Enquiry first',
   },
 ]
 

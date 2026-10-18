@@ -50,7 +50,8 @@ export default function Storefront({ profile }) {
                 <Route path="/shop/orders" element={<OrderHistoryPage profile={profile} />} />
                 <Route path="/shop/crystal-components" element={<CrystalComponentsShop profile={profile} />} />
                 <Route path="/shop/crystal-components/:id" element={<CrystalComponentDetail profile={profile} />} />
-                <Route path="/shop/swatches" element={<SwatchLibraryPage profile={profile} />} />
+                <Route path="/shop/crystal-components/fabric" element={<SwatchLibraryPage profile={profile} />} />
+                <Route path="/shop/swatches" element={<Navigate to="/shop/crystal-components/fabric" replace />} />
                 <Route path="/customize/:productId" element={<CustomizerPage profile={profile} />} />
                 <Route path="*" element={<Navigate to="/shop" replace />} />
               </Routes>

@@ -10,6 +10,7 @@ import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
 import {crystalEnquirySnapshot,CRYSTAL_UNITS} from '../domain/crystalProducts'
 import {validateCrystalEnquirySelections,uploadEnquiryDrawing} from '../crystalEnquiries'
 import SwatchPhoto from '../components/SwatchPhoto'
+import {fabricEnquirySnapshot,FABRIC_ROUTE} from '../domain/crystalFabric'
 import { notifyEmail } from '../notify'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
@@ -80,6 +81,7 @@ export default function EnquiryPage({ profile }) {
           image: i.image || '', qty: Number(i.qty) || 1, note: i.note || '',
           finish: i.finish || '', color: i.color || '', color_name: i.color_name || '',
           ...(i.type === 'crystal_component' ? crystalEnquirySnapshot(i) : {}),
+          ...(i.type === 'crystal_fabric' ? fabricEnquirySnapshot(i) : {}),
           ...(i.type === 'swatch_sample' && i.swatch_sample_id ? { swatch_sample_id:i.swatch_sample_id, swatch_revision:i.swatch_revision || null } : {}),
           ws_price_usd: i.ws_price_usd ?? null,
           pcs_per_carton: Number(i.pcs_per_carton) || 0,
@@ -158,7 +160,7 @@ export default function EnquiryPage({ profile }) {
           return (
             <div key={i.key} className="grid grid-cols-[64px_minmax(0,1fr)] sm:grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-3 p-3">
               <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden shrink-0">
-                {i.type==='crystal_component'&&i.image_path ? <SwatchPhoto path={i.image_path} alt={i.name}/> : i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain p-1" />
+                {i.image_path && ['crystal_component','crystal_fabric'].includes(i.type) ? <SwatchPhoto path={i.image_path} alt={i.name}/> : i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain p-1" />
                   : <Icon size={28} className="text-platinum" />}
               </div>
               <div className="flex-1 min-w-0">
@@ -180,7 +182,9 @@ export default function EnquiryPage({ profile }) {
                   </p>
                 )}
                 {i.description_snapshot&&<p className="text-xs text-ink-60 mt-1 break-words">{i.description_snapshot}</p>}
-                {i.application&&<p className="text-xs text-ink-70 mt-1 break-words">Application: {i.application}</p>}
+                {i.type==='crystal_fabric'&&<label className="block mt-2"><span className="label block mb-1">Intended application</span><textarea className="input text-sm" rows={2} value={i.application||''} onChange={e=>cart.update(i.key,{application:e.target.value})} placeholder="Tell us how and where the fabric will be used"/></label>}
+                {i.type!=='crystal_fabric'&&i.application&&<p className="text-xs text-ink-70 mt-1 break-words">Application: {i.application}</p>}
+                {i.type==='crystal_fabric'&&<Link className="text-xs text-brand-600 inline-flex min-h-10 items-center" to={FABRIC_ROUTE}>Browse fabric references</Link>}
                 {i.type==='crystal_component'&&<Link className="text-xs text-brand-600 inline-flex min-h-10 items-center" to={'/shop/crystal-components/'+i.id}>Change component selection</Link>}
                 <input type="text" placeholder="Note (extra customisation, deadlines…)"
                   value={i.note || ''} onChange={e => cart.update(i.key, { note: e.target.value })}
@@ -242,7 +246,7 @@ export default function EnquiryPage({ profile }) {
       <textarea className="input min-h-[90px]" placeholder="Tell us about quantities, deadlines, branding or any questions…"
         value={message} onChange={e => setMessage(e.target.value)} />
 
-      {items.some(i=>i.type==='crystal_component'||i.type==='swatch_sample')&&<label className="block mt-4"><span className="label block mb-1">Drawing / reference file (optional)</span><input disabled={sending} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="input" onChange={e=>{setDrawing(e.target.files?.[0]||null);setDrawingId(crypto.randomUUID())}}/><span className="text-xs text-ink-60">PDF or photograph up to 20 MB. Private to your enquiry. Fabric pricing is reviewed from your drawing and application.</span></label>}
+      {items.some(i=>['crystal_component','crystal_fabric','swatch_sample'].includes(i.type))&&<label className="block mt-4"><span className="label block mb-1">Drawing / reference file (optional)</span><input disabled={sending} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="input" onChange={e=>{setDrawing(e.target.files?.[0]||null);setDrawingId(crypto.randomUUID())}}/><span className="text-xs text-ink-60">PDF or photograph up to 20 MB. Private to your enquiry. Fabric pricing is reviewed from your drawing and application.</span></label>}
       {error && <p role="alert" className="text-sm text-red-600 mt-2">{error}</p>}
 
       <div className="flex items-center gap-3 mt-4">

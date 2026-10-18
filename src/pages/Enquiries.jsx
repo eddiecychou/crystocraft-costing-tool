@@ -120,7 +120,7 @@ function Card({ r, set, onEdit, onDelete }) {
           return (
             <div key={idx} className="flex items-center gap-3 py-2">
               <div className="w-10 h-10 bg-white border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden shrink-0">
-                {i.type==='crystal_component'&&i.image_path?<SwatchPhoto path={i.image_path} alt={i.name}/>:i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain" /> : <Icon size={16} className="text-platinum" />}
+                {['crystal_component','crystal_fabric'].includes(i.type)&&i.image_path?<SwatchPhoto path={i.image_path} alt={i.name}/>:i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain" /> : <Icon size={16} className="text-platinum" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink truncate">{i.name}</p>

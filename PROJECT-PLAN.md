@@ -1,3 +1,16 @@
+# V8.19 — Crystal Fabric merged into Crystal Components — 19 October 2026
+
+Crystal Fabric now has one catalogue card in OC and the customer portal, derived
+from the existing published Firebase swatches. The former standalone customer
+swatch URL redirects to /shop/crystal-components/fabric. OC's Fabric card opens
+the existing uploader; no duplicate navigation/range, product masters, images or
+inventory records are created. Project quotations retain optional exact sample
+identity/revision, intended application and notes; the existing private drawing
+control remains on Enquiry. Physical sample requests remain available in the
+same form. Pricing stays on quotation from actual drawings/application.
+The combined catalogue PDF includes one Fabric page.
+Validation/release progress: [Fabric merge evidence](docs/plans/V8.19-CRYSTAL-FABRIC-RELEASE.md).
+
 # V8.19 — Crystal Components catalogue — 19 October 2026
 
 The owner requested the third catalogue after the Firebase swatch delivery.

@@ -39,7 +39,7 @@ try {
   }
   console.log(role,'catalogue and role separation PASS')
   await navigate(base+(role==='ADMIN'?'/swatch-library':'/shop/swatches'))
-  await page.getByRole('heading',{name:'Swatch Library',exact:true}).waitFor({timeout:60000})
+  await page.getByRole('heading',{name:role==='ADMIN'?'Swatch Library':'Crystal Fabric',exact:true}).waitFor({timeout:60000})
   if(role==='ADMIN' && process.argv.includes('--import')) {
    await page.getByRole('button',{name:'Import Fly backup',exact:true}).click()
    await page.getByLabel('Verified migration ZIP').setInputFiles('migration/crystal-swatches-v819.local/swatch-migration.zip')
@@ -63,7 +63,7 @@ try {
   await page.locator('img[src^="blob:"]').first().waitFor({timeout:60000})
   await page.getByText('Crystal AB',{exact:true}).click();await page.getByRole('button',{name:'Close swatch details'}).waitFor()
   if(role==='ADMIN')assert.ok(await page.getByRole('button',{name:'Edit sample'}).count()>0)
-  else {assert.equal(await page.getByRole('button',{name:'Edit sample'}).count(),0);assert.ok(await page.getByRole('button',{name:'Add sample request to enquiry'}).isDisabled())}
+  else {await page.getByLabel('Enquiry type').selectOption('sample');assert.equal(await page.getByRole('button',{name:'Edit sample'}).count(),0);assert.ok(await page.getByRole('button',{name:'Add sample request to enquiry'}).isDisabled())}
   if(role==='CUSTOMER'){
    const choice=page.getByLabel('Photographed sample');await choice.selectOption({index:1})
    await page.getByRole('button',{name:'Add sample request to enquiry'}).click()
@@ -72,12 +72,12 @@ try {
    await navigate(base+'/shop/enquiry');await page.getByText('On quotation',{exact:true}).waitFor()
    await page.screenshot({path:out+'/sample-enquiry-'+new URL(base).hostname+'.png',fullPage:true})
    await page.getByRole('button',{name:'Remove',exact:true}).click()
-   await navigate(base+'/shop/swatches');await page.getByRole('heading',{name:'Swatch Library',exact:true}).waitFor()
+   await navigate(base+'/shop/swatches');await page.getByRole('heading',{name:role==='ADMIN'?'Swatch Library':'Crystal Fabric',exact:true}).waitFor()
   }else await page.getByRole('button',{name:'Close swatch details'}).click()
   if(role==='ADMIN'){
    await page.getByRole('button',{name:'Upload swatch',exact:true}).click();await page.getByRole('dialog').waitFor();await page.getByRole('button',{name:'Close swatch editor'}).click()
   }else assert.equal(await page.getByRole('button',{name:'Upload swatch',exact:true}).count(),0)
-  await page.reload();await page.getByRole('heading',{name:'Swatch Library',exact:true}).waitFor();await page.locator('img[src^="blob:"]').first().waitFor()
+  await page.reload();await page.getByRole('heading',{name:role==='ADMIN'?'Swatch Library':'Crystal Fabric',exact:true}).waitFor();await page.locator('img[src^="blob:"]').first().waitFor()
   for(const width of [320,375,414,1280]){
    await page.setViewportSize({width,height:900});await page.waitForTimeout(200)
    await page.waitForFunction(()=>{

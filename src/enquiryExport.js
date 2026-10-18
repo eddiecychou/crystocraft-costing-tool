@@ -43,7 +43,7 @@ function platingCode(finish) {
   return byName ? byName.code : ''
 }
 function variantCode(it) {
-  if(it.type==='crystal_component')return it.code||''
+  if(['crystal_component','crystal_fabric'].includes(it.type))return it.code||''
   const base = (it.code || '').trim()
   const suffix = `${platingCode(it.finish)}${(it.color || '').trim().toUpperCase()}`
   return suffix ? `${base}-${suffix}` : base
@@ -150,7 +150,7 @@ export async function exportEnquiryExcel(r) {
     }
 
     // Embed the product photo, centred in the Picture cell.
-    const img = it.type==='crystal_component'&&it.image_path ? await readSwatchPhoto(it.image_path).then(async b=>({buffer:await b.arrayBuffer(),extension:'jpeg'})).catch(()=>null) : await fetchImage(it.image)
+    const img = ['crystal_component','crystal_fabric'].includes(it.type)&&it.image_path ? await readSwatchPhoto(it.image_path).then(async b=>({buffer:await b.arrayBuffer(),extension:'jpeg'})).catch(()=>null) : await fetchImage(it.image)
     if (img) {
       try {
         const id = wb.addImage(img)

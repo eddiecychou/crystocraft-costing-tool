@@ -7,7 +7,10 @@ export async function validateCrystalEnquirySelections(items) {
  for(const item of items.filter(i=>i.type==='crystal_component')){
   const p=await loadCrystalProduct(item.id),v=p?.variants.find(v=>v.id===item.variant_id)
   if(!p||p.publication!=='published'||!v?.confirmed||v.publication!=='published'||p.revision!==item.product_revision||v.revision!==item.variant_revision||v.unit!==item.unit)throw Error('A component selection changed. Open the component and reselect its options before sending.')
+ }
+ for(const item of items.filter(i=>['crystal_component','crystal_fabric','swatch_sample'].includes(i.type))){
   if(item.swatch_sample_id){const sample=await getDoc(doc(db,'crystal_swatches',item.swatch_sample_id));if(!sample.exists()||sample.data().publication!=='published'||sample.data().revision!==item.swatch_revision)throw Error('A reference sample changed. Please reselect it before sending.')}
+  else if(item.type==='swatch_sample')throw Error('Please reselect the photographed sample before sending.')
  }
 }
 export async function uploadEnquiryDrawing(enquiryId,file,fileId) {

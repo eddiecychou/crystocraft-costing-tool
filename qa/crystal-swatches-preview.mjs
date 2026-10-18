@@ -15,7 +15,7 @@ const stub=`
  export async function fetchSwatchRegistry(){const {swatchesToRegistry}=await import(${JSON.stringify(process.cwd()+'/src/domain/crystalSwatches.js')});return swatchesToRegistry(rows.filter(r=>r.publication==='published'))}
  export async function fetchSwatchImageUrl(path,{signal}={}){window.__photoReads++;let loaded=false;signal?.addEventListener('abort',()=>{if(!loaded)window.__abortedReads++});const blob=await (await fetch('/photo.jpg?slot='+path,{signal})).blob();loaded=true;return URL.createObjectURL(blob)}
  export const loadSwatchNotes=async()=>({legacy_swarovski_refs:['Reference retained']});export const saveSwatchNotes=async()=>{};
- export const useCart=()=>({add:i=>window.__cart.push(i)});
+ export const useCart=()=>({add:i=>window.__cart.push(i),has:i=>window.__cart.some(x=>x.type===i.type&&x.id===i.id&&x.swatch_sample_id===i.swatch_sample_id)});
 `
 await build({entryPoints:['qa/crystal-swatches-preview.jsx'],outfile:out+'/app.js',bundle:true,jsx:'automatic',format:'esm',plugins:[{name:'bounded-swatches',setup(b){
  b.onResolve({filter:/(^|\/)swatchLibraryApi$|^(\.\.\/|\.\/)crystalSwatches$|^\.\/store$/},()=>({path:'swatch-fixture',namespace:'fixture'}))

@@ -46,11 +46,13 @@ export const saveCrystalMapping=async(pid,vid,values)=>{window.__lastMapping=val
 export const createCrystalStockDraft=async(stock,origin)=>{const id='cp_stock_'+stock.id;window.__writes.push({path:'crystal_products/'+id,origin,stock_id:stock.id});return id};
 `
 const swatchStub=`
-export const listCrystalSwatches=async()=>window.__samples;
+export const listCrystalSwatches=async()=>new URLSearchParams(location.search).has('empty')?[]:window.__samples;
+export const fetchSwatchRegistry=async()=>{if(new URLSearchParams(location.search).has('error'))throw Error('Offline');const {swatchesToRegistry}=await import('${process.cwd()}/src/domain/crystalSwatches.js');return swatchesToRegistry(window.__samples)};
+export const loadSwatchNotes=async()=>({legacy_swarovski_refs:[]});
 export const readSwatchPhoto=async()=> (await fetch('/photo.jpg')).blob();
 export const fetchSwatchImageUrl=async(path,{signal}={})=>URL.createObjectURL(await(await fetch('/photo.jpg',{signal})).blob());
 `
-await build({entryPoints:['qa/crystal-products-preview.jsx'],outfile:out+'/app.js',bundle:true,jsx:'automatic',format:'esm',plugins:[{name:'fictional-catalogue',setup(b){
+await build({entryPoints:['qa/crystal-products-preview.jsx'],outfile:out+'/app.js',bundle:true,loader:{'.ttf':'dataurl','.png':'dataurl'},jsx:'automatic',format:'esm',plugins:[{name:'fictional-catalogue',setup(b){
  b.onResolve({filter:/^firebase\/firestore$/},()=>({path:'firestore',namespace:'fixture'}))
  b.onResolve({filter:/(^|\/)firebase$/},()=>({path:'firebase',namespace:'fixture'}))
  b.onResolve({filter:/(^|\/)crystalProducts$/},args=>args.path.includes('/domain/')?null:({path:'products',namespace:'fixture'}))

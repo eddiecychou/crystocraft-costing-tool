@@ -32,6 +32,8 @@ try {
    await navigate(base+'/products');await page.getByRole('heading',{name:'Products',exact:true}).waitFor()
    await page.locator('a[href^="/products/"]').filter({has:page.locator('img')}).first().waitFor({timeout:60000})
   }else{
+   await page.getByRole('link',{name:/Explore Crystal Components/}).waitFor()
+   assert.equal(await page.getByRole('link',{name:/Explore Crystal Components/}).getAttribute('href'),'/shop/crystal-components')
    await navigate(base+'/shop/figurine');await page.getByRole('heading',{name:'Crystocraft Range',exact:true}).waitFor()
    const product=page.locator('a[href^="/shop/figurine/"]').first();await product.waitFor({timeout:60000});await product.click();await page.locator('h1').waitFor()
    assert.equal(await page.locator('a[href="/settings"]').count(),0)
@@ -39,25 +41,47 @@ try {
   }
   console.log(role,'catalogue and role separation PASS')
   await navigate(base+(role==='ADMIN'?'/swatch-library':'/shop/swatches'))
-  await page.getByRole('heading',{name:'Swatch Library',exact:true}).waitFor({timeout:60000})
+  await page.getByRole('heading',{name:role==='ADMIN'?'Swatch Library':'Crystal Fabric',exact:true}).waitFor({timeout:60000})
   await page.locator('img[src^="blob:"]').first().waitFor({timeout:60000})
   await page.getByText('Crystal AB',{exact:true}).click();await page.getByRole('button',{name:'Close swatch details'}).waitFor()
   if(role==='ADMIN')assert.ok(await page.getByRole('button',{name:'Edit sample'}).count()>0)
-  else {assert.equal(await page.getByRole('button',{name:'Edit sample'}).count(),0);assert.ok(await page.getByRole('button',{name:'Add sample request to enquiry'}).isDisabled())}
+  else {assert.equal(new URL(page.url()).pathname,'/shop/crystal-components/fabric');assert.equal(await page.getByRole('button',{name:'Edit sample'}).count(),0)}
   if(role==='CUSTOMER'){
+   await page.getByLabel('Intended application').fill('Hotel lighting panel — quotation from drawing')
    const choice=page.getByLabel('Photographed sample');await choice.selectOption({index:1})
+   await page.getByRole('button',{name:'Add fabric project to enquiry',exact:true}).click()
+   const project=await page.evaluate(()=>JSON.parse(localStorage.getItem('cc_cart'))[0])
+   assert.equal(project.type,'crystal_fabric');assert.equal(project.unit,'project');assert.ok(project.swatch_sample_id);assert.ok(project.swatch_revision);assert.equal(project.application,'Hotel lighting panel — quotation from drawing');assert.equal(project.ws_price_usd,null)
+   await page.getByLabel('Enquiry type').selectOption('sample')
    await page.getByRole('button',{name:'Add sample request to enquiry'}).click()
    const cart=await page.evaluate(()=>JSON.parse(localStorage.getItem('cc_cart')||'[]'))
-   assert.equal(cart.length,1);assert.ok(cart[0].swatch_sample_id);assert.ok(cart[0].swatch_revision)
+   assert.equal(cart.length,2);assert.equal(cart[1].type,'swatch_sample');assert.ok(cart[0].swatch_sample_id);assert.ok(cart[0].swatch_revision)
    await navigate(base+'/shop/enquiry');await page.getByText('On quotation',{exact:true}).waitFor()
    await page.screenshot({path:out+'/sample-enquiry-'+new URL(base).hostname+'.png',fullPage:true})
-   await page.getByRole('button',{name:'Remove',exact:true}).click()
-   await navigate(base+'/shop/swatches');await page.getByRole('heading',{name:'Swatch Library',exact:true}).waitFor()
+   await page.getByLabel('Drawing / reference file (optional)').waitFor()
+   await page.reload();await page.getByLabel('Intended application').waitFor()
+   assert.equal(await page.getByLabel('Intended application').inputValue(),'Hotel lighting panel — quotation from drawing')
+   for(const width of [320,375,414,1280]){
+    await page.setViewportSize({width,height:900})
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
+   }
+   await page.screenshot({path:out+'/fabric-project-enquiry-'+new URL(base).hostname+'.png',fullPage:true})
+   await page.getByRole('button',{name:'Remove',exact:true}).first().click()
+   await page.getByRole('button',{name:'Remove',exact:true}).first().click()
+   await navigate(base+'/shop/swatches');await page.getByRole('heading',{name:role==='ADMIN'?'Swatch Library':'Crystal Fabric',exact:true}).waitFor()
   }else await page.getByRole('button',{name:'Close swatch details'}).click()
   if(role==='ADMIN'){
    await page.getByRole('button',{name:'Upload swatch',exact:true}).click();await page.getByRole('dialog').waitFor();await page.getByRole('button',{name:'Close swatch editor'}).click()
-  }else assert.equal(await page.getByRole('button',{name:'Upload swatch',exact:true}).count(),0)
-  await page.reload();await page.getByRole('heading',{name:'Swatch Library',exact:true}).waitFor();await page.locator('img[src^="blob:"]').first().waitFor()
+  }else {
+   assert.equal(await page.getByRole('button',{name:'Upload swatch',exact:true}).count(),0)
+   await page.getByRole('button',{name:'Enquire without a swatch',exact:true}).click()
+   await page.getByRole('button',{name:'Add fabric project to enquiry',exact:true}).click()
+   assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('cc_cart'))))[0].swatch_sample_id,'')
+   await navigate(base+'/shop/enquiry');await page.getByText('On quotation',{exact:true}).waitFor()
+   await page.getByRole('button',{name:'Remove',exact:true}).click()
+   await navigate(base+'/shop/crystal-components/fabric')
+  }
+  await page.reload();await page.getByRole('heading',{name:role==='ADMIN'?'Swatch Library':'Crystal Fabric',exact:true}).waitFor();await page.locator('img[src^="blob:"]').first().waitFor()
   for(const width of [320,375,414,1280]){
    await page.setViewportSize({width,height:900});await page.waitForTimeout(200)
    await page.waitForFunction(()=>{
@@ -80,6 +104,11 @@ try {
    await page.getByLabel('Existing inventory item').waitFor()
    assert.ok(await page.getByLabel('Existing inventory item').locator('option').count()>1)
   }else{
+   const fabricCard=page.locator('a[href="/shop/crystal-components/fabric"]')
+   await fabricCard.waitFor({timeout:60000});assert.equal(await fabricCard.count(),1)
+   await page.getByRole('button',{name:'Crystal Fabrics and Surfaces',exact:true}).click()
+   assert.equal(await fabricCard.count(),1);assert.equal(await page.locator('a[href^="/shop/crystal-components/cp_"]').count(),0)
+   await page.getByRole('button',{name:'All components',exact:true}).click()
    const component=page.locator('a[href^="/shop/crystal-components/cp_"]').first()
    await component.waitFor({timeout:60000})
    const pdfDownload=page.waitForEvent('download',{timeout:120000})
@@ -124,7 +153,7 @@ try {
    if(width===375)await page.screenshot({path:out+'/'+role.toLowerCase()+'-catalogue-375-'+new URL(base).hostname+'.png',fullPage:true})
   }
   await page.screenshot({path:out+'/'+role.toLowerCase()+'-catalogue-'+new URL(base).hostname+'.png',fullPage:true})
-  const feature={role:role.toLowerCase(),fresh_login:'PASS',crystal_catalogue:'PASS',component_enquiry_and_drawing_ui:'PASS',routing:'PASS',catalogue_and_detail:'PASS',swatch_data_and_photos:'PASS',access_separation:'PASS',refresh:'PASS',actual_widths:[320,375,414,1280],visible_photos:'PASS',runtime_errors:errors}
+  const feature={role:role.toLowerCase(),fresh_login:'PASS',crystal_catalogue:'PASS',component_enquiry_and_drawing_ui:'PASS',merged_fabric_range:'PASS',fabric_project_reference_and_early_enquiry:'PASS',physical_sample_backcompat:'PASS',routing:'PASS',catalogue_and_detail:'PASS',swatch_data_and_photos:'PASS',access_separation:'PASS',refresh:'PASS',actual_widths:[320,375,414,1280],visible_photos:'PASS',runtime_errors:errors}
   assert.deepEqual(errors,[]);report.roles.push(feature);console.log(role,'swatch and refresh checks PASS')
   await ctx.close()
  }

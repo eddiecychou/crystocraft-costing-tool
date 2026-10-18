@@ -1,3 +1,14 @@
+# V8.19 unified Crystal Fabric range
+
+src/domain/crystalFabric.js projects one Fabric range from published crystal_swatches
+without writing product masters, cloning images or manufacturing variants. It owns
+project enquiry lines/snapshots and sample-based cart identity. crystal_fabric lines
+use project units, a null price, optional swatch_sample_id/revision and application.
+src/crystalEnquiries.js rechecks selected sample publication/revision for project,
+component and physical sample enquiries. An early project can omit a sample.
+Customer /shop/swatches redirects to /shop/crystal-components/fabric; OC's single
+Fabric card opens the existing /swatch-library uploader.
+
 # V8.19 component catalogue domain
 
 src/domain/crystalProducts.js owns customer-safe product/variant allowlists, actual
