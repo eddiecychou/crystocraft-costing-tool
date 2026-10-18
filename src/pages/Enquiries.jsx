@@ -264,7 +264,7 @@ function EditModal({ r, onClose }) {
                 </div>
                 <input type="number" min="0" className="input py-1 w-24 text-right" value={i.qty}
                   onChange={e => setQty(idx, e.target.value)} />
-                <span className="text-xs text-ink-60 w-8">pcs</span>
+                <span className="text-xs text-ink-60">{i.unit||'pcs'}</span>
                 <div className="w-24 text-right text-sm text-ink">
                   {priced[idx].line_total != null ? fmtMoney(priced[idx].line_total, cur) : '—'}
                 </div>

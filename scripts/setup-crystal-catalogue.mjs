@@ -4,9 +4,15 @@
 import {createRequire} from 'node:module'
 import {readFile,writeFile} from 'node:fs/promises'
 import assert from 'node:assert/strict'
+import {firebaseReadonly,decodeFirestore} from './lib/swatch-read-only.mjs'
 const dir='migration/crystal-catalogue-v819.local',rows=JSON.parse(await readFile(dir+'/own-products-reviewed.json','utf8'))
 assert.deepEqual(rows.map(r=>r.code),['CC-OCTAGON-14','CC-HEART-14','CC-PEAR-22'])
 if(!process.argv.includes('--apply')){console.log(JSON.stringify(rows.map(({code,name,shape,size,reference,holes,source_url,image_url,sha256})=>({code,name,shape,size,reference,holes,source_url,image_url,sha256})),null,2));process.exit(0)}
+// The catalogue loads asynchronously; never infer absence from an empty DOM.
+const initial=firebaseReadonly()('https://firestore.googleapis.com/v1/projects/crystocraft-costing/databases/(default)/documents/crystal_products?pageSize=1000')
+if(initial.nextPageToken)throw Error('Catalogue is too large for this one-time setup; use the OC editor.')
+const existingRows=(initial.documents||[]).map(d=>({...decodeFirestore({mapValue:{fields:d.fields}}),id:d.name.split('/').pop()})).filter(p=>p.publication!=='archived')
+for(const row of rows)if(existingRows.filter(p=>p.code===row.code).length>1)throw Error('Duplicate catalogue code needs review: '+row.code)
 const base=process.argv[2];if(new URL(base).protocol!=='https:'||!new URL(base).hostname.endsWith('--ua-product-manager.netlify.app')||new URL(base).origin!==base)throw Error('Use the verified candidate URL.')
 const require=createRequire(new URL('../.qa-playwright/package.json',import.meta.url)),{chromium}=require('playwright-core')
 const env=await readFile('.env.local','utf8'),secret=key=>env.match(new RegExp('^'+key+'=(.*)$','m'))?.[1]?.trim().replace(/^(['"])(.*)\1$/,'$2')
@@ -17,9 +23,10 @@ try{
  await go('/login');await page.locator('input[type=email]').fill(secret('QA_ADMIN_EMAIL'));await page.locator('input[type=password]').fill(secret('QA_ADMIN_PASSWORD'));await page.locator('form button[type=submit]').click();await page.waitForURL(u=>u.pathname.startsWith('/dashboard'),{timeout:60000})
  for(const row of rows){
   await go('/crystal-components');await page.getByRole('heading',{name:'Crystal Components',exact:true}).waitFor()
-  const existing=page.locator('a[href^="/crystal-components/cp_"]').filter({hasText:row.code})
-  if(await existing.count()){
-   const href=await existing.first().getAttribute('href');await go(href)
+  const existing=existingRows.find(p=>p.code===row.code)
+  if(existing){
+   assert.equal(existing.name,row.name);assert.equal(existing.origin,'crystocraft')
+   const href='/crystal-components/'+existing.id;await go(href)
    await page.getByRole('heading',{name:'Edit component',exact:true}).waitFor()
    assert.equal(await page.getByLabel('Catalogue code').inputValue(),row.code)
    assert.equal(await page.getByLabel('Product name').inputValue(),row.name)
