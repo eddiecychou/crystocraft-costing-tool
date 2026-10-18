@@ -62,9 +62,11 @@ try {
    await page.reload();await page.getByLabel('Intended application').waitFor()
    assert.equal(await page.getByLabel('Intended application').inputValue(),'Hotel lighting panel — quotation from drawing')
    for(const width of [320,375,414,1280]){
-    await page.setViewportSize({width,height:900})
+    await page.setViewportSize({width,height:900});await page.waitForTimeout(250)
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
    }
+   assert.equal(await page.getByRole('heading',{name:/^Enquiry/}).count(),1)
+   await page.waitForFunction(()=>{const images=[...document.querySelectorAll('img[src^="blob:"]')];return images.length>0&&images.every(i=>i.complete&&i.naturalWidth>0)},null,{timeout:60000})
    await page.screenshot({path:out+'/fabric-project-enquiry-'+new URL(base).hostname+'.png',fullPage:true})
    await page.getByRole('button',{name:'Remove',exact:true}).first().click()
    await page.getByRole('button',{name:'Remove',exact:true}).first().click()
