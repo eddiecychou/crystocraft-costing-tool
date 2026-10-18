@@ -9,7 +9,11 @@ identity/revision, intended application and notes; the existing private drawing
 control remains on Enquiry. Physical sample requests remain available in the
 same form. Pricing stays on quotation from actual drawings/application.
 The combined catalogue PDF includes one Fabric page.
-Validation/release progress: [Fabric merge evidence](docs/plans/V8.19-CRYSTAL-FABRIC-RELEASE.md).
+Released: f97b230c / Netlify 6ad52d74f682b72b45f98944. Fresh admin/customer
+sign-ins, protected photos, exact Fabric/physical sample enquiries (without live
+submission), refresh, four responsive widths and actual four-page PDF pass on
+candidate and production. No Firebase rules change was needed.
+See [Fabric merge evidence](docs/plans/V8.19-CRYSTAL-FABRIC-RELEASE.md).
 
 # V8.19 — Crystal Components catalogue — 19 October 2026
 
