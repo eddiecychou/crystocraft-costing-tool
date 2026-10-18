@@ -331,8 +331,10 @@ emulator job. App and private read-only credentials deployed with fresh two-role
 ### Customizer / Crystal Fabric Studio / swatches → see `MARKETING-WORKFLOW.md` §Artgen
 
 **V8.19, 19 October 2026:** Firebase swatch migration and simple OC uploader
-are implemented as a candidate; see [release evidence](../plans/V8.19-SWATCH-MIGRATION-RELEASE.md)
-for actual rules/import/app states. Existing swatch routes and capability remain.
+are released on production; see [release evidence](../plans/V8.19-SWATCH-MIGRATION-RELEASE.md)
+for rules/import/app states and both-role verification. 17 colours / 156 photos
+(468 immutable media files) migrated; full private source backup retained.
+Existing swatch routes and capability remain.
 `src/domain/crystalSwatches.js` owns normalization/manifest verification;
 `src/crystalSwatches.js` owns transactions/verified uploads/import; `SwatchEditor`,
 `SwatchMigration`, `SwatchPhoto` provide the UI. `crystal_swatches` is customer-safe;

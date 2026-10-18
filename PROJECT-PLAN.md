@@ -11,11 +11,18 @@ identified original Swarovski/Strass clearance stock, sharing existing physical
 inventory where applicable. Start with the verified Fly export and independent
 Firebase swatch management, then the third catalogue and enquiry/PDF workflow.
 See [V8.19 implementation plan](docs/plans/V8.19-CRYSTAL-COMPONENTS-PLAN.md).
-V8.19 implementation is in progress: verified backup, Firebase sample/media
-code, OC uploader and reviewed resumable import are built and tested. Additive
-rules are deployed; import and final app gates are tracked separately in
-[release evidence](docs/plans/V8.19-SWATCH-MIGRATION-RELEASE.md). The full third
-catalogue, inventory links and project-quote flow remain later phases.
+First delivery is released: **17 colours / 156 original swatch photos** in
+Firebase, with display/thumbnail versions and a simple OC upload/edit screen.
+Use **Swatch Library → Upload swatch**; new uploads are drafts until published.
+Originals and the full 170-file Fly backup are preserved; the renderer stays
+parked. No stock or selling prices changed. App source `7c8389c6`, production
+`6ad4f0818b356a3a0183e951`; additive rules and complete data readback passed.
+Fresh admin/customer checks passed on candidate and production at all four
+widths, including loaded photos and sample enquiry “On quotation”. See
+[release evidence](docs/plans/V8.19-SWATCH-MIGRATION-RELEASE.md).
+The full third catalogue, inventory links and project-quote flow remain later
+phases; fabric quotes use actual drawings and application details.
+
 
 # 17 October 2026 — Customer merge preserves both workspaces
 
