@@ -8,7 +8,10 @@ while the chosen customer stays pinned once. Summary period/update controls are
 under a collapsed Summary settings disclosure, after the customer picker.
 The shared customer page also places tasks before context, keeping its existing
 500-character summary preview. No task data, summary caches, AI prompts, ingestion,
-due counts or access rules are changed. Verification/release evidence:
+due counts or access rules are changed. Released: ddf0475d / Netlify
+6ad61e993a30c3fb3e803924. Fresh admin/customer sign-ins, 24 real customer cards,
+summary review/manual editors, customer detail, catalogue, refresh and four
+dashboard widths pass on candidate and production. Release evidence:
 [dashboard actions first](docs/plans/V8.19-DASHBOARD-TASK-FIRST-RELEASE.md).
 
 # V8.19 — Crystal Fabric merged into Crystal Components — 19 October 2026
