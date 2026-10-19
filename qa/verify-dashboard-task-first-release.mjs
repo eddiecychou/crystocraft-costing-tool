@@ -31,11 +31,15 @@ try{
    await page.getByText('Loading summaries and tasks…',{exact:true}).waitFor({state:'hidden',timeout:60000})
    const layout=await cards.evaluateAll(els=>els.map(el=>{
     const task=el.querySelector('ul[aria-label="To-do list"]'),summary=el.querySelector('section[aria-label="Email and conversation summary"]'),preview=summary?.querySelector('p[id]')
-    return {actionsBeforeContext:!!(task.compareDocumentPosition(summary)&4),previewCharacters:Array.from(preview?.textContent||'').length}
+    return {openTasks:task.children.length,actionsBeforeContext:!!(task.compareDocumentPosition(summary)&4),previewCharacters:Array.from(preview?.textContent||'').length}
    }))
    assert.ok(layout.every(x=>x.actionsBeforeContext&&x.previewCharacters<=201));result.customer_cards=layout.length
-   const expanded=cards.filter({has:page.getByRole('button',{name:'Read full summary',exact:true})}).first()
-   await expanded.waitFor({timeout:60000})
+   let sawContextOnly=false;for(const entry of layout){if(!entry.openTasks)sawContextOnly=true;else assert.equal(sawContextOnly,false,'Customer actions must precede context-only cards')}
+   const expandable=cards.filter({has:page.getByRole('button',{name:'Read full summary',exact:true})}).first()
+   await expandable.waitFor({timeout:60000})
+   const referenceHref=await expandable.locator('a[href^="/customers/"]').first().getAttribute('href')
+   // Bind identity before the toggle changes its label; do not select another card.
+   const expanded=cards.filter({has:page.locator('a[href="'+referenceHref+'"]')}).first()
    const taskText=await expanded.getByRole('list',{name:'To-do list',exact:true}).textContent()
    await expanded.getByRole('button',{name:'Read full summary',exact:true}).click()
    assert.ok(Array.from(await expanded.locator('p[id]').textContent()).length>200)
@@ -56,8 +60,10 @@ try{
    await page.reload();await page.getByRole('heading',{name:'Customer to-do list',exact:true}).waitFor()
    await cards.first().waitFor({timeout:60000})
    const customerLink=cards.first().locator('a[href^="/customers/"]').first()
-   await customerLink.click();await page.locator('section[aria-label^="Summary and to-do"]').waitFor({timeout:60000})
+   await customerLink.click();await page.waitForURL(u=>u.pathname.startsWith('/customers/'),{timeout:60000})
+   await page.getByRole('heading',{name:'Customer to-do',exact:true}).waitFor({timeout:60000})
    const detail=page.locator('section[aria-label^="Summary and to-do"]').first()
+   await detail.waitFor({timeout:60000})
    await detail.getByRole('button',{name:'Add note',exact:true}).click();await detail.getByLabel('Reference note',{exact:true}).waitFor();await detail.getByRole('button',{name:'Cancel',exact:true}).click()
    await page.reload();await detail.waitFor({timeout:60000})
    await go('/products');await page.getByRole('heading',{name:'Products',exact:true}).waitFor()
