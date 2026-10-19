@@ -80,7 +80,7 @@ before(async()=>{
   b.onResolve({filter:/firebase\/firestore$|\/firebase$|domain\/customerWorkItems$|domain\/customer$|domain\/weeklySummary$|domain\/customerPipeline$|\/shipping$/},a=>({path:a.path,namespace:'fixture'}))
   b.onLoad({filter:/.*/,namespace:'fixture'},a=>({loader:'js',contents:a.path==='firebase/firestore'?`export const doc=(...a)=>a.slice(1).join('/');export const collection=(...a)=>a.slice(1).join('/');export const collectionGroup=(db,name)=>'group/'+name;export const query=x=>x;export const onSnapshot=(path,fn)=>{const rows=globalThis.__dashboardRows[path]||[];fn({docs:rows.map((r,i)=>({id:r.id||String(i),data:()=>r,ref:{parent:{parent:{id:'c1',parent:{id:'customers'}}}}})),exists:()=>true,data:()=>({items:[{customerId:'c1',digest:'Fixture summary'}]})});return()=>{}};`
    :a.path.endsWith('/firebase')?'export const db={};'
-   :a.path.endsWith('customerWorkItems')?'export const useCustomerWorkItems=()=>({items:[],loading:false,error:""});export async function saveCustomerWorkItem(){};'
+   :a.path.endsWith('customerWorkItems')?'export const useCustomerWorkItems=()=>({items:globalThis.__dashboardWork||[],loading:false,error:""});export async function saveCustomerWorkItem(){};'
    :a.path.endsWith('weeklySummary')?'export async function generateWeeklySummary(days){globalThis.__dashboardAiCalls.push(days);return {items:[]}};'
    :a.path.endsWith('customerPipeline')?'export async function savePipelineDecision(){};export async function suggestCustomerPipeline(customers,progress,days){globalThis.__dashboardSuggestionCalls.push(days);return 0};'
    :a.path.endsWith('/shipping')?'export const orderStatusOf=v=>({label:v});export const orderUc=o=>o.uc_no;'
@@ -117,15 +117,15 @@ test('open editor submits its original revision even if a newer position arrives
 test('every real Dashboard figure immediately replaces general summaries with its content',async()=>{
  globalThis.__dashboardRows={customers:[{id:'c1',company_name:'QA',sales_pipeline:{...emptyPipeline(),status:'active',detail:'Current repeat request'}}],orders:[{id:'o1',customer_id:'c1',status:'confirmed',order_date:new Date().toISOString().slice(0,10),uc_no:'QA-ONLY'}],'group/enquiries':[{id:'e1',follow_up_date:{seconds:1000},description:'Old task',status:'Open'}]}
  await mount(Dashboard,{},async h=>{
- assert.ok([...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer Summary & To-do'))
+ assert.ok([...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer to-do list'))
  assert.ok(!h.textContent.includes('Current repeat request'));assert.ok(!button(h,'Suggest from summaries'))
  for(const name of ['Pipeline','Follow-ups Due','In Production','New Orders']){
   const card=[...h.querySelectorAll('button')].find(b=>[...b.querySelectorAll('p')].some(p=>p.textContent===name));assert.ok(card);await act(async()=>card.click())
-  assert.ok(button(h,'Back to summaries'));assert.ok(![...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer Summary & To-do'))
+  assert.ok(button(h,'Back to to-do list'));assert.ok(![...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer to-do list'))
   if(name==='Pipeline')assert.match(h.textContent,/Current repeat request/)
   else if(name==='Follow-ups Due')assert.match(h.textContent,/Old task/)
   else assert.match(h.textContent,/QA-ONLY/)
-  await act(async()=>button(h,'Back to summaries').click());assert.ok([...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer Summary & To-do'))
+  await act(async()=>button(h,'Back to to-do list').click());assert.ok([...h.querySelectorAll('h2')].some(e=>e.textContent==='Customer to-do list'))
  }
  });delete globalThis.__dashboardRows
 })
@@ -230,4 +230,25 @@ test('completed inactive customers are omitted on targeted retry, never staged a
   calls++;if(calls===1)return ai({suggestions:[{...suggestion,status:'inactive',request_kind:'none',all_requests_resolved:true}]})
   assert.match(JSON.parse(opts.body).messages[0].content,/already inactive: omit/);return ai({suggestions:[]})
  });assert.equal(response.status,200);assert.deepEqual((await response.json()).suggestions,[]);assert.equal(calls,2)
+})
+
+test('Dashboard keeps undated and waiting customer actions ahead of summary-only context',async()=>{
+ globalThis.__dashboardRows={customers:[
+  {id:'c1',company_name:'A summary only'},
+  {id:'undated',company_name:'Z open task'},
+  {id:'waiting',company_name:'Z waiting task'},
+  {id:'future',company_name:'Future dated task'},
+  {id:'note',company_name:'Reference note only'},
+ ]}
+ globalThis.__dashboardWork=[
+  {id:'undated-task',customerId:'undated',kind:'task',state:'todo',text:'Follow up without a due date'},
+  {id:'waiting-task',customerId:'waiting',kind:'task',state:'waiting',text:'Await buyer feedback'},
+  {id:'future-task',customerId:'future',kind:'task',state:'todo',due_on:'2099-01-01',text:'Planned follow-up'},
+  {id:'note-only',customerId:'note',kind:'note',state:'todo',text:'Reference background'},
+ ]
+ try{await mount(Dashboard,{},async h=>{
+  const regions=[...h.querySelectorAll('section[aria-label^="Summary and to-do"]')]
+  assert.deepEqual(regions.map(r=>r.querySelector('a').textContent),['Future dated task','Z open task','Z waiting task','A summary only','Reference note only'])
+  assert.equal(h.querySelector('details').open,false)
+ })}finally{delete globalThis.__dashboardRows;delete globalThis.__dashboardWork}
 })

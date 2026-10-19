@@ -129,3 +129,24 @@ test('collapsing returns the shortened summary to view, expansion does not force
   await act(async()=>button(host,'Show less').click());assert.equal(calls.length,1);assert.equal(calls[0].id,host.querySelector('p[id]').id);assert.equal(calls[0].options.block,'start')
  },{digest:longSummary,collapseSummary:true})}finally{dom.window.HTMLElement.prototype.scrollIntoView=original}
 })
+
+test('tasks, reference notes and conversation context are separate and appear in action-first order',async()=>mount(async host=>{
+ const taskList=host.querySelector('ul[aria-label="To-do list"]'),notes=host.querySelector('ul[aria-label="Reference notes"]'),summary=host.querySelector('section[aria-label="Email and conversation summary"]')
+ assert.ok(taskList.compareDocumentPosition(notes)&4);assert.ok(notes.compareDocumentPosition(summary)&4)
+ assert.match(taskList.textContent,/Action to follow up/);assert.doesNotMatch(taskList.textContent,/Private reference/)
+ assert.match(notes.textContent,/Private reference/);assert.doesNotMatch(notes.textContent,/Action to follow up/)
+ const preview=summary.querySelector('p[id]')
+ assert.ok(preview.textContent.length<=201)
+ await act(async()=>button(host,'Read full summary').click());assert.equal(preview.textContent,longSummary)
+ await act(async()=>button(host,'Add task').click())
+ assert.ok(taskList.compareDocumentPosition(summary)&4)
+ assert.equal(host.querySelectorAll('form').length,1)
+ assert.ok(host.querySelector('form').compareDocumentPosition(taskList)&4)
+ await act(async()=>button(host,'Cancel').click())
+ await act(async()=>button(host,'Add note').click())
+ assert.ok(taskList.compareDocumentPosition(host.querySelector('form'))&4)
+ assert.ok(host.querySelector('form').compareDocumentPosition(notes)&4)
+},{digest:longSummary,collapseSummary:true,summaryPreviewLength:200,items:[
+ {id:'reference',source:'work_item',kind:'note',state:'todo',text:'Private reference'},
+ {id:'action',source:'work_item',kind:'task',state:'waiting',text:'Action to follow up'},
+],saveItem:async()=>assert.fail('Reviewing context and opening editors must not save')}))

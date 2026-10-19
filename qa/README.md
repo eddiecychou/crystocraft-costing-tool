@@ -335,3 +335,23 @@ a live enquiry or saves a live QA product/drawing/stock record.
 scripts/setup-crystal-catalogue.mjs is separate owner-requested business setup, not QA:
 default prints the reviewed local manifest; --apply uses the real OC editor for only the
 three reviewed own components. It never imports original stock or posts a ledger movement.
+
+
+## V8.19 dashboard actions first
+
+Run `node qa/dashboard-summary-preview.mjs` (fictional reads/writers) and
+`node qa/dashboard-task-first-browser.mjs` for 320/375/414/1280 task-before-summary,
+200-character preview, full-text review/manual-task-editor, collapsed settings and
+period-independent task checks. `--before` captures metrics against the pre-change
+bundle for comparison; do not rebuild that baseline after changing source.
+The existing `summary-mobile-preview.mjs` + /audit covers both actual pages inside
+Layout at three phone widths, including all channel summary toggles.
+`npm run test:workspace-sync` retains real Firestore-emulator cross-page task,
+note, legacy carry-over and due/midnight/timezone coverage.
+
+For release, `node qa/verify-dashboard-task-first-release.mjs <https-url>` uses
+the existing authorized local QA credentials for fresh admin/customer password
+sign-ins. It reviews the actual dashboard, customer task/note editors (cancelled),
+protected internal routing, catalogue/detail and refresh. No Save, Done, Archive,
+AI regeneration, emails or live fixtures. Follow RELEASE-WORKFLOW.md on candidate
+and production; the served-Firebase probe remains a separate configuration check.

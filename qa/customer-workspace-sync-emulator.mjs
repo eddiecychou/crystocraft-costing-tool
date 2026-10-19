@@ -185,7 +185,7 @@ test('Follow-ups Due tile and already-open drilldown stay in agreement during ed
  await edit(v.c(),'Future then overdue','Future then overdue',{date:FUTURE});await panelCount(0);assert.match(duePanel(v.dash).textContent,/No overdue tasks/)
  await click(row(v.c(),'First overdue'),'Reopen');await panelCount(1,'First overdue')
  await edit(workspace(duePanel(v.dash)),'First overdue','First overdue',{date:FUTURE});await panelCount(0)
- await click(v.dash,'Back to summaries');await mirrored(v,'First overdue',{date:FUTURE});await expectDue(v,0)
+ await click(v.dash,'Back to to-do list');await mirrored(v,'First overdue',{date:FUTURE});await expectDue(v,0)
 })
 test('Follow-ups Due counts tasks per filtered customer and ignores notes, completed work and summary period',async t=>{
  const v=await fixture(t,{withCategories:true})

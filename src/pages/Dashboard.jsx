@@ -8,7 +8,7 @@ import CustomerWorkspace from '../components/CustomerWorkspace'
 import PipelinePanel from '../components/CustomerPipeline'
 import useOcToday from '../hooks/useOcToday'
 import useSummaryPeriod from '../hooks/useSummaryPeriod'
-import {SUMMARY_PERIODS,summaryCacheId} from '../customerSummary'
+import {SUMMARY_PERIODS,summaryCacheId,summaryPeriodLabel} from '../customerSummary'
 import { useCustomerWorkItems } from '../domain/customerWorkItems'
 import { combineWorkItems, hasOpenWork } from '../customerWorkItems'
 import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
@@ -157,14 +157,15 @@ export default function Dashboard() {
       ? dueList.some(i => i.customerId === c.id)
       : c.id === selectedCustomer || digestByCustomer.has(c.id) || hasOpenWork(groupedWork.get(c.id) || []))
   ).sort((a,b) => {
-    const due = c => (groupedWork.get(c.id) || []).filter(i => i.kind === 'task' && i.state !== 'done' && i.due_on).map(i => i.due_on).sort()[0] || '9999'
-    return due(a).localeCompare(due(b)) || (a.company_name || '').localeCompare(b.company_name || '')
+    const tasks = c => (groupedWork.get(c.id) || []).filter(i => i.kind === 'task' && i.state !== 'done')
+    const aTasks = tasks(a), bTasks = tasks(b)
+    const due = items => items.filter(i => i.due_on).map(i => i.due_on).sort()[0] || '9999'
+    return Number(!aTasks.length) - Number(!bTasks.length) || due(aTasks).localeCompare(due(bTasks)) || (a.company_name || '').localeCompare(b.company_name || '')
   })
 
   function customerWorkspace(c) { return <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
-          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink collapseSummary
-          summaryDays={summaryPeriod} sourceLimited={digestByCustomer.get(c.id)?.sourceLimited}
-          generatedAt={formatOcDateTime(weeklySummary?.generatedAt?.toDate?.(), {}, 'en-GB')} /> }
+          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink collapseSummary summaryPreviewLength={200}
+          summaryDays={summaryPeriod} sourceLimited={digestByCustomer.get(c.id)?.sourceLimited} /> }
 
   const filterConfig = {
     quotes: { title:'In Production', empty:'No orders currently in production', items:inProductionOrders },
@@ -270,7 +271,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {activeFilter && <button className="text-sm text-brand-600 underline mb-4 min-h-[40px]" onClick={() => setActiveFilter(null)}>Back to summaries</button>}
+      {activeFilter && <button className="text-sm text-brand-600 underline mb-4 min-h-[40px]" onClick={() => setActiveFilter(null)}>Back to to-do list</button>}
       {activeFilter === 'due' && <div className="card mb-6" aria-label="Follow-ups due">
         <h2 className="text-base p-4 border-b border-warm-grey">Follow-ups Due · {dueList.length}</h2>
         {(weeklyError || work.error) && <p role="alert" className="p-4 text-sm text-brand-600">{weeklyError || work.error}</p>}
@@ -299,26 +300,30 @@ export default function Dashboard() {
 
       {!activeFilter && (<div className="card mb-6">
         <div className="p-4 border-b border-warm-grey flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-base">Customer Summary &amp; To-do</h2><p className="text-xs text-ink-60 mt-1">Your saved conversation summaries, tasks and notes. Unfinished tasks stay until done.</p></div>
-          <button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Updating AI summaries…' : 'Update AI summaries'}</button>
-          <div className="w-full">
-            <ConversationWindow value={summaryPeriod} onChange={setSummaryPeriod} disabled={weeklyGenerating} />
-            <p className="text-xs text-ink-60 mt-2">Update AI summaries reads already-synced email, WhatsApp and interaction history for this window. It does not fetch new messages or prepare Pipeline suggestions.</p>
-          </div>
+          <div><h2 className="text-base">Customer to-do list</h2><p className="text-xs text-ink-60 mt-1">Your tasks first. Review each customer's summary when planning new follow-ups.</p></div>
           <label className="text-sm w-full">Find a customer to add a task or note
             <select className="input mt-1" value={selectedCustomer} onChange={e => { setSelectedCustomer(e.target.value); setActiveFilter(null) }}>
               <option value="">Choose customer…</option>{[...customers].sort((a,b) => (a.company_name || '').localeCompare(b.company_name || '')).map(c => <option key={c.id} value={c.id}>{c.company_name || c.contact_name || c.id}</option>)}
             </select>
           </label>
-          <p className="text-xs text-ink-60 w-full">Choose a customer to show their Add task and Add note buttons directly below.</p>
+          <details className="w-full">
+            <summary className="text-sm text-ink-60 cursor-pointer min-h-11 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600">Summary settings · Last {summaryPeriodLabel(summaryPeriod)}</summary>
+            <div className="mt-2 space-y-3">
+              <ConversationWindow value={summaryPeriod} onChange={setSummaryPeriod} disabled={weeklyGenerating} />
+              <div className="flex flex-wrap items-center gap-3"><button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Updating AI summaries…' : 'Update AI summaries'}</button>
+                {weeklySummary?.generatedAt && <p className="text-xs text-ink-60">Updated {formatOcDateTime(weeklySummary.generatedAt?.toDate?.(), {}, 'en-GB')}</p>}
+              </div>
+              <p className="text-xs text-ink-60">Uses already-synced conversations. Your tasks stay unchanged.</p>
+            </div>
+          </details>
         </div>
         {customerMap[selectedCustomer] && customerWorkspace(customerMap[selectedCustomer])}
         {(weeklyError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{weeklyError || work.error}</p>}
         {(weeklyLoading || work.loading || loading) && <p className="text-sm text-ink-60 p-4">Loading summaries and tasks…</p>}
         {summaryProgress&&<p role="status" className="text-sm text-ink-60 p-4">{summaryProgress}</p>}
-        {!weeklyLoading&&!weeklySummary&&<p className="text-sm text-ink-60 p-4">No saved summaries for this period yet. Click Update AI summaries to prepare them. Your tasks and Pipeline are unchanged.</p>}
+        {!weeklyLoading&&!weeklySummary&&<p className="text-sm text-ink-60 p-4">No saved summaries for this period. You can still add tasks; summaries can be prepared in Summary settings.</p>}
         {workspaceCustomers.filter(c => c.id !== selectedCustomer).map(customerWorkspace)}
-        {!selectedCustomer && !loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'due' ? 'No tasks due today or overdue.' : 'No recent summaries or outstanding tasks. Choose a customer above to get started.'}</p>}
+        {!selectedCustomer && !loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'due' ? 'No tasks due today or overdue.' : 'No outstanding tasks or recent summaries. Choose a customer above to add a task.'}</p>}
       </div>
       )}
 

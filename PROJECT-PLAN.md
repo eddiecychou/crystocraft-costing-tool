@@ -1,3 +1,16 @@
+# V8.19 — Dashboard customer actions first — 20 October 2026
+
+Each customer card now leads with To-do, followed by separate reference notes and
+a quieter Email & conversation summary panel. Dashboard summaries preview up to
+200 characters with Read full summary; saved full text is retained. Customers with
+unfinished tasks (including undated/Waiting) precede customers with only summaries,
+while the chosen customer stays pinned once. Summary period/update controls are
+under a collapsed Summary settings disclosure, after the customer picker.
+The shared customer page also places tasks before context, keeping its existing
+500-character summary preview. No task data, summary caches, AI prompts, ingestion,
+due counts or access rules are changed. Verification/release evidence:
+[dashboard actions first](docs/plans/V8.19-DASHBOARD-TASK-FIRST-RELEASE.md).
+
 # V8.19 — Crystal Fabric merged into Crystal Components — 19 October 2026
 
 Crystal Fabric now has one catalogue card in OC and the customer portal, derived
