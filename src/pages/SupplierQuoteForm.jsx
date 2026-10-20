@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, serverTimestamp, orderBy, query } from 'firebase/firestore'
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, runTransaction, serverTimestamp, orderBy, query } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage, authHeader } from '../firebase'
 import { CURRENCIES } from '../constants'
@@ -12,6 +12,7 @@ export default function SupplierQuoteForm() {
   const navigate = useNavigate()
   const isEdit = Boolean(quoteId)
   const fileIdRef = useRef(0)
+  const originalQuoteRef = useRef(null)
 
   const [suppliers, setSuppliers] = useState([])
   const [showCopyPicker, setShowCopyPicker] = useState(false)
@@ -44,6 +45,10 @@ export default function SupplierQuoteForm() {
   const [productName, setProductName]     = useState('')
   const [componentName, setComponentName] = useState('')
   const [extractError, setExtractError]   = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [supplierFiles, setSupplierFiles] = useState(null)
+  const [supplierFilesLoading, setSupplierFilesLoading] = useState(false)
+  const [supplierFilesError, setSupplierFilesError] = useState('')
 
   useEffect(() => {
     const loads = [
@@ -59,8 +64,7 @@ export default function SupplierQuoteForm() {
         getDoc(doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', quoteId)).then(snap => {
           if (snap.exists()) {
             const d = snap.data()
-            setForm(f => ({
-              ...f,
+            const loaded = {
               supplier_id: d.supplier_id || '',
               supplier_name: d.supplier_name || '',
               unit_cost: d.unit_cost ?? '',
@@ -73,7 +77,9 @@ export default function SupplierQuoteForm() {
               production_lead_time_days: d.production_lead_time_days ?? '',
               is_preferred: d.is_preferred || false,
               notes: d.notes || '',
-            }))
+            }
+            setForm(loaded)
+            originalQuoteRef.current = { form: loaded, tiers: d.volume_tiers || [], attachments: d.attachments || [] }
             setExistingAttachments(d.attachments || [])
             setVolumeTiers(d.volume_tiers || [])
           }
@@ -94,12 +100,8 @@ export default function SupplierQuoteForm() {
       isPdf: file.type === 'application/pdf',
       preview: file.type === 'application/pdf' ? null : URL.createObjectURL(file),
     }))
-    setFiles(prev => {
-      if (newFiles.length === 1 && prev.length === 0) {
-        extractFromFile(newFiles[0].file)
-      }
-      return [...prev, ...newFiles]
-    })
+    if (!isEdit && newFiles.length === 1 && files.length === 0) extractFromFile(newFiles[0].file)
+    setFiles(prev => [...prev, ...newFiles])
   }
 
   function handleFileChange(e) {
@@ -121,6 +123,7 @@ export default function SupplierQuoteForm() {
   }
 
   async function extractFromFile(file) {
+    if (isEdit) return
     setExtracting(true)
     setExtractError('')
     try {
@@ -159,6 +162,23 @@ export default function SupplierQuoteForm() {
     } finally {
       setExtracting(false)
     }
+  }
+
+  // Reuse an existing supplier PDF/image; linking does not run extraction or upload.
+  async function loadSupplierFiles() {
+    setSupplierFilesLoading(true); setSupplierFilesError('')
+    const supplierId = form.supplier_id
+    try {
+      const snap = await getDocs(collection(db, 'suppliers', supplierId, 'catalogs'))
+      setSupplierFiles({supplierId, rows:snap.docs.map(d => ({id:d.id, ...d.data()})).filter(f => f.file_url && (f.file_type === 'application/pdf' || f.file_type?.startsWith('image/')))})
+    } catch { setSupplierFilesError('Supplier files could not be loaded. Please retry.') }
+    finally { setSupplierFilesLoading(false) }
+  }
+  function attachSupplierFile(file) {
+    setExistingAttachments(prev => prev.some(a => a.file_url === file.file_url) ? prev : [...prev, {
+      file_url:file.file_url, file_name:file.file_name, file_type:file.file_type === 'application/pdf' ? 'pdf' : 'image',
+      storage_path:file.storage_path || '', supplier_file_id:file.id, ai_extracted:false,
+    }])
   }
 
   async function handleExtractAll() {
@@ -217,6 +237,7 @@ export default function SupplierQuoteForm() {
     e.preventDefault()
     setLoading(true)
     setUploading(true)
+    setSaveError('')
 
     try {
       const path = `products/${productId}/components/${componentId}/quotes`
@@ -235,6 +256,24 @@ export default function SupplierQuoteForm() {
         })
       )
       setUploading(false)
+
+      const original = originalQuoteRef.current
+      const attachmentsOnly = isEdit && original &&
+        JSON.stringify(form) === JSON.stringify(original.form) &&
+        JSON.stringify(volumeTiers) === JSON.stringify(original.tiers)
+      if (attachmentsOnly) {
+        const quoteRef = doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', quoteId)
+        await runTransaction(db, async tx => {
+          const latest = await tx.get(quoteRef)
+          if (!latest.exists() || JSON.stringify(latest.data().attachments || []) !== JSON.stringify(original.attachments)) {
+            throw new Error('Attachments changed in another session. Reopen this quote before saving.')
+          }
+          // Never rewrite approved prices, notes or supplier preference from an open form.
+          tx.update(quoteRef, {attachments:[...existingAttachments, ...uploadedAttachments]})
+        })
+        navigate(`/products/${productId}/components/${componentId}`)
+        return
+      }
 
       const selectedSupplier = suppliers.find(s => s.id === form.supplier_id)
       const payload = {
@@ -274,6 +313,8 @@ export default function SupplierQuoteForm() {
       }
 
       navigate(`/products/${productId}/components/${componentId}`)
+    } catch (err) {
+      setSaveError(err.message || 'Could not save this quote. Your changes are still here.')
     } finally {
       setLoading(false)
       setUploading(false)
@@ -304,8 +345,8 @@ export default function SupplierQuoteForm() {
 
       {/* Image Upload */}
       <div className="card p-4 mb-4">
-        <h2 className="text-sm text-ink-80 mb-3">Quote Images / Screenshots</h2>
-        <p className="text-xs text-ink-60 mb-3">Upload WeChat or WhatsApp screenshots — AI will try to extract the pricing data automatically.</p>
+        <h2 className="text-sm text-ink-80 mb-3">Quote attachments</h2>
+        <p className="text-xs text-ink-60 mb-3">{isEdit ? 'Attach source files without replacing the saved pricing. Changes are saved with the quote.' : 'Upload WeChat or WhatsApp screenshots or a PDF — AI will try to extract the pricing data automatically.'}</p>
 
         <label
           className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
@@ -320,6 +361,18 @@ export default function SupplierQuoteForm() {
           <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={handleFileChange} />
         </label>
 
+        {form.supplier_id && <div className="mt-3 space-y-2">
+          <button type="button" disabled={supplierFilesLoading} className="btn-secondary text-xs min-h-11" onClick={loadSupplierFiles}>{supplierFilesLoading ? 'Loading supplier files…' : 'Choose supplier file'}</button>
+          {supplierFilesError && <p role="alert" className="text-sm text-brand-600">{supplierFilesError}</p>}
+          {supplierFiles?.supplierId === form.supplier_id && <ul className="divide-y divide-warm-grey">
+            {supplierFiles.rows.map(file => <li key={file.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <span className="text-sm break-words min-w-0">{file.file_name}</span>
+              <button type="button" disabled={existingAttachments.some(a => a.file_url === file.file_url)} className="btn-secondary text-xs min-h-11" onClick={() => attachSupplierFile(file)}>{existingAttachments.some(a => a.file_url === file.file_url) ? 'Attached' : 'Attach file'}</button>
+            </li>)}
+            {!supplierFiles.rows.length && <li className="text-sm text-ink-60 py-2">No PDF or image files saved for this supplier.</li>}
+          </ul>}
+        </div>}
+
         {files.length > 0 && (
           <div className="mt-3 space-y-2">
             {files.map(f => (
@@ -331,7 +384,7 @@ export default function SupplierQuoteForm() {
                 <button type="button" onClick={() => removeFile(f._id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
               </div>
             ))}
-            {files.length > 1 && (
+            {!isEdit && files.length > 1 && (
               <button type="button" className="btn-secondary w-full justify-center text-xs" onClick={handleExtractAll} disabled={extracting}>
                 {extracting ? 'Extracting…' : `Extract Data from First Image`}
               </button>
@@ -347,7 +400,7 @@ export default function SupplierQuoteForm() {
         {extractError && <p className="text-xs text-red-500 mt-2">{extractError}</p>}
         {existingAttachments.length > 0 && (
           <div className="mt-3">
-            <p className="text-xs text-ink-60 mb-1.5">Saved attachments:</p>
+            <p className="text-xs text-ink-60 mb-1.5">Quote files:</p>
             <div className="flex gap-2 flex-wrap">
               {existingAttachments.map((a, i) => (
                 <div key={i} className="relative group/att">
@@ -374,6 +427,7 @@ export default function SupplierQuoteForm() {
         )}
       </div>
 
+      {saveError && <p role="alert" className="text-sm text-brand-600 mb-3">{saveError}</p>}
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
         {/* Supplier — searchable combobox */}
         <div>
@@ -396,7 +450,7 @@ export default function SupplierQuoteForm() {
         <div>
           <label className="label">Unit Cost *</label>
           <div className="flex gap-2">
-            <input className="input flex-1" type="number" step="0.01" min="0" value={form.unit_cost} onChange={set('unit_cost')} required placeholder="0.00" />
+            <input className="input min-w-0 flex-1" type="number" step="0.001" min="0" value={form.unit_cost} onChange={set('unit_cost')} required placeholder="0.000" />
             <select className="input w-28" value={form.unit_cost_currency} onChange={set('unit_cost_currency')}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
@@ -408,7 +462,7 @@ export default function SupplierQuoteForm() {
           <div className="flex items-center justify-between mb-1">
             <label className="label mb-0">Volume Price Tiers <span className="text-ink-60 font-normal text-xs">(optional — different unit costs at higher quantities)</span></label>
             <button type="button" onClick={() => setVolumeTiers(t => [...t, { min_qty: '', unit_cost: '' }])}
-              className="text-xs text-brand-600 hover:text-brand-800 font-medium">+ Add Tier</button>
+              className="text-xs text-brand-600 hover:text-brand-800 font-medium shrink-0">+ Add Tier</button>
           </div>
           {volumeTiers.length > 0 && (
             <div className="space-y-2">
@@ -417,9 +471,9 @@ export default function SupplierQuoteForm() {
               </div>
               {volumeTiers.map((t, i) => (
                 <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
-                  <input className="input py-1.5 text-sm" type="number" min="1" placeholder="e.g. 500"
+                  <input className="input min-w-0 py-1.5 text-sm" type="number" min="1" placeholder="e.g. 500"
                     value={t.min_qty} onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, min_qty: e.target.value } : r))} />
-                  <input className="input py-1.5 text-sm" type="number" step="0.01" min="0" placeholder="0.00"
+                  <input className="input min-w-0 py-1.5 text-sm" type="number" step="0.001" min="0" placeholder="0.000"
                     value={t.unit_cost} onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, unit_cost: e.target.value } : r))} />
                   <button type="button" onClick={() => setVolumeTiers(t => t.filter((_, j) => j !== i))}
                     className="text-red-300 hover:text-red-500 text-lg leading-none px-1">×</button>
@@ -433,14 +487,14 @@ export default function SupplierQuoteForm() {
         {/* MOQ */}
         <div>
           <label className="label">MOQ (Minimum Order Quantity)</label>
-          <input className="input" type="number" min="0" value={form.moq} onChange={set('moq')} placeholder="e.g. 200" />
+          <input className="input min-w-0" type="number" min="0" value={form.moq} onChange={set('moq')} placeholder="e.g. 200" />
         </div>
 
         {/* Tooling / Sample Cost */}
         <div>
           <label className="label">Tooling / Sample Cost</label>
           <div className="flex gap-2">
-            <input className="input flex-1" type="number" step="0.01" min="0" value={form.tooling_sample_cost} onChange={set('tooling_sample_cost')} placeholder="0.00" />
+            <input className="input min-w-0 flex-1" type="number" step="0.01" min="0" value={form.tooling_sample_cost} onChange={set('tooling_sample_cost')} placeholder="0.00" />
             <select className="input w-28" value={form.tooling_sample_cost_currency} onChange={set('tooling_sample_cost_currency')}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
@@ -453,15 +507,15 @@ export default function SupplierQuoteForm() {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <p className="text-xs text-ink-60 mb-1">Sampling</p>
-              <input className="input" type="number" min="0" value={form.sampling_lead_time_days} onChange={set('sampling_lead_time_days')} placeholder="e.g. 12" />
+              <input className="input min-w-0" type="number" min="0" value={form.sampling_lead_time_days} onChange={set('sampling_lead_time_days')} placeholder="e.g. 12" />
             </div>
             <div>
               <p className="text-xs text-ink-60 mb-1">Tooling</p>
-              <input className="input" type="number" min="0" value={form.tooling_lead_time_days} onChange={set('tooling_lead_time_days')} placeholder="e.g. 15" />
+              <input className="input min-w-0" type="number" min="0" value={form.tooling_lead_time_days} onChange={set('tooling_lead_time_days')} placeholder="e.g. 15" />
             </div>
             <div>
               <p className="text-xs text-ink-60 mb-1">Production</p>
-              <input className="input" type="number" min="0" value={form.production_lead_time_days} onChange={set('production_lead_time_days')} placeholder="e.g. 30" />
+              <input className="input min-w-0" type="number" min="0" value={form.production_lead_time_days} onChange={set('production_lead_time_days')} placeholder="e.g. 30" />
             </div>
           </div>
         </div>
@@ -478,7 +532,7 @@ export default function SupplierQuoteForm() {
           <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder="Any conditions, remarks, or context from the quote…" />
         </div>
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div className="flex gap-3">
             <button type="submit" className="btn-primary" disabled={loading}>
               {uploading ? 'Uploading images…' : loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Quote'}

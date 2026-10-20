@@ -1,3 +1,15 @@
+# V8.19 — Corporate Gift quote precision and safe attachments — 21 October 2026
+
+SupplierQuoteForm now accepts three-decimal main/tier costs and preserves saved
+precision. Existing-quote uploads no longer trigger AI pricing replacement.
+Attachment-only saves update only attachments transactionally, preserving all
+approved terms and concurrent pricing edits; concurrent attachment changes require
+reopening. Choose supplier file reuses an existing supplier PDF/image without
+uploading it again. Narrow-screen cost inputs and action buttons fit at 320px.
+Eight isolated real-form browser cases pass. Candidate/production gates and the
+owner-authorized Feihong PDF link are pending; no live quote write yet.
+See [release evidence](docs/plans/V8.19-SUPPLIER-QUOTE-PRECISION-RELEASE.md).
+
 # V8.19 — Dashboard customer actions first — 20 October 2026
 
 Each customer card now leads with To-do, followed by separate reference notes and

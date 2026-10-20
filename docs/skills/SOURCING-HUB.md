@@ -33,6 +33,21 @@
   backfill modal in `Suppliers.jsx` (an in-app tool, per the no-ad-hoc-write
   rule in `ARCHITECTURE-RULES.md` §0).
 
+### Corporate Gift quote attachments (V8.19, 21 October 2026)
+
+`SupplierQuoteForm.jsx` accepts three-decimal unit costs and volume-tier costs
+(`step=0.001`, placeholder `0.000`) without rounding stored numeric values.
+Automatic file extraction is for new quotes only. Attaching a PDF/image to an
+existing quote does not extract or replace pricing. **Choose supplier file**
+reuses a PDF/image from the selected supplier's existing `catalogs` records;
+it links the original URL/path and source file ID, without another upload.
+When the form and tiers are unchanged, Save Changes runs an attachment-only
+transaction. It preserves every other stored field, including concurrent pricing,
+notes and preference changes, and rejects a concurrent attachment-array change.
+Actual pricing/form edits retain the existing full quote-save workflow.
+Regression browser: `node qa/supplier-quote-precision.mjs` (isolated fixtures).
+Release gate: `node qa/verify-supplier-quote-release.mjs <https-url>` (view-only).
+
 ## 2. Sourcing Workstation — 1688 / Taobao / Alibaba links
 
 The local `mcp/product-writer/` server also offers a narrow corporate-gift
