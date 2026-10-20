@@ -6,8 +6,11 @@ Attachment-only saves update only attachments transactionally, preserving all
 approved terms and concurrent pricing edits; concurrent attachment changes require
 reopening. Choose supplier file reuses an existing supplier PDF/image without
 uploading it again. Narrow-screen cost inputs and action buttons fit at 320px.
-Eight isolated real-form browser cases pass. Candidate/production gates and the
-owner-authorized Feihong PDF link are pending; no live quote write yet.
+Eight isolated real-form browser cases pass. Released 226110ff / Netlify
+6ad76ca6ef1b60863e4fe5be after fresh admin/customer candidate and production gates.
+The existing Feihong PDF is linked to the existing quote. Reopen and full readback
+confirm USD 1.222 / quantity 1000 / USD 155, exact notes and preferred supplier,
+hidden Concept and original image; no duplicate product, quote or upload.
 See [release evidence](docs/plans/V8.19-SUPPLIER-QUOTE-PRECISION-RELEASE.md).
 
 # V8.19 — Dashboard customer actions first — 20 October 2026
