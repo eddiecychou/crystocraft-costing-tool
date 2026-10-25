@@ -27,7 +27,8 @@ never use [skip ci] or [skip actions] for a release commit. Then run:
 npm run release:ci -- --wait
 ```
 
-The checker binds local HEAD to Netlify COMMIT_REF when supplied, checks the
+The checker binds local HEAD to Netlify COMMIT_REF when supplied, rechecks the
+clean checkout/SHA after waiting, checks the
 latest matching workflow run and that run's current attempt, and requires both
 named jobs to be completed/successful for that exact SHA. Dirty or uncommitted
 files, another SHA, a stale attempt, missing jobs, malformed API data, authentication,

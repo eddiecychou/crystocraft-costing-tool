@@ -8,7 +8,10 @@ The latest run/current attempt and both named job conclusions are checked; pendi
 missing, failed/skipped/cancelled jobs, dirty checkout, mismatched SHA or API errors
 block release. Existing fresh admin/customer gates remain mandatory afterward.
 GitHub workflow now runs for every push/PR so configuration/docs-only commits cannot
-silently lack checks. Gate tests are included in CI/prebuild; no live app change.
+silently lack checks. 40 guard tests pass, including the real Netlify-command build sentinel and
+checkout changes during a wait. Bootstrap GitHub run 40190870248 passes both jobs;
+the live preflight waited for its exact SHA and returned PASS. Guard tests are
+included in CI/prebuild; no live app change.
 Implementation/verification: [CI gate evidence](docs/plans/V8.19-GITHUB-RELEASE-GATE.md).
 
 # V8.19 — Dashboard summary updating status across navigation — 25 October 2026

@@ -81,6 +81,7 @@ async function main() {
   if (process.argv.slice(2).some(arg => arg !== '--wait')) throw Error('Usage: node scripts/check-release-ci.mjs [--wait]')
   const sha = releaseCommit()
   const result = await waitForReleaseCi(sha, {wait:process.argv.includes('--wait'), onPending:r=>console.log(`[release CI] ${sha.slice(0,12)}: ${r.reason}`)})
+  if (releaseCommit() !== sha) throw Error('Checkout changed while waiting for GitHub. Deployment blocked.')
   console.log(`[release CI] PASS ${sha}: ${result.jobs.join(' + ')}; attempt ${result.attempt}. ${result.url}`)
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
