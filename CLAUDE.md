@@ -30,6 +30,8 @@ production, with per-role evidence.** Use `npm run release:ci -- --wait` and
 [skip netlify] CI-first pushes. Netlify's build command enforces the same check;
 manual prebuilt uploads also require this preflight. Local build/MCP tests, a valid
 API key or a restored admin session alone do not close a release.
+Follow the [required release checklist](docs/skills/RELEASE-WORKFLOW.md#required-release-checklist)
+and save its evidence template with each release record.
 
 | File | What it holds |
 |---|---|

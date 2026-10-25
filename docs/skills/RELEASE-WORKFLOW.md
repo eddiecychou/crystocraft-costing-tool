@@ -5,6 +5,30 @@ MCP-only changes and emergency repairs. Read with `ARCHITECTURE-RULES.md` §7.
 This workflow does not authorize pushes, deployment, account creation or changes
 to credentials/permissions.
 
+## Required release checklist
+
+Use this checklist for every release; the sections below define each gate.
+
+- [ ] Preserve unrelated work, synchronize the repository, and prepare a clean,
+  committed release checkout. Record the full release SHA.
+- [ ] Push with `[skip netlify]`, then run `npm run release:ci -- --wait`.
+  Record the latest GitHub run URL/attempt and **PASS for both `product-search`
+  and `customer-merge-emulator` on that exact SHA**. Any other result blocks deployment.
+- [ ] Run the required build, lint and relevant tests with verified Firebase
+  configuration. Recheck CI immediately before uploading the candidate.
+- [ ] Verify the candidate's served configuration and fresh admin **and** approved
+  customer sign-ins, including every routing/data/access/refresh/runtime check below.
+- [ ] With release authorization, publish approved rules separately when needed,
+  recheck CI for the unchanged commit, and publish the verified candidate artifact.
+- [ ] Verify the actually published production build, configuration, and fresh
+  admin **and** customer sign-ins with every required check again.
+- [ ] Save the evidence below in `docs/plans/`. Keep documentation/test-only
+  closeout pushes marked `[skip netlify]`; confirm the published deploy is unchanged.
+
+If the release commit changes, both GitHub jobs must pass again before another
+deployment. If the candidate artifact changes, repeat candidate verification.
+Do not close a release while a required result is missing, FAIL or BLOCKED.
+
 ## GitHub gate — before ANY candidate or production deployment
 
 Owner requirement, 25 October 2026: both jobs in **Product search regressions**
@@ -28,8 +52,8 @@ npm run release:ci -- --wait
 ```
 
 The checker binds local HEAD to Netlify COMMIT_REF when supplied, rechecks the
-clean checkout/SHA after waiting, checks the
-latest matching workflow run and that run's current attempt, and requires both
+clean checkout/SHA after waiting, checks the latest matching workflow run and
+that run's current attempt, and requires both
 named jobs to be completed/successful for that exact SHA. Dirty or uncommitted
 files, another SHA, a stale attempt, missing jobs, malformed API data, authentication,
 network/rate-limit failures and a 15-minute wait timeout stop the release. Record
@@ -61,8 +85,9 @@ This workflow does not grant publishing permission.
 
 ## Prepare the exact candidate
 
-After BOTH GitHub jobs pass, preserve dirty checkouts. Record commit, GitHub run
-ID/attempt and both job results, Netlify site and candidate deploy ID/URL.
+Preserve unrelated dirty work and synchronize before preparing the clean release
+checkout. After BOTH GitHub jobs pass, record commit, GitHub run ID/attempt and
+both job results, Netlify site and candidate deploy ID/URL.
 Build from verified public Firebase configuration, never masked CLI/connector
 values or invented placeholders. Do not disable the existing Vite guard.
 
@@ -104,9 +129,9 @@ credentials locally/emulated, not by repeatedly failing real-account sign-ins.
 Missing credentials, an unavailable QA customer, an unauthorized preview domain
 or any failed check is **BLOCKED**, not SKIP/PASS. Ask for minimum operator help;
 do not change Auth domains or credentials automatically. Do not publish a routine
-release until both roles pass. Emergency publication before the gate requires
+release until both roles pass. Emergency publication before a role gate requires
 explicit owner approval of the named gap; keep it labelled unverified and finish
-the missing checks immediately afterward. No implicit emergency bypass.
+the missing checks immediately afterward. This does not bypass the GitHub gate.
 
 ## Publish and repeat on production
 
@@ -139,9 +164,29 @@ state and verification time/timezone. For **each role separately**, record:
 - Expected role/approval, destination URL, data/access/refresh/runtime results.
 - Screenshot without unnecessary customer/financial data; any issues/exceptions.
 
-Results are `PASS`, `FAIL` or `BLOCKED`. Completion requires **both GitHub jobs PASS for the released SHA and all required
-checks PASS for both roles on the current production build**. Never say "login verified"
+Use this evidence template (include the per-role details above):
+
+| Evidence | Recorded result |
+|---|---|
+| Full release SHA | |
+| GitHub run URL/ID and current attempt | |
+| `product-search` on release SHA | PASS / FAIL / BLOCKED |
+| `customer-merge-emulator` on release SHA | PASS / FAIL / BLOCKED |
+| Build, lint, relevant tests and Firebase configuration | |
+| Candidate deploy URL/ID and served bundle | |
+| Candidate fresh admin checks | PASS / FAIL / BLOCKED |
+| Candidate fresh approved-customer checks | PASS / FAIL / BLOCKED |
+| Production deploy URL/ID and served bundle | |
+| Production fresh admin checks | PASS / FAIL / BLOCKED |
+| Production fresh approved-customer checks | PASS / FAIL / BLOCKED |
+| Separate rules release state, or unchanged | |
+| Verification time and timezone; exceptions/blockers | |
+
+Results are `PASS`, `FAIL` or `BLOCKED`. Completion requires **both GitHub jobs
+PASS for the released SHA and all required checks PASS for both roles on the
+current production build**. Never say "login verified"
 from a build, key probe, MCP manifest, mock or restored admin session alone.
 If access is unavailable, report the blocker and request operator verification.
 
-Established by L-61 and the owner's 15 October 2026 two-role release requirement.
+Established by L-61, the owner's 15 October 2026 two-role release requirement,
+and the 25 October 2026 requirement to pass both GitHub jobs before deployment.

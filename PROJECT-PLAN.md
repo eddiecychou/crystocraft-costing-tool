@@ -12,6 +12,10 @@ silently lack checks. 40 guard tests pass, including the real Netlify-command bu
 checkout changes during a wait. Bootstrap GitHub run 40190870248 passes both jobs;
 the live preflight waited for its exact SHA and returned PASS. Guard tests are
 included in CI/prebuild; no live app change.
+Final guard commit 8241d439: both jobs pass in GitHub run 40191153475; the real
+preflight returned PASS for that exact SHA/attempt 1 with a clean checkout.
+The [required release checklist](docs/skills/RELEASE-WORKFLOW.md#required-release-checklist)
+and evidence template are linked from CLAUDE.md for every future release.
 Implementation/verification: [CI gate evidence](docs/plans/V8.19-GITHUB-RELEASE-GATE.md).
 
 # V8.19 — Dashboard summary updating status across navigation — 25 October 2026
