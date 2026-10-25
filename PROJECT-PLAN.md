@@ -8,7 +8,10 @@ with retry available. Collapsed Summary settings also shows Updating.
 No AI prompt, source/cache format, task, Pipeline or permission changes. Refresh
 and closing the tab still interrupt the browser job; this adds no server queue.
 Local store, actual Dashboard/Layout navigation, failure/retry and four-width
-checks pass. Candidate/production release checks pending.
+checks pass. Released d8faf93b / Netlify 6addd8a377b9f6d71afb3888 after fresh admin
+and approved-customer sign-ins on candidate and production. Dashboard/customer
+records, catalogue, access separation, refresh and four widths pass. No live AI
+summary update, task/note/Pipeline change or rules deployment during release QA.
 See [release evidence](docs/plans/V8.19-SUMMARY-UPDATE-STATUS-RELEASE.md).
 
 # V8.19 — Corporate Gift quote precision and safe attachments — 21 October 2026
