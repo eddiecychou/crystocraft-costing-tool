@@ -1,3 +1,16 @@
+# V8.19 — Dashboard summary updating status across navigation — 25 October 2026
+
+Summary update ownership now lives outside the dashboard component. Returning to
+Dashboard while an update runs retains Updating and the customer progress count,
+with Update and period selection disabled. A shared lock prevents duplicate runs;
+completion uses the saved-cache listener, and failure while away stays visible
+with retry available. Collapsed Summary settings also shows Updating.
+No AI prompt, source/cache format, task, Pipeline or permission changes. Refresh
+and closing the tab still interrupt the browser job; this adds no server queue.
+Local store, actual Dashboard/Layout navigation, failure/retry and four-width
+checks pass. Candidate/production release checks pending.
+See [release evidence](docs/plans/V8.19-SUMMARY-UPDATE-STATUS-RELEASE.md).
+
 # V8.19 — Corporate Gift quote precision and safe attachments — 21 October 2026
 
 SupplierQuoteForm now accepts three-decimal main/tier costs and preserves saved

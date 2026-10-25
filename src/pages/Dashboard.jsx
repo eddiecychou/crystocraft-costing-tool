@@ -12,7 +12,7 @@ import {SUMMARY_PERIODS,summaryCacheId,summaryPeriodLabel} from '../customerSumm
 import { useCustomerWorkItems } from '../domain/customerWorkItems'
 import { combineWorkItems, hasOpenWork } from '../customerWorkItems'
 import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
-import { generateWeeklySummary } from '../domain/weeklySummary'
+import useSummaryUpdate from '../hooks/useSummaryUpdate'
 import { orderStatusOf, orderUc } from '../shipping'
 
 // Orders in these statuses are "in production" — committed and being made, but
@@ -40,7 +40,7 @@ const QUOTE_STATUS_BADGE = {
 
 export default function Dashboard() {
   const [summaryPeriod,setSummaryPeriod]=useSummaryPeriod()
-  const [summaryProgress,setSummaryProgress]=useState('')
+  const {running:weeklyGenerating, progress:summaryProgress, error:summaryUpdateError, days:summaryUpdateDays, start:startSummaryUpdate} = useSummaryUpdate()
   const [customers, setCustomers]       = useState([])
   const [orders, setOrders]             = useState([])
   const [allEnquiries, setAllEnquiries] = useState([])
@@ -51,7 +51,6 @@ export default function Dashboard() {
   const [retailFilter, setRetailFilter] = useState(false) // Retail-tagged-only toggle — independent of category
   const [weeklySummary, setWeeklySummary] = useState(null) // { generatedAt, weekStart, items[] } | null (never generated yet)
   const [weeklyLoading, setWeeklyLoading] = useState(true)
-  const [weeklyGenerating, setWeeklyGenerating] = useState(false)
   const [weeklyError, setWeeklyError] = useState('')
 
   function toggleFilter(f) { setActiveFilter(prev => prev === f ? null : f) }
@@ -87,20 +86,11 @@ export default function Dashboard() {
     setWeeklySummary(snap.exists() ? snap.data() : null); setWeeklyLoading(false)
   }, () => { setWeeklyError('The summary could not load. Reload this page or check your access.'); setWeeklyLoading(false) })}, [summaryPeriod])
 
-  async function handleGenerateWeeklySummary() {
-    setWeeklyGenerating(true)
+  function handleGenerateWeeklySummary() {
     setWeeklyError('')
-    setSummaryProgress('Reading already-synced conversations…')
-    try {
-      const result = await generateWeeklySummary(summaryPeriod,(n,total)=>setSummaryProgress(`Summarized ${n} of ${total} customers…`))
-      setWeeklySummary({ ...result, generatedAt: { toDate: () => new Date() }, weekStart: new Date(Date.now() - summaryPeriod * 86400000).toISOString() })
-    } catch (e) {
-      setWeeklyError(e.message || 'Could not generate the weekly summary.')
-    } finally {
-      setWeeklyGenerating(false)
-      setSummaryProgress('')
-    }
+    startSummaryUpdate(summaryPeriod)
   }
+  const summaryError = weeklyError || summaryUpdateError
 
   const customerMap = Object.fromEntries(customers.map(c => [c.id, c]))
 
@@ -274,7 +264,7 @@ export default function Dashboard() {
       {activeFilter && <button className="text-sm text-brand-600 underline mb-4 min-h-[40px]" onClick={() => setActiveFilter(null)}>Back to to-do list</button>}
       {activeFilter === 'due' && <div className="card mb-6" aria-label="Follow-ups due">
         <h2 className="text-base p-4 border-b border-warm-grey">Follow-ups Due · {dueList.length}</h2>
-        {(weeklyError || work.error) && <p role="alert" className="p-4 text-sm text-brand-600">{weeklyError || work.error}</p>}
+        {(summaryError || work.error) && <p role="alert" className="p-4 text-sm text-brand-600">{summaryError || work.error}</p>}
         {dueGroups.map(group => <section key={group.label} aria-label={`${group.label} tasks`}>
           <h3 className={`text-sm p-4 border-b border-warm-grey ${group.label === 'Overdue' ? 'text-brand-600' : 'text-ink'}`}>{group.label} · {group.items.length}</h3>
           {pipelineCustomers.filter(c => group.items.some(i => i.customerId === c.id)).map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || 'Customer'}
@@ -307,7 +297,7 @@ export default function Dashboard() {
             </select>
           </label>
           <details className="w-full">
-            <summary className="text-sm text-ink-60 cursor-pointer min-h-11 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600">Summary settings · Last {summaryPeriodLabel(summaryPeriod)}</summary>
+            <summary className="text-sm text-ink-60 cursor-pointer min-h-11 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600">Summary settings · Last {summaryPeriodLabel(summaryPeriod)}{weeklyGenerating ? ' · Updating…' : ''}</summary>
             <div className="mt-2 space-y-3">
               <ConversationWindow value={summaryPeriod} onChange={setSummaryPeriod} disabled={weeklyGenerating} />
               <div className="flex flex-wrap items-center gap-3"><button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Updating AI summaries…' : 'Update AI summaries'}</button>
@@ -318,9 +308,9 @@ export default function Dashboard() {
           </details>
         </div>
         {customerMap[selectedCustomer] && customerWorkspace(customerMap[selectedCustomer])}
-        {(weeklyError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{weeklyError || work.error}</p>}
+        {(summaryError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{summaryError || work.error}</p>}
         {(weeklyLoading || work.loading || loading) && <p className="text-sm text-ink-60 p-4">Loading summaries and tasks…</p>}
-        {summaryProgress&&<p role="status" className="text-sm text-ink-60 p-4">{summaryProgress}</p>}
+        {weeklyGenerating&&<p role="status" className="text-sm text-ink-60 p-4">Updating AI summaries · Last {summaryPeriodLabel(summaryUpdateDays)}. {summaryProgress}</p>}
         {!weeklyLoading&&!weeklySummary&&<p className="text-sm text-ink-60 p-4">No saved summaries for this period. You can still add tasks; summaries can be prepared in Summary settings.</p>}
         {workspaceCustomers.filter(c => c.id !== selectedCustomer).map(customerWorkspace)}
         {!selectedCustomer && !loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'due' ? 'No tasks due today or overdue.' : 'No outstanding tasks or recent summaries. Choose a customer above to add a task.'}</p>}
