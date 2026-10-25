@@ -16,7 +16,8 @@ CI follow-up: the workspace test fixture had replaced the new hook with null.
 The fixture now retains the real hook/store, blocks AI generation explicitly and
 fails clearly on unconfigured hooks. Full local CI emulator command passes
 112 rule + 39 swatch assertions and 82 Node cases (including 22 page-sync and
-three 11-case timezone runs). Test-only correction; no app/rules deployment.
+three 11-case timezone runs). Correction b221c500: GitHub run 40189560280 passes
+both jobs, including all emulator cases. Test-only correction; no app/rules deployment.
 See [release evidence](docs/plans/V8.19-SUMMARY-UPDATE-STATUS-RELEASE.md).
 
 # V8.19 — Corporate Gift quote precision and safe attachments — 21 October 2026
