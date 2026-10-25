@@ -487,8 +487,14 @@ rewrite `users/{uid}` just because the login page reports an error. See L-61.
 **ALWAYS** state plainly in the commit message what was verified and what was
 not. esbuild-parse is never "verified".
 
-**Deploy order:** rules first (§3) → confirm with user → `git pull --rebase` →
-`git push` → verify live via `src/appInfo.js` `BUILD_TIME` in the sidebar.
+**Deploy order:** preserve/sync checkout → commit and push [skip netlify] →
+BOTH GitHub jobs pass on exact release SHA (`npm run release:ci -- --wait`) →
+build candidate + fresh admin/customer gates → approved rules first when needed
+(§3) → authorized production publication with CI rechecked → fresh production
+admin/customer gates and served BUILD_TIME verification. See RELEASE-WORKFLOW.md;
+a normal push can auto-publish, so do not push unverified code without [skip netlify].
+Netlify's build command fails closed on missing/pending/failed CI. Prebuilt manual
+uploads must explicitly run the same CI guard immediately before deployment.
 
 ### 7a. Measure before you change — "looks fine to me" is always wrong
 

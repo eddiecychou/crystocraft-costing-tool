@@ -22,8 +22,13 @@ variant identity/price and filter tests run in the same command.
 
 `npm run build` runs this suite first through `prebuild`, so failed search checks
 stop a normal application build/deploy, including Netlify Git deployments.
-GitHub Actions also runs the suite on relevant source/QA/dependency/workflow
-pushes and pull requests, with a manual Run workflow option. See
+GitHub Actions runs both product-search and customer-merge-emulator on every
+push and pull request, with a manual Run workflow option. Before any deployment,
+both jobs must pass on the exact release SHA: `npm run release:ci -- --wait`.
+Use [skip netlify] when pushing the CI candidate. Netlify's build command checks
+CI before building; manual --no-build uploads require an immediate explicit
+preflight. `npm run test:release-ci` tests failed/missing/stale/pending/error paths
+and proves the actual build command cannot reach its build step on failed CI. See
 `.github/workflows/product-search.yml`. Its first Ubuntu/Node20 run passed:
 https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/38706116158
 
@@ -38,6 +43,7 @@ required when publishing an app.
 
 > **Every release:** first follow
 > [`RELEASE-WORKFLOW.md`](../docs/skills/RELEASE-WORKFLOW.md). Run
+> `npm run release:ci -- --wait` before any deployment,
 > `node --test qa/firebase-login-config.test.mjs`, the production build, and
 > `node scripts/verify-deployed-login.mjs <release-https-url>` on candidate and
 > production. Those commands do not authenticate users: fresh admin AND approved

@@ -1,5 +1,6 @@
 [build]
-  command = "npm run build"
+  # Fail closed before building/publishing unless both GitHub jobs passed this SHA.
+  command = "npm run release:ci -- --wait && npm run build"
   publish = "dist"
 
 [build.environment]

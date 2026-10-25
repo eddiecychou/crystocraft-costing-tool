@@ -1,41 +1,8 @@
 name: Product search regressions
 on:
+  # Every commit can be a release candidate; path filtering must not leave it unchecked.
   push:
-    paths:
-      - 'mcp/range/**'
-      - 'mcp/figurine-range/**'
-      - 'src/**'
-      - 'scripts/oc-scheduler/**'
-      - 'scripts/whatsapp-sync.sh'
-      - 'email-sync/*.sh'
-      - 'netlify/edge-functions/**'
-      - 'netlify/functions/**'
-      - 'seo-control-plane/**'
-      - 'qa/**'
-      - 'firestore.rules'
-      - 'storage.rules'
-      - 'firebase.json'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/product-search.yml'
   pull_request:
-    paths:
-      - 'mcp/range/**'
-      - 'mcp/figurine-range/**'
-      - 'src/**'
-      - 'scripts/oc-scheduler/**'
-      - 'scripts/whatsapp-sync.sh'
-      - 'email-sync/*.sh'
-      - 'netlify/edge-functions/**'
-      - 'netlify/functions/**'
-      - 'seo-control-plane/**'
-      - 'qa/**'
-      - 'firestore.rules'
-      - 'storage.rules'
-      - 'firebase.json'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/product-search.yml'
   workflow_dispatch:
 # Regression checks need read-only repository access and no project secrets.
 permissions:
@@ -53,6 +20,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: npm run test:release-ci
       - run: npm run test:crystal-products
       - run: npm run test:crystal-swatches
       - run: npm run test:design-projects

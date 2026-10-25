@@ -1,3 +1,16 @@
+# V8.19 — Both GitHub jobs required before deployment — 25 October 2026
+
+Owner requested that CI catch regressions before any future release. The release
+workflow now requires product-search AND customer-merge-emulator to pass on the
+exact commit before candidate/production upload. Netlify runs a fail-closed GitHub
+preflight before building; manual prebuilt uploads require the same check.
+The latest run/current attempt and both named job conclusions are checked; pending,
+missing, failed/skipped/cancelled jobs, dirty checkout, mismatched SHA or API errors
+block release. Existing fresh admin/customer gates remain mandatory afterward.
+GitHub workflow now runs for every push/PR so configuration/docs-only commits cannot
+silently lack checks. Gate tests are included in CI/prebuild; no live app change.
+Implementation/verification: [CI gate evidence](docs/plans/V8.19-GITHUB-RELEASE-GATE.md).
+
 # V8.19 — Dashboard summary updating status across navigation — 25 October 2026
 
 Summary update ownership now lives outside the dashboard component. Returning to
