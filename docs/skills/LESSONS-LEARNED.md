@@ -1225,3 +1225,21 @@ emulators, not production catalogue fixtures. Released 18 October under explicit
 owner authorization with private read-only credentials and fresh candidate/production
 two-role login gates. Existing gallery approval metadata remained unchanged; no
 WordPress uploads or publishing were performed. See DSH-IMAGE-ACCESS-RELEASE-2026-10-18.md.
+
+
+### Page-sync fixtures must retain stateful hooks
+
+25 October 2026: adding useSummaryUpdate to Dashboard passed its focused tests,
+actual browser navigation tests and candidate/production role gates, but the CI
+workspace fixture automatically replaced every unrelated default import with
+()=>null. The new hook was replaced with null, so all 21 page-sync cases failed
+before exercising their assertions. Access rules, swatches, images, merges,
+Pipeline and design-project emulator checks had already passed.
+
+Keep the real status hook/store in workspaceSyncPlugin and explicitly block only
+the unrelated summary-generation boundary. Unknown default useX hooks now throw
+an actionable fixture-configuration error rather than returning null. A real-page
+emulator regression triggers the blocked AI boundary, verifies retained error and
+unlocked retry after Dashboard remount, and confirms the saved cache is unchanged.
+Run the complete CI emulator command when changing Dashboard/CustomerDetail imports,
+not only prebuild: prebuild does not include the page-sync emulator job.

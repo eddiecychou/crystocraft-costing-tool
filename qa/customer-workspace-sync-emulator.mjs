@@ -274,3 +274,15 @@ test('both real pages expose six months and one year and load their independent 
  }
  assert.equal((await getDoc(doc(db,'dashboard_cache/weekly_summary'))).data().items[0].digest,'Current saved summary')
 })
+
+test('real summary-status hook retains failure on Dashboard remount without AI or cache writes',async t=>{
+ const v=await fixture(t),cache=doc(db,'dashboard_cache/weekly_summary')
+ const before=(await getDoc(cache)).data()
+ await click(v.dash,'Update AI summaries')
+ await eventually(()=>v.dash.querySelector('[role="alert"]')?.textContent.includes('AI generation is disabled in the workspace sync fixture'),'Real update store reports the blocked AI boundary')
+ assert.equal(button(v.dash,'Update AI summaries').disabled,false)
+ await v.remount(0)
+ assert.match(v.dash.querySelector('[role="alert"]').textContent,/AI generation is disabled in the workspace sync fixture/)
+ assert.equal(button(v.dash,'Update AI summaries').disabled,false)
+ assert.deepEqual((await getDoc(cache)).data(),before)
+})

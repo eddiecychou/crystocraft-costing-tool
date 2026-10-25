@@ -12,6 +12,11 @@ checks pass. Released d8faf93b / Netlify 6addd8a377b9f6d71afb3888 after fresh ad
 and approved-customer sign-ins on candidate and production. Dashboard/customer
 records, catalogue, access separation, refresh and four widths pass. No live AI
 summary update, task/note/Pipeline change or rules deployment during release QA.
+CI follow-up: the workspace test fixture had replaced the new hook with null.
+The fixture now retains the real hook/store, blocks AI generation explicitly and
+fails clearly on unconfigured hooks. Full local CI emulator command passes
+112 rule + 39 swatch assertions and 82 Node cases (including 22 page-sync and
+three 11-case timezone runs). Test-only correction; no app/rules deployment.
 See [release evidence](docs/plans/V8.19-SUMMARY-UPDATE-STATUS-RELEASE.md).
 
 # V8.19 — Corporate Gift quote precision and safe attachments — 21 October 2026
