@@ -120,7 +120,6 @@ export default function Suppliers() {
         </button>
         {SUPPLIER_CATEGORIES.map(c => {
           const count = suppliers.filter(s => s.category === c.value).length
-          if (!count) return null
           return (
             <button
               key={c.value}

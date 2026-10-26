@@ -1,7 +1,9 @@
 # V8.20 — Homeware supplier category — 26 October 2026
 
 Added `Homeware` to the supplier form, detail and list filter through the shared
-category list, with a dedicated list badge and Simplified Chinese label. This
+category list, with a dedicated list badge and Simplified Chinese label. Empty
+categories remain visible in the list filter with a count of zero, so new
+categories can be found before any supplier is assigned. This
 groups finished homeware/food-storage suppliers used for corporate gifts,
 whether wholesale or manufacturing. The category does not assert stock,
 existing-mould access, customization, MOQ, or production ownership; confirm
