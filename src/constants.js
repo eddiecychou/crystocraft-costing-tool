@@ -1,4 +1,4 @@
-import { Gem, Cog, Package, TreePine, Cpu, Shirt, Printer, Tag } from 'lucide-react'
+import { Gem, Cog, Package, TreePine, Cpu, Shirt, Printer, House, Tag } from 'lucide-react'
 export { CATEGORIES, MARKETING_DESC_MAXLEN } from './productCategories.js'
 
 export const SUPPLIER_CATEGORIES = [
@@ -9,6 +9,7 @@ export const SUPPLIER_CATEGORIES = [
   { value: 'Electronics',            Icon: Cpu },
   { value: 'Fabric & Textile',       Icon: Shirt },
   { value: 'Printing & Engraving',   Icon: Printer },
+  { value: 'Homeware',               Icon: House },
   { value: 'Others',                 Icon: Tag },
 ]
 

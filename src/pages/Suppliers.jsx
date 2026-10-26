@@ -22,6 +22,7 @@ const CAT_STYLES = {
   'Electronics':              'bg-purple-50 text-purple-700',
   'Fabric & Textile':         'bg-pink-50 text-pink-700',
   'Printing & Engraving':     'bg-cyan-50 text-cyan-700',
+  'Homeware':                 'bg-brand-50 text-brand-700',
   'Others':                   'bg-ivory text-ink-60',
 }
 

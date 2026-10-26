@@ -417,6 +417,7 @@ export default {
   'Primary': '主要',
   'Print': '打印',
   'Printing & Engraving': '印刷与雕刻',
+  'Homeware': '家居用品',
   'Prod': '产品',
   'Product *': '产品 *',
   'Product deleted': '产品已删除',

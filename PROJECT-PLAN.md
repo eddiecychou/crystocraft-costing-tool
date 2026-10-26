@@ -1,3 +1,14 @@
+# V8.20 — Homeware supplier category — 26 October 2026
+
+Added `Homeware` to the supplier form, detail and list filter through the shared
+category list, with a dedicated list badge and Simplified Chinese label. This
+groups finished homeware/food-storage suppliers used for corporate gifts,
+whether wholesale or manufacturing. The category does not assert stock,
+existing-mould access, customization, MOQ, or production ownership; confirm
+those per supplier. Requested for Neoflam and Shanghai Feiyu. Release and live
+category updates remain subject to the required CI, candidate and production
+verification gates.
+
 # V8.19 — Both GitHub jobs required before deployment — 25 October 2026
 
 Owner requested that CI catch regressions before any future release. The release

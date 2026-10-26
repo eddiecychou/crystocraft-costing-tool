@@ -9,6 +9,12 @@
 `suppliers/{id}` — owned by `Suppliers.jsx` / `SupplierDetail.jsx` /
 `SupplierForm.jsx`. There is no full domain module; the shared logic lives in:
 
+**Category use:** `Homeware` groups finished homeware and food-storage suppliers
+used for corporate gifts, whether they wholesale or manufacture. The category
+describes the product range, not production ownership, available stock, minimum
+order, or permission to customize. Confirm those terms with each supplier;
+do not infer them from the category or product photos.
+
 - **`src/domain/supplierContacts.js`** — multiple named people per supplier
   (`contacts[]`: `{id, name, title, phone, wechat, whatsapp, email, is_primary,
   active}`). An inactive contact is kept greyed for history, not deleted. The
