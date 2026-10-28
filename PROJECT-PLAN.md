@@ -1,3 +1,15 @@
+# V8.20 — Supplier quote false save conflict — 29 October 2026
+
+Fixed the attachment guard rejecting identical Firestore maps with reordered
+keys. Save errors now appear/focus beside Save Changes. Genuine attachment
+conflicts remain blocked; attachment-only writes preserve approved/concurrent
+pricing, MOQ, tooling, notes and preference. Shared value comparison retains the
+existing SEO API. Nine form and three SEO regressions, full build and 11 Firebase
+config tests pass; isolated Chrome confirms successful navigation and visible
+conflict errors. Tests join the GitHub/prebuild gate. No live quote edits or
+rules changes. Release pending CI, role gates and authorization; see
+[save fix evidence](docs/plans/V8.20-SUPPLIER-QUOTE-SAVE-FIX.md).
+
 # V8.20 — Homeware supplier category — 26 October 2026
 
 Added `Homeware` to the supplier form, detail and list filter through the shared

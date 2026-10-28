@@ -6,12 +6,13 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises'
 import {createRequire} from 'node:module'
 import assert from 'node:assert/strict'
 const out='qa/out/supplier-quote-precision',root=process.cwd()
+const serve=process.argv.includes('--serve')
 await mkdir(out,{recursive:true})
 const stub=`
 export const db={}, storage={}, authHeader=async()=>({});
 export const doc=(_, ...p)=>p.join('/'), collection=doc, orderBy=x=>x, query=x=>x, serverTimestamp=()=> 'timestamp';
 const qp='products/p/components/c/supplier_quotes/q';
-const initial={supplier_id:'s',supplier_name:'Feihong',unit_cost:1.222,unit_cost_currency:'USD',moq:1000,tooling_sample_cost:155,tooling_sample_cost_currency:'USD',is_preferred:true,notes:'Keep existing approved notes. 中文',volume_tiers:[{min_qty:2000,unit_cost:1.111}],attachments:[],createdAt:'original'};
+const initial={supplier_id:'s',supplier_name:'Feihong',unit_cost:1.222,unit_cost_currency:'USD',moq:1000,tooling_sample_cost:155,tooling_sample_cost_currency:'USD',is_preferred:true,notes:'Keep existing approved notes. 中文',volume_tiers:[{min_qty:2000,unit_cost:1.111}],attachments:${serve?"[{file_url:'/source.pdf',file_name:'source.pdf',file_type:'pdf',ai_extracted:false}]":"[]"},createdAt:'original'};
 let records={},writes=[],uploads=0;
 const snap=p=>({id:p.split('/').at(-1),ref:p,exists:()=>!!records[p],data:()=>structuredClone(records[p])});
 export const getDoc=async p=>snap(p);
@@ -19,15 +20,19 @@ export const getDocs=async p=>({docs:Object.keys(records).filter(k=>k.startsWith
 export const updateDoc=async(p,d)=>{writes.push({path:p,data:structuredClone(d)});records[p]={...records[p],...d}};
 export const addDoc=async(p,d)=>{await updateDoc(p+'/new',d);return{id:'new'}};
 export const deleteDoc=async()=>{throw Error('Unexpected deletion')};
-export async function runTransaction(_,fn){const pending=[];await fn({get:getDoc,update:(p,d)=>pending.push([p,d])});for(const [p,d] of pending)await updateDoc(p,d)}
+const reorder=v=>Array.isArray(v)?v.map(reorder):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).reverse().map(([k,x])=>[k,reorder(x)])):v;
+export async function runTransaction(_,fn){const pending=[];await fn({get:async p=>({...snap(p),data:()=>reorder(structuredClone(records[p]))}),update:(p,d)=>pending.push([p,d])});for(const [p,d] of pending)await updateDoc(p,d)}
 export const ref=(_,p)=>p,uploadBytes=async()=>{uploads++},getDownloadURL=async()=>'/uploaded.pdf';
 window.qa={reset:()=>{writes=[];uploads=0;records={'products/p':{name:'Hidden concept',active:false,status:'concept',image:'same.jpg'},'products/p/components/c':{name:'Fruit fork'},[qp]:structuredClone(initial),'products/p/components/c/supplier_quotes/other':{is_preferred:false},'suppliers/s':{name:'Feihong'},'suppliers/s/catalogs/f':{file_name:'Supplier quote.pdf',file_url:'/existing.pdf',file_type:'application/pdf',storage_path:'supplier/original.pdf'}}},state:()=>({records,writes,uploads}),change:d=>{records[qp]={...records[qp],...d}}};window.qa.reset();
 `
 await build({stdin:{contents:`import React from 'react';import{createRoot}from'react-dom/client';import{BrowserRouter,Routes,Route}from'react-router-dom';import Form from './src/pages/SupplierQuoteForm.jsx';createRoot(document.getElementById('root')).render(<BrowserRouter><Routes><Route path='/products/:productId/components/:componentId/quotes/:quoteId' element={<Form/>}/><Route path='/products/:productId/components/:componentId/quotes' element={<Form/>}/><Route path='*' element={<p>Saved</p>}/></Routes></BrowserRouter>)`,resolveDir:root,loader:'jsx'},bundle:true,outfile:out+'/app.js',jsx:'automatic',format:'esm',plugins:[{name:'fixture',setup(b){b.onResolve({filter:/^(firebase\/(firestore|storage))$|(^|\/)firebase$/},()=>({path:'stub',namespace:'qa'}));b.onLoad({filter:/.*/,namespace:'qa'},()=>({contents:stub,loader:'js'}))}}]})
 execFileSync('node_modules/.bin/tailwindcss',['-i','src/index.css','-o',out+'/style.css'],{stdio:'pipe'})
-const server=createServer(async(req,res)=>{try{const path=new URL(req.url,'http://x').pathname;if(path==='/app.js'||path==='/style.css'){res.setHeader('Content-Type',path.endsWith('js')?'text/javascript':'text/css');res.end(await readFile(out+path))}else res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><div id="root"></div><script type="module" src="/app.js"></script>')}catch{res.writeHead(404);res.end()}})
+const controls=serve?`<aside style="padding:16px">Isolated fixture — no live OC. <button onclick="window.qa.change({attachments:[{file_url:'/other.pdf',file_name:'Concurrent.pdf',file_type:'pdf'}]})">Simulate concurrent attachment change</button></aside>`:''
+const server=createServer(async(req,res)=>{try{const path=new URL(req.url,'http://x').pathname;if(path==='/app.js'||path==='/style.css'){res.setHeader('Content-Type',path.endsWith('js')?'text/javascript':'text/css');res.end(await readFile(out+path))}else res.end('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css">'+controls+'<div id="root"></div><script type="module" src="/app.js"></script>')}catch{res.writeHead(404);res.end()}})
 await new Promise(r=>server.listen(0,'127.0.0.1',r))
-const base='http://127.0.0.1:'+server.address().port,require=createRequire(root+'/.qa-playwright/package.json'),{chromium}=require('playwright-core'),browser=await chromium.launch({channel:'chrome',headless:true}),page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[]
+const base='http://127.0.0.1:'+server.address().port
+if(serve){console.log('Isolated quote preview: '+base+'/products/p/components/c/quotes/q');await new Promise(()=>{})}
+const require=createRequire(root+'/.qa-playwright/package.json'),{chromium}=require('playwright-core'),browser=await chromium.launch({channel:'chrome',headless:true}),page=await browser.newPage({viewport:{width:1280,height:1000}}),errors=[]
 page.on('pageerror',e=>errors.push(e.message))
 let extractions=0
 await page.route('**/api/process-quote',async route=>{extractions++;await route.fulfill({json:{unit_cost:9.999,moq:99,tooling_sample_cost:999}})})

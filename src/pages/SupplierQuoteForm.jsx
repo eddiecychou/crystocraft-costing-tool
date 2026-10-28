@@ -6,6 +6,7 @@ import { db, storage, authHeader } from '../firebase'
 import { CURRENCIES } from '../constants'
 import { FolderOpen, Paperclip, FileText, X, Copy, ChevronUp, ChevronDown } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { sameFirestoreValue } from '../firestoreValue'
 
 export default function SupplierQuoteForm() {
   const { productId, componentId, quoteId } = useParams()
@@ -13,6 +14,7 @@ export default function SupplierQuoteForm() {
   const isEdit = Boolean(quoteId)
   const fileIdRef = useRef(0)
   const originalQuoteRef = useRef(null)
+  const saveErrorRef = useRef(null)
 
   const [suppliers, setSuppliers] = useState([])
   const [showCopyPicker, setShowCopyPicker] = useState(false)
@@ -49,6 +51,10 @@ export default function SupplierQuoteForm() {
   const [supplierFiles, setSupplierFiles] = useState(null)
   const [supplierFilesLoading, setSupplierFilesLoading] = useState(false)
   const [supplierFilesError, setSupplierFilesError] = useState('')
+
+  useEffect(() => {
+    if (saveError) saveErrorRef.current?.focus()
+  }, [saveError])
 
   useEffect(() => {
     const loads = [
@@ -259,13 +265,13 @@ export default function SupplierQuoteForm() {
 
       const original = originalQuoteRef.current
       const attachmentsOnly = isEdit && original &&
-        JSON.stringify(form) === JSON.stringify(original.form) &&
-        JSON.stringify(volumeTiers) === JSON.stringify(original.tiers)
+        sameFirestoreValue(form, original.form) &&
+        sameFirestoreValue(volumeTiers, original.tiers)
       if (attachmentsOnly) {
         const quoteRef = doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', quoteId)
         await runTransaction(db, async tx => {
           const latest = await tx.get(quoteRef)
-          if (!latest.exists() || JSON.stringify(latest.data().attachments || []) !== JSON.stringify(original.attachments)) {
+          if (!latest.exists() || !sameFirestoreValue(latest.data().attachments || [], original.attachments)) {
             throw new Error('Attachments changed in another session. Reopen this quote before saving.')
           }
           // Never rewrite approved prices, notes or supplier preference from an open form.
@@ -427,7 +433,6 @@ export default function SupplierQuoteForm() {
         )}
       </div>
 
-      {saveError && <p role="alert" className="text-sm text-brand-600 mb-3">{saveError}</p>}
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
         {/* Supplier — searchable combobox */}
         <div>
@@ -532,6 +537,7 @@ export default function SupplierQuoteForm() {
           <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder="Any conditions, remarks, or context from the quote…" />
         </div>
 
+        {saveError && <p ref={saveErrorRef} role="alert" tabIndex={-1} className="text-sm text-brand-600">{saveError}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div className="flex gap-3">
             <button type="submit" className="btn-primary" disabled={loading}>

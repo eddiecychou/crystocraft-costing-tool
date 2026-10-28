@@ -39,6 +39,18 @@ permission. The token's existing repository scope and expiry were preserved. The
 layout, real login or Firebase rules; release verification below remains
 required when publishing an app.
 
+# Supplier quote saves
+
+Supplier quote save regressions run with `npm run test:supplier-quote` and are
+also included in `test:quote-pdf` for prebuild and GitHub CI. They exercise the
+actual form with isolated Firebase/router boundaries: reordered attachment maps,
+real conflicts, visible/focused save errors, concurrent approved terms, retry,
+and exact three-decimal edits. No live records are read or written.
+
+For a manual browser check, `node qa/supplier-quote-precision.mjs --serve` starts
+an isolated form with an existing PDF and reordered transaction maps. Its visible
+fixture control simulates a genuine concurrent attachment change.
+
 # Rendering a PDF to look at it
 
 > **Every release:** first follow

@@ -1139,6 +1139,19 @@ coordinated deployment are still required; a local green suite is not live proof
 
 ## L-65 — JSON object order is not a Firestore review revision
 
+**29 October 2026 — supplier quote follow-up:** the same JSON.stringify mistake
+in `SupplierQuoteForm.jsx` could reject an unchanged agent-created PDF as
+"Attachments changed in another session". Its error was above the long form,
+off-screen when clicking Save Changes. The existing comparator is now shared
+through `src/firestoreValue.js` (SEO retains the `sameReviewValue` export).
+Quote form/tier/attachment comparisons ignore map key order; real attachment
+changes and array order still block the attachment-only transaction. Errors
+receive focus beside Save Changes. Nine actual-form regressions cover map
+reordering, genuine conflicts, concurrent approved terms, retry and precision.
+Keep these in the GitHub/prebuild gate; an empty attachment fixture alone cannot
+reproduce this failure. Release status: see V8.20-SUPPLIER-QUOTE-SAVE-FIX.md in
+`../plans/`; local verification does not imply publication.
+
 **Symptom:** Approve and Approve all passing always reported "Review decisions
 changed. Reload the queue before continuing" for an unchanged pending batch.
 

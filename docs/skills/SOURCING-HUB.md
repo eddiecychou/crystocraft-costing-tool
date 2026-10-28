@@ -51,6 +51,13 @@ When the form and tiers are unchanged, Save Changes runs an attachment-only
 transaction. It preserves every other stored field, including concurrent pricing,
 notes and preference changes, and rejects a concurrent attachment-array change.
 Actual pricing/form edits retain the existing full quote-save workflow.
+V8.20 save-conflict fix (29 October 2026): comparisons use shared
+`src/firestoreValue.js`, ignoring map key order while preserving array order,
+field presence, types and values. Identical cached/server attachment maps must
+not trigger a false conflict. Genuine attachment changes still reject the
+transaction. Save errors appear and receive focus beside Save Changes, with
+the form's edits retained. `npm run test:supplier-quote` exercises the real form
+with isolated boundaries and runs in prebuild/GitHub via `test:quote-pdf`.
 Regression browser: `node qa/supplier-quote-precision.mjs` (isolated fixtures).
 Release gate: `node qa/verify-supplier-quote-release.mjs <https-url>` (view-only).
 
