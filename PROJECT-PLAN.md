@@ -7,7 +7,10 @@ pricing, MOQ, tooling, notes and preference. Shared value comparison retains the
 existing SEO API. Nine form and three SEO regressions, full build and 11 Firebase
 config tests pass; isolated Chrome confirms successful navigation and visible
 conflict errors. Tests join the GitHub/prebuild gate. No live quote edits or
-rules changes. Release pending CI, role gates and authorization; see
+rules changes. Released d10bf9cf / Netlify 6ae209f884ef480f80f5a990 after both
+GitHub jobs passed (run 40705266027) and fresh admin/customer candidate and
+production gates passed. Quote/PDF readback, mobile layout, access separation,
+refresh and runtime checks pass; the owner's browser session is untouched. See
 [save fix evidence](docs/plans/V8.20-SUPPLIER-QUOTE-SAVE-FIX.md).
 
 # V8.20 — Homeware supplier category — 26 October 2026
