@@ -60,7 +60,7 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 - `suppliers/{id}` (+ `catalogs/{catalogId}`; `images/{imageId}` + `videos/{videoId}` — exhibition/booth photo+clip gallery, `images` same shape as `products/{id}/images` minus visibility screening, `videos` a caption+order doc for a raw clip in Storage). Auth: **staff** (V8.12). Owned by `Suppliers.jsx`, `SupplierDetail.jsx`, `SupplierVideos.jsx`.
 - `purchase_orders/{id}` — supplier POs. Auth: **staff** (V8.12 — procurement cost data, not sales). Owned by `PurchaseOrderForm.jsx`, `PurchaseOrders.jsx`. Each `lines[]` entry's `description` may contain newlines (V8.15 — the form field is a `<textarea>`); `cleanLines` in `src/purchaseOrders.js` trims only the ends, and detail/print render it `white-space: pre-line`.
 - `orders/{id}` reserve fields — `component_lines` / `crystal_lines` / `packaging_lines` entries are `{ <idField>, code, qty }`; V8.15 adds an optional `adj_seq` (int) when a reserved line's qty is hand-edited before production-in (`adjustReservedLine` in `src/orderStock.js`, bumped every edit, part of the movement idempotency key).
-- V8.20 reservation-add fix (prepared, not deployed): optional per-class order
+- V8.20 reservation-add fix (released 29 Oct 2026): optional per-class order
   counters `component_lines_add_sequence`, `crystal_lines_add_sequence`,
   `packaging_lines_add_sequence`. `addReservedLine` increments its class counter
   atomically with the appended line and `add_v2_*` reserve movement/balance.

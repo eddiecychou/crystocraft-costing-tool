@@ -8,14 +8,15 @@
   in the open-state branch. The reserved branch omitted the add control even
   though the metal-component panel already supported it. Its shared addition
   helper also posted stock before separately appending the saved order row.
-- **Fix prepared, not deployed:** reserved Crystal/Packaging cards expose an
+- **Released fix (29 Oct 2026):** reserved Crystal/Packaging cards expose an
   additional-item picker and confirmation. `addReservedLine` commits the row,
   movement and reserved balance together, using a per-class sequence and current
   stage/code/duplicate guards. **MUST** check every stock class at both open and
   reserved stages; **MUST NOT** require releasing all existing stock to add one
   new item. Post-production edits remain locked. Fourteen actual-Firestore cases
   and isolated real-card browser checks cover additions without replacing or
-  duplicating existing reservations. Evidence:
+  duplicating existing reservations. Released `b840a711` after both GitHub jobs
+  and fresh admin/customer candidate/production gates passed. Evidence:
   `../plans/V8.20-RESERVATION-ADD-ITEM-FIX.md`.
 
 ## L-67 · A PO code change retained a stale stock link; repeated targets concealed missing receipts

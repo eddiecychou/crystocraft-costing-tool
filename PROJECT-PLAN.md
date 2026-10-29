@@ -1,4 +1,4 @@
-# V8.20 — Add items after reservation — prepared 29 October 2026
+# V8.20 — Add items after reservation — released 29 October 2026
 
 Crystal/Packaging Add line disappeared after Reserve because only the open-state
 UI rendered a picker. Reserved panels now offer Add to reservation and confirmation,
@@ -6,8 +6,11 @@ preserving existing quantities and showing available stock. Shared additions now
 commit the order row and reserve movement/balance together, serialize concurrent
 additions and refuse duplicates/unfinished legacy additions. Fourteen real-SDK
 emulator cases and actual local browser checks cover stock/row preservation,
-permissions, release/production-in, mobile and desktop. Build/lint pass. No live
-stock/order changes; not deployed. See [fix](docs/plans/V8.20-RESERVATION-ADD-ITEM-FIX.md).
+permissions, release/production-in, mobile and desktop. Build/lint pass. Released
+`b840a711` / Netlify `6ae2d83eea26ecaa7f71df8c` after both GitHub jobs passed
+(run `40821881030`) and fresh admin/customer candidate and production gates passed.
+Live reserved-order UI shows the new control; no live stock/order saves or rules
+changes. See [release evidence](docs/plans/V8.20-RESERVATION-ADD-ITEM-FIX.md).
 
 # V8.20 — All-PO stock receipt audit — 29 October 2026
 

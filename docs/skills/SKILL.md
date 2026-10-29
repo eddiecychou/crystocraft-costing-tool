@@ -232,7 +232,7 @@ emulator job. App and private read-only credentials deployed with fresh two-role
 - Logic: `src/shipping.js` (`normLine` — **strict whitelist**), `src/packing.js`, `src/mrp.js`, `src/ucRegistry.js`, `src/soNumber.js`, `src/pdfFilename.js` · Edge fns: `extract-pi`, `uc`
 - Component reserve panel (`OrderStockIssue.jsx` → `orderStock.js` → `mrp.computeRequirements`): a figurine line explodes via its Range BOM; a line whose `item_code` is itself a `range_components` code reserves that component 1:1 × qty (V8.15, **L-19**). A figurine line with no Range match / no BOM is a visible gap, never a silent drop.
 - A reserved (pre-production-in) line's qty is editable inline on all three panels (Component / Crystal / Packaging) — `adjustReservedLine` (`orderStock.js`) posts the reserve/release delta and rewrites the stored line; `EditableQty.jsx` is the cell (V8.15, `../plans/RESERVE-QTY-EDIT-AUDIT.md`).
-- V8.20 prepared (not deployed): reserved Crystal/Packaging panels also expose
+- V8.20 released 29 Oct 2026 (`b840a711`): reserved Crystal/Packaging panels also expose
   Add to reservation. Shared `addReservedLine` atomically appends the row and
   reserve movement/balance, preserves existing lines, excludes duplicate targets
   and uses a per-class `*_lines_add_sequence` counter. Legacy unfinished additions
