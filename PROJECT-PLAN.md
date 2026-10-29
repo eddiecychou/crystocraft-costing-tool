@@ -6,9 +6,13 @@ in-app receipt review adds only proven missing quantities and preserves original
 movements, balances, commercial terms and an audit snapshot. Reversal uses actual
 posted movements. Ten model and fourteen real-Firestore transaction cases, full
 existing emulator workflow, build/config/lint and actual-screen local checks pass.
-Owner authorized deployment and PU260076 correction: preserve 102 red, add only
-314 across the other five colours. Release/live correction pending required gates;
-see [PO receipt fix](docs/plans/V8.20-PO-RECEIPT-FIX.md).
+Released `23170bf8` / Netlify `6ae2c1d726c76881a986f610` after both GitHub jobs
+passed (run `40813226924`) and fresh admin/customer candidate and production gates
+passed. Owner-authorized in-app PU260076 correction is complete: RE 102, PI 60,
+FU 64, VL 65, PE 60, C1 65 = 416. Only 314 were added; independent ledger readback
+confirms the original red parent/movement unchanged, five new receipts, intact
+prices/terms/reservations and no duplicates. Reload/review matches the ledger.
+Rules unchanged. See [PO receipt fix](docs/plans/V8.20-PO-RECEIPT-FIX.md).
 
 # V8.20 — Supplier quote false save conflict — 29 October 2026
 

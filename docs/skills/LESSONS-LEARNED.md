@@ -1,5 +1,29 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## L-67 · A PO code change retained a stale stock link; repeated targets concealed missing receipts
+
+- **Symptom (29 Oct 2026):** PU260076 listed six different colour codes, while
+  its received rows all displayed red. Actual stock contained only the first
+  102 red pieces although saved rows claimed all 416 had been received.
+- **Root cause:** editing a line code kept the previous `linked.component_id`
+  and default red description. Receiving trusted that stale link. Each repeated
+  target then reused the same class/SKU/generation movement ID, so subsequent
+  quantities were skipped as retries while all six receipt rows were saved.
+  Individual movement writes and the final PO update were not one transaction.
+- **Permanent fix:** `poReceiptModel.js` replaces links on code changes, validates
+  identity and groups repeated targets before assigning movement IDs.
+  `poReceive.js` commits balances, append-only movements and PO state atomically,
+  with stale-source/retry/generation guards. Reversal reads actual ledger amounts.
+  **MUST NOT** trust a link whose stock code conflicts with its PO line, or mark
+  receipt rows that did not commit with their movements. **MUST** aggregate
+  repeated targets, preserve source indices and test real transactions/concurrent
+  retries. Legacy repair must review actual movements and add only verified
+  missing deltas, retaining the original movements and audit baseline.
+  Ten model and fourteen real-Firestore regressions pass. Both exact-SHA GitHub
+  jobs and candidate/production role gates passed before the authorized live
+  correction: only +314, original +102 red unchanged. Evidence:
+  `../plans/V8.20-PO-RECEIPT-FIX.md`.
+
 ## L-66 · Product photos exceeded live Storage's two-document budget
 
 - **Symptom (19 Oct 2026, candidate only):** staff could upload verified photographs,
