@@ -232,6 +232,11 @@ emulator job. App and private read-only credentials deployed with fresh two-role
 - Logic: `src/shipping.js` (`normLine` — **strict whitelist**), `src/packing.js`, `src/mrp.js`, `src/ucRegistry.js`, `src/soNumber.js`, `src/pdfFilename.js` · Edge fns: `extract-pi`, `uc`
 - Component reserve panel (`OrderStockIssue.jsx` → `orderStock.js` → `mrp.computeRequirements`): a figurine line explodes via its Range BOM; a line whose `item_code` is itself a `range_components` code reserves that component 1:1 × qty (V8.15, **L-19**). A figurine line with no Range match / no BOM is a visible gap, never a silent drop.
 - A reserved (pre-production-in) line's qty is editable inline on all three panels (Component / Crystal / Packaging) — `adjustReservedLine` (`orderStock.js`) posts the reserve/release delta and rewrites the stored line; `EditableQty.jsx` is the cell (V8.15, `../plans/RESERVE-QTY-EDIT-AUDIT.md`).
+- V8.20 prepared (not deployed): reserved Crystal/Packaging panels also expose
+  Add to reservation. Shared `addReservedLine` atomically appends the row and
+  reserve movement/balance, preserves existing lines, excludes duplicate targets
+  and uses a per-class `*_lines_add_sequence` counter. Legacy unfinished additions
+  require review. See `../plans/V8.20-RESERVATION-ADD-ITEM-FIX.md`.
 - Collections: `orders/{id}`, `packing_lists/{id}`, `uc_invoices/{id}`, `counters/uc_<yy>`+`so_<yy>`. An invoice needs a **UC number, not an SO**; "PI"=JES **SO**, "invoice"=**SI** (`CLAUDE.md`). Quote→PI conversion uses `quoteItemToOrderLine`: explicit Crystocraft Range items become `range` with their SKU and `range_products` ref; corporate and legacy lines become `corp_gift` with `products` ref; custom items stay `ad_hoc`.
 
 ### Sales invoices & credit notes

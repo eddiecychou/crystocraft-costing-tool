@@ -60,6 +60,11 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 - `suppliers/{id}` (+ `catalogs/{catalogId}`; `images/{imageId}` + `videos/{videoId}` — exhibition/booth photo+clip gallery, `images` same shape as `products/{id}/images` minus visibility screening, `videos` a caption+order doc for a raw clip in Storage). Auth: **staff** (V8.12). Owned by `Suppliers.jsx`, `SupplierDetail.jsx`, `SupplierVideos.jsx`.
 - `purchase_orders/{id}` — supplier POs. Auth: **staff** (V8.12 — procurement cost data, not sales). Owned by `PurchaseOrderForm.jsx`, `PurchaseOrders.jsx`. Each `lines[]` entry's `description` may contain newlines (V8.15 — the form field is a `<textarea>`); `cleanLines` in `src/purchaseOrders.js` trims only the ends, and detail/print render it `white-space: pre-line`.
 - `orders/{id}` reserve fields — `component_lines` / `crystal_lines` / `packaging_lines` entries are `{ <idField>, code, qty }`; V8.15 adds an optional `adj_seq` (int) when a reserved line's qty is hand-edited before production-in (`adjustReservedLine` in `src/orderStock.js`, bumped every edit, part of the movement idempotency key).
+- V8.20 reservation-add fix (prepared, not deployed): optional per-class order
+  counters `component_lines_add_sequence`, `crystal_lines_add_sequence`,
+  `packaging_lines_add_sequence`. `addReservedLine` increments its class counter
+  atomically with the appended line and `add_v2_*` reserve movement/balance.
+  Existing row shape, generation, gaps and other order fields are preserved.
 - `client_quotes/{id}` (+ `items/{itemId}`) — Auth: **admin** (hard wall). Owned by `src/domain/customer.js` + `QuoteDetail.jsx`, `RangeQuoteForm.jsx`.
 - `credit_notes/{id}` — combined sales-return + credit-note working doc — the *posted* financial fact lives in Supabase (`credit-note.js`/`app_credit_note`, see API-REFERENCE.md), not here. Auth: **admin** (hard wall). Owned by `CreditNoteForm.jsx`, `CreditNotes.jsx`.
 - `portal_invitations/{id}` — SU-07A invite records, admin-**read-only** from the browser — the actual claim/approve write path bypasses rules entirely via the Admin SDK in `netlify/functions/portal-invite.js`. Owned by `PortalInvitations.jsx`.

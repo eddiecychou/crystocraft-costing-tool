@@ -1,3 +1,14 @@
+# V8.20 — Add items after reservation — prepared 29 October 2026
+
+Crystal/Packaging Add line disappeared after Reserve because only the open-state
+UI rendered a picker. Reserved panels now offer Add to reservation and confirmation,
+preserving existing quantities and showing available stock. Shared additions now
+commit the order row and reserve movement/balance together, serialize concurrent
+additions and refuse duplicates/unfinished legacy additions. Fourteen real-SDK
+emulator cases and actual local browser checks cover stock/row preservation,
+permissions, release/production-in, mobile and desktop. Build/lint pass. No live
+stock/order changes; not deployed. See [fix](docs/plans/V8.20-RESERVATION-ADD-ITEM-FIX.md).
+
 # V8.20 — All-PO stock receipt audit — 29 October 2026
 
 Read-only fixed-time audit of all 36 OC POs, 1,738 stock identities and 3,470

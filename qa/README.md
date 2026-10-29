@@ -41,6 +41,22 @@ required when publishing an app.
 
 # PO receipt regressions
 
+## Add items to an existing reservation
+
+`node --test qa/order-reservation-add-emulator.mjs` runs in the existing required
+customer-merge-emulator job. Loopback Firestore only; actual stock ledger,
+reservation addition and rules. Fourteen cases include all three classes,
+preservation, duplicate/concurrent additions, failure atomicity, legacy partials,
+staff access, release and production-in.
+
+`node qa/order-reservation-add-preview.mjs` serves the actual Crystal/Packaging
+cards with isolated local stock and engine boundaries. Expand a reserved card,
+add an unused item and confirm. The crystal fixture's original 3,600 / 2,040 / 400
+must remain intact; adding 25 to the new crystal changes its reserved 15 → 40,
+with on-hand 500 unchanged. No live auth, inventory, order or external API writes.
+
+## PO identity and receipt posting
+
 `node --test qa/po-receive.test.mjs` runs through `test:packing-po` in prebuild
 and the product-search workflow job. The customer-merge-emulator job also runs
 `node --test qa/po-receive-emulator.mjs` against loopback Firestore with the real

@@ -1,8 +1,8 @@
-import { collection, getDocs, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, getDocs, doc, getDoc, updateDoc, serverTimestamp, runTransaction } from 'firebase/firestore'
 import { db } from './firebase'
 import { computeRequirements } from './mrp'
 import { loadComponents } from './criticalComponents'
-import { postMovement } from './stockLedger'
+import { postMovement, stageStockMovement } from './stockLedger'
 
 // Order → component stock issue (V7.13a step 2). A deliberate, reversible action:
 // the operator issues an order's metal-component consumption to the ledger when
@@ -191,33 +191,52 @@ export async function adjustReservedLine(cfg, orderId, orderLabel, lineId, newQt
 // no delta) and appends the line. Blocks a component already on the list —
 // edit that line's qty instead, so one component_id never has two lines
 // fighting over the same reserved balance.
+// V8.20: order append + reservation movement + cached balance now commit in
+// one transaction. The per-class add sequence prevents new-add ID reuse.
+// Legacy movements without an order row are refused for explicit review.
 export async function addReservedLine(cfg, orderId, orderLabel, { component_id, code, qty }) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
-  const target = Math.round(Number(qty))
+  const target = Number(qty)
   if (!component_id) throw new Error('Pick a component.')
-  if (!Number.isFinite(target) || target <= 0) throw new Error('Enter a quantity greater than zero.')
+  if (!Number.isSafeInteger(target) || target <= 0) throw new Error('Enter a whole quantity greater than zero.')
 
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data() || {}
-  if (!d[order.reserved]) throw new Error('Nothing is reserved for this order yet.')
-  if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(orderRef)
+    if (!snap.exists()) throw new Error('Order no longer exists.')
+    const d = snap.data()
+    if (!d[order.reserved]) throw new Error('Nothing is reserved for this order yet.')
+    if (d[order.committed] || (order.legacyIssued && d[order.legacyIssued])) throw new Error('Already produced-in — reverse production-in before editing.')
 
-  const lines = Array.isArray(d[order.lines]) ? d[order.lines] : []
-  if (lines.some(l => l[idField] === component_id)) {
-    throw new Error('That component is already on the list — edit its quantity instead of adding it again.')
-  }
+    const lines = Array.isArray(d[order.lines]) ? d[order.lines] : []
+    if (lines.some(l => l[idField] === component_id)) {
+      throw new Error('That component is already on the list — edit its quantity instead of adding it again.')
+    }
+    const generation = d[genField(order)] ?? 0
+    const sequenceField = `${order.lines}_add_sequence`
+    const previousSequence = d[sequenceField] ?? 0
+    if (!Number.isSafeInteger(generation) || generation < 0 || !Number.isSafeInteger(previousSequence) || previousSequence < 0 || previousSequence === Number.MAX_SAFE_INTEGER) throw new Error('Reservation history needs review before adding an item.')
+    const sequence = previousSequence + 1
+    const stockRef = doc(db, collectionPath, component_id)
+    const movementRef = doc(db, collectionPath, component_id, 'movements', `add_v2_${orderId}_g${generation}_${component_id}_a${sequence}`)
+    const legacyRef = doc(db, collectionPath, component_id, 'movements', `add_${orderId}_g${generation}_${component_id}`)
+    const [stock, movement, legacy] = await Promise.all([tx.get(stockRef), tx.get(movementRef), tx.get(legacyRef)])
+    if (!stock.exists()) throw new Error('Stock item no longer exists. Pick another item.')
+    if (movement.exists() || legacy.exists()) throw new Error('An existing add-to-reservation movement needs review. Reload the order before adding this item.')
+    const stockCode = stock.data().code || ''
+    if (code && String(code).trim().toUpperCase() !== String(stockCode).trim().toUpperCase()) throw new Error('Stock item code changed. Reload before adding it.')
 
-  const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
-  await postMovement(collectionPath, component_id, {
-    type: 'reserve', qty: target, order_id: orderId,
-    note: `Added to reservation — order ${orderLabel || orderId}`,
-    idempotencyKey: `add_${orderId}_g${generation}_${component_id}`,
+    stageStockMovement(tx, collectionPath, component_id, stock.data(), {
+      type: 'reserve', qty: target, order_id: orderId,
+      note: `Added to reservation — order ${orderLabel || orderId}`,
+    }, movementRef)
+    tx.update(orderRef, {
+      [order.lines]: [...lines, { [idField]: component_id, code: stockCode, qty: target, adj_seq: 0 }],
+      [sequenceField]: sequence,
+    })
+    return { component_id, qty: target }
   })
-
-  const nextLines = [...lines, { [idField]: component_id, code: code || '', qty: target, adj_seq: 0 }]
-  await updateDoc(orderRef, { [order.lines]: nextLines })
-  return { component_id, qty: target }
 }
 
 // Remove a line entirely — the BOM called for it, this run doesn't need it.

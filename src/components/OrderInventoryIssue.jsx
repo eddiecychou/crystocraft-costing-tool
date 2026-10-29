@@ -2,8 +2,9 @@ import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import { reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder, adjustReservedLine } from '../orderStock'
+import { reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder, adjustReservedLine, addReservedLine } from '../orderStock'
 import EditableQty from './EditableQty'
+import ConfirmDialog from './ConfirmDialog'
 import { Gem, Box, Lock, Factory, Plus, Trash2, RotateCcw, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
 
 // Generic order → inventory card (crystals, packaging) — V7.13a R1. Two-stage,
@@ -21,8 +22,14 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [addition, setAddition] = useState({ item_id: '', qty: '' })
+  const [pendingAddition, setPendingAddition] = useState(null)
   const Icon = ICONS[inv.iconKey] || Box
   const idField = inv.order.lineIdField
+
+  useEffect(() => {
+    setAddition({ item_id: '', qty: '' }); setPendingAddition(null); setError('')
+  }, [orderId, inv.collectionPath])
 
   useEffect(() => {
     if (!orderId) return
@@ -69,6 +76,24 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
     () => adjustReservedLine(inv, orderId, orderLabel, lineId, newQty),
     `Change the reserved quantity for ${code} to ${fmt(newQty)}? The difference is reserved or released on the ${inv.noun} ledger.`)
 
+  const reservedIds = new Set(state.lines.map(l => l[idField]))
+  const additionalItems = items.filter(item => !reservedIds.has(item.id))
+  const selectedAddition = byId[addition.item_id]
+  const additionQty = Number(addition.qty)
+  const validAddition = !!selectedAddition && !reservedIds.has(addition.item_id) && Number.isSafeInteger(additionQty) && additionQty > 0
+  const additionAvailable = selectedAddition ? (Number(selectedAddition.stock_qty) || 0) - (Number(selectedAddition.reserved_qty) || 0) : null
+  function reviewAddition() {
+    if (!validAddition || busy) return
+    setPendingAddition({ component_id: addition.item_id, code: selectedAddition.code || '', qty: additionQty })
+  }
+  function confirmAddition() {
+    const next = pendingAddition
+    setPendingAddition(null)
+    if (!next) return
+    run(() => addReservedLine(inv, orderId, orderLabel, next), null,
+      () => setAddition({ item_id: '', qty: '' }))
+  }
+
   const dateStr = state.at?.toDate ? formatOcDate(state.at.toDate(), {}) : null
 
   return (
@@ -107,6 +132,30 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
                   ))}
                 </tbody>
               </table>
+              {state.stage === 'reserved' && additionalItems.length > 0 && (
+                <div className="mt-3 border-t border-warm-grey pt-3">
+                  <p className="text-xs text-ink-60 mb-2">Add another item to this reservation. Existing reserved quantities stay in place.</p>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                    <select className="input text-sm flex-1 min-w-0" aria-label={`Additional ${inv.noun}`} disabled={busy}
+                      value={addition.item_id} onChange={e => setAddition(a => ({ ...a, item_id: e.target.value }))}>
+                      <option value="">— pick —</option>
+                      {additionalItems.map(x => <option key={x.id} value={x.id}>{x.code}{x[inv.attrField] ? ` · ${x[inv.attrField]}` : ''}{x.name ? ` · ${x.name}` : ''}</option>)}
+                    </select>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <input className="input text-sm w-24 text-right tabular-nums" aria-label={`Additional ${inv.noun} quantity`}
+                        disabled={busy} inputMode="numeric" value={addition.qty} placeholder="Qty"
+                        onChange={e => setAddition(a => ({ ...a, qty: e.target.value.replace(/[^\d]/g, '') }))} />
+                      <span className="text-2xs text-ink-60 w-28 shrink-0">
+                        {additionAvailable != null && <>avail {fmt(additionAvailable)}{addition.qty !== '' && <> → <span className={additionAvailable - additionQty < 0 ? 'text-brand-600 font-semibold' : ''}>{fmt(additionAvailable - additionQty)}</span></>}</>}
+                      </span>
+                      <button type="button" onClick={reviewAddition} disabled={busy || !validAddition}
+                        className="btn-secondary text-xs inline-flex items-center gap-1 disabled:opacity-50">
+                        <Plus size={14} /> Add to reservation
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {state.stage === 'reserved' ? (
                 <div className="mt-3 flex items-center gap-3 flex-wrap">
                   <button type="button" onClick={doProduce} disabled={busy} className="inline-flex items-center gap-1.5 btn-primary text-sm">
@@ -160,9 +209,12 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
               </div>
             </>
           )}
-          {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+          {error && <p role="alert" className="text-xs text-red-600 mt-2">{error}</p>}
         </div>
       )}
+      {pendingAddition && <ConfirmDialog danger={false} confirmLabel="Reserve item"
+        message={`Reserve ${pendingAddition.code} × ${fmt(pendingAddition.qty)} for order ${orderLabel}? Existing reservations will be kept.`}
+        onConfirm={confirmAddition} onCancel={() => setPendingAddition(null)} />}
     </div>
   )
 }
