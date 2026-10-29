@@ -39,6 +39,23 @@ permission. The token's existing repository scope and expiry were preserved. The
 layout, real login or Firebase rules; release verification below remains
 required when publishing an app.
 
+# PO receipt regressions
+
+`node --test qa/po-receive.test.mjs` runs through `test:packing-po` in prebuild
+and the product-search workflow job. The customer-merge-emulator job also runs
+`node --test qa/po-receive-emulator.mjs` against loopback Firestore with the real
+rules, SDK, PO engine and stock ledger. Coverage includes stale colour links,
+ambiguous inventory codes, duplicate-SKU summation, concurrent retries, atomic
+failure, opening/reserved balances, missing legacy postings, guarded correction,
+commercial-term preservation, red-movement preservation and actual-ledger reversal.
+
+`node qa/po-receive-preview.mjs` serves isolated actual PO screens for browser QA.
+The default fixture reproduces six colours wrongly linked to red, with only 102
+red posted. Review receipt must show red +0 and five additions totalling 314;
+after correction, another review must report a matching ledger. The editor at
+`/purchase-orders/p/edit?fresh=1` checks code/link/description changes. No live
+auth, APIs or stock writes are used by these fixtures.
+
 # Supplier quote saves
 
 Supplier quote save regressions run with `npm run test:supplier-quote` and are

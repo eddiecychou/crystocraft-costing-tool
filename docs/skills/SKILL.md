@@ -203,6 +203,14 @@ emulator job. App and private read-only credentials deployed with fresh two-role
 - Logic: `src/purchaseOrders.js`, `src/puNumber.js` (allocates `counters/pu_<yy>`), `src/poReceive.js` · Edge fns: `extract-po`
 - Collections: `purchase_orders/{id}` (**staff**; snapshots supplier name/code/address), `counters/pu_<yy>` (uniquely production-writable)
 - Line `description` is a multi-line `<textarea>` (V8.15) — `\n` is preserved on save and both `PurchaseOrderDetail`/`PurchaseOrderPrint` render it `white-space: pre-line`.
+- V8.20 receipt identity: `poReceiptModel.js` clears stale links on code edits,
+  preserves custom descriptions, blocks conflicting/ambiguous matches, and
+  groups repeated stock targets with source-line traceability. `poReceive.js`
+  commits all receipt movements/balances and PO state atomically. Review receipt
+  can append verified missing quantities on a full legacy receipt, preserving
+  original movements and recording a guarded audit; it refuses unknown,
+  partial, changed or over-received baselines. No balance overwrites or blanket
+  reversals for correction. See `../plans/V8.20-PO-RECEIPT-FIX.md`.
 
 ### Inventory & stock ledger
 - Pages: `InventoryStatus.jsx`, `WooStockReconcile.jsx` (`/woo-stock`, admin — Woo catalogue vs Finished Goods) · Components: `InventoryStockTab.jsx`, `StockEditor.jsx`, `StockLedger.jsx`, `ManualAdjust.jsx`, `PoReceiveStock.jsx`, `OrderStockIssue.jsx`, `OrderInventoryIssue.jsx`

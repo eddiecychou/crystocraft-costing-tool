@@ -2,9 +2,10 @@ import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useCallback } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import { computePoReceive, receivePo, reversePoReceive } from '../poReceive'
+import { computePoReceive, receivePo, reversePoReceive, previewPoReceiptCorrection, applyPoReceiptCorrection } from '../poReceive'
 import { PackagePlus, RotateCcw, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
 import { useT } from '../i18n'
+import ConfirmDialog from './ConfirmDialog'
 
 // Receive-to-stock card on the Purchase Order (V7.13a). When a PU's goods
 // arrive, receive them into inventory: each line posts a receipt movement to the
@@ -24,14 +25,19 @@ export default function PoReceiveStock({ po }) {
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
+  const [correction, setCorrection] = useState(null)
+  const [success, setSuccess] = useState('')
+  const [confirmCorrection, setConfirmCorrection] = useState(false)
 
   useEffect(() => {
     if (!poId) return
     return onSnapshot(doc(db, 'purchase_orders', poId), snap => {
       const d = snap.data() || {}
-      setState({ received: !!d.stock_received, at: d.stock_received_at || null, lines: d.received_lines || [] })
+      setState({ received: !!d.stock_received, at: d.stock_received_at || null, lines: d.received_lines || [], generation: d.receive_generation || 0 })
     })
   }, [poId])
+
+  useEffect(() => { setPreview(null); setCorrection(null); setConfirmCorrection(false) }, [po.lines])
 
   const loadPreview = useCallback(async () => {
     setLoading(true); setError('')
@@ -47,21 +53,36 @@ export default function PoReceiveStock({ po }) {
   const setRecv = (i, v) => setPreview(p => ({ ...p, items: p.items.map((it, j) => j === i ? { ...it, recv: v.replace(/[^\d]/g, '') } : it) }))
 
   async function doReceive() {
+    if (preview?.conflicts?.length) { setError(t('Resolve the item-code conflicts before receiving stock.')); return }
     const lines = (preview?.items || [])
-      .map(it => ({ cls: it.cls, sku_id: it.sku_id, code: it.code, qty: Number(it.recv) }))
+      .map(it => ({ cls: it.cls, sku_id: it.sku_id, code: it.code, qty: Number(it.recv), line_index: it.line_index }))
       .filter(l => l.qty > 0)
     if (!lines.length) { setError(t('Enter at least one quantity to receive.')); return }
     if (!window.confirm(t('Receive {n} line(s) from PU {po} into stock?', { n: lines.length, po: poNumber }))) return
     setBusy(true); setError('')
-    try { await receivePo(poId, poNumber, lines); setPreview(null) }
+    try { await receivePo(poId, poNumber, lines, preview.source_lines); setPreview(null) }
     catch (e) { setError(e.message || t('Receive failed.')) }
     finally { setBusy(false) }
   }
   async function doReverse() {
     if (!window.confirm(t('Reverse the stock receipt for PU {po}? The received quantities are removed from stock.', { po: poNumber }))) return
     setBusy(true); setError('')
-    try { await reversePoReceive(poId, poNumber) }
+    try { await reversePoReceive(poId, poNumber, {generation: state.generation, lines: state.lines}); setCorrection(null); setSuccess('') }
     catch (e) { setError(e.message || t('Reverse failed.')) }
+    finally { setBusy(false) }
+  }
+
+  async function reviewReceipt() {
+    setBusy(true); setError(''); setSuccess(''); setCorrection(null); setConfirmCorrection(false)
+    try { setCorrection(await previewPoReceiptCorrection(poId)) }
+    catch (e) { setError(e.message || t('Could not review the receipt.')) }
+    finally { setBusy(false) }
+  }
+  async function correctReceipt() {
+    setConfirmCorrection(false)
+    setBusy(true); setError('')
+    try { await applyPoReceiptCorrection(correction); setCorrection(null); setSuccess(t('Receipt corrected. Existing stock was preserved.')) }
+    catch (e) { setError(e.message || t('Correction failed. Review the receipt again.')) }
     finally { setBusy(false) }
   }
 
@@ -87,7 +108,7 @@ export default function PoReceiveStock({ po }) {
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-warm-grey">
                   {state.lines.map((l, i) => (
-                    <tr key={l.sku_id || i}>
+                    <tr key={`${l.cls}:${l.sku_id}:${i}`}>
                       <td className="py-1.5 pr-2"><span className={`text-2xs px-1.5 py-0.5 rounded-full ${CLASS_BADGE[l.cls] || ''}`}>{l.cls}</span></td>
                       <td className="py-1.5 pr-2 font-mono text-xs">{l.code}</td>
                       <td className="py-1.5 text-right font-mono tabular-nums text-green-700">+{fmt(l.qty)}</td>
@@ -95,6 +116,21 @@ export default function PoReceiveStock({ po }) {
                   ))}
                 </tbody>
               </table>
+              <button type="button" onClick={reviewReceipt} disabled={busy} className="btn-secondary mt-3 text-sm">
+                {busy ? t('Working…') : t('Review receipt')}
+              </button>
+              {correction && (correction.needed ? (
+                <div className="mt-3 border border-warm-grey p-3">
+                  <p className="text-sm mb-3">{t('Review the missing quantities. Existing receipt movements will be preserved.')}</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs" aria-label={t('Receipt correction preview')}>
+                      <thead><tr className="text-left"><th className="py-2">{t('Code')}</th><th className="text-right">{t('Ordered')}</th><th className="text-right">{t('Already received')}</th><th className="text-right">{t('Add to stock')}</th></tr></thead>
+                      <tbody>{correction.items.map(l=><tr key={`${l.cls}:${l.sku_id}`} className="border-t border-warm-grey"><td className="py-2 font-mono">{l.code}</td><td className="text-right">{fmt(l.qty)}</td><td className="text-right">{fmt(l.already)}</td><td className="text-right">+{fmt(l.delta)}</td></tr>)}</tbody>
+                    </table>
+                  </div>
+                  <button type="button" onClick={() => setConfirmCorrection(true)} disabled={busy} className="btn-primary mt-3 text-sm">{t('Correct receipt')}</button>
+                </div>
+              ) : <p role="status" className="text-sm text-ink-70 mt-3">{t('Receipt matches the stock ledger.')}</p>)}
               <button type="button" onClick={doReverse} disabled={busy}
                 className="mt-3 inline-flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-800 disabled:opacity-50">
                 <RotateCcw size={14} /> {busy ? t('Reversing…') : t('Reverse receipt (remove from stock)')}
@@ -122,7 +158,7 @@ export default function PoReceiveStock({ po }) {
                       </thead>
                       <tbody className="divide-y divide-warm-grey">
                         {preview.items.map((it, i) => (
-                          <tr key={`${it.cls}:${it.sku_id}`}>
+                          <tr key={`${it.cls}:${it.sku_id}:${it.line_index}`}>
                             <td className="py-1.5 pr-2"><span className={`text-2xs px-1.5 py-0.5 rounded-full ${CLASS_BADGE[it.cls] || ''}`}>{it.cls}</span></td>
                             <td className="py-1.5 pr-2 font-mono text-xs">{it.code}</td>
                             <td className="py-1.5 pr-2 text-xs text-ink-60 truncate max-w-[180px]">{it.name || '—'}</td>
@@ -137,11 +173,12 @@ export default function PoReceiveStock({ po }) {
                       </tbody>
                     </table>
                   </div>
-                  <button type="button" onClick={doReceive} disabled={busy} className="mt-3 inline-flex items-center gap-1.5 btn-primary text-sm">
+                  <button type="button" onClick={doReceive} disabled={busy || preview.conflicts?.length > 0} className="mt-3 inline-flex items-center gap-1.5 btn-primary text-sm">
                     <PackagePlus size={14} /> {busy ? t('Receiving…') : t('Receive to stock')}
                   </button>
                 </>
               )}
+              {preview.conflicts?.length > 0 && <p role="alert" className="text-sm text-brand-600 mt-3">{preview.conflicts.map(c=>c.reason).join(' ')}</p>}
               {preview.unmatched?.length > 0 && (
                 <div className="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
@@ -150,9 +187,17 @@ export default function PoReceiveStock({ po }) {
               )}
             </>
           ) : null}
-          {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+          {success && <p role="status" className="text-sm text-ink-70 mt-3">{success}</p>}
+          {error && <p role="alert" className="text-sm text-brand-600 mt-2">{error}</p>}
         </div>
       )}
+      {confirmCorrection && correction?.needed && <ConfirmDialog
+        confirmLabel="Correct receipt"
+        danger={false}
+        message={t('Add {n} missing units to the correct stock items? Quantities already received will be kept.', {n:correction.items.reduce((n,l)=>n+l.delta,0)})}
+        onConfirm={correctReceipt}
+        onCancel={() => setConfirmCorrection(false)}
+      />}
     </div>
   )
 }

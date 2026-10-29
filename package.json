@@ -15,7 +15,7 @@
     "test:quote-pdf": "npm run test:supplier-quote && node --test qa/quote-pdf-units.test.mjs",
     "test:quote-excel": "node --test qa/quote-excel-units.test.mjs",
     "test:invoice-units": "node --test qa/invoice-units.test.mjs",
-    "test:packing-po": "node --test qa/packing-po-units.test.mjs",
+    "test:packing-po": "node --test qa/packing-po-units.test.mjs qa/po-receive.test.mjs",
     "test:ai-writer": "node --test qa/ai-writer.test.mjs qa/bulk-blog-ai.test.mjs",
     "test:catalogue-cover": "node --test qa/catalogue-cover.test.mjs",
     "test:seo-control-plane": "node seo-control-plane/validate-payload.test.mjs && node seo-control-plane/safe-write.test.mjs && node qa/seo-batch-guard.test.mjs && node --test qa/seo-elementor-layout.test.mjs qa/seo-write-safety.test.mjs qa/seo-dsh-followup.test.mjs qa/seo-review-queue.test.mjs qa/seo-body-gate-followup.test.mjs",

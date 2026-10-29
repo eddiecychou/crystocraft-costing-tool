@@ -124,41 +124,54 @@ export async function postMovement(colPath, id, opts) {
       return { onHand, reserved, deduped: true }
     }
 
-    let seq = Number.isFinite(comp.movement_seq) ? comp.movement_seq : 0
+    return stageStockMovement(tx, colPath, id, comp, { ...opts, type }, movRef)
+  })
+}
 
-    // Seed the opening on-hand balance once: any stock that existed before the
-    // ledger becomes an explicit opening stock-take so the history is complete.
-    if (!comp.ledger_seeded && onHand !== 0) {
-      const openRef = doc(MOVEMENTS(colPath, id))
-      seq += 1
-      tx.set(openRef, {
-        type: 'stocktake', qty: onHand, counted: onHand, balance_after: onHand, reserved_after: reserved,
-        date: today(), note: 'Opening balance (migrated from stock)',
-        seq, createdAt: serverTimestamp(),
-      })
-    }
+// Compose a stock movement into a caller-owned transaction. The caller MUST
+// finish every read and check the movement ID before invoking this write phase.
+export function stageStockMovement(tx, colPath, id, comp, opts, movRef) {
+  for (const field of ['stock_qty','reserved_qty','movement_seq']) {
+    if (comp[field] != null && !Number.isFinite(comp[field])) throw new Error('Invalid stock balance or sequence. Review this stock item first.')
+  }
+  const compRef = doc(db, colPath, id)
+  const type = VALID_TYPES.has(opts.type) ? opts.type : 'receipt'
+  const onHand = Number.isFinite(comp.stock_qty) ? comp.stock_qty : 0
+  const reserved = Number.isFinite(comp.reserved_qty) ? comp.reserved_qty : 0
+  let seq = Number.isFinite(comp.movement_seq) ? comp.movement_seq : 0
 
-    const { onHandDelta, reservedDelta } = movementEffect({ type, qty: opts.qty, counted: opts.counted }, { onHand, reserved })
-    const balance_after = onHand + onHandDelta
-    const reserved_after = reserved + reservedDelta
-
+  // Seed the opening on-hand balance once: any stock that existed before the
+  // ledger becomes an explicit opening stock-take so the history is complete.
+  if (!comp.ledger_seeded && onHand !== 0) {
+    const openRef = doc(MOVEMENTS(colPath, id))
     seq += 1
-    tx.set(movRef, {
-      type,
-      qty: onHandDelta,
-      reserved_qty: reservedDelta,
-      counted: type === 'stocktake' ? num(opts.counted) : null,
-      balance_after,
-      reserved_after,
-      date: opts.date || today(),
-      note: (opts.note || '').trim(),
-      order_id: opts.order_id || null,
+    tx.set(openRef, {
+      type: 'stocktake', qty: onHand, counted: onHand, balance_after: onHand, reserved_after: reserved,
+      date: today(), note: 'Opening balance (migrated from stock)',
       seq, createdAt: serverTimestamp(),
     })
+  }
 
-    tx.update(compRef, { stock_qty: balance_after, reserved_qty: reserved_after, ledger_seeded: true, movement_seq: seq, updatedAt: serverTimestamp() })
-    return { onHand: balance_after, reserved: reserved_after, deduped: false }
+  const { onHandDelta, reservedDelta } = movementEffect({ type, qty: opts.qty, counted: opts.counted }, { onHand, reserved })
+  const balance_after = onHand + onHandDelta
+  const reserved_after = reserved + reservedDelta
+
+  seq += 1
+  tx.set(movRef, {
+    type,
+    qty: onHandDelta,
+    reserved_qty: reservedDelta,
+    counted: type === 'stocktake' ? num(opts.counted) : null,
+    balance_after,
+    reserved_after,
+    date: opts.date || today(),
+    note: (opts.note || '').trim(),
+    order_id: opts.order_id || null,
+    seq, createdAt: serverTimestamp(),
   })
+
+  tx.update(compRef, { stock_qty: balance_after, reserved_qty: reserved_after, ledger_seeded: true, movement_seq: seq, updatedAt: serverTimestamp() })
+  return { onHand: balance_after, reserved: reserved_after, deduped: false }
 }
 
 // One-shot load (oldest → newest) for exports / non-reactive callers.

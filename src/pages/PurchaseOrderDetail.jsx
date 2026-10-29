@@ -1,7 +1,7 @@
 import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, onSnapshot, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -39,10 +39,10 @@ export default function PurchaseOrderDetail() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    getDoc(doc(db, 'purchase_orders', id)).then(snap => {
-      if (snap.exists()) setPo({ id: snap.id, ...snap.data() })
+    return onSnapshot(doc(db, 'purchase_orders', id), snap => {
+      setPo(snap.exists() ? { id: snap.id, ...snap.data() } : null)
       setLoading(false)
-    }).catch(() => setLoading(false))   // don't hang the spinner on a failed read
+    }, () => setLoading(false))
   }, [id])
 
   async function handleDelete() {

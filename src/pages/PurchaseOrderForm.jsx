@@ -1,7 +1,7 @@
 import { ocDateOnly } from '../ocTime.js'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { collection, doc, addDoc, updateDoc, getDoc, getDocs, query, orderBy, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, addDoc, getDoc, getDocs, query, orderBy, serverTimestamp, runTransaction } from 'firebase/firestore'
 import { db, authHeader } from '../firebase'
 import { useComponents } from '../criticalComponents'
 import { CURRENCIES, PO_PAYMENT_TERMS, PO_UNITS } from '../constants'
@@ -11,6 +11,8 @@ import { allocatePuNo } from '../puNumber'
 import ComponentLinkPicker from '../components/ComponentLinkPicker'
 import { Trash2, Plus, FileInput, FolderOpen, FileText, Link2, X } from 'lucide-react'
 import { useT } from '../i18n'
+import { poCodeChange, poStockIdentity } from '../poReceiptModel.js'
+import { sameFirestoreValue } from '../firestoreValue.js'
 
 const PO_TERM_VALUES = PO_PAYMENT_TERMS.map(t => t.value)
 
@@ -242,23 +244,9 @@ export default function PurchaseOrderForm() {
   const updateAdjustment = (uid, patch) => setAdjustments(a => a.map(x => x._uid === uid ? { ...x, ...patch } : x))
   const removeAdjustment = uid => setAdjustments(a => a.filter(x => x._uid !== uid))
 
-  // When a line's code matches a known component, offer to fill the description.
-  const compByCode = useMemo(() => {
-    const m = new Map()
-    components.forEach(c => { if (c.code) m.set(c.code.toUpperCase(), c) })
-    return m
-  }, [components])
-
   function onCodeChange(uid, code) {
-    const match = compByCode.get(code.trim().toUpperCase())
     const line = lines.find(l => l._uid === uid)
-    // Autofill description only if it's currently empty (never overwrite typing).
-    const patch = { code }
-    if (match && !line.description) patch.description = match.name || ''
-    // Auto-link a figurine component when the code matches — free linkage for
-    // coded/shared parts (boxes, stones). Never clobber a manual link.
-    if (match && !line.linked) patch.linked = { type: 'range', component_id: match.id, label: match.code }
-    updateLine(uid, patch)
+    updateLine(uid, poCodeChange(line, code, components))
   }
 
   const totals = poTotals({ lines, deposit_pct: form.deposit_pct, adjustments })
@@ -297,7 +285,15 @@ export default function PurchaseOrderForm() {
         updatedAt: serverTimestamp(),
       }
       if (isEdit) {
-        await updateDoc(doc(db, 'purchase_orders', id), payload)
+        const ref = doc(db, 'purchase_orders', id)
+        await runTransaction(db, async tx => {
+          const latest = await tx.get(ref)
+          if (!latest.exists()) throw new Error(t('PO no longer exists.'))
+          if (latest.data().stock_received && !sameFirestoreValue(poStockIdentity(latest.data().lines), poStockIdentity(payload.lines))) {
+            throw new Error(t('This PO is already received. Review its receipt before changing stock items or quantities.'))
+          }
+          tx.update(ref, payload)
+        })
         navigate(`/purchase-orders/${id}`)
       } else {
         const ref = await addDoc(collection(db, 'purchase_orders'), { ...payload, createdAt: serverTimestamp() })
