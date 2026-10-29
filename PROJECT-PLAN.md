@@ -1,4 +1,4 @@
-# V8.20 — Flexible marketing catalogues — 30 October 2026, release preparation
+# V8.20 — Flexible marketing catalogues — released 30 October 2026
 
 Owner-approved flexible overview/comparison/feature layouts replace photo-count
 slots. Product images remain complete; selection beyond six uses continuation
@@ -7,8 +7,11 @@ or continue them without shortening stored content. The builder offers optional
 Feature product / Start on a new page, and Preview validates text bounds and
 image loading before print. Local regressions/browser checks cover preservation,
 long CJK/emoji/unbroken specs, mixed image shapes, phone preview and error states.
-No live record migration or rules changes. Exact-SHA CI and two-role candidate /
-production verification pending. See [release record](docs/plans/V8.20-FLEXIBLE-CATALOGUE-LAYOUTS.md).
+No live record migration or rules changes. Released `1201de87` / Netlify
+`6ae3811076b7c44200c772f1` after both GitHub jobs passed on that SHA (run
+`40919473118`) and fresh admin/customer candidate and production gates passed.
+Same 431-file candidate artifact reused; live original copy and all 13 selected
+catalogue photos verified. See [release record](docs/plans/V8.20-FLEXIBLE-CATALOGUE-LAYOUTS.md).
 
 # V8.20 — Add items after reservation — released 29 October 2026
 
