@@ -18,12 +18,13 @@ const sample={name:'Manulife VIP Drinkware Gifts',season:'15 Oct 2026',tagline:'
 let scratch,pages
 before(async()=>{
  scratch=await mkdtemp(join(tmpdir(),'oc-cover-'))
- await build({stdin:{contents:`export {default as form} from './src/pages/CatalogueForm.jsx';export {default as print} from './src/pages/CataloguePreview.jsx';export {default as cover} from './src/components/CatalogueCover.jsx'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'cover-boundaries',setup(b){
- b.onResolve({filter:/^(react(?:\/.*)?|lucide-react)$/},a=>({path:require.resolve(a.path),external:true}))
+ await build({stdin:{contents:`export {default as builder} from './src/pages/CatalogueDetail.jsx';export {default as form} from './src/pages/CatalogueForm.jsx';export {default as print} from './src/pages/CataloguePreview.jsx';export {default as cover} from './src/components/CatalogueCover.jsx'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'cover-boundaries',setup(b){
+ b.onResolve({filter:/^(react(?:-dom)?(?:\/.*)?|lucide-react|@dnd-kit\/(?:core|sortable|utilities))$/},a=>({path:require.resolve(a.path),external:true}))
  b.onResolve({filter:/^(react-router-dom|firebase\/firestore|firebase\/storage)$/},a=>({path:a.path,namespace:'mock'}))
+ b.onResolve({filter:/productSource$/},()=>({path:'products',namespace:'mock'}))
  b.onResolve({filter:/(^|\/)firebase$/},()=>({path:'firebase',namespace:'mock'}))
- b.onLoad({filter:/.*/,namespace:'mock'},a=>({contents:a.path==='react-router-dom'?`import React from 'react';export const useParams=()=>({id:globalThis.__coverFixture.id});export const useNavigate=()=>x=>globalThis.__coverFixture.destination=x;export const Link=({to,children,...props})=>React.createElement('a',{...props,href:to},children)`:
- a.path==='firebase/firestore'?`export const doc=(...a)=>a;export const collection=(...a)=>a;export const query=x=>x;export const orderBy=()=>{};export const serverTimestamp=()=> 'QA-TIME';export const getDoc=async()=>({exists:()=>true,data:()=>globalThis.__coverFixture.catalogue});export const getDocs=async()=>({docs:[]});export const updateDoc=async(ref,value)=>{globalThis.__coverFixture.saved=value};export const addDoc=async(ref,value)=>{globalThis.__coverFixture.saved=value;return{id:'new'}}`:
+ b.onLoad({filter:/.*/,namespace:'mock'},a=>({contents:a.path==='products'?`export const PRODUCT_SOURCES=[{value:'corporate',label:'Corporate Gifts'}];export const loadBlogProducts=async()=>[];export const loadBlogImages=async()=>[];`:a.path==='react-router-dom'?`import React from 'react';export const useParams=()=>({id:globalThis.__coverFixture.id});export const useNavigate=()=>x=>globalThis.__coverFixture.destination=x;export const Link=({to,children,...props})=>React.createElement('a',{...props,href:to},children)`:
+ a.path==='firebase/firestore'?`export const doc=(...a)=>a;export const collection=(...a)=>a;export const query=x=>x;export const orderBy=()=>{};export const serverTimestamp=()=> 'QA-TIME';export const getDoc=async()=>({exists:()=>true,data:()=>globalThis.__coverFixture.catalogue});export const deleteDoc=async()=>{throw Error('Unexpected delete')};export const getDocs=async()=>({docs:[]});export const onSnapshot=(ref,cb)=>{cb({docs:(globalThis.__coverFixture.items||[]).map(i=>({id:i.id,data:()=>i}))});return()=>{}};export const updateDoc=async(ref,value)=>{globalThis.__coverFixture.saved=value};export const addDoc=async(ref,value)=>{globalThis.__coverFixture.saved=value;return{id:'new'}}`:
  a.path==='firebase/storage'?`export const ref=()=>{};export const uploadBytes=()=>{throw Error('Unexpected upload')};export const getDownloadURL=()=>{throw Error('Unexpected upload')}`:'export const db={};export const storage={}',loader:'js'}))
  b.onResolve({filter:/\.(png|ttf)$/},a=>({path:resolve(a.resolveDir,a.path),namespace:'asset'}))
  b.onLoad({filter:/.*/,namespace:'asset'},async a=>({contents:`export default ${JSON.stringify(`data:${a.path.endsWith('.ttf')?'font/ttf':'image/png'};base64,`+(await readFile(a.path)).toString('base64'))}`,loader:'js'}))
@@ -31,8 +32,8 @@ before(async()=>{
  pages=await import(pathToFileURL(join(scratch,'pages.mjs')))
 })
 after(async()=>{dom.window.close();delete globalThis.__coverFixture;await rm(scratch,{recursive:true,force:true})})
-async function withPage(kind,catalogue,fn,{id='catalogue',compact=false}={}){
- globalThis.__coverFixture={catalogue,id}
+async function withPage(kind,catalogue,fn,{id='catalogue',compact=false,items=[]}={}){
+ globalThis.__coverFixture={catalogue,id,items}
  const host=document.createElement('div');document.body.append(host);const root=createRoot(host)
  try{await act(async()=>root.render(React.createElement(pages[kind],{catalogue,compact})));await act(async()=>{await new Promise(r=>setTimeout(r,0))});await fn(host)}finally{await act(async()=>root.unmount());host.remove()}
 }
@@ -79,4 +80,32 @@ test('without a photo, either ink colour has a contrasting background and option
   assert.equal(host.querySelector('.cover-page').style.background,color==='black'?'rgb(255, 255, 255)':'rgb(26, 26, 26)')
   assert.equal(host.querySelectorAll('.cover-season,.cover-tagline,.cover-overlay').length,0)
  })
+})
+test('catalogue print rules unmount with the preview and a cover-only catalogue has no trailing page break',async()=>{
+ await withPage('print',sample,host=>{
+  assert.match(host.querySelector('style').textContent, /\[data-print-shell\]/)
+  assert.ok(host.querySelector('.catalogue-sheet.cat-last-sheet .cover-page'))
+ })
+ assert.equal(document.querySelectorAll('style').length,0)
+})
+
+test('builder adds seventh and eighth images, preserves the snapshot, and saves layout choices', async()=>{
+ const item={id:'item-1',product_id:'original-product',product_name:'Original product',product_description:'Complete original specifications',hero_image:'image-1',product_images:Array.from({length:7},(_,i)=>'image-'+(i+2)),selected_images:Array.from({length:6},(_,i)=>'image-'+(i+1)),sort_order:0}
+ await withPage('builder',sample,async host=>{
+  for(const n of [7,8]){
+   const add=[...host.querySelectorAll('button')].find(b=>b.querySelector('img')?.getAttribute('src')==='image-'+n)
+   assert.ok(add,`Image ${n} remains selectable`)
+   await act(async()=>add.click())
+   assert.deepEqual(globalThis.__coverFixture.saved,{selected_images:Array.from({length:n},(_,i)=>'image-'+(i+1))})
+  }
+  const select=host.querySelector('select')
+  await act(async()=>{select.value='feature';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}))})
+  assert.deepEqual(globalThis.__coverFixture.saved,{layout_mode:'feature'})
+  await act(async()=>host.querySelector('input[type=checkbox]').click())
+  assert.deepEqual(globalThis.__coverFixture.saved,{page_break_before:true})
+  assert.equal(item.product_description,'Complete original specifications')
+  assert.doesNotMatch(host.textContent,/Maximum 6 images|blank slot/)
+  assert.match(host.textContent,/8 images/)
+  for(const img of host.querySelectorAll('.group\\/img img'))assert.match(img.className,/object-contain/)
+ },{items:[item]})
 })

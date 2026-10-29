@@ -233,6 +233,19 @@ isolated Firebase boundaries. It checks white/black ink, full-opacity secondary
 text and divider, saved/reloaded selection, legacy defaults, preserved overlay
 settings and no-photo contrast. No live records are written.
 
+The same command includes `qa/catalogue-layout.test.mjs` and actual builder
+interactions: selection beyond six photos, layout/page-break persistence,
+mixed-count page sharing, long/CJK/emoji/unbroken specifications, all-image/text
+preservation, explicit zero-photo selection, impossible headings and print-style
+unmount/last-page behavior. For real browser layout checks run
+`node qa/catalogue-layout-preview.mjs`: overview, mixed, many, long, noimages,
+broken and heading cases use isolated synthetic data with the actual print page.
+`--real` optionally reads an existing ignored snapshot under qa/out/; it never
+reads/writes live OC. Review bounds, image borders, copy readback, phone width,
+continuation labels and print readiness. This fixture is separate from the
+Range PDF renderer above. Release still requires exact-SHA CI and fresh two-role
+candidate/production checks in RELEASE-WORKFLOW.md.
+
 
 ## Dashboard ↔ customer task and note sync
 

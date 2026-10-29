@@ -17,13 +17,11 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { Star, X, Camera } from 'lucide-react'
 import { loadBlogProducts, loadBlogImages, PRODUCT_SOURCES } from '../productSource'
 import { MARKETING_DESC_MAXLEN } from '../constants'
+import { catalogueImages } from '../catalogueLayout'
 
 // ── Auto layout label ─────────────────────────────────────────────────────────
 function layoutLabel(count) {
-  if (count === 0) return { text: 'No images', style: 'badge bg-ivory-dark text-ink-60' }
-  if (count >= 5)  return { text: `Full page · ${count} images`, style: 'badge bg-brand-50 text-brand-600' }
-  if (count <= 3)  return { text: `Quarter page · ${count} image${count > 1 ? 's' : ''}`, style: 'badge bg-purple-50 text-purple-600' }
-  return { text: `Half page · ${count} images`, style: 'badge bg-amber-50 text-amber-600' }
+  return { text: `${count} image${count === 1 ? '' : 's'} · Automatic pages`, style: 'badge bg-ivory-dark text-ink-60' }
 }
 
 // ── Single draggable image in the selected strip ──────────────────────────────
@@ -41,7 +39,7 @@ function SortableImage({ id, url, isHero, onRemove }) {
       )}
       <img
         src={url}
-        className="w-full h-full rounded-none object-cover cursor-grab active:cursor-grabbing select-none"
+        className="w-full h-full rounded-none object-contain cursor-grab active:cursor-grabbing select-none"
         draggable={false}
         {...attributes}
         {...listeners}
@@ -101,11 +99,11 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
         </DndContext>
       )}
 
-      {/* Unselected images — click to add (max 6) */}
-      {unselected.length > 0 && selectedImages.length < 6 && (
+      {/* Every selected photo is retained; the preview adds gallery pages. */}
+      {unselected.length > 0 && (
         <div>
           <p className="text-xs text-ink-60 mb-1.5">
-            {selectedImages.length === 0 ? 'Select images to include:' : `Add more (${6 - selectedImages.length} remaining):`}
+            {selectedImages.length === 0 ? 'Select images to include:' : 'Add more images:'}
           </p>
           <div className="flex gap-2 flex-wrap">
             {unselected.map(url => (
@@ -114,15 +112,12 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
                 onClick={() => onUpdate(itemId, { selected_images: [...selectedImages, url] })}
                 className="relative w-16 h-16 rounded-none border-2 border-dashed border-warm-grey hover:border-brand-300 overflow-hidden group/add transition-colors"
               >
-                <img src={url} alt="" className="w-full h-full object-cover opacity-40 group-hover/add:opacity-60 transition-opacity" />
+                <img src={url} alt="" className="w-full h-full object-contain opacity-40 group-hover/add:opacity-60 transition-opacity" />
                 <span className="absolute inset-0 flex items-center justify-center text-ink-60 group-hover/add:text-brand-500 text-xl font-light">+</span>
               </button>
             ))}
           </div>
         </div>
-      )}
-      {selectedImages.length >= 6 && (
-        <p className="text-xs text-amber-500">Maximum 6 images reached.</p>
       )}
 
       {allImages.length === 0 && (
@@ -143,8 +138,8 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const allImages = [item.hero_image, ...(item.product_images || [])].filter(Boolean)
-  const selectedImages = item.selected_images || (item.hero_image ? [item.hero_image] : [])
+  const allImages = [...new Set([item.hero_image, ...(item.product_images || [])].filter(Boolean))]
+  const selectedImages = catalogueImages(item)
 
   return (
     <div ref={setNodeRef} style={style} className="card p-4 space-y-3">
@@ -157,7 +152,7 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
         {/* Hero image preview */}
         <div className="w-16 h-16 rounded-none bg-ivory-dark shrink-0 overflow-hidden">
           {selectedImages[0]
-            ? <img src={selectedImages[0]} alt="" className="w-full h-full object-cover" />
+            ? <img src={selectedImages[0]} alt="" className="w-full h-full object-contain" />
             : <div className="w-full h-full flex items-center justify-center text-platinum"><Camera size={24} /></div>
           }
         </div>
@@ -179,6 +174,15 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
         allImages={allImages}
         onUpdate={onUpdate}
       />
+
+      <div className="flex flex-wrap items-end gap-4">
+        <label className="text-xs text-ink-60">Page layout
+          <select className="input text-sm mt-1" value={item.layout_mode === 'feature' ? 'feature' : 'auto'} onChange={e => onUpdate(item.id, { layout_mode: e.target.value })}>
+            <option value="auto">Automatic</option><option value="feature">Feature product</option>
+          </select>
+        </label>
+        <label className="inline-flex items-center gap-2 text-xs text-ink-60 pb-3"><input type="checkbox" checked={Boolean(item.page_break_before)} onChange={e => onUpdate(item.id, { page_break_before: e.target.checked })} />Start on a new page</label>
+      </div>
 
       {/* Marketing description */}
       <div>
@@ -257,7 +261,7 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
             >
               <div className="w-10 h-10 rounded-none bg-ivory-dark shrink-0 overflow-hidden">
                 {p.heroImage
-                  ? <img src={p.heroImage} alt="" className="w-full h-full object-cover" />
+                  ? <img src={p.heroImage} alt="" className="w-full h-full object-contain" />
                   : <div className="w-full h-full flex items-center justify-center text-platinum"><Camera size={20} /></div>
                 }
               </div>
@@ -367,7 +371,8 @@ export default function CatalogueDetail() {
 
       <p className="text-xs text-ink-60 mb-5">
         Add products, select and reorder images (first = hero), write marketing copy.
-        Layout (half/full page) is set automatically by image count. Drag items to reorder.
+        Pages adapt to your images and text. Extra photos and long specifications continue
+        onto additional pages. Drag items to reorder; preview shows the final page count.
       </p>
 
       {/* Items */}
@@ -400,52 +405,10 @@ export default function CatalogueDetail() {
         + Add Product
       </button>
 
-      {/* Page slot summary */}
-      {items.length > 0 && (() => {
-        const imageCount = item => (item.selected_images?.length || (item.hero_image ? 1 : 0))
-        const quarterItems = items.filter(i => imageCount(i) <= 3).length
-        const halfItems    = items.filter(i => imageCount(i) === 4).length
-        const fullItems    = items.filter(i => imageCount(i) >= 5).length
-
-        const quarterPages      = Math.ceil(quarterItems / 4)
-        const quarterBlanks     = quarterItems === 0 ? 0 : (4 - (quarterItems % 4)) % 4
-        const halfPages         = Math.ceil(halfItems / 2)
-        const halfBlanks        = halfItems % 2
-        const totalPages        = quarterPages + halfPages + fullItems
-
-        return (
-          <div className="mt-4 card p-4 space-y-2">
-            <p className="eyebrow text-bronze">Page summary</p>
-            <div className="flex flex-wrap gap-2 text-xs">
-              {quarterItems > 0 && (
-                <span className="badge bg-purple-50 text-purple-600">
-                  {quarterPages} quarter-page{quarterPages > 1 ? 's' : ''} · {quarterItems} product{quarterItems > 1 ? 's' : ''}
-                  {quarterBlanks > 0 && <span className="ml-1 text-purple-400">({quarterBlanks} blank slot{quarterBlanks > 1 ? 's' : ''})</span>}
-                </span>
-              )}
-              {halfItems > 0 && (
-                <span className="badge bg-amber-50 text-amber-600">
-                  {halfPages} half-page{halfPages > 1 ? 's' : ''} · {halfItems} product{halfItems > 1 ? 's' : ''}
-                  {halfBlanks > 0 && <span className="ml-1 text-amber-400">(1 blank slot)</span>}
-                </span>
-              )}
-              {fullItems > 0 && (
-                <span className="badge bg-brand-50 text-brand-600">
-                  {fullItems} full-page{fullItems > 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-ink-60">
-              {totalPages + 1} pages total (including cover)
-              {(quarterBlanks > 0 || halfBlanks > 0) && (
-                <span className="text-amber-500 ml-2">
-                  · {quarterBlanks + halfBlanks} blank slot{(quarterBlanks + halfBlanks) > 1 ? 's' : ''} — add products or adjust images to fill
-                </span>
-              )}
-            </p>
-          </div>
-        )
-      })()}
+      {items.length > 0 && <div className="mt-4 card p-4 space-y-2">
+        <p className="eyebrow text-bronze">Flexible pages</p>
+        <p className="text-xs text-ink-60">Short products can share an overview or a two-product page. Featured products, long specifications and additional images receive the space they need. Preview &amp; Print measures the full text and shows the final page count.</p>
+      </div>}
 
       {showPicker && (
         <ProductPicker
