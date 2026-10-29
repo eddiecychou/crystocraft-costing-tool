@@ -1,3 +1,15 @@
+# V8.20 — All-PO stock receipt audit — 29 October 2026
+
+Read-only fixed-time audit of all 36 OC POs, 1,738 stock identities and 3,470
+movements found no duplicate, wrong-item, orphaned or missing saved PO receipts.
+All 29 saved receipt rows (6,965 net pieces) reconcile; prior PU260061 receipts
+were fully reversed. Eight POs cover all ordered lines; PU260053 has 200 owl
+components without a PO receipt. Its separate manual count of 200, subsequent
+production of 192 and remaining stock of 8 are preserved. Owner answered
+“Not sure — leave pending”; do not post another 200 or re-receive the PO.
+All 27 stock items on received POs reconcile with chronological ledgers.
+No live data/app changes or deployment. See [audit](docs/plans/PO-RECEIPT-AUDIT-2026-10-29.md).
+
 # V8.20 — PO receipt matching, posting and PU260076 correction — 29 October 2026
 
 PO code edits now replace stale links safely, receiving validates stock identity,
