@@ -25,6 +25,18 @@ import { imageDownloadUrl } from '../imageDownloadUrl'
 // <a download> is silently ignored for a cross-origin Firebase Storage URL).
 const downloadUrl = (fileUrl, filename) => imageDownloadUrl(fileUrl, filename || 'photo.jpg', true)
 
+function downloadPhoto(event, fileUrl, filename) {
+  event.preventDefault()
+  event.stopPropagation()
+  // Use the same explicit, named download action as the admin image gallery.
+  const link = document.createElement('a')
+  link.href = downloadUrl(fileUrl, filename)
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+}
+
 function docVariants(p) {
   if (Array.isArray(p.variants) && p.variants.length) return p.variants
   return (p.finishes || []).map(f => ({
@@ -474,8 +486,9 @@ export default function FigurineDetail({ profile }) {
                     tapping it doesn't also open the zoom view underneath.
                     Visible on hover (desktop) and always-on for touch, since
                     there's no hover state to reveal it on mobile. */}
-                <a download href={downloadUrl(g.url, `${name}${g.caption ? ` - ${g.caption}` : ''}.jpg`)}
-                   onClick={(e) => e.stopPropagation()}
+                <a download={`${name}${g.caption ? ` - ${g.caption}` : ''}.jpg`}
+                   href={downloadUrl(g.url, `${name}${g.caption ? ` - ${g.caption}` : ''}.jpg`)}
+                   onClick={(e) => downloadPhoto(e, g.url, `${name}${g.caption ? ` - ${g.caption}` : ''}.jpg`)}
                    title="Download this photo"
                    className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-white/90 text-ink-60 shadow-sm
  opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-brand-600">

@@ -63,6 +63,7 @@ for (const name of ['Heart & Sunflower Freestand', 'Mini Heart(w/ Slot)', 'æ°´æ™
       assert.equal(links.length, 2)
       for (const [index, link] of links.entries()) {
         assert.ok(link.hasAttribute('download'), 'Chrome must receive a download action rather than attachment-page navigation')
+        assert.equal(link.download, `${name}${images[index].caption ? ` - ${images[index].caption}` : ''}.jpg`)
         assert.equal(link.target, '')
         const url = new URL(link.href)
         assert.equal(url.origin, 'https://catalogue.test')
@@ -70,10 +71,22 @@ for (const name of ['Heart & Sunflower Freestand', 'Mini Heart(w/ Slot)', 'æ°´æ™
         assert.equal(url.searchParams.get('url'), images[index].url)
         assert.equal(url.searchParams.get('filename'), `${name}${images[index].caption ? ` - ${images[index].caption}` : ''}.jpg`)
         assert.equal(url.searchParams.get('normalize'), index === 1 ? 'jpeg' : null)
-        // JSDOM cannot save a file: suppress only its native default action.
-        // React's actual click handler must still leave the gallery/lightbox alone.
-        link.addEventListener('click', e => e.preventDefault(), { once: true })
-        await act(async () => link.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })))
+        // Observe the actual named native download action; prevent only JSDOM's
+        // unsupported save. The product link's own handler must cancel navigation.
+        const downloads = []
+        const observe = e => {
+          if (e.target.tagName === 'A' && e.target.parentElement === document.body) {
+            downloads.push({ href: e.target.href, name: e.target.download })
+            e.preventDefault()
+          }
+        }
+        document.addEventListener('click', observe, true)
+        const click = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })
+        try { await act(async () => link.dispatchEvent(click)) }
+        finally { document.removeEventListener('click', observe, true) }
+        assert.equal(click.defaultPrevented, true)
+        assert.deepEqual(downloads, [{ href: link.href, name: link.download }])
+        assert.equal(document.querySelectorAll('body > a').length, 0)
         assert.equal(host.querySelector('h1').textContent, name)
         assert.equal(host.querySelector('button[aria-label="Close"]'), null)
       }
