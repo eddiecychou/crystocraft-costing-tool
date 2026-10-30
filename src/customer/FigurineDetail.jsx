@@ -474,7 +474,7 @@ export default function FigurineDetail({ profile }) {
                     tapping it doesn't also open the zoom view underneath.
                     Visible on hover (desktop) and always-on for touch, since
                     there's no hover state to reveal it on mobile. */}
-                <a href={downloadUrl(g.url, `${name}${g.caption ? ` - ${g.caption}` : ''}.jpg`)}
+                <a download href={downloadUrl(g.url, `${name}${g.caption ? ` - ${g.caption}` : ''}.jpg`)}
                    onClick={(e) => e.stopPropagation()}
                    title="Download this photo"
                    className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-white/90 text-ink-60 shadow-sm

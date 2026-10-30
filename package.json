@@ -25,7 +25,7 @@
     "test:workspace-sync": "node --test qa/customer-workspace-sync-emulator.mjs && node qa/customer-workspace-followups-timezones.mjs",
     "test:oc-time": "node --test qa/oc-time-audit.test.mjs && node qa/whatsapp-import.test.mjs && npm run test:scheduled-time",
     "test:scheduled-time": "python3 qa/scheduled-jobs.test.py && node --test qa/outreach-time.test.mjs",
-    "test:product-images": "node --test qa/product-images.test.mjs qa/product-images-gallery.test.mjs qa/download-image.test.mjs",
+    "test:product-images": "node --test qa/product-images.test.mjs qa/product-images-gallery.test.mjs qa/download-image.test.mjs qa/range-download-click.test.mjs",
     "test:crystal-swatches": "node --test qa/crystal-swatches.test.mjs qa/crystal-swatches-api.test.mjs",
     "test:crystal-products": "node --test qa/crystal-products.test.mjs qa/crystal-media.test.mjs qa/crystal-fabric.test.mjs"
   },

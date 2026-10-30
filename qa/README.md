@@ -49,6 +49,14 @@ restrictions are covered. This command runs in prebuild and the required GitHub
 product-search job. It does not replace a real browser candidate/production
 download check when releasing the endpoint.
 
+`qa/range-download-click.test.mjs` also runs in that command. It renders the real
+customer Range detail page with offline data, verifies the native download
+attribute and same-origin attachment links for WordPress/Firebase photos,
+Unicode/display-name/caption handling, and checks clicks leave the product and
+lightbox state intact without writing records. Candidate and production still
+require ordinary Chrome clicks plus saved-file readbacks; a direct HTTP request
+or the browser tool's media downloader does not close that check.
+
 # PO receipt regressions
 
 ## Add items to an existing reservation

@@ -1,3 +1,13 @@
+# V8.20 — customer Range download clicks prepared — 30 October 2026
+
+Range customer gallery links now explicitly request native downloads, addressing
+the ordinary Chrome attachment navigation that remained unverified after the
+filename fix. Five actual-page regressions fail before and pass after the
+correction; all 37 image tests and lint pass. Exact-SHA GitHub, candidate and
+production ordinary-click/two-role checks remain pending; no live product or
+security rules changed. See
+[customer download click verification](docs/plans/V8.20-RANGE-CUSTOMER-DOWNLOAD-CLICKS.md).
+
 # V8.20 — image download filename fix released — 30 October 2026
 
 The bottle product's em dash in its name causes the download service to return
