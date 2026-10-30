@@ -6,7 +6,8 @@ output rows. The full invoice/accounting amount and PBIS export stay intact.
 Real editor save/reopen/clear, print/Excel parity and invalid amounts are covered
 by 40 passing invoice regressions; full prebuild/build, lint and Firebase config
 checks pass. Desktop/375px layout reviewed; document buttons now wrap on phones.
-No live invoice/data/rules edits or deployment. See
+Both GitHub jobs PASS on source `403a1407` (run `41010845540`, attempt 1), pushed
+with `[skip netlify]`. No live invoice/data/rules edits or deployment. See
 [invoice deposit implementation and verification](docs/plans/V8.20-INVOICE-DEPOSIT.md).
 
 # V8.20 — PDF retest complete; portrait-ending correction released — 30 October 2026
