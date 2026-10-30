@@ -1,11 +1,14 @@
-# V8.20 — Catalogue trailing blank page — release candidate, 30 October 2026
+# V8.20 — Catalogue trailing blank page — released 30 October 2026
 
-The document root now keeps the catalogue's named page context so Chromium does
-not append an empty anonymous page after the last sheet. Native print-preview
-counts changed from 9 to 8 for Corp Gift Collection, 14 to 13 for the mixed-size
-copy and 19 to 18 for the long-spec copy. No clipping or live catalogue edits.
-Owner authorized deployment after required checks; the extended saved-PDF retest
-remains deferred by owner choice. See [review and release evidence](docs/plans/V8.20-CATALOGUE-PDF-REVIEW.md).
+The document root retains the catalogue's named page context, avoiding an empty
+anonymous page after the final sheet. Native preview counts changed 9 → 8 for
+Corp Gift Collection, 14 → 13 for the mixed-size copy and 19 → 18 for long specs.
+No clipping or live catalogue edits. Released `42a68f1b` / Netlify
+`6ae40b4679f90dff96723fdb` after both GitHub jobs passed on that SHA (run
+`40995217281`) and fresh admin/customer gates passed on candidate and production.
+The same 431-file build was reused; live preview retained all 13 photos and full
+original copy. The extended saved-PDF retest remains deferred by owner choice.
+See [review and release evidence](docs/plans/V8.20-CATALOGUE-PDF-REVIEW.md).
 
 # V8.20 — Per-image catalogue sizing — released 30 October 2026
 
