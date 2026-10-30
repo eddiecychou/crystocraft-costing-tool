@@ -1,10 +1,15 @@
-# V8.20 — Portrait-ending PDF follow-up — release candidate, 30 October 2026
+# V8.20 — PDF retest complete; portrait-ending correction awaits approval — 30 October 2026
 
-Resumed actual PDF retest found that a final portrait sheet still added an empty
-landscape page (14 PDF pages for 13 content pages). The page-mounted root context
-now follows the final portrait sheet; separately saved current/portrait-ending
-PDFs have 8/13 pages, no blanks and complete original photos/text. Final mixed/
-long exports and release gates are in progress. See [PDF retest evidence](docs/plans/V8.20-CATALOGUE-PDF-REVIEW.md).
+All 52 actual saved-PDF pages pass: current 8, mixed sizes 13, long specs 18 and
+portrait-ending 13. All 13 original photos remain intact and in order; complete
+text, clear footers and no blanks/cropping. Retesting found a final portrait sheet
+still added a blank landscape page; candidate `cf8f2b7c` fixes that case. Both
+GitHub jobs pass (run `41003350463`) and fresh candidate admin/customer checks pass
+on Netlify `6ae41ec555eec67136bc05d5`. Automatic approval review blocked publication
+of this newly discovered follow-up; owner approval requested. Production remains
+`6ae40b4679f90dff96723fdb`. Use Chrome Save as PDF for mixed sizes; the macOS print
+dialog's Open PDF in Preview route failed the paper-size check. No live catalogue
+choices changed. See [PDF results and pending release evidence](docs/plans/V8.20-CATALOGUE-PDF-REVIEW.md).
 
 # V8.20 — Catalogue trailing blank page — released 30 October 2026
 
