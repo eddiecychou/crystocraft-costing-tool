@@ -16,6 +16,13 @@ sign-in passed without account/permission changes. Unsaved QA invoice examples
 were discarded; no real invoice, payment, stock or security rule was changed. See
 [invoice deposit implementation and verification](docs/plans/V8.20-INVOICE-DEPOSIT.md).
 
+Export retest completed: three native Chrome PDFs and five real Excel downloads
+pass. USD 2,000 on USD 7,613.94 leaves USD 5,613.94 outstanding; blank and zero
+omit both optional rows. Full-payment/adjusted Excel balances also pass. PDFs
+have no blank pages or cropping; native Excel appearance checked. All 40 invoice
+regressions pass again. Review used fictional data with the deployed source;
+no application fix, real invoice edit or additional deployment was needed.
+
 # V8.20 — PDF retest complete; portrait-ending correction released — 30 October 2026
 
 All 52 actual saved-PDF pages pass: current 8, mixed sizes 13, long specs 18 and
