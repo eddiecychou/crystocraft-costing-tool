@@ -1,4 +1,4 @@
-# V8.20 — optional invoice deposit implemented; not deployed — 30 October 2026
+# V8.20 — optional invoice deposit released — 30 October 2026
 
 Sales invoices now support Deposit paid and a conditional Total outstanding,
 including customer/admin printed invoices and Excel. Empty/zero deposits add no
@@ -7,7 +7,13 @@ Real editor save/reopen/clear, print/Excel parity and invalid amounts are covere
 by 40 passing invoice regressions; full prebuild/build, lint and Firebase config
 checks pass. Desktop/375px layout reviewed; document buttons now wrap on phones.
 Both GitHub jobs PASS on source `403a1407` (run `41010845540`, attempt 1), pushed
-with `[skip netlify]`. No live invoice/data/rules edits or deployment. See
+with `[skip netlify]` and rechecked immediately before both uploads. Candidate
+`6ae432278bf7425cb105e46d` and production `6ae434054f45beed0b9a83c8` pass fresh
+admin/customer checks; the exact 431-file candidate was reused. Production
+verified 30 October, 17:10 AEDT / 14:10 HKT. An initial candidate customer profile
+load needed a reload; a separate fresh repeat and first production customer
+sign-in passed without account/permission changes. Unsaved QA invoice examples
+were discarded; no real invoice, payment, stock or security rule was changed. See
 [invoice deposit implementation and verification](docs/plans/V8.20-INVOICE-DEPOSIT.md).
 
 # V8.20 — PDF retest complete; portrait-ending correction released — 30 October 2026
