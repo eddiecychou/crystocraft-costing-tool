@@ -39,6 +39,16 @@ permission. The token's existing repository scope and expiry were preserved. The
 layout, real login or Firebase rules; release verification below remains
 required when publishing an app.
 
+# Image download filenames
+
+`npm run test:product-images` also runs `qa/download-image.test.mjs` against the
+actual attachment handler with a mocked upstream. Unicode product names (em
+dash, Chinese, accents and emoji), ASCII fallback/UTF-8 headers, safe control and
+quote handling, byte preservation, normalization and existing source/size/error
+restrictions are covered. This command runs in prebuild and the required GitHub
+product-search job. It does not replace a real browser candidate/production
+download check when releasing the endpoint.
+
 # PO receipt regressions
 
 ## Add items to an existing reservation

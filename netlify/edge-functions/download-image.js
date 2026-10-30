@@ -33,6 +33,17 @@ const ALLOWED_STORAGE_HOSTS = new Set(['firebasestorage.googleapis.com', 'storag
 const MAX_BYTES = 50 * 1024 * 1024   // 50MB — comfortably above any real asset here
 const FETCH_TIMEOUT_MS = 20000
 
+function attachmentDisposition(rawFilename) {
+  // HTTP headers cannot contain arbitrary Unicode. Keep an ASCII fallback for
+  // older clients and encode the real name with RFC 5987 (e.g. em dashes/CJK).
+  // URLSearchParams supplies well-formed Unicode; truncate by code point so an
+  // emoji at the limit cannot be split into an unencodable surrogate.
+  const filename = Array.from(rawFilename.replace(/[/\\\u0000-\u001f\u007f]/g, '_').trim()).slice(0, 200).join('') || 'image.jpg'
+  const fallback = filename.replace(/[^\x20-\x7e]|["\\]/g, '_')
+  const encoded = encodeURIComponent(filename).replace(/['()*]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`
+}
+
 function isAllowedStorageUrl(u, bucket) {
   if (u.protocol !== 'https:') return false
   if (u.hostname === 'crystocraft.com' || u.hostname.endsWith('.crystocraft.com')) return true
@@ -61,7 +72,7 @@ export function normalizedImageUrl(requestUrl, target, normalize) {
 export default async function handler(req) {
   const params = new URL(req.url).searchParams
   const rawUrl = params.get('url')
-  const filename = (params.get('filename') || 'image.jpg').replace(/[/\\]/g, '_').slice(0, 200)
+  const filename = params.get('filename') || 'image.jpg'
 
   if (!rawUrl) return new Response('Missing url param', { status: 400 })
 
@@ -95,7 +106,7 @@ export default async function handler(req) {
   return new Response(blob, {
     headers: {
       'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': attachmentDisposition(filename),
       'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'private, max-age=3600',
     },

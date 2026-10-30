@@ -1,3 +1,14 @@
+# V8.20 — image download filename fix ready locally — 30 October 2026
+
+The bottle product's em dash in its name causes the download service to return
+HTTP 500 when constructing its attachment header. The same live image downloads
+with an ASCII name. The shared endpoint now encodes Unicode filenames safely;
+all five real photos pass the corrected local handler and JPEG decoding. All
+32 image tests, full prebuild/build and lint pass; download regressions now run
+in the existing build/CI image suite. No product data or production deployment
+changed. Push/deployment and exact-SHA GitHub/two-role release checks remain
+pending. See [diagnosis and verification](docs/plans/V8.20-IMAGE-DOWNLOAD-FILENAME.md).
+
 # V8.20 — optional invoice deposit released — 30 October 2026
 
 Sales invoices now support Deposit paid and a conditional Total outstanding,
