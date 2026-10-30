@@ -241,6 +241,7 @@ emulator job. App and private read-only credentials deployed with fresh two-role
 
 ### Sales invoices & credit notes
 - Pages: `SalesInvoices.jsx`, `SalesInvoicePrint.jsx`, `CreditNotes.jsx`, `CreditNoteForm.jsx`, `CreditNotePrint.jsx`
+- Optional invoice deposit (V8.20, 30 Oct): `ShipmentForm.jsx` saves `orders.deposit_paid` (number/null), whitelisted in `shipping.normOrder`. `invoicePayments.js` derives outstanding from Accounting Total when present, otherwise the calculated invoice total. It never reduces invoice/PBIS sales value or posts a cash/UC-ledger receipt. Positive deposits add deduction/outstanding rows to admin/customer sales-invoice print and Excel output, including outstanding amount in words; blank/zero output and proformas are unchanged. Shared validation rejects invalid/negative/excessive amounts. `qa/invoice-units.test.mjs` covers save/reopen/clear and PDF-component/Excel parity. See `../plans/V8.20-INVOICE-DEPOSIT.md` for implementation/release state.
 - Logic: `src/creditNotes.js`, `src/domain/salesInvoiceHistory.js` · Edge fns: `credit-note` (posted fact in Supabase `app_credit_note`)
 - Collections: `credit_notes/{id}` (working doc, **admin-only**). Accounting is **not in JES** — books in PBIS on Cindy's machine; never take an FX rate from JES.
 

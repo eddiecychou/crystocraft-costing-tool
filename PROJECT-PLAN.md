@@ -1,3 +1,14 @@
+# V8.20 — optional invoice deposit implemented; not deployed — 30 October 2026
+
+Sales invoices now support Deposit paid and a conditional Total outstanding,
+including customer/admin printed invoices and Excel. Empty/zero deposits add no
+output rows. The full invoice/accounting amount and PBIS export stay intact.
+Real editor save/reopen/clear, print/Excel parity and invalid amounts are covered
+by 40 passing invoice regressions; full prebuild/build, lint and Firebase config
+checks pass. Desktop/375px layout reviewed; document buttons now wrap on phones.
+No live invoice/data/rules edits or deployment. See
+[invoice deposit implementation and verification](docs/plans/V8.20-INVOICE-DEPOSIT.md).
+
 # V8.20 — PDF retest complete; portrait-ending correction released — 30 October 2026
 
 All 52 actual saved-PDF pages pass: current 8, mixed sizes 13, long specs 18 and

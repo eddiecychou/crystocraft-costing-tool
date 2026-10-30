@@ -9,6 +9,7 @@ import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bank
 import { amountInWords } from '../constants'
 import { pdfFileTitle } from '../pdfFilename'
 import { downloadOrderInvoiceExcel } from '../invoiceExcel'
+import { invoicePaymentTotals } from '../invoicePayments'
 import logoUrl from '../assets/logo.png'
 
 // Sales Invoice — the commercial invoice, raised from an order the same way
@@ -97,6 +98,7 @@ export default function SalesInvoicePrint() {
 
   const cur = order.currency || 'USD'
   const { subtotal, chargesTotal, discountAmount, total } = computeOrderTotals(order, lines)
+  const payment = invoicePaymentTotals(order, total)
   const productLines = lines.filter((l) => (parseFloat(l.qty_ordered) || 0) > 0)
   const chargeLines = lines.filter((l) => !((parseFloat(l.qty_ordered) || 0) > 0) && (parseFloat(l.unit_price) || 0) !== 0)
   // Sum across all product lines regardless of each line's own unit (almost
@@ -361,7 +363,7 @@ export default function SalesInvoicePrint() {
               {chargesTotal > 0 && (
                 <tr><td className="k">Charges</td><td className="v">{money(chargesTotal, cur)}</td></tr>
               )}
-              <tr className="grand"><td className="k">Total Due</td><td className="v">{money(total, cur)}</td></tr>
+              <tr className="grand"><td className="k">{payment.depositPaid > 0 ? 'Total Amount' : 'Total Due'}</td><td className="v">{money(total, cur)}</td></tr>
               {/* Adjustment — the accounting correction, never a rewrite of the
                   calculated Total Due above (SR-05). Shown only when nonzero, so
                   the vast majority of invoices with no adjustment print exactly
@@ -370,6 +372,12 @@ export default function SalesInvoicePrint() {
                 <>
                   <tr><td className="k">Adjustment</td><td className="v">{order.adjustment > 0 ? '+ ' : '− '}{money(Math.abs(order.adjustment), cur)}</td></tr>
                   <tr className="grand"><td className="k">Amount Payable</td><td className="v">{money(order.accounting_total ?? total, cur)}</td></tr>
+                </>
+              )}
+              {payment.depositPaid > 0 && (
+                <>
+                  <tr><td className="k">Deposit paid</td><td className="v">− {money(payment.depositPaid, cur)}</td></tr>
+                  <tr className="grand"><td className="k">Total outstanding</td><td className="v">{money(payment.outstanding, cur)}</td></tr>
                 </>
               )}
             </tbody>
@@ -381,7 +389,7 @@ export default function SalesInvoicePrint() {
           </p>
         )}
 
-        <div className="si-words">{amountInWords(order.accounting_total ?? total, cur)}</div>
+        <div className="si-words">{amountInWords(payment.depositPaid > 0 ? payment.outstanding : payment.invoiceTotal, cur)}</div>
 
         {bankBlock && (
           <div className="si-bank">

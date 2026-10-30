@@ -8,6 +8,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { amountInWords } from '../constants'
 import { pdfFileTitle } from '../pdfFilename'
+import { invoicePaymentTotals } from '../invoicePayments'
 import { Download } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 
@@ -55,6 +56,7 @@ export default function CustomerInvoicePrint({ profile }) {
           setHeader({
             no: o.erp_si_no || o.erp_so_no, uc: orderUc(o), date: o.invoice_date || o.invoiced_at || o.order_date,
             currency: o.currency || 'USD', customer_po: o.customer_po, status: null,
+            deposit_paid: o.deposit_paid, accounting_total: o.accounting_total,
           })
           setLines(orderInvoiceLines(ls))
           setTotals(computeOrderTotals(o, ls))
@@ -98,12 +100,17 @@ export default function CustomerInvoicePrint({ profile }) {
   const subtotal = isApp ? totals?.subtotal : lineSum
   const discountAmount = isApp ? totals?.discountAmount : 0
   const chargesTotal = isApp ? totals?.chargesTotal : 0
+  const payment = invoicePaymentTotals(isApp ? header : null, total)
 
   function downloadExcel() {
     const summary = [['Subtotal', subtotal]]
     if (discountAmount) summary.push(['Discount', -discountAmount])
     if (chargesTotal) summary.push(['Charges', chargesTotal])
     summary.push(['Total', total])
+    if (payment.depositPaid > 0) {
+      if (payment.invoiceTotal !== total) summary.push(['Amount Payable', payment.invoiceTotal])
+      summary.push(['Deposit paid', -payment.depositPaid], ['Total outstanding', payment.outstanding])
+    }
     return downloadInvoiceExcel({number:header.no, uc:header.uc, date:fmtDate(header.date), currency:cur, lines, summary})
   }
 
@@ -242,11 +249,18 @@ export default function CustomerInvoicePrint({ profile }) {
             {discountAmount > 0 && <tr><td className="k">Discount</td><td className="v">− {money(discountAmount)}</td></tr>}
             {chargesTotal > 0 && <tr><td className="k">Charges</td><td className="v">{money(chargesTotal)}</td></tr>}
             <tr className="grand"><td className="k">Total</td><td className="v">{money(total)}</td></tr>
+            {payment.depositPaid > 0 && (
+              <>
+                {payment.invoiceTotal !== total && <tr><td className="k">Amount Payable</td><td className="v">{money(payment.invoiceTotal)}</td></tr>}
+                <tr><td className="k">Deposit paid</td><td className="v">− {money(payment.depositPaid)}</td></tr>
+                <tr className="grand"><td className="k">Total outstanding</td><td className="v">{money(payment.outstanding)}</td></tr>
+              </>
+            )}
           </tbody>
         </table>
       </div>
 
-      <div className="si-words">{amountInWords(total, cur)}</div>
+      <div className="si-words">{amountInWords(payment.depositPaid > 0 ? payment.outstanding : total, cur)}</div>
 
       <div className="si-sign">
         <div>

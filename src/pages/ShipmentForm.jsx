@@ -27,6 +27,7 @@ import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo, soYear } from '../soNumber'
 import { allocateInvoice, upsertInvoice, updateUcInvoice, allocateOrderUc } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
+import { invoicePaymentTotals, invoiceDepositError } from '../invoicePayments'
 import { doc, onSnapshot, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -58,7 +59,7 @@ const blankHeader = {
   // pi_subtotal / pi_total hold what the imported PI stated, for the mismatch
   // cross-check only. The order's real subtotal/total are computed from the
   // lines at save time, not carried in editable header state.
-  pi_subtotal: '', pi_total: '', discount_pct: '', discount_amount: '',
+  pi_subtotal: '', pi_total: '', discount_pct: '', discount_amount: '', deposit_paid: '',
   // Print option (2026-08-26) — some customers' PIs/invoices shouldn't show a
   // combined "Total Qty" line (e.g. mixed-unit orders where a single summed
   // count is meaningless, or the customer just doesn't want it). Persisted on
@@ -232,6 +233,7 @@ export default function ShipmentForm() {
             destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
             discount_pct:    o.discount_pct    ?? '',
             discount_amount: o.discount_amount ?? '',
+            deposit_paid: o.deposit_paid ?? '',
             hide_total_qty: !!o.hide_total_qty,
             pi_revision: o.pi_revision ? String(o.pi_revision) : '',
             // Reference figures for the mismatch check. New orders carry their
@@ -659,6 +661,7 @@ export default function ShipmentForm() {
         pi_total:        header.pi_total    !== '' ? parseFloat(header.pi_total)    : null,
         discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
         discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
+        deposit_paid: header.deposit_paid !== '' ? Number(header.deposit_paid) : null,
         pi_revision: header.pi_revision !== '' ? parseInt(header.pi_revision, 10) || null : null,
       }
       const v = validateOrder(orderData, lines)
@@ -799,6 +802,7 @@ export default function ShipmentForm() {
           pi_total:        header.pi_total    !== '' ? parseFloat(header.pi_total)    : null,
           discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
           discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
+          deposit_paid: header.deposit_paid !== '' ? Number(header.deposit_paid) : null,
         }),
         saveOrderLines(id, lines),
       ])
@@ -845,15 +849,15 @@ export default function ShipmentForm() {
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="mb-4">
         <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Order Listing</Link>
-        <div className="flex items-start justify-between gap-3 mt-1">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 mt-1">
           <h1 className="text-2xl text-ink">
             {isEdit
               ? (header.erp_si_no || header.uc_no || 'Order Detail')
               : (isDirect ? 'Direct Invoice' : 'New Order')}
           </h1>
           {isEdit && (
-            <div className="shrink-0 text-right">
-              <div className="flex items-center gap-2 justify-end">
+            <div className="shrink-0 w-full sm:w-auto text-right">
+              <div className="flex flex-wrap items-center gap-2 justify-end">
                 <a href={`/shipments/${id}/pi`} target="_blank" rel="noreferrer"
                    className="btn-secondary text-sm inline-flex items-center gap-1.5">
                   <FileText size={14} /> Proforma Invoice
@@ -1253,6 +1257,8 @@ export default function ShipmentForm() {
         {/* ── Order totals & discount ──────────────────────────────────── */}
         {lines.length > 0 && (() => {
           const { subtotal: computedSubtotal, chargesTotal, total: computedTotal } = computeOrderTotals(header, lines)
+          const payment = invoicePaymentTotals(header, computedTotal)
+          const depositError = invoiceDepositError(header, computedTotal)
           const piSubtotal   = parseFloat(header.pi_subtotal) || null
           const piTotal      = parseFloat(header.pi_total) || null
           const subtotalMatch = piSubtotal == null || Math.abs(computedSubtotal - piSubtotal) < 0.02
@@ -1377,6 +1383,26 @@ export default function ShipmentForm() {
                     </div>
                   )
                 })()}
+
+                <div className="pt-2 mt-1 border-t border-warm-grey space-y-1.5">
+                  <div className="flex justify-between items-center gap-3">
+                    <label htmlFor="deposit-paid" className="text-ink-60">Deposit paid</label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-ink-60">− {header.currency}</span>
+                      <input id="deposit-paid" type="number" step="0.01" min="0" max={payment.invoiceTotal}
+                             className="input py-0.5 text-xs w-24 text-right font-mono"
+                             aria-invalid={!!depositError} aria-describedby={depositError ? 'deposit-paid-error' : undefined}
+                             value={header.deposit_paid} onChange={setH('deposit_paid')} placeholder="0.00" />
+                    </div>
+                  </div>
+                  {depositError && <p id="deposit-paid-error" className="text-xs text-brand-600" role="alert">{depositError}</p>}
+                  {payment.depositPaid > 0 && !depositError && (
+                    <div className="flex justify-between items-center gap-3 pt-1.5 border-t border-warm-grey">
+                      <span className="font-semibold text-ink">Total outstanding</span>
+                      <span className="font-mono font-bold text-ink text-base">{header.currency} {fmt(payment.outstanding)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )

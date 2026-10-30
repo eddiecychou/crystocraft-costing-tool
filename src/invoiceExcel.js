@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs'
 import { pdfFileTitle } from './pdfFilename'
+import { invoicePaymentTotals } from './invoicePayments'
 
 // Customer-facing fields only. Charges have an amount but no quantity/unit.
 export function orderInvoiceLines(lines) {
@@ -48,6 +49,8 @@ export function downloadOrderInvoiceExcel(order, lines, kind, totals) {
   if(totals.chargesTotal)summary.push(['Charges',totals.chargesTotal])
   summary.push(['Total',totals.total])
   if(sales && order.adjustment){summary.push(['Adjustment',order.adjustment],['Amount Payable',order.accounting_total ?? totals.total])}
+  const payment = invoicePaymentTotals(order, totals.total)
+  if(sales && payment.depositPaid > 0)summary.push(['Deposit paid',-payment.depositPaid],['Total outstanding',payment.outstanding])
   return downloadInvoiceExcel({title:sales?'Sales Invoice':'Proforma Invoice',
     number:sales?order.erp_si_no:order.erp_so_no,uc:order.uc_no || order.erp_pi_no,
     date:(sales ? order.invoice_date || order.invoiced_at : null) || order.order_date,

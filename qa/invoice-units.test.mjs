@@ -16,6 +16,7 @@ for(const k of ['window','document','HTMLElement','MouseEvent'])globalThis[k]=do
 Object.defineProperty(globalThis,'navigator',{value:dom.window.navigator,configurable:true})
 globalThis.IS_REACT_ACT_ENVIRONMENT=true
 const {createRoot}=await import('react-dom/client')
+const {Simulate}=await import('react-dom/test-utils')
 let scratch,pages,downloaded,printed=0
 const originalCreate=URL.createObjectURL,originalRevoke=URL.revokeObjectURL
 const units=['pcs','set','pair','box','kg','g','m']
@@ -26,22 +27,33 @@ const fixture={order:{customer_id:'qa-customer',customer_name:'QA invoice units'
 ]}
 globalThis.__invoiceFixture=fixture
 const stubs={
- firebase:'export const db={}',
- firestore:`const f=()=>globalThis.__invoiceFixture;export const doc=(...a)=>a;export const collection=(...a)=>a;export const query=(...a)=>a;export const orderBy=()=>{};
- export const getDoc=async p=>({id:'qa-order',exists:()=>p.includes('orders'),data:()=>f().order});export const getDocs=async()=>({docs:f().lines.map(l=>({id:l.id,data:()=>l}))});
- const fail=()=>{throw Error('Forbidden database write')};export {fail as addDoc,fail as updateDoc,fail as deleteDoc,fail as onSnapshot,fail as serverTimestamp,fail as writeBatch,fail as runTransaction};`,
- customer:'export const loadCustomers=async()=>[];export const primaryContact=()=>null;export const contactAddress=()=>""',
+ firebase:'export const db={},storage={};export const authHeader=async()=>{throw Error("No live requests")}',
+ firestore:`const f=()=>globalThis.__invoiceFixture;export const doc=(...a)=>Object.assign(a,{id:typeof a.at(-1)==='string'?a.at(-1):'qa-new-line'});export const collection=(...a)=>a;export const query=(...a)=>a;export const orderBy=()=>{};
+ export const getDoc=async p=>({id:'qa-order',exists:()=>p.includes('orders'),data:()=>f().order});export const getDocs=async p=>({docs:JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
+ const fail=()=>{throw Error('Forbidden database write')};export {fail as addDoc,fail as deleteDoc,fail as runTransaction};
+ export const onSnapshot=()=>()=>{};export const serverTimestamp=()=> 'QA timestamp';
+ export const updateDoc=async(p,data)=>{if(!f().allowSave)fail();f().writes.push(structuredClone(data));f().order={...f().order,...data}};
+ export const writeBatch=()=>({set(){if(!f().allowSave)fail()},delete:fail,commit:async()=>{}});`,
+ customer:'export const loadCustomers=async()=>[];export const primaryContact=()=>null;export const contactAddress=()=>"";export const saveCustomer=async()=>{throw Error("No customer creation")}',
  bankAccounts:'export const listBankAccounts=async()=>[];export const accountForCurrency=()=>null;export const formatBankDetails=()=>""',
  criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
  customerOrderHistoryApi:'export const myInvoiceDetail=async code=>({header:{code:"ERP-QA",currency:"USD"},lines:[{item_code:"ERP",description:"Historical unit unavailable",qty:code==="RETURN"?-5:5,unit_price:2,amount:code==="RETURN"?-10:10}]})',
- router:'export const useParams=()=>globalThis.__invoiceParams',
+ router:`import React from 'react';export const useParams=()=>globalThis.__invoiceParams;export const useNavigate=()=>to=>globalThis.__invoiceFixture.destination=to;export const useSearchParams=()=>[new URLSearchParams()];export const Link=({to,children,...props})=>React.createElement('a',{href:to,...props},children)`,
+ ContactPicker:'export default ()=>null',ConfirmDialog:'export default ()=>null',LineImagePicker:'export default ()=>null',
+ PackingListEditor:'export default ()=>null',FreightComparison:'export default ()=>null',OrderStockIssue:'export default ()=>null',OrderInventoryIssue:'export default ()=>null',
+ crystals:'export const crystalInventory={}',packaging:'export const packagingInventory={}',orderStock:'export const metalOrderConfig={}',
+ orderStockStatus:'export const orderStockStatus=()=>null;export const stockStatusDetail=()=>"";export const STOCK_STATUS_LABEL={},STOCK_STATUS_STYLE={}',
+ erpSoImport:'export const fetchErpSoLines=async()=>{throw Error("No ERP requests")};export const diffLines=()=>null',
+ ucRegistry:'export const allocateInvoice=async()=>{throw Error("No invoice allocation")};export const allocateOrderUc=async()=>{throw Error("No UC allocation")};export const updateUcInvoice=async()=>{throw Error("No UC changes")};export const upsertInvoice=async data=>globalThis.__invoiceFixture.accountingWrite=data',
+ storage:'export const ref=()=>{};export const uploadBytes=async()=>{throw Error("No uploads")};export const getDownloadURL=async()=>{throw Error("No uploads")}',
 }
 before(async()=>{
  scratch=await mkdtemp(join(tmpdir(),'oc-invoice-units-'))
- await build({stdin:{contents:`export {default as pi} from './src/pages/ProformaInvoicePrint.jsx';export {default as sales} from './src/pages/SalesInvoicePrint.jsx';export {default as customer} from './src/customer/CustomerInvoicePrint.jsx';export {LINE_TYPES,lineTypeOf,isPackable} from './src/shipping.js'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'invoice-network-boundaries',setup(b){
+ await build({stdin:{contents:`export {default as pi} from './src/pages/ProformaInvoicePrint.jsx';export {default as sales} from './src/pages/SalesInvoicePrint.jsx';export {default as customer} from './src/customer/CustomerInvoicePrint.jsx';export {default as form} from './src/pages/ShipmentForm.jsx';export {LINE_TYPES,lineTypeOf,isPackable,normOrder,validateOrder,computeOrderTotals} from './src/shipping.js';export {invoicePaymentTotals} from './src/invoicePayments.js'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'invoice-network-boundaries',setup(b){
   b.onResolve({filter:/^(react(?:\/.*)?|exceljs|lucide-react)$/},a=>({path:require.resolve(a.path),external:true}))
   b.onResolve({filter:/react-router-dom/},()=>({path:'router',namespace:'mock'}))
   b.onResolve({filter:/firebase\/firestore/},()=>({path:'firestore',namespace:'mock'}))
+  b.onResolve({filter:/firebase\/storage/},()=>({path:'storage',namespace:'mock'}))
   b.onResolve({filter:/^\.\.?\//},a=>{const n=basename(a.path).replace(/\.jsx?$/,'');if(n in stubs)return{path:n,namespace:'mock'}})
   b.onLoad({filter:/.*/,namespace:'mock'},a=>({contents:stubs[a.path],loader:'js'}))
   b.onResolve({filter:/\.png$/},()=>({path:'logo',namespace:'asset'}))
@@ -167,4 +179,105 @@ test('invoice classification uses Crystocraft Range without changing saved type 
  assert.equal(pages.lineTypeOf('range').value,'range')
  assert.equal(pages.isPackable('range'),true)
  assert.equal(pages.isPackable('non_product'),false)
+})
+
+const summaryRows = host => [...host.querySelectorAll('.si-totals tr')].map(r=>[r.cells[0].textContent,r.cells[1].textContent])
+const excelSummary = ws => Object.fromEntries(ws.getRows(1,ws.rowCount).filter(r=>r.getCell(5).value).map(r=>[r.getCell(5).value,r.getCell(6).value]))
+
+for(const kind of ['sales','customer']) {
+ for(const deposit of [undefined,null,0]) test(`${kind}: empty/zero deposit adds no deposit or outstanding rows to PDF/Excel (${deposit})`,async()=>{
+  const original=fixture.order;fixture.order={...original,deposit_paid:deposit}
+  try{await withPage(kind,async host=>{
+   assert.doesNotMatch(host.querySelector('.si-totals').textContent,/Deposit paid|Total outstanding/)
+   const {ws}=await workbook(host);const summary=excelSummary(ws)
+   assert.equal(summary['Deposit paid'],undefined);assert.equal(summary['Total outstanding'],undefined)
+   assert.equal(summary.Total,5052.5)
+  })}finally{fixture.order=original}
+ })
+ for(const [label,extra,expected] of [
+  ['partial',{deposit_paid:102.5},4950],
+  ['full',{deposit_paid:5052.5},0],
+  ['adjusted',{deposit_paid:1000,accounting_total:5000,adjustment:-52.5,adjustment_reason:'Approved accounting adjustment'},4000],
+ ])test(`${kind}: ${label} deposit agrees across PDF, amount in words and real Excel download`,async()=>{
+  const original=fixture.order;fixture.order={...original,...extra}
+  try{await withPage(kind,async host=>{
+   const rows=Object.fromEntries(summaryRows(host))
+   assert.equal(rows['Deposit paid'],`− HKD ${extra.deposit_paid.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`)
+   assert.equal(rows['Total outstanding'],`HKD ${expected.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`)
+   assert.match(host.querySelector('.si-words').textContent,new RegExp(expected===0?'ZERO':expected===4000?'FOUR THOUSAND':'FOUR THOUSAND NINE HUNDRED'))
+   const {ws}=await workbook(host),summary=excelSummary(ws)
+   assert.equal(summary.Total,5052.5);assert.equal(summary['Deposit paid'],-extra.deposit_paid);assert.equal(summary['Total outstanding'],expected)
+   assert.equal(fixture.order.deposit_paid,extra.deposit_paid)
+   if(label==='partial' && process.env.INVOICE_EVIDENCE_DIR)await writeFile(join(process.env.INVOICE_EVIDENCE_DIR,`${kind}-deposit.html`),`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8">${host.innerHTML}`)
+  })}finally{fixture.order=original}
+ })
+}
+
+test('deposit survives canonical normalization without changing invoice/accounting values',()=>{
+ const o=pages.normOrder({...fixture.order,deposit_paid:'102.50',total_amount:5052.5,accounting_total:5000})
+ assert.equal(o.deposit_paid,102.5);assert.equal(o.total_amount,5052.5);assert.equal(o.accounting_total,5000)
+ assert.equal(pages.normOrder({}).deposit_paid,null)
+})
+test('negative, malformed or excessive deposits are refused before saving; blank and fully paid are valid',()=>{
+ for(const value of [-1,'not an amount',Infinity,5052.51])assert.ok(pages.validateOrder({...fixture.order,deposit_paid:value},fixture.lines).errors.some(e=>e.field==='deposit_paid'))
+ for(const value of ['',null,0,5052.5])assert.equal(pages.validateOrder({...fixture.order,deposit_paid:value},fixture.lines).ok,true)
+})
+
+test('real invoice editor saves, reopens and clears deposit while preserving full accounting export and invoice details',async()=>{
+ const original=fixture.order
+ fixture.order={...original,notes:'Original invoice remarks',payment_terms:'30% Deposit, 70% Before Shipment',accounting_total:5052.5}
+ fixture.allowSave=true;fixture.writes=[]
+ try{
+  await withPage('form',async host=>{
+   const input=host.querySelector('#deposit-paid');assert.ok(input);assert.equal(input.value,'')
+   assert.doesNotMatch(host.textContent,/Total outstanding/)
+   await act(async()=>Simulate.change(input,{target:{value:'102.50'}}))
+   assert.match(host.textContent,/Total outstandingHKD 4,950.00/)
+   if(process.env.INVOICE_EVIDENCE_DIR)await writeFile(join(process.env.INVOICE_EVIDENCE_DIR,'form-deposit.html'),`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"><link rel="stylesheet" href="/invoice-deposit.css"><div class="p-4">${host.innerHTML}</div>`)
+   await act(async()=>host.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})))
+   assert.equal(fixture.destination,'/shipments',host.textContent);assert.equal(fixture.writes.length,1)
+   assert.equal(fixture.order.deposit_paid,102.5);assert.equal(fixture.order.total_amount,5052.5);assert.equal(fixture.order.accounting_total,5052.5)
+   assert.equal(fixture.accountingWrite.total,5052.5);assert.equal(fixture.accountingWrite.accounting_total,5052.5)
+   assert.equal(fixture.order.notes,'Original invoice remarks');assert.equal(fixture.order.payment_terms,'30% Deposit, 70% Before Shipment')
+   assert.equal(fixture.order.erp_si_no,original.erp_si_no);assert.equal(fixture.order.uc_no,original.uc_no)
+  })
+  await withPage('form',async host=>{
+   const input=host.querySelector('#deposit-paid');assert.equal(input.value,'102.5')
+   assert.match(host.textContent,/Total outstandingHKD 4,950.00/)
+   await act(async()=>Simulate.change(input,{target:{value:''}}))
+   assert.doesNotMatch(host.textContent,/Total outstanding/)
+   await act(async()=>host.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})))
+   assert.equal(fixture.order.deposit_paid,null);assert.equal(fixture.order.total_amount,5052.5)
+  })
+  await withPage('form',async host=>{assert.equal(host.querySelector('#deposit-paid').value,'');assert.doesNotMatch(host.textContent,/Total outstanding/)})
+ }finally{fixture.order=original;delete fixture.allowSave;delete fixture.writes;delete fixture.accountingWrite;delete fixture.destination}
+})
+
+test('balances use currency cents without floating point residue; a payment never changes PI totals',async()=>{
+ assert.equal(pages.invoicePaymentTotals({deposit_paid:0.1},0.3).outstanding,0.2)
+ assert.equal(pages.invoicePaymentTotals({deposit_paid:2000},7613.94).outstanding,5613.94)
+ const original=fixture.order;fixture.order={...original,deposit_paid:102.5}
+ try{await withPage('pi',async host=>{
+  assert.doesNotMatch(host.textContent,/Deposit paid|Total outstanding/)
+  const {ws}=await workbook(host);assert.equal(excelSummary(ws).Total,5052.5)
+ })}finally{fixture.order=original}
+})
+
+test('USD invoice editor shows the requested total and balance; invalid deposit saves stay blocked',async()=>{
+ const original=fixture.order,originalLines=fixture.lines
+ fixture.order={...original,currency:'USD',discount_amount:null,accounting_total:7613.94,deposit_paid:2000}
+ fixture.lines=[{id:'example',line_no:1,item_code:'QA-EXAMPLE',description:'Fictional invoice example',qty_ordered:1,unit:'pcs',unit_price:7613.94,line_type:'ad_hoc'}]
+ fixture.allowSave=true;fixture.writes=[]
+ try{await withPage('form',async host=>{
+  assert.match(host.textContent,/Total AmountUSD 7,613.94/)
+  assert.match(host.textContent,/Total outstandingUSD 5,613.94/)
+  if(process.env.INVOICE_EVIDENCE_DIR)await writeFile(join(process.env.INVOICE_EVIDENCE_DIR,'form-deposit.html'),`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"><link rel="stylesheet" href="/invoice-deposit.css"><div class="p-4">${host.innerHTML}</div>`)
+  const input=host.querySelector('#deposit-paid')
+  for(const value of ['-1','7613.95']) {
+   await act(async()=>Simulate.change(input,{target:{value}}))
+   assert.equal(input.getAttribute('aria-invalid'),'true');assert.ok(host.querySelector('#deposit-paid-error'))
+   await act(async()=>host.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})))
+   assert.equal(fixture.writes.length,0);assert.equal(fixture.destination,undefined)
+  }
+ })}finally{fixture.order=original;fixture.lines=originalLines;delete fixture.allowSave;delete fixture.writes}
 })

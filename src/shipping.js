@@ -7,6 +7,7 @@ import { db } from './firebase'
 import { numOrNull, str, trimUpper, result, addWarning, addInfo, addError, merge } from './domain/validation'
 import { buildProductIndex, matchProductCode } from './criticalComponents'
 import { JES_SEED_BY_YEAR, soYear, formatSoNo } from './soNumber'
+import { invoiceDepositError } from './invoicePayments'
 
 // Shipping module — Phase 12.0. An `order` is the commercial anchor for a
 // shipment, sourced from an in-app won quote (Path A) or an imported ERP
@@ -240,6 +241,7 @@ export const normOrder = o => ({
   subtotal:        numOrNull(o.subtotal),
   discount_pct:    numOrNull(o.discount_pct),
   discount_amount: numOrNull(o.discount_amount),
+  deposit_paid:    numOrNull(o.deposit_paid),
   total_amount:    numOrNull(o.total_amount),
   pi_subtotal:     numOrNull(o.pi_subtotal),
   pi_total:        numOrNull(o.pi_total),
@@ -591,6 +593,9 @@ export function validateOrderLine(line) {
 export function validateOrder(order, lines = null) {
   const o = normOrder(order || {})
   const r = result()
+  const depositError = invoiceDepositError(order,
+    Array.isArray(lines) ? computeOrderTotals(order, lines).total : (o.total_amount ?? Infinity))
+  if (depositError) addError(r, 'order.invoice.deposit_invalid', 'deposit_paid', depositError)
   if (!o.customer_id) addWarning(r, 'order.customer.unresolved', 'customer_id',
     'Order not linked to a customer')
 
