@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   doc, getDoc, updateDoc, collection, onSnapshot,
-  query, orderBy, addDoc, deleteDoc, getDocs, serverTimestamp,
+  query, orderBy, addDoc, deleteDoc, getDocs, serverTimestamp, runTransaction,
 } from 'firebase/firestore'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -17,7 +17,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { Star, X, Camera } from 'lucide-react'
 import { loadBlogProducts, loadBlogImages, PRODUCT_SOURCES } from '../productSource'
 import { MARKETING_DESC_MAXLEN } from '../constants'
-import { catalogueImages } from '../catalogueLayout'
+import { catalogueImages, catalogueImageSize, withCatalogueImageSize } from '../catalogueLayout'
 
 // ── Auto layout label ─────────────────────────────────────────────────────────
 function layoutLabel(count) {
@@ -25,13 +25,17 @@ function layoutLabel(count) {
 }
 
 // ── Single draggable image in the selected strip ──────────────────────────────
-function SortableImage({ id, url, isHero, onRemove }) {
+function SortableImage({ id, url, isHero, size, number, onSizeChange, onRemove }) {
+  const [draftSize, setDraftSize] = useState(size)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => { setDraftSize(size) }, [size])
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
   return (
-    <div ref={setNodeRef} style={style} className="relative w-16 h-16 shrink-0 group/img">
+    <div ref={setNodeRef} style={style} className="relative w-28 shrink-0 group/img">
       {isHero && (
         <div className="absolute top-0.5 left-0.5 z-10 bg-amber-400 text-white px-1 py-0.5 rounded-none leading-none pointer-events-none">
           <Star size={10} className="fill-current" />
@@ -39,7 +43,8 @@ function SortableImage({ id, url, isHero, onRemove }) {
       )}
       <img
         src={url}
-        className="w-full h-full rounded-none object-contain cursor-grab active:cursor-grabbing select-none"
+        alt={`Selected image ${number}${isHero ? ' (hero)' : ''}`}
+        className="w-full h-24 rounded-none object-contain cursor-grab active:cursor-grabbing select-none"
         draggable={false}
         {...attributes}
         {...listeners}
@@ -49,12 +54,23 @@ function SortableImage({ id, url, isHero, onRemove }) {
         onClick={onRemove}
         className="absolute top-0.5 right-0.5 bg-white/90 hover:bg-white rounded-none text-red-400 leading-none p-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
       ><X size={12} /></button>
+      <select aria-label={`Image ${number} size`} className="input text-xs mt-2 w-full" value={draftSize} disabled={saving} onPointerDown={e => e.stopPropagation()} onChange={async e => {
+        const next = e.target.value
+        setDraftSize(next); setSaving(true); setError('')
+        try { await onSizeChange(next) } catch (err) { setDraftSize(size); setError(err.message || 'Could not save image size. Please try again.') }
+        finally { setSaving(false) }
+      }}>
+        <option value="standard">Standard</option><option value="large">Large</option><option value="full">Full page</option>
+      </select>
+      {saving && <p className="text-xs text-ink-60 mt-1" role="status">Saving…</p>}
+      {error && <p className="text-xs text-brand-600 mt-1" role="alert">{error}</p>}
     </div>
   )
 }
 
 // ── Image sequencer — drag to reorder selected, click to add/remove ───────────
-function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
+function ImageSequencer({ item, selectedImages, allImages, onUpdate, onImageSize }) {
+  const itemId = item.id
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
   const unselected = allImages.filter(url => !selectedImages.includes(url))
   const { text: layoutText, style: layoutStyle } = layoutLabel(selectedImages.length)
@@ -87,7 +103,10 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
                   key={url}
                   id={url}
                   url={url}
+                  number={idx + 1}
                   isHero={idx === 0}
+                  size={catalogueImageSize(item, url)}
+                  onSizeChange={size => onImageSize(itemId, url, size)}
                   onRemove={() => {
                     const next = selectedImages.filter(u => u !== url)
                     onUpdate(itemId, { selected_images: next })
@@ -98,6 +117,8 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
           </SortableContext>
         </DndContext>
       )}
+
+      {selectedImages.length > 0 && <p className="text-xs text-ink-60">Standard: readable gallery · Large: up to two per page · Full page: one image, portrait for tall graphics.</p>}
 
       {/* Every selected photo is retained; the preview adds gallery pages. */}
       {unselected.length > 0 && (
@@ -128,7 +149,7 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
 }
 
 // ── Sortable catalogue item row ───────────────────────────────────────────────
-function CatalogueItem({ item, onUpdate, onDelete }) {
+function CatalogueItem({ item, onUpdate, onImageSize, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
 
@@ -169,15 +190,16 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
 
       {/* Image sequencer */}
       <ImageSequencer
-        itemId={item.id}
+        item={item}
         selectedImages={selectedImages}
         allImages={allImages}
         onUpdate={onUpdate}
+        onImageSize={onImageSize}
       />
 
       <div className="flex flex-wrap items-end gap-4">
         <label className="text-xs text-ink-60">Page layout
-          <select className="input text-sm mt-1" value={item.layout_mode === 'feature' ? 'feature' : 'auto'} onChange={e => onUpdate(item.id, { layout_mode: e.target.value })}>
+          <select aria-label={`Page layout for ${item.product_name}`} className="input text-sm mt-1" value={item.layout_mode === 'feature' ? 'feature' : 'auto'} onChange={e => onUpdate(item.id, { layout_mode: e.target.value })}>
             <option value="auto">Automatic</option><option value="feature">Feature product</option>
           </select>
         </label>
@@ -335,6 +357,19 @@ export default function CatalogueDetail() {
     setItems(prev => prev.map(it => it.id === itemId ? { ...it, ...changes } : it))
   }
 
+  async function handleImageSize(itemId, url, size) {
+    const reference = doc(db, 'catalogues', id, 'items', itemId)
+    // Merge only this image's choice against the latest saved item. Concurrent
+    // edits to different pictures cannot overwrite each other's size choices.
+    await runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(reference)
+      if (!snapshot.exists()) throw new Error('This catalogue item no longer exists.')
+      const next = withCatalogueImageSize(snapshot.data(), url, size)
+      transaction.update(reference, { image_layouts: next })
+      return next
+    })
+  }
+
   async function handleDelete(itemId) {
     await deleteDoc(doc(db, 'catalogues', id, 'items', itemId))
     setConfirmDelete(null)
@@ -357,13 +392,13 @@ export default function CatalogueDetail() {
   return (
     <div className="p-4 md:p-6 max-w-3xl">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+        <div className="min-w-0">
           <Link to="/catalogues" className="text-sm text-brand-600 hover:underline">← Catalogues</Link>
           <h1 className="text-xl text-ink mt-1">{catalogue.name}</h1>
           {catalogue.season && <p className="text-xs text-ink-60">{catalogue.season}</p>}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Link to={`/catalogues/${id}/edit`} className="btn-secondary text-sm">Edit Info</Link>
           <Link to={`/catalogues/${id}/preview`} className="btn-primary text-sm">Preview & Print</Link>
         </div>
@@ -384,6 +419,7 @@ export default function CatalogueDetail() {
                 key={item.id}
                 item={item}
                 onUpdate={handleUpdate}
+                onImageSize={handleImageSize}
                 onDelete={(itemId) => setConfirmDelete(itemId)}
               />
             ))}

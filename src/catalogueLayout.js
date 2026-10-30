@@ -6,6 +6,28 @@ export function catalogueImages(item) {
   return [...new Set(selected.filter(url => typeof url === 'string' && url))]
 }
 
+export const CATALOGUE_IMAGE_SIZES = ['standard', 'large', 'full']
+
+export function catalogueImageSize(item, url) {
+  const choice = Array.isArray(item.image_layouts) ? item.image_layouts.find(row => row?.url === url)?.size : null
+  return CATALOGUE_IMAGE_SIZES.includes(choice) ? choice : 'standard'
+}
+
+// URL identity keeps the setting attached during reorder/deselect/reselect.
+// Return only the layout field, never a replacement product/item snapshot.
+export function withCatalogueImageSize(item, url, size) {
+  if (!CATALOGUE_IMAGE_SIZES.includes(size)) throw new Error('Choose Standard, Large or Full page.')
+  if (!catalogueImages(item).includes(url)) throw new Error('This image is no longer selected. Reopen the catalogue before changing its size.')
+  const rows = Array.isArray(item.image_layouts) ? item.image_layouts : []
+  const existing = rows.find(row => row?.url === url)
+  return [...rows.filter(row => row?.url !== url), { ...existing, url, size }]
+}
+
+export function catalogueImageOrientation(dimensions) {
+  if (!(dimensions?.width > 0 && dimensions?.height > 0)) throw new Error('An image could not load. Reopen the preview before printing.')
+  return dimensions.height > dimensions.width ? 'portrait' : 'landscape'
+}
+
 export function catalogueBlocks(item) {
   return [
     { kind: 'marketing', text: item.marketing_description ?? item.product_marketing_description ?? '' },
@@ -55,11 +77,12 @@ function takeBlocks(item, blocks, mode, continued, fits) {
   return [taken, rest]
 }
 
-export function planCataloguePages(items, fits) {
+export function planCataloguePages(items, fits, imageDimensions = {}) {
   const entries = items.map((item, index) => ({ item, number: index + 1, images: catalogueImages(item), blocks: catalogueBlocks(item) }))
   const pages = []
   const canShare = (entry, mode) => entry && entry.item.layout_mode !== 'feature'
-    && entry.images.length <= (mode === 'overview' ? 2 : 4)
+    && entry.images.length <= 1
+    && entry.images.every(url => catalogueImageSize(entry.item, url) === 'standard')
     && fits(mode, entry.item, entry.blocks, false)
   for (let i = 0; i < entries.length;) {
     const four = entries.slice(i, i + 4)
@@ -76,16 +99,39 @@ export function planCataloguePages(items, fits) {
     }
     const entry = entries[i++]
     let images = [...entry.images], blocks = [...entry.blocks], continued = false
-    do {
-      const count = continued ? 6 : images.length > 6 ? 4 : 6
-      const photos = images.splice(0, count)
-      const type = photos.length ? (continued && !blocks.length ? 'gallery' : 'feature') : 'details'
-      if (!fits(type, entry.item, [], continued)) throw new Error(`The heading for “${String(entry.item.product_name || 'Untitled product').slice(0, 80)}” is too long for a page.`)
-      const [text, rest] = takeBlocks(entry.item, blocks, type, continued, fits)
-      pages.push({ type, entries: [{ ...entry, images: photos, blocks: text, continued }] })
-      blocks = rest
+    const addPage = (type, photos, text, orientation = 'landscape') => {
+      if (!fits(type, entry.item, [], continued, orientation)) throw new Error(`The heading for “${String(entry.item.product_name || 'Untitled product').slice(0, 80)}” is too long for a page.`)
+      pages.push({ type, orientation, entries: [{ ...entry, images: photos, blocks: text, continued }] })
       continued = true
-    } while (images.length || blocks.length)
+    }
+    // A standard first image remains the hero beside the complete product copy.
+    // Supporting images now have gallery space, never a thumbnail strip.
+    if (images.length && catalogueImageSize(entry.item, images[0]) === 'standard') {
+      const [text, rest] = takeBlocks(entry.item, blocks, 'feature', false, fits)
+      addPage('feature', images.splice(0, 1), text)
+      blocks = rest
+    } else if (!images.length && !blocks.length) addPage('details', [], [])
+
+    // Keep text readable and together before the remaining picture pages.
+    // When the first image is explicitly enlarged, it leads the product first.
+    const addImagePage = () => {
+      const size = catalogueImageSize(entry.item, images[0])
+      const maximum = size === 'full' ? 1 : size === 'large' ? 2 : 4
+      const nextSize = images.findIndex(url => catalogueImageSize(entry.item, url) !== size)
+      const runLength = nextSize < 0 ? images.length : nextSize
+      const count = Math.ceil(runLength / Math.ceil(runLength / maximum))
+      const photos = []
+      while (images.length && photos.length < count) photos.push(images.shift())
+      const orientation = size === 'full' ? catalogueImageOrientation(imageDimensions[photos[0]]) : 'landscape'
+      addPage(size === 'standard' ? 'gallery' : size, photos, [], orientation)
+    }
+    if (!continued && images.length) addImagePage()
+    while (blocks.length) {
+      const [text, rest] = takeBlocks(entry.item, blocks, 'details', continued, fits)
+      addPage('details', [], text)
+      blocks = rest
+    }
+    while (images.length) addImagePage()
   }
   return pages
 }
@@ -96,6 +142,7 @@ export function catalogueCopySpace(mode, width, height, hasImages = true) {
   if (mode === 'overview') return { width: (width - 32) / 2 - (hasImages ? 168 : 0), height: (height - 24) / 2 }
   if (mode === 'standard') return { width: (width - 32) / 2, height: height - (hasImages ? 336 : 0) }
   if (mode === 'feature') return { width: (width - 32) / 2.6, height }
-  if (mode === 'gallery') return { width, height: 160 }
+  if (mode === 'gallery' || mode === 'large') return { width, height: 160 }
+  if (mode === 'full') return { width, height: 96 }
   return { width: Math.min(720, width), height }
 }

@@ -1,16 +1,16 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { catalogueBlocks, catalogueImages, planCataloguePages, splitCatalogueText } from '../src/catalogueLayout.js'
+import { catalogueBlocks, catalogueImages, catalogueImageSize, catalogueImageOrientation, withCatalogueImageSize, planCataloguePages, splitCatalogueText } from '../src/catalogueLayout.js'
 
 const product = (number, photos = 1, specs = 'Material: glass') => ({ id: String(number), product_name: `Product ${number}`, product_description: specs, selected_images: Array.from({ length: photos }, (_, index) => `image-${number}-${index}`) })
 // Deterministic stand-in for the browser's measured height, not a production
 // character estimate. Different capacities exercise promotion and continuation.
-const fits = (mode, item, blocks) => blocks.reduce((sum, block) => sum + Array.from(block.text).length, 0) <= ({ overview: 40, standard: 100, feature: 140, details: 240, gallery: 40 }[mode])
+const fits = (mode, item, blocks) => blocks.reduce((sum, block) => sum + Array.from(block.text).length, 0) <= ({ overview: 40, standard: 100, feature: 140, details: 240, gallery: 40, large: 40, full: 40 }[mode])
 const allEntries = pages => pages.flatMap(page => page.entries)
 
-test('four short products share an overview; mixed photo counts share a standard page', () => {
+test('compact single-photo products share overview/comparison pages', () => {
   assert.equal(planCataloguePages([1, 2, 3, 4].map(n => product(n)), fits)[0].type, 'overview')
-  const pages = planCataloguePages([product(1, 4), product(2, 3)], fits)
+  const pages = planCataloguePages([product(1), product(2)], fits)
   assert.equal(pages.length, 1)
   assert.equal(pages[0].type, 'standard')
   assert.deepEqual(pages[0].entries.map(e => e.number), [1, 2])
@@ -35,8 +35,70 @@ test('7, 8, 13 and 29 photos retain exact order without omissions or duplicates'
     assert.ok(pages.length > 1)
     assert.deepEqual(allEntries(pages).flatMap(e => e.images), item.selected_images)
     assert.ok(pages.slice(1).every(p => p.type === 'gallery'))
-    assert.ok(pages.every(p => p.entries[0].images.length <= 6))
+    assert.ok(pages.every(p => p.entries[0].images.length <= 4))
   }
+})
+
+test('supporting Standard images have galleries rather than a thumbnail strip', () => {
+  const item = product(1, 9)
+  const pages = planCataloguePages([item], fits)
+  assert.deepEqual(pages.map(p => [p.type, p.entries[0].images.length]), [['feature', 1], ['gallery', 4], ['gallery', 4]])
+  assert.deepEqual(allEntries(pages).flatMap(e => e.images), item.selected_images)
+  const fiveSupporting = planCataloguePages([product(2, 6)], fits)
+  assert.deepEqual(fiveSupporting.map(p => p.entries[0].images.length), [1, 3, 2], 'Balance the final galleries instead of leaving a single image after four')
+})
+
+test('mixed per-image sizes retain exact order, dedicated full pages and automatic portrait', () => {
+  const item = product(1, 8)
+  const images = item.selected_images
+  item.image_layouts = [
+    { url: images[1], size: 'large' }, { url: images[2], size: 'large' },
+    { url: images[3], size: 'full' }, { url: images[5], size: 'full' },
+    { url: images[6], size: 'large' },
+  ]
+  const dimensions = { [images[3]]: { width: 800, height: 1800 }, [images[5]]: { width: 1800, height: 800 } }
+  const pages = planCataloguePages([item, product(2)], fits, dimensions)
+  const first = pages.filter(p => p.entries[0].number === 1)
+  assert.deepEqual(first.map(p => p.type), ['feature', 'large', 'full', 'gallery', 'full', 'large', 'gallery'])
+  assert.deepEqual(first.map(p => p.orientation), ['landscape', 'landscape', 'portrait', 'landscape', 'landscape', 'landscape', 'landscape'])
+  assert.deepEqual(first.flatMap(p => p.entries[0].images), images)
+  assert.ok(first.filter(p => p.type === 'large').every(p => p.entries[0].images.length <= 2))
+  assert.ok(first.filter(p => p.type === 'full').every(p => p.entries[0].images.length === 1 && p.entries[0].blocks.length === 0))
+  assert.equal(allEntries(pages).at(-1).number, 2)
+})
+
+test('a Full page hero appears once and retains complete text on following pages', () => {
+  const item = product(1, 3, '晶體規格\n'.repeat(200))
+  item.image_layouts = [{ url: item.selected_images[0], size: 'full' }]
+  const pages = planCataloguePages([item], fits, { [item.selected_images[0]]: { width: 600, height: 1600 } })
+  assert.equal(pages[0].type, 'full')
+  assert.equal(pages[0].orientation, 'portrait')
+  assert.deepEqual(allEntries(pages).flatMap(e => e.images), item.selected_images)
+  assert.equal(allEntries(pages).flatMap(e => e.blocks).map(b => b.text).join(''), item.product_description)
+})
+
+test('image choices follow URL identity across reorder/removal and preserve other metadata', () => {
+  const item = product(1, 3)
+  const url = item.selected_images[1]
+  item.image_layouts = [{ url, size: 'full', original_note: 'keep' }, { url: 'unselected-image', size: 'large' }]
+  const layouts = withCatalogueImageSize(item, url, 'large')
+  assert.deepEqual(layouts, [{ url: 'unselected-image', size: 'large' }, { url, size: 'large', original_note: 'keep' }])
+  const reordered = { ...item, selected_images: [...item.selected_images].reverse(), image_layouts: layouts }
+  assert.equal(catalogueImageSize(reordered, url), 'large')
+  assert.equal(catalogueImageSize({ ...item, image_layouts: [{ url, size: 'invalid' }] }, url), 'standard')
+  assert.equal(catalogueImageSize(product(2), 'legacy-photo'), 'standard')
+  assert.throws(() => withCatalogueImageSize({ ...item, selected_images: [] }, url, 'large'), /no longer selected/)
+  assert.throws(() => withCatalogueImageSize(item, url, 'invalid'), /Choose/)
+  assert.equal(item.image_layouts[0].size, 'full')
+})
+
+test('full-page orientation requires genuine image dimensions', () => {
+  assert.equal(catalogueImageOrientation({ width: 800, height: 1200 }), 'portrait')
+  assert.equal(catalogueImageOrientation({ width: 800, height: 800 }), 'landscape')
+  assert.throws(() => catalogueImageOrientation({ width: 0, height: 1200 }), /could not load/)
+  const item = product(1)
+  item.image_layouts = [{ url: item.selected_images[0], size: 'full' }]
+  assert.throws(() => planCataloguePages([item], fits), /could not load/)
 })
 
 test('many photos and long copy finish together before the next product', () => {

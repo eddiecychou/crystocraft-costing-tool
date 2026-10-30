@@ -246,6 +246,14 @@ continuation labels and print readiness. This fixture is separate from the
 Range PDF renderer above. Release still requires exact-SHA CI and fresh two-role
 candidate/production checks in RELEASE-WORKFLOW.md.
 
+The `sizing` case adds actual builder controls at `?case=sizing&builder=1` and a
+mixed-orientation preview. Its isolated Firebase replacement saves only local QA
+data across reloads. Check Standard/Large/Full page choices, rapid changes to
+different pictures, reorder/reopen persistence, full-page hero uniqueness,
+portrait and landscape bounds/print rules, all-image/text preservation and actual
+375px width (account for browser device scale). The image-size regression cases
+are part of the same test command. No live catalogue item should be edited for QA.
+
 
 ## Dashboard ↔ customer task and note sync
 

@@ -24,7 +24,7 @@ before(async()=>{
  b.onResolve({filter:/productSource$/},()=>({path:'products',namespace:'mock'}))
  b.onResolve({filter:/(^|\/)firebase$/},()=>({path:'firebase',namespace:'mock'}))
  b.onLoad({filter:/.*/,namespace:'mock'},a=>({contents:a.path==='products'?`export const PRODUCT_SOURCES=[{value:'corporate',label:'Corporate Gifts'}];export const loadBlogProducts=async()=>[];export const loadBlogImages=async()=>[];`:a.path==='react-router-dom'?`import React from 'react';export const useParams=()=>({id:globalThis.__coverFixture.id});export const useNavigate=()=>x=>globalThis.__coverFixture.destination=x;export const Link=({to,children,...props})=>React.createElement('a',{...props,href:to},children)`:
- a.path==='firebase/firestore'?`export const doc=(...a)=>a;export const collection=(...a)=>a;export const query=x=>x;export const orderBy=()=>{};export const serverTimestamp=()=> 'QA-TIME';export const getDoc=async()=>({exists:()=>true,data:()=>globalThis.__coverFixture.catalogue});export const deleteDoc=async()=>{throw Error('Unexpected delete')};export const getDocs=async()=>({docs:[]});export const onSnapshot=(ref,cb)=>{cb({docs:(globalThis.__coverFixture.items||[]).map(i=>({id:i.id,data:()=>i}))});return()=>{}};export const updateDoc=async(ref,value)=>{globalThis.__coverFixture.saved=value};export const addDoc=async(ref,value)=>{globalThis.__coverFixture.saved=value;return{id:'new'}}`:
+ a.path==='firebase/firestore'?`export const doc=(...a)=>a;export const collection=(...a)=>a;export const query=x=>x;export const orderBy=()=>{};export const serverTimestamp=()=> 'QA-TIME';export const getDoc=async()=>({exists:()=>true,data:()=>globalThis.__coverFixture.catalogue});export const deleteDoc=async()=>{throw Error('Unexpected delete')};export const runTransaction=async(db,fn)=>{const f=globalThis.__coverFixture;if(f.failSizeSave)throw Error('Size save failed');return await fn({get:async ref=>{const item=f.items.find(i=>i.id===ref.at(-1));return{exists:()=>!!item,data:()=>item}},update:(ref,value)=>{f.saved=value;Object.assign(f.items.find(i=>i.id===ref.at(-1)),value);f.notify?.()}})};export const getDocs=async()=>({docs:[]});export const onSnapshot=(ref,cb)=>{const f=globalThis.__coverFixture;f.notify=()=>cb({docs:(f.items||[]).map(i=>({id:i.id,data:()=>i}))});f.notify();return()=>{f.notify=null}};export const updateDoc=async(ref,value)=>{globalThis.__coverFixture.saved=value};export const addDoc=async(ref,value)=>{globalThis.__coverFixture.saved=value;return{id:'new'}}`:
  a.path==='firebase/storage'?`export const ref=()=>{};export const uploadBytes=()=>{throw Error('Unexpected upload')};export const getDownloadURL=()=>{throw Error('Unexpected upload')}`:'export const db={};export const storage={}',loader:'js'}))
  b.onResolve({filter:/\.(png|ttf)$/},a=>({path:resolve(a.resolveDir,a.path),namespace:'asset'}))
  b.onLoad({filter:/.*/,namespace:'asset'},async a=>({contents:`export default ${JSON.stringify(`data:${a.path.endsWith('.ttf')?'font/ttf':'image/png'};base64,`+(await readFile(a.path)).toString('base64'))}`,loader:'js'}))
@@ -98,7 +98,7 @@ test('builder adds seventh and eighth images, preserves the snapshot, and saves 
    await act(async()=>add.click())
    assert.deepEqual(globalThis.__coverFixture.saved,{selected_images:Array.from({length:n},(_,i)=>'image-'+(i+1))})
   }
-  const select=host.querySelector('select')
+  const select=host.querySelector('select[aria-label^="Page layout"]')
   await act(async()=>{select.value='feature';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}))})
   assert.deepEqual(globalThis.__coverFixture.saved,{layout_mode:'feature'})
   await act(async()=>host.querySelector('input[type=checkbox]').click())
@@ -107,5 +107,36 @@ test('builder adds seventh and eighth images, preserves the snapshot, and saves 
   assert.doesNotMatch(host.textContent,/Maximum 6 images|blank slot/)
   assert.match(host.textContent,/8 images/)
   for(const img of host.querySelectorAll('.group\\/img img'))assert.match(img.className,/object-contain/)
+ },{items:[item]})
+})
+
+test('image-size controls persist URL choices through reorder/reopen and preserve all other item fields', async()=>{
+ const item={id:'sizes',product_name:'Infographic product',product_description:'Original complete specifications',marketing_description:'Original introduction',selected_images:['a','b','c'],hero_image:'a',product_images:['b','c'],layout_mode:'feature',page_break_before:true,image_layouts:[{url:'c',size:'large',note:'keep'}]}
+ await withPage('builder',sample,async host=>{
+  const change=async(n,size)=>{const select=host.querySelector(`select[aria-label="Image ${n} size"]`);await act(async()=>{select.value=size;select.dispatchEvent(new dom.window.Event('change',{bubbles:true}))})}
+  await change(2,'full');await change(1,'large')
+  assert.equal(item.image_layouts.find(i=>i.url==='b').size,'full')
+  assert.equal(item.image_layouts.find(i=>i.url==='a').size,'large')
+  assert.deepEqual(item.image_layouts.find(i=>i.url==='c'),{url:'c',size:'large',note:'keep'})
+  assert.deepEqual(Object.keys(globalThis.__coverFixture.saved),['image_layouts'])
+  assert.equal(item.product_description,'Original complete specifications');assert.equal(item.marketing_description,'Original introduction')
+  assert.equal(item.layout_mode,'feature');assert.equal(item.page_break_before,true)
+  assert.deepEqual(item.selected_images,['a','b','c'])
+ },{items:[item]})
+ await withPage('builder',sample,host=>{
+  assert.equal(host.querySelector('select[aria-label="Image 1 size"]').value,'large')
+  assert.equal(host.querySelector('select[aria-label="Image 3 size"]').value,'full')
+ },{items:[{...item,selected_images:['c','a','b']}]})
+})
+
+test('a failed image-size save is visible and restores the previous choice',async()=>{
+ const item={id:'size-error',product_name:'Product',selected_images:['a']}
+ await withPage('builder',sample,async host=>{
+  globalThis.__coverFixture.failSizeSave=true
+  const select=host.querySelector('select[aria-label="Image 1 size"]')
+  await act(async()=>{select.value='full';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}))})
+  assert.equal(select.value,'standard');assert.equal(select.disabled,false)
+  assert.match(host.querySelector('[role=alert]').textContent,/Size save failed/)
+  assert.equal(item.image_layouts,undefined)
  },{items:[item]})
 })

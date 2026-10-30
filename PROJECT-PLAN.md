@@ -1,3 +1,15 @@
+# V8.20 — Per-image catalogue sizing — 30 October 2026, release preparation
+
+Owner-approved Standard / Large / Full page controls save against image URLs,
+surviving reorder and reload. Standard supporting images now use readable
+galleries, Large uses up to two per page, and Full page creates an uncropped
+dedicated portrait page for tall graphics (landscape for square/wide images).
+Text still continues in full, product/image order is retained, and transactional
+choice updates preserve other item data and concurrent choices. Builder phone
+header wraps. Local 22 regressions, actual browser mixed-size/save/readback and
+375px checks pass. Release gates pending; no live data migration or rules change.
+See [release record](docs/plans/V8.20-CATALOGUE-IMAGE-SIZES.md).
+
 # V8.20 — Flexible marketing catalogues — released 30 October 2026
 
 Owner-approved flexible overview/comparison/feature layouts replace photo-count
