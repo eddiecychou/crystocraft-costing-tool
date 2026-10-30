@@ -1,13 +1,18 @@
-# V8.20 — image download filename fix ready locally — 30 October 2026
+# V8.20 — image download filename fix released — 30 October 2026
 
 The bottle product's em dash in its name causes the download service to return
 HTTP 500 when constructing its attachment header. The same live image downloads
 with an ASCII name. The shared endpoint now encodes Unicode filenames safely;
-all five real photos pass the corrected local handler and JPEG decoding. All
+all five real photos pass actual production Chrome downloads and JPEG decoding,
+with original image hashes preserved. All
 32 image tests, full prebuild/build and lint pass; download regressions now run
-in the existing build/CI image suite. No product data or production deployment
-changed. Push/deployment and exact-SHA GitHub/two-role release checks remain
-pending. See [diagnosis and verification](docs/plans/V8.20-IMAGE-DOWNLOAD-FILENAME.md).
+in the existing build/CI image suite. Both required GitHub jobs pass on source
+`6d5bed52` (run `41028849470`, attempt 1); preflights repeated before each upload.
+Fresh admin/customer checks pass on candidate `6ae45a8fb3c107d008d375e5` and
+production `6ae45c60c7a045a28ce624cd`, using the same 431-file artifact. Verified
+30 Oct, 20:05 AEDT / 17:05 HKT. No product data or security rules changed; the
+owner's existing Chrome session was preserved. See
+[diagnosis and release evidence](docs/plans/V8.20-IMAGE-DOWNLOAD-FILENAME.md).
 
 # V8.20 — optional invoice deposit released — 30 October 2026
 
