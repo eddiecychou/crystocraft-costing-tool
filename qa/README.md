@@ -57,6 +57,13 @@ lightbox state intact without writing records. Candidate and production still
 require ordinary Chrome clicks plus saved-file readbacks; a direct HTTP request
 or the browser tool's media downloader does not close that check.
 
+For ordinary Chrome click QA, check the per-site repeated-download prompt on a
+new preview/pinned origin within the authorized download test. Use a dedicated
+QA tab, verify the product page remains open, then decode/hash-check the completed
+file. Background clicks/event observers can stall or omit browser prompts;
+`downloadMedia`/HTTP success alone is not ordinary-click evidence. Native Chrome
+controls require coordination if the owner is using the foreground window.
+
 # PO receipt regressions
 
 ## Add items to an existing reservation

@@ -1,11 +1,15 @@
-# V8.20 — customer Range download clicks prepared — 30 October 2026
+# V8.20 — customer Range download clicks released — 30 October 2026
 
-Range customer gallery links now explicitly request native downloads, addressing
-the ordinary Chrome attachment navigation that remained unverified after the
-filename fix. Five actual-page regressions fail before and pass after the
-correction; all 37 image tests and lint pass. Exact-SHA GitHub, candidate and
-production ordinary-click/two-role checks remain pending; no live product or
-security rules changed. See
+Range customer gallery clicks now cancel page navigation and start the same
+explicit named download action as the admin gallery. Normal/native Chrome clicks
+on both WordPress and Firebase photos save complete matching 1000 × 1000 images
+and keep the product page open. All 37 image tests, full build, lint and config
+checks pass. Both GitHub jobs PASS on source `20356b35` (run `41043547109`,
+attempt 1), repeated before each upload. Fresh admin/customer checks PASS on
+candidate `6ae47766c30e1c89837240dc` and production `6ae47f3906b5dc1e377d5eda`;
+same 431-file artifact reused. Verified 30 Oct, 22:45 AEDT / 19:45 HKT.
+Chrome's repeated-download permission was allowed only for the version-specific
+QA address; no global protections, rules or business records changed. See
 [customer download click verification](docs/plans/V8.20-RANGE-CUSTOMER-DOWNLOAD-CLICKS.md).
 
 # V8.20 — image download filename fix released — 30 October 2026
