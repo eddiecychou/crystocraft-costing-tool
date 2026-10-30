@@ -1,15 +1,17 @@
-# V8.20 — PDF retest complete; portrait-ending correction awaits approval — 30 October 2026
+# V8.20 — PDF retest complete; portrait-ending correction released — 30 October 2026
 
 All 52 actual saved-PDF pages pass: current 8, mixed sizes 13, long specs 18 and
 portrait-ending 13. All 13 original photos remain intact and in order; complete
 text, clear footers and no blanks/cropping. Retesting found a final portrait sheet
-still added a blank landscape page; candidate `cf8f2b7c` fixes that case. Both
+still added a blank landscape page; source `cf8f2b7c` fixes that case. Both
 GitHub jobs pass (run `41003350463`) and fresh candidate admin/customer checks pass
-on Netlify `6ae41ec555eec67136bc05d5`. Automatic approval review blocked publication
-of this newly discovered follow-up; owner approval requested. Production remains
-`6ae40b4679f90dff96723fdb`. Use Chrome Save as PDF for mixed sizes; the macOS print
+on Netlify `6ae41ec555eec67136bc05d5`. After explicit owner approval, the exact
+431-file candidate artifact was published as `6ae428f4485c6ec0a5fe68b9` following
+another exact-SHA CI pass. Fresh production admin/customer checks both pass,
+including data, access separation, refresh and runtime health (30 October,
+16:22 AEDT / 13:22 HKT). Use Chrome Save as PDF for mixed sizes; the macOS print
 dialog's Open PDF in Preview route failed the paper-size check. No live catalogue
-choices changed. See [PDF results and pending release evidence](docs/plans/V8.20-CATALOGUE-PDF-REVIEW.md).
+choices changed. See [PDF results and release evidence](docs/plans/V8.20-CATALOGUE-PDF-REVIEW.md).
 
 # V8.20 — Catalogue trailing blank page — released 30 October 2026
 
