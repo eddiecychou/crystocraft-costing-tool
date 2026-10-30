@@ -64,7 +64,9 @@ export const catalogueCSS = `
   @page oc-catalogue-landscape { size: A4 landscape; margin: 0; }
   @page oc-catalogue-portrait { size: A4 portrait; margin: 0; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  html, body { margin: 0 !important; padding: 0 !important; background: white !important; height: auto !important; overflow: visible !important; }
+  /* Keep the document in the named page context; returning to an anonymous
+     page after the last sheet makes Chromium append a blank page. */
+  html, body { page: oc-catalogue-landscape; margin: 0 !important; padding: 0 !important; background: white !important; height: auto !important; overflow: visible !important; }
   [data-print-shell] { display: block !important; height: auto !important; overflow: visible !important; }
   [data-print-hide], .no-print, .cat-measure { display: none !important; }
   [data-print-root] { display: block !important; overflow: visible !important; height: auto !important; padding: 0 !important; }
