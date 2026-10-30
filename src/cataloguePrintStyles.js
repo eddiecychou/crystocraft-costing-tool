@@ -67,6 +67,10 @@ export const catalogueCSS = `
   /* Keep the document in the named page context; returning to an anonymous
      page after the last sheet makes Chromium append a blank page. */
   html, body { page: oc-catalogue-landscape; margin: 0 !important; padding: 0 !important; background: white !important; height: auto !important; overflow: visible !important; }
+  /* The ending sheet can also be portrait. Keep its page context through
+     the document end rather than adding an empty landscape page. */
+  html:has(.catalogue-sheet--portrait.cat-last-sheet),
+  body:has(.catalogue-sheet--portrait.cat-last-sheet) { page: oc-catalogue-portrait; }
   [data-print-shell] { display: block !important; height: auto !important; overflow: visible !important; }
   [data-print-hide], .no-print, .cat-measure { display: none !important; }
   [data-print-root] { display: block !important; overflow: visible !important; height: auto !important; padding: 0 !important; }

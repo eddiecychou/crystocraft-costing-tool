@@ -1,3 +1,11 @@
+# V8.20 — Portrait-ending PDF follow-up — release candidate, 30 October 2026
+
+Resumed actual PDF retest found that a final portrait sheet still added an empty
+landscape page (14 PDF pages for 13 content pages). The page-mounted root context
+now follows the final portrait sheet; separately saved current/portrait-ending
+PDFs have 8/13 pages, no blanks and complete original photos/text. Final mixed/
+long exports and release gates are in progress. See [PDF retest evidence](docs/plans/V8.20-CATALOGUE-PDF-REVIEW.md).
+
 # V8.20 — Catalogue trailing blank page — released 30 October 2026
 
 The document root retains the catalogue's named page context, avoiding an empty
