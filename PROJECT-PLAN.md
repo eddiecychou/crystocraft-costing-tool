@@ -1,4 +1,4 @@
-# V8.20 — Per-image catalogue sizing — 30 October 2026, release preparation
+# V8.20 — Per-image catalogue sizing — released 30 October 2026
 
 Owner-approved Standard / Large / Full page controls save against image URLs,
 surviving reorder and reload. Standard supporting images now use readable
@@ -6,8 +6,12 @@ galleries, Large uses up to two per page, and Full page creates an uncropped
 dedicated portrait page for tall graphics (landscape for square/wide images).
 Text still continues in full, product/image order is retained, and transactional
 choice updates preserve other item data and concurrent choices. Builder phone
-header wraps. Local 22 regressions, actual browser mixed-size/save/readback and
-375px checks pass. Release gates pending; no live data migration or rules change.
+header wraps. All 22 catalogue regressions, browser mixed-size/save/readback and
+375px checks pass. Released `52f0f77a` / Netlify `6ae3ec5eb4c7f66f5e44ba15`
+after both GitHub jobs passed on that SHA (run `40982185711`) and fresh admin /
+customer gates passed on candidate and production. Same 431-file artifact reused;
+all original live catalogue copy and 13 images retained. No live data migration,
+image-choice edits during QA, or rules change.
 See [release record](docs/plans/V8.20-CATALOGUE-IMAGE-SIZES.md).
 
 # V8.20 — Flexible marketing catalogues — released 30 October 2026
