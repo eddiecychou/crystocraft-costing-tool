@@ -27,6 +27,7 @@ shape or a gotcha, read the function itself; the file names below are exact.
 
 ## CRM & Outreach
 
+- **Node `/api/portal-invite` applicant follow-up:** existing admin authentication guards `get_account_followup`, `save_account_followup_draft`, `send_account_followup`, `mark_account_information_received`, `resolve_account_followup`. Existing invitation/approval/public signup actions are unchanged. New actions take `uid`; mutations require revision and send/resolution uses UUID message IDs. Registered recipient is server-derived; private application history/draft is returned without provider credentials. Caller: `portalInviteApi.js` / `PortalAccountFollowup.jsx`. Local implementation/release state: `../plans/V8.20-PORTAL-APPLICATION-FOLLOWUP.md`.
 - `compose-message.js` (`/api/compose-message`) — AI composition of a quick outbound message from a customer's detail page. Auth: module `customers`. Called from `src/pages/CustomerDetail.jsx`.
 - `draft-outreach-topic.js` (`/api/draft-outreach-topic`) — Turns a free-text topic into one starting Daily Drafts outreach draft. Auth: module `marketing`. Called from `src/outreachApi.js`.
 - `discuss-outreach-draft.js` (`/api/discuss-outreach-draft`) — Multi-turn AI chat to conversationally refine one Daily Drafts draft. Auth: module `marketing`. Called from `src/outreachApi.js`.

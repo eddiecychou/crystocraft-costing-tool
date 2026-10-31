@@ -44,6 +44,7 @@ import { getAuth } from 'firebase-admin/auth'
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore'
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto'
 import { buildResendTags } from '../edge-functions/lib/resendTags.js'
+import { accountFollowupAction } from './lib/portalAccountFollowup.js'
 
 const INVITE_EXPIRY_DAYS = 7
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -1136,6 +1137,20 @@ export default async function handler(req) {
 
   const { uid, error } = await requireAdmin(req)
   if (error) return error
+
+  if (['get_account_followup', 'save_account_followup_draft', 'send_account_followup',
+    'mark_account_information_received', 'resolve_account_followup'].includes(action)) {
+    try {
+      const response = json(await accountFollowupAction({ db: getFirestore(), actorUid: uid, action, body,
+        mail: { apiKey: process.env.RESEND_API_KEY,
+          from: process.env.MAIL_PERSONAL_FROM || process.env.MAIL_FROM || '',
+          replyTo: process.env.MAIL_REPLY_TO || process.env.MAIL_ADMIN || '' } }))
+      response.headers.set('Cache-Control', 'private, no-store')
+      return response
+    } catch (e) {
+      return json({ error: e.status ? e.message : 'Could not confirm the follow-up update. Refresh before trying again.' }, e.status || 500)
+    }
+  }
 
   switch (action) {
     case 'create_invitation': return createInvitation(body, uid)

@@ -1,3 +1,15 @@
+# V8.20 — portal applicant follow-up — implemented locally, 1 November 2026
+
+Pending portal accounts now have an editable Request more information email,
+saved drafts and application-keyed sent history without requiring a CRM customer.
+Explicit sending shows Waiting for reply; manual Information received keeps
+approval separate. Server-derived recipient, revision checks and an immutable
+message/key protect against concurrent edits and duplicate/interrupted sends.
+Current rules keep correspondence server-only; no rules change, live email,
+approval, customer/pricing record or deployment was performed. Local actual-page,
+Firestore transaction/access, build and lint checks pass; tests are included in
+the two existing GitHub jobs. See [implementation and verification](docs/plans/V8.20-PORTAL-APPLICATION-FOLLOWUP.md).
+
 # V8.20 — documentation and handoff — 31 October 2026
 
 [Session handoff](docs/plans/V8.20-SESSION-HANDOFF-2026-10-31.md) indexes the

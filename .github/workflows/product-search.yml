@@ -21,6 +21,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run test:release-ci
+      - run: npm run test:portal-followup
       - run: npm run test:crystal-products
       - run: npm run test:crystal-swatches
       - run: npm run test:design-projects
@@ -55,4 +56,4 @@ jobs:
           java-version: '21'
       - run: npm ci --no-audit --no-fund
       - name: Access rules, customer workflows and real-page task/note sync
-        run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node qa/crystal-swatches-rules.test.mjs && node --test qa/product-images-emulator.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs && npm run test:workspace-sync && node --test qa/po-receive-emulator.mjs && node --test qa/order-reservation-add-emulator.mjs"
+        run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node qa/crystal-swatches-rules.test.mjs && node --test qa/product-images-emulator.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs && npm run test:workspace-sync && node --test qa/po-receive-emulator.mjs && node --test qa/order-reservation-add-emulator.mjs && node --test qa/portal-followup-emulator.mjs"

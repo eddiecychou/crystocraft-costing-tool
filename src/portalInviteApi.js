@@ -50,6 +50,13 @@ export const approveInvitation = (invitationId, customerId) =>
 // deleteAccount.
 export const deleteAccount = uid => callAdmin('delete_account', { uid })
 
+// Private correspondence can exist before this login is linked to a CRM customer.
+export const getAccountFollowup = uid => callAdmin('get_account_followup', { uid })
+export const saveAccountFollowupDraft = (uid, draft) => callAdmin('save_account_followup_draft', { uid, ...draft })
+export const sendAccountFollowup = (uid, message) => callAdmin('send_account_followup', { uid, ...message })
+export const markAccountInformationReceived = (uid, revision) => callAdmin('mark_account_information_received', { uid, revision })
+export const resolveAccountFollowup = (uid, messageId, outcome, revision) => callAdmin('resolve_account_followup', { uid, messageId, outcome, revision })
+
 // Public — no Firebase session; the raw claim token from the invitation
 // link IS the credential here.
 export const claimInvitation = (invitationId, token, email, contactName) =>

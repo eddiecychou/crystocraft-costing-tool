@@ -39,6 +39,23 @@ permission. The token's existing repository scope and expiry were preserved. The
 layout, real login or Firebase rules; release verification below remains
 required when publishing an app.
 
+# Portal applicant information requests
+
+`npm run test:portal-followup` renders the real `PortalAccountFollowup` with only
+the API isolated. It checks explicit reviewed sending, draft remount, latest
+edited values, duplicate prevention, focused errors, recovery and history.
+`node --test qa/portal-followup-emulator.mjs` requires loopback Firestore and runs
+actual Admin SDK transactions plus the existing endpoint with isolated auth/mail.
+It verifies exact recipient/payload, revision/lease/idempotency, uncertain results,
+private rules and preserved account/pricing/CRM state. Both are wired into the
+existing GitHub jobs. Run the latter inside `firebase emulators:exec --only
+firestore --project crystocraft-rbac-test` with a real Java runtime.
+
+`node qa/portal-followup-preview.mjs` serves the actual AccountEdit at
+`http://127.0.0.1:5199/portal/accounts/fixture`, with fictional data and simulated
+sending only. Verify draft/save/reopen/send/history and 375px layout; never use a
+real applicant as a send-test fixture. [Implementation and release state](../docs/plans/V8.20-PORTAL-APPLICATION-FOLLOWUP.md).
+
 # Image download filenames
 
 `npm run test:product-images` also runs `qa/download-image.test.mjs` against the

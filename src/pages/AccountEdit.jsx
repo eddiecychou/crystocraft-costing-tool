@@ -10,6 +10,7 @@ import ContactPicker from '../components/ContactPicker'
 import { notifyEmail } from '../notify'
 import { approveInvitation, deleteAccount } from '../portalInviteApi'
 import LoadingBar from '../components/LoadingBar'
+import PortalAccountFollowup from '../components/PortalAccountFollowup'
 import { MODULE_GROUPS, resolveModules } from '../access'
 import { ArrowLeft } from 'lucide-react'
 
@@ -344,6 +345,8 @@ export default function AccountEdit() {
         {linked?.country && <p className="text-sm text-ink-60">{linked.country}</p>}
         <p className="text-2xs text-ink-60 mt-1 font-mono break-all" title="Account (users doc) ID — matches the User UID in Firebase Console → Authentication for a real login. An orphaned/hand-made duplicate won't match any Auth user.">ID: {u.id}</p>
       </div>
+
+      {!isStaff && type !== 'internal' && <PortalAccountFollowup key={id} account={u} />}
 
       {/* Activity */}
       <div className="card p-5 mb-5">
