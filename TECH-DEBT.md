@@ -250,6 +250,10 @@ one to measure rather than trust.
 
 ## Lead interaction history needs the collection-scoped date index
 
+Targeted repair is in progress under the owner's explicit request; see
+[implementation and live release gates](docs/plans/V8.20-LEAD-INTERACTION-HISTORY.md).
+Do not mark resolved until the production index and history-loading checks pass.
+
 Read-only CRM cleanup verification on 1 November 2026 reproduced the same
 missing COLLECTION_DESC index for enquiries.date on both the unchanged
 production bundle index-BWe68OHl.js and candidate index-B05Qd5Wy.js.

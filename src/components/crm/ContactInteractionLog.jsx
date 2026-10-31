@@ -25,9 +25,21 @@ export function InteractionLog({ contactId }) {
   const [channel, setChannel] = useState(CHANNELS[0])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [historyError, setHistoryError] = useState('')
+  const [reloadRevision, setReloadRevision] = useState(0)
 
-  const reload = () => listInteractions('marketing_contacts', contactId).then(setEntries).finally(() => setLoading(false))
-  useEffect(() => { reload() }, [contactId])
+  const reload = () => setReloadRevision(v => v + 1)
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setHistoryError('')
+    setEntries([])
+    listInteractions('marketing_contacts', contactId)
+      .then(next => { if (active) setEntries(next) })
+      .catch(() => { if (active) setHistoryError('Could not load interaction history. Please try again.') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [contactId, reloadRevision])
 
   async function handleAdd() {
     if (!description.trim()) return
@@ -35,7 +47,7 @@ export function InteractionLog({ contactId }) {
     try {
       await addInteraction('marketing_contacts', contactId, { description, channel })
       setDescription('')
-      await reload()
+      reload()
     } catch (e) {
       setError(e.message || 'Could not log that.')
     } finally {
@@ -57,7 +69,7 @@ export function InteractionLog({ contactId }) {
     <div className="block border-t border-warm-grey pt-3">
       <button type="button" onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between text-xs text-ink-60 mb-1.5">
-        <span>Interaction Log {!loading && entries.length > 0 && <span className="text-ink-60 font-normal">({entries.length})</span>}</span>
+        <span>Interaction Log {!loading && !historyError && entries.length > 0 && <span className="text-ink-60 font-normal">({entries.length})</span>}</span>
         {expanded ? <ChevronUp size={14} className="text-ink-60" /> : <ChevronDown size={14} className="text-ink-60" />}
       </button>
       {expanded && (
@@ -79,6 +91,11 @@ export function InteractionLog({ contactId }) {
           </div>
           {loading ? (
             <p className="text-xs text-ink-60">Loading…</p>
+          ) : historyError ? (
+            <div role="alert" className="flex items-center gap-2 text-xs text-red-600">
+              <p>{historyError}</p>
+              <button type="button" onClick={reload} className="text-burgundy underline shrink-0">Retry</button>
+            </div>
           ) : entries.length === 0 ? (
             <p className="text-xs text-ink-60">Nothing logged yet.</p>
           ) : (

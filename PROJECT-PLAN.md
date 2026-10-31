@@ -1,3 +1,13 @@
+# V8.20 — lead interaction history — repair in progress, 1 November 2026
+
+The live enquiries.date override has only collection-group indexes, disabling
+the collection date-desc query used by individual lead history. Restore both
+collection directions without removing group indexes or changing data/rules;
+the viewer now distinguishes loading errors from empty history and provides
+Retry with stale-response protection. Release requires both exact-SHA GitHub
+jobs, READY index/readback proof, and fresh candidate/production role gates.
+[Repair and release record](docs/plans/V8.20-LEAD-INTERACTION-HISTORY.md).
+
 # V8.20 — customer section spacing — released, 1 November 2026
 
 Expanded customer sections inherited `px-5 pb-5 -mt-1`: no top padding and

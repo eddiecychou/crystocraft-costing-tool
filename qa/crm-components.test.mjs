@@ -121,6 +121,54 @@ test('interaction log preserves its target and requires delete confirmation', as
   assert.match(host.textContent, /Nothing logged yet/)
   assert.deepEqual(f.calls.find(c => c[0] === 'deleteInteraction'), ['deleteInteraction', 'marketing_contacts', lead, 'new'])
 })
+test('history failure is distinct from empty history; Retry shows loading and recovers existing rows', async () => {
+  f.handlers.interactions = async () => { throw Error('Fictional missing index') }
+  await mount(ui.InteractionLog, { contactId: lead }); await click('Interaction Log')
+  assert.match(host.querySelector('[role=alert]').textContent, /Could not load interaction history/)
+  assert.doesNotMatch(host.textContent, /Nothing logged yet|Fictional missing index/)
+  let resolve
+  f.handlers.interactions = () => new Promise(done => { resolve = done })
+  await click('Retry'); assert.match(host.textContent, /Loading…/); assert.equal(host.querySelector('[role=alert]'), null)
+  await act(async () => resolve([
+    { id: 'newer', date: '2026-10-31', channel: 'Email', description: 'Latest existing interaction' },
+    { id: 'older', date: '2026-10-01', channel: 'Email', description: 'Older existing interaction' },
+  ]))
+  assert.match(host.textContent, /Interaction Log \(2\)/)
+  assert.ok(host.textContent.indexOf('Latest existing interaction') < host.textContent.indexOf('Older existing interaction'))
+  assert.doesNotMatch(host.textContent, /Loading…|Could not load|Nothing logged yet/)
+  assert.deepEqual(f.calls.filter(c => c[0] === 'interactions'), [
+    ['interactions', 'marketing_contacts', lead], ['interactions', 'marketing_contacts', lead],
+  ])
+})
+for (const outcome of ['resolve', 'reject']) test('changing lead ignores a late history ' + outcome, async () => {
+  let settle
+  f.handlers.interactions = (_collection, id) => id === lead
+    ? new Promise((resolve, reject) => { settle = outcome === 'resolve' ? () => resolve([{ id: 'old', description: 'Previous private history' }]) : () => reject(Error('Previous lead error')) })
+    : Promise.resolve([{ id: 'current', description: 'Current lead history' }])
+  await mount(ui.InteractionLog, { contactId: lead }); await click('Interaction Log')
+  assert.match(host.textContent, /Loading…/)
+  await act(async () => root.render(React.createElement(MemoryRouter, null, React.createElement(ui.InteractionLog, { contactId: 'other' }))))
+  await act(async () => settle())
+  assert.match(host.textContent, /Current lead history/)
+  assert.doesNotMatch(host.textContent, /Previous private history|Previous lead error|Could not load|Loading…/)
+})
+test('unmounted history rejection is handled without updating an abandoned viewer', async () => {
+  let reject
+  f.handlers.interactions = () => new Promise((_resolve, fail) => { reject = fail })
+  await mount(ui.InteractionLog, { contactId: lead }); await unmount()
+  await act(async () => reject(Error('Late network error')))
+})
+test('successful log with failed history refresh does not misreport a save failure or repeat the write', async () => {
+  await mount(ui.InteractionLog, { contactId: lead }); await click('Interaction Log')
+  f.handlers.interactions = async () => { throw Error('Refresh unavailable') }
+  await change(host.querySelector('input'), 'Saved finding'); await click('Log')
+  assert.equal(host.querySelector('input').value, '')
+  assert.match(host.querySelector('[role=alert]').textContent, /Could not load interaction history/)
+  assert.doesNotMatch(host.textContent, /Could not log|Refresh unavailable|Nothing logged yet/)
+  delete f.handlers.interactions; await click('Retry')
+  assert.match(host.textContent, /Saved finding/)
+  assert.equal(f.calls.filter(c => c[0] === 'addInteraction').length, 1)
+})
 test('collapse state survives remount, stays customer-specific, and ignores right-side clicks', async () => {
   let clicked = 0
   const props = { storageKey: 'first:history', title: 'History', right: React.createElement('button', { onClick: () => clicked++ }, 'Open history'), children: 'Private content' }
