@@ -1,4 +1,4 @@
-# V8.20 — customer section spacing — release authorized, 1 November 2026
+# V8.20 — customer section spacing — released, 1 November 2026
 
 Expanded customer sections inherited `px-5 pb-5 -mt-1`: no top padding and
 a 4px upward pull put contact-card borders/company details against the header
@@ -9,9 +9,13 @@ Storefront Accounts, Compose and empty Contacts measure a 16px content gap.
 Desktop/375px inspection has no section/page horizontal overflow; expand/collapse,
 all 12 CRM component cases, full prebuild/build and changed-file no-undef pass.
 Evidence: ignored `qa/out/customer-spacing-release/`. No business records edited
-or sends triggered. Owner authorized deployment; exact-SHA CI and candidate /
-production role evidence are tracked in
-[the release record](docs/plans/V8.20-CUSTOMER-SECTION-SPACING.md).
+or sends triggered. Both GitHub jobs PASS on c40b8f52 (run 41218446747, attempt 1).
+Candidate 6ae614301f2c4d16649967d8 and production 6ae615dd9fa7d893cdf5bf16 pass
+fresh admin/customer routing, catalogue/product, access and refresh checks.
+The same 431-file artifact was reused; both live builds measure 16px gaps at
+1280px and 375px, with no overflow and collapse state retained after refresh.
+Final production verification: 1 Nov 2026, 03:28:55 AEDT / 00:28:55 HKT.
+[Release evidence](docs/plans/V8.20-CUSTOMER-SECTION-SPACING.md).
 
 # V8.20 — CRM maintenance — released, 1 November 2026
 
