@@ -1413,3 +1413,24 @@ emulator regression triggers the blocked AI boundary, verifies retained error an
 unlocked retry after Dashboard remount, and confirms the saved cache is unchanged.
 Run the complete CI emulator command when changing Dashboard/CustomerDetail imports,
 not only prebuild: prebuild does not include the page-sync emulator job.
+
+### Single-field index overrides must preserve each query scope
+
+1 November 2026: enquiries.date had only COLLECTION_GROUP indexes. A lead's
+ordinary collection orderBy(date, desc) therefore failed with missing
+COLLECTION_DESC even though records and dashboard-wide queries were intact.
+A single-field override replaces normal indexes; adding group scope must not
+silently remove collection scope. Restore both collection directions while
+preserving group/live specs, patch only the exact field with indexConfig mask,
+and wait for READY. Do not deploy an empty composite manifest over unrelated
+live indexes. A read-only audit credential's 403 made no change; the existing
+authorized Firebase deployment session applied the same additive plan without
+IAM changes. Successful dry run is not evidence of write permission.
+
+Catch read rejections separately from writes: finally alone can turn failure
+into a false empty list. Expose Retry, ignore abandoned-contact responses and
+do not report a successful save as failed when only its refresh failed. The
+emulator cannot establish production index readiness. Real readback verified
+47 existing lead histories, 358 group records and unchanged unrelated indexes;
+candidate Retry recovered from the actual index-build error, then both fresh
+production roles passed. [Evidence](../plans/V8.20-LEAD-INTERACTION-HISTORY.md).

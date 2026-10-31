@@ -1,11 +1,17 @@
-# V8.20 — lead interaction history — repair in progress, 1 November 2026
+# V8.20 — lead interaction history — released, 1 November 2026
 
-The live enquiries.date override has only collection-group indexes, disabling
-the collection date-desc query used by individual lead history. Restore both
-collection directions without removing group indexes or changing data/rules;
-the viewer now distinguishes loading errors from empty history and provides
-Retry with stale-response protection. Release requires both exact-SHA GitHub
-jobs, READY index/readback proof, and fresh candidate/production role gates.
+The enquiries.date override had disabled the collection date-desc query used by
+individual lead history. Both collection directions are restored and READY,
+with both group indexes preserved. All 47 existing lead histories load correctly;
+the ordered group query still returns 358 records. The viewer distinguishes
+loading errors from empty history and provides Retry with stale-response guards.
+Candidate live Retry recovered after backfill, and populated/empty histories plus
+refresh pass on production. All 101 workspace cases, full prebuild/build, whole-
+source no-undef and 11 config cases pass. Both GitHub jobs PASS on d99b8fc4
+(run 41221184871, attempt 1), before index/app releases. Candidate
+6ae61c8691844cf3323bf709 and production 6ae61e0528a560aa63a019b0 pass fresh
+admin/customer gates using the same 431-file artifact. Verified 1 Nov 2026,
+04:00:38 AEDT / 01:00:38 HKT. Rules, business records and sending remain unchanged.
 [Repair and release record](docs/plans/V8.20-LEAD-INTERACTION-HISTORY.md).
 
 # V8.20 — customer section spacing — released, 1 November 2026

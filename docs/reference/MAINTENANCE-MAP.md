@@ -41,7 +41,7 @@ existing props, markup, local state and side effects were moved intact.
 | ContactEmailThreads.jsx | Lead email subscription, expansion and summary refresh; MarketingContactDetail |
 | ContactWhatsAppThreads.jsx | Lead WhatsApp subscription, migrated-thread filtering, media, individual transcription and summary refresh; MarketingContactDetail |
 | ContactAlibabaThreads.jsx | Lead pasted-chat editor/history and summary refresh; MarketingContactDetail |
-| ContactInteractionLog.jsx | Lead interaction list, manual add and confirmed delete; MarketingContactDetail |
+| ContactInteractionLog.jsx | Lead interaction list, loading/error/Retry and stale-response guards, manual add and confirmed delete; MarketingContactDetail |
 | CustomerCollapsible.jsx | Customer section visibility and existing per-customer/session storage keys; CustomerDetail |
 | BrandProposalCard.jsx | Brand asset thumbnails, proposal status and capability-gated design profile; CustomerDetail |
 | ProductDesignConceptsCard.jsx | Approved design concepts and existing detail/download links; CustomerDetail |
@@ -75,6 +75,16 @@ stock/pricing operation changes are included in this batch.
   are required on candidate and production. Follow
   [RELEASE-WORKFLOW.md](../skills/RELEASE-WORKFLOW.md); no alternative process
   is defined here. Use fictional/local fixtures for write/send behaviour.
+
+Lead interaction history uses domain/interactionLog.js and a date-desc query on
+one enquiries collection. Its firestore.indexes.json single-field override must
+retain COLLECTION and COLLECTION_GROUP ascending/descending indexes. The
+dry-run-first scripts/repair-enquiries-date-index.mjs pins the production field,
+preserves live specs and gates --apply on exact-SHA CI; apply requires an already
+authorized index-deployment credential, not the read-only audit key. Never
+expand permissions automatically. Verify READY indexes and actual ordered live
+queries separately from emulator tests; see the
+[history repair evidence](../plans/V8.20-LEAD-INTERACTION-HISTORY.md).
 
 ## Subsequent cleanup batches
 
