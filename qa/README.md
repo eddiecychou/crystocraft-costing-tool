@@ -64,6 +64,14 @@ file. Background clicks/event observers can stall or omit browser prompts;
 `downloadMedia`/HTTP success alone is not ordinary-click evidence. Native Chrome
 controls require coordination if the owner is using the foreground window.
 
+Full diagnosis, completed-file checklist, tool-stall workaround and evidence
+boundaries: [OC image-download skill](../docs/skills/oc-image-downloads/SKILL.md).
+In this Mac/Cua session, `downloadMedia` and `waitForEvent('download')` stalled
+well beyond requested timeouts; do not repeat those calls as the ordinary-click
+proof. Use the supported real tab/native click and bounded local file readback.
+Record canonical-site role checks separately from a published artifact's pinned
+Chrome origin. See the [completed customer release](../docs/plans/V8.20-RANGE-CUSTOMER-DOWNLOAD-CLICKS.md).
+
 # PO receipt regressions
 
 ## Add items to an existing reservation

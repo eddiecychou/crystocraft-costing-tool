@@ -1,5 +1,119 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## L-75 · A catalogue ending in portrait changed page context and added a blank sheet
+
+- **Symptom (30 Oct 2026):** mixed-size catalogues retained all content but ended
+  with an empty page. Assigning a landscape named page to the root fixed ordinary
+  endings; a separate portrait-ending PDF still added a blank landscape sheet.
+- **Root cause and fix:** Chromium returned from the final sheet's named page
+  context to a different root context. `cataloguePrintStyles.js`, mounted only
+  by CataloguePreview, retains the named context on html/body and selects portrait
+  when `.catalogue-sheet--portrait.cat-last-sheet` is present. Sheets keep their
+  individual orientation; clipping or shrinking text is not the correction.
+- **Verification lesson:** save the actual PDF, including a portrait final sheet;
+  a preview count or browser layout alone is insufficient. Four saved cases
+  (8/13/18/13 pages, 52 total) retained all photos/text with no blanks/cropping.
+  Chrome Save as PDF preserved mixed A4 sizes; this Mac's Open PDF in Preview
+  export branch produced uniform Letter pages and failed. Do not generalize this
+  route limitation to opening an already saved PDF. [Final PDF evidence](../plans/V8.20-CATALOGUE-PDF-REVIEW.md).
+
+## L-74 · Navigation lost the running status; a null hook fixture missed the new state contract
+
+- **Symptom (25 Oct 2026):** leaving Dashboard did not stop summary generation,
+  but returning reset Updating and allowed another Update. After release, the
+  GitHub emulator job failed because its workspace fixture replaced the new hook
+  with null, despite local build and live role checks passing.
+- **Fix:** `summaryUpdate.js`/`useSummaryUpdate` own a tab-wide in-flight promise,
+  source period, progress and retained errors outside page lifecycle. Acquire
+  that promise before notifying/rendering to prevent rapid/remounted duplicate
+  starts. Keep the actual hook/store in the fixture and isolate the AI boundary.
+  In-tab navigation survives; reload/closing the tab can interrupt the client job.
+- **Release lesson:** verify navigation/failure/retry against the actual page and
+  require both exact-SHA GitHub jobs before deployment. A local build or one job
+  does not validate a changed stateful fixture. [Status implementation](../plans/V8.19-SUMMARY-UPDATE-STATUS-RELEASE.md),
+  [CI incident and permanent guard](../plans/V8.19-GITHUB-RELEASE-GATE.md).
+
+## L-73 · JSON key order made identical quote attachments appear changed
+
+- **Symptom (29 Oct 2026):** Save Changes stayed on the quote form. Its concurrent
+  attachment warning was above the screenshot/viewport. Identical nested maps
+  with reordered keys reproduced the rejection in the actual transaction.
+- **Fix:** `firestoreValue.js` compares values recursively, ignoring map key order
+  but preserving field presence, types, array order and timestamps. Keep genuine
+  conflicts blocked; focus errors beside the save controls while retaining edits.
+  Attachment-only writes still preserve concurrently approved commercial fields.
+- **Verification lesson:** test both equal reordered maps and real URL/metadata/
+  array changes. Do not remove conflict checks or resave pricing to make a file
+  addition succeed. The original tab's hidden cached baseline was not inspected;
+  the reproduced bug does not prove that every historical conflict was false.
+  [Actual-form/browser and release evidence](../plans/V8.20-SUPPLIER-QUOTE-SAVE-FIX.md).
+
+## L-72 · A file attachment must not re-extract or round an existing approved quote
+
+- **Requirement (21 Oct 2026):** support USD 1.222 unit costs while linking an
+  existing supplier PDF, preserving approved prices, quantity, tooling, notes,
+  supplier preference and the same hidden Concept/image.
+- **Implementation lesson:** main/tier inputs use step 0.001 and display stored
+  values unchanged, including higher precision. Do not round on load or write.
+  Existing-quote file additions bypass AI extraction; unchanged commercial fields
+  use an attachment-only transaction. Reuse the supplier file by URL/identity,
+  without duplicate product/quote/upload records. New-quote extraction remains.
+- **Verification:** actual-form upload/link/reopen and concurrent-edit fixtures
+  cover exact values and zero extraction calls, followed by independent live
+  readback of the authorized existing quote. Supplier terms belong in structured
+  quote fields, not customer-facing product copy. [Precision/attachment record](../plans/V8.19-SUPPLIER-QUOTE-PRECISION-RELEASE.md).
+
+## L-71 · Browser download observers stalled despite requested timeouts
+
+- **Symptom (30 Oct 2026):** Cua `downloadMedia` stalled for about 50 minutes;
+  a `waitForEvent('download')` attempt stalled for about 19 minutes despite a
+  short requested timeout. An unawaited observer still stalled the whole cell.
+  Native foreground actions also became unreliable when the owner changed work.
+- **Finding:** the tool timeout was not an effective deadline in this session.
+  This does not establish that all browsers/tools behave the same way. No-file
+  or `ERR_BLOCKED_BY_CLIENT` output alone did not identify an application cause.
+- **Working procedure:** use a dedicated authorized QA tab and supported normal/
+  native clicks with bounded local file readback. Inspect for an already-arrived
+  file before retrying. Coordinate native foreground use; inspect fresh AX state,
+  focus/paste/read back the actual address field before navigation. Do not retry
+  the stalled observer/helper loop or bypass a tool URL-policy refusal. Procedure:
+  [OC image-download skill](oc-image-downloads/SKILL.md).
+
+## L-70 · Valid image bytes and green CI did not prove a customer's download click
+
+- **Symptom (30 Oct 2026):** the Range customer gallery endpoint returned valid
+  images, but ordinary Chrome clicks did not establish a completed saved file.
+  The first candidate passed both GitHub jobs and role checks and was not promoted.
+- **Correction:** `FigurineDetail.jsx` now cancels navigation/propagation and
+  appends, clicks and removes one temporary named native anchor, retaining the
+  rendered href/download attribute. `qa/range-download-click.test.mjs` renders
+  the actual page and checks exact displayed names, both source types, navigation
+  prevention, a single download action and cleanup without changing product data.
+- **Verification lesson:** require an ordinary customer Chrome click, newly saved
+  filename, fully decoded/hash-matched image and retained product page. HTTP,
+  helper-download and event-only results cannot replace that proof. A new pinned
+  origin also showed Chrome's normal multiple-download prompt; allowing it only
+  for that authorized test origin resolved repeated-download blocking. Do not
+  infer one cause from `ERR_BLOCKED_BY_CLIENT` or disable global protections.
+  Final source `20356b35` passed all 37 image regressions, exact-SHA CI and both
+  roles on candidate/production; WordPress/Firebase click readbacks passed.
+  [Release evidence and exact browser/origin distinctions](../plans/V8.20-RANGE-CUSTOMER-DOWNLOAD-CLICKS.md).
+
+## L-69 · A valid image failed to download because its filename was Unicode
+
+- **Symptom (30 Oct 2026):** Chrome showed “Site wasn't available” for the bottle
+  images. The same source returned HTTP 500 with its real em-dash filename and
+  HTTP 200 with an ASCII filename.
+- **Root cause:** raw Unicode in `Content-Disposition` threw a ByteString error
+  while constructing the response, after the upstream fetch succeeded.
+- **Permanent fix:** `download-image.js` uses a quoted ASCII fallback plus RFC
+  5987 UTF-8 `filename*`, sanitized controls/path separators and code-point-safe
+  truncation. Preserve existing URL/bucket/redirect/size/normalization policy;
+  changing product names is not the fix. Actual-handler regressions cover Chinese,
+  accents, emoji, quotes, empty/long names and byte/security invariants; they run
+  in `test:product-images` and required CI. All five real production bottle image
+  downloads decoded and matched hashes. [Release evidence](../plans/V8.20-IMAGE-DOWNLOAD-FILENAME.md).
+
 ## L-68 · Adding a stock item disappeared at the reservation stage
 
 - **Symptom (29 Oct 2026):** after reserving crystals, staff could edit existing

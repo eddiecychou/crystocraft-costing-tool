@@ -164,6 +164,12 @@ state and verification time/timezone. For **each role separately**, record:
 - Expected role/approval, destination URL, data/access/refresh/runtime results.
 - Screenshot without unnecessary customer/financial data; any issues/exceptions.
 
+For image-download changes, also require the affected role's ordinary Chrome
+click, newly saved filename, decoded file/hash comparison and product-page
+retention on candidate and published artifact. HTTP/helper/event-only success
+does not close that feature check. Record the exact browser/origin separately
+from canonical-site login checks; use the [image-download skill](oc-image-downloads/SKILL.md).
+
 Use this evidence template (include the per-role details above):
 
 | Evidence | Recorded result |

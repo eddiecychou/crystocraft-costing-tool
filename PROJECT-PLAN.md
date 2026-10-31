@@ -1,3 +1,15 @@
+# V8.20 — documentation and handoff — 31 October 2026
+
+[Session handoff](docs/plans/V8.20-SESSION-HANDOFF-2026-10-31.md) indexes the
+V8.19/V8.20 business decisions, shipped fixes, release evidence and remaining
+owner-dependent stock questions. New reusable
+[image-download skill](docs/skills/oc-image-downloads/SKILL.md) and lessons
+L-69–L-75 cover Unicode headers, ordinary Chrome clicks, completed-file proof,
+per-origin prompts, tool stalls, quote preservation/conflicts, navigation state,
+CI fixtures and mixed-orientation PDF blanks. The master router, UI skill, QA
+guide and release workflow link the procedures. This is documentation only;
+application release identity and last recorded verification remain in the next entry.
+
 # V8.20 — customer Range download clicks released — 30 October 2026
 
 Range customer gallery clicks now cancel page navigation and start the same

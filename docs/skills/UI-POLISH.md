@@ -299,6 +299,28 @@ hazard as JES's stale balance tables (see `SKILL.md` data facts). Only the
 draft's §3 micro-fixes (tap-highlight, `overscroll-behavior`, `select-none`)
 were worth taking now, and they're in §7.1.
 
+## 8. Marketing catalogue print layout — mixed orientations
+
+For Marketing → Catalogues changes, use the existing layout/pagination system:
+`CatalogueProductPages.jsx` measures full copy and creates continuation pages;
+`cataloguePrintStyles.js` contains the
+page-mounted print rules. Standard/Large/Full page choices belong to image URLs,
+so reorder and hero changes must preserve them. Contain-fit product photographs
+and long specifications in full; the intentional cover background is separate.
+
+Verify actual saved output for ordinary, mixed-image-size, long-specification
+and **portrait-final-sheet** cases. Inspect every rasterised page, photo order/
+aspect ratio, complete text, orientation, blank-page count and footer clearance.
+Preview counters/browser overflow checks supplement that proof. Keep print CSS
+mounted only on CataloguePreview; global print rules have broken other invoices
+before (L-30). Root and final-sheet named page contexts must agree (L-75).
+
+Use Chrome's Destination: Save as PDF for this mixed-orientation workflow. The
+macOS Open PDF in Preview export branch failed paper-size checks on the tested
+Mac; this does not concern viewing a saved PDF. Keep live catalogue selections
+unchanged during fixture QA. [Final 52-page verification and implementation](../plans/V8.20-CATALOGUE-PDF-REVIEW.md),
+[size/choice persistence contract](../plans/V8.20-CATALOGUE-IMAGE-SIZES.md).
+
 ## Change Log
 
 | Date | Change |
