@@ -16,7 +16,7 @@ function readCollapsed(key, defaultOpen) {
     return v === null ? !defaultOpen : v === '1'
   } catch { return !defaultOpen }
 }
-export default function Collapsible({ storageKey, title, right, defaultOpen = true, children, className = 'card mb-4', bodyClassName = 'px-5 pb-5 -mt-1' }) {
+export default function Collapsible({ storageKey, title, right, defaultOpen = true, children, className = 'card mb-4', bodyClassName = 'px-5 py-4' }) {
   const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey, defaultOpen))
   function toggle() {
     setCollapsed(c => {

@@ -1,3 +1,18 @@
+# V8.20 — customer section spacing — release authorized, 1 November 2026
+
+Expanded customer sections inherited `px-5 pb-5 -mt-1`: no top padding and
+a 4px upward pull put contact-card borders/company details against the header
+divider. The shared default now uses `px-5 py-4` (20px horizontal, 16px vertical).
+Compose Message uses the same inset and no negative intro margin; table sections
+with their own body spacing are unchanged. Populated Contacts, Company Details,
+Storefront Accounts, Compose and empty Contacts measure a 16px content gap.
+Desktop/375px inspection has no section/page horizontal overflow; expand/collapse,
+all 12 CRM component cases, full prebuild/build and changed-file no-undef pass.
+Evidence: ignored `qa/out/customer-spacing-release/`. No business records edited
+or sends triggered. Owner authorized deployment; exact-SHA CI and candidate /
+production role evidence are tracked in
+[the release record](docs/plans/V8.20-CUSTOMER-SECTION-SPACING.md).
+
 # V8.20 — CRM maintenance — released, 1 November 2026
 
 Owner-authorized maintenance cleanup separates lead correspondence/history

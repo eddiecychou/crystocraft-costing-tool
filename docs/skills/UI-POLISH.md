@@ -76,6 +76,14 @@ section wrapper own the spacing.
 
 ## 4. The Second Pass — mandatory, and measurable
 
+Customer detail accordions (`components/crm/CustomerCollapsible.jsx`) use
+`px-5 py-4` for ordinary expanded bodies: a 16px top/bottom inset and 20px
+horizontal alignment with the header. Do not use a negative top margin to pull
+content across the header divider. Custom table bodies keep their own spacing;
+Compose Message has the ordinary inset plus `space-y-4`, without an upward
+offset on its first paragraph. Verify both a populated contact/company section
+and an empty section at desktop and 375px after changing this wrapper.
+
 A screen is **not done** when the data renders. Do a deliberate second pass and
 report the before/after (§7a — an impression is not evidence). Check, in order:
 

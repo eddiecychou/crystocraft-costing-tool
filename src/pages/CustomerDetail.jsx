@@ -1785,8 +1785,8 @@ export default function CustomerDetail() {
       {/* Compose Message */}
       <Collapsible storageKey={`${id}:compose`} defaultOpen={false}
         title={<span className="inline-flex items-center gap-1.5"><Sparkle size={15} />Compose Message</span>}
-        bodyClassName="px-5 pb-5 space-y-4">
-        <p className="text-xs text-ink-60 -mt-2 mb-1">AI-written message tailored to this customer</p>
+        bodyClassName="px-5 py-4 space-y-4">
+        <p className="text-xs text-ink-60 mb-1">AI-written message tailored to this customer</p>
 
           {/* Product picker */}
           <div>
