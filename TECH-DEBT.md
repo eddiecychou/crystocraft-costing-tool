@@ -248,6 +248,22 @@ one to measure rather than trust.
 **Where:** `seo-control-plane/validate-payload.mjs` (`SIMPLIFIED_JA`),
 `docs/skills/LESSONS-LEARNED.md` L-49 (the zh-hant precedent).
 
+## Lead interaction history needs the collection-scoped date index
+
+Read-only CRM cleanup verification on 1 November 2026 reproduced the same
+missing COLLECTION_DESC index for enquiries.date on both the unchanged
+production bundle index-BWe68OHl.js and candidate index-B05Qd5Wy.js.
+The lead's interaction editor renders, but listInteractions cannot load its
+ordered history; this is a pre-existing issue, not an extraction regression.
+
+src/domain/interactionLog.js queries one parent's enquiries collection ordered
+by date descending. firestore.indexes.json's enquiries.date override currently
+lists only COLLECTION_GROUP ascending/descending indexes. A separate repair
+should retain those group indexes and restore the required collection-scoped
+index, then verify actual history loading and both query scopes. Do not change
+the collection paths or remove dashboard/group indexes to work around it.
+No indexes, rules or business records were changed in the CRM extraction batch.
+
 ## Keeping this current
 
 Add an entry when you notice something like this in passing during

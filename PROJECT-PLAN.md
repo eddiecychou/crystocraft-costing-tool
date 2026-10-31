@@ -1,4 +1,4 @@
-# V8.20 — CRM maintenance — first batch, 1 November 2026
+# V8.20 — CRM maintenance — released, 1 November 2026
 
 Owner-authorized maintenance cleanup separates lead correspondence/history
 viewers and independent customer cards/dialogs into src/components/crm while
@@ -8,7 +8,15 @@ its page subscriptions, task/summary composition, saves and invitation handler.
 the master router and onboarding references are refreshed. Real-component
 checks use fictional boundaries in the customer-workspace command. Release
 gates/evidence: [CRM maintenance](docs/plans/V8.20-CRM-MAINTENANCE.md).
-Implementation is local pending exact-SHA CI and candidate/production checks.
+Both required GitHub jobs pass on c21856f7 (run 41214581240, attempt 1).
+Candidate 6ae608d71d2a87eb561f83ad and production 6ae60b2a7592a00ca8d84270 pass
+fresh admin/customer routing, catalogue/data, access and refresh checks; the
+same 431-file artifact was reused. All 15 extracted function syntax trees match
+their originals; 12 component and 93 workspace checks, full build, no-undef and
+11 Firebase configuration cases pass. Final roles checked 1 Nov, 02:44:52 AEDT /
+31 Oct, 23:44:52 HKT. No real emails or business-record edits. The existing lead
+interaction-history index error was reproduced on old production before
+publication and documented as a separate repair, not claimed fixed here.
 
 # V8.20 — portal applicant follow-up — released, 1 November 2026
 
