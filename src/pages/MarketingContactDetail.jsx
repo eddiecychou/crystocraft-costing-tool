@@ -11,7 +11,10 @@ import {
 } from '../domain/marketingContact'
 import { useCustomers, customerName } from '../domain/customer'
 import { CustomerPicker } from './CustomerAccounts'
-import { EmailThreads, WhatsAppThreads, AlibabaThreads, InteractionLog } from './MarketingContacts'
+import { EmailThreads } from '../components/crm/ContactEmailThreads'
+import { WhatsAppThreads } from '../components/crm/ContactWhatsAppThreads'
+import { AlibabaThreads } from '../components/crm/ContactAlibabaThreads'
+import { InteractionLog } from '../components/crm/ContactInteractionLog'
 
 // Full-page marketing-contact detail view (V8.10) — replaces the earlier
 // EditContactModal overlay. The owner explicitly asked for this to match

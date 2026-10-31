@@ -1,3 +1,15 @@
+# V8.20 — CRM maintenance — first batch, 1 November 2026
+
+Owner-authorized maintenance cleanup separates lead correspondence/history
+viewers and independent customer cards/dialogs into src/components/crm while
+retaining existing bodies, props, state and data paths. CustomerDetail keeps
+its page subscriptions, task/summary composition, saves and invitation handler.
+[Maintenance map](docs/reference/MAINTENANCE-MAP.md) records ownership/checks;
+the master router and onboarding references are refreshed. Real-component
+checks use fictional boundaries in the customer-workspace command. Release
+gates/evidence: [CRM maintenance](docs/plans/V8.20-CRM-MAINTENANCE.md).
+Implementation is local pending exact-SHA CI and candidate/production checks.
+
 # V8.20 — portal applicant follow-up — released, 1 November 2026
 
 Pending portal accounts now have an editable Request more information email,

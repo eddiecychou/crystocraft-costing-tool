@@ -39,6 +39,29 @@ permission. The token's existing repository scope and expiry were preserved. The
 layout, real login or Firebase rules; release verification below remains
 required when publishing an app.
 
+# CRM component maintenance
+
+`npm run test:customer-workspace` includes `qa/crm-components.test.mjs`.
+It renders real extracted viewers/cards/dialogs through fictional Firebase,
+domain and AI boundaries. Coverage includes subscriptions/cleanup, summaries,
+tombstones, individual transcription, paste/history actions, collapse keys,
+brand/design links, merge preview and explicit invitation pricing. No live
+data, mail, transcription or AI calls. Initialize the DOM before importing
+React DOM/router; component runtime errors fail the tests.
+
+The workspace emulator fixture retains the real collapse wrapper and dates,
+so actual page task/summary checks cannot hide them behind null stubs.
+See the [maintenance map](../docs/reference/MAINTENANCE-MAP.md).
+
+Whole-source missing-name check with this Mac's existing lint install:
+
+```sh
+node .qa-eslint/node_modules/eslint/bin/eslint.js --no-inline-config -c qa/eslint.no-undef.mjs src netlify
+```
+
+This runs the no-undef configuration; unrelated inline suppressions for plugins
+not installed in that lint environment are ignored.
+
 # Portal applicant information requests
 
 `npm run test:portal-followup` renders the real `PortalAccountFollowup` with only

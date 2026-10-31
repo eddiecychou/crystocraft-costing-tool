@@ -91,8 +91,8 @@ in places that must agree, with no single source:
 The legacy `production` / `sales` shim was removed 2026-09-02 (both accounts
 migrated). `bank.js` and `erp.js` no longer carry per-entity role tiers.
 
-`qa/rbac-rules.test.mjs` covers the Firestore layer only — not storage, not
-the edge function, not the UI map. Adding a module to `access.js` without
+`qa/rbac-rules.test.mjs` covers Firestore and Storage — not the edge function
+or the UI map. Adding a module to `access.js` without
 the matching rule opens a menu that permission-denies; the reverse grants
 data with no way to reach it. Keep them in sync by hand and re-run the
 emulator test on any `firestore.rules` change. See `PROJECT-PLAN.md` V8.14

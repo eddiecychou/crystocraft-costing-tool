@@ -59,13 +59,13 @@ call. Never gate confidentiality on anything a model or the client decides.
 
 Roles live on `users/{uid}.role`. As of **V8.14** there are only three:
 `admin | staff | customer`. A `staff` account's access is a **per-user
-`users/{uid}.modules[]` list** (17 keys), toggled by an admin on the account
-page (`AccountEdit.jsx` → "Role & access" card). The old fixed `production` /
-`sales` roles are retired but still resolve, via a **shim**, to an equivalent
-module set until the last of those accounts is hand-migrated.
+`users/{uid}.modules[]` list**, toggled in AccountEdit's Role & access card.
+Current capability keys are defined by `src/access.js`'s `MODULE_GROUPS`.
+The old fixed `production` / `sales` roles and their compatibility shim were
+removed after the accounts were migrated.
 
 The **capability map `src/access.js` is the single source of truth for UI**:
-`resolveModules(profile)` (role → module list, applying the shim) and
+`resolveModules(profile)` (current role → module list) and
 `canAccess(role, moduleKey, modules)`. Read by the sidebar (`Layout.jsx`) and
 route guards (`App.jsx` `<Gate module>`), so a hidden menu can't point at a live
 URL. But **the UI is not the security boundary — `firestore.rules` +
@@ -77,7 +77,7 @@ URL. But **the UI is not the security boundary — `firestore.rules` +
 | `staff` | Exactly the module keys in `users/{uid}.modules[]` |
 | `customer` | Storefront/portal only; own orders + published proposal |
 
-**The 18 module keys** (grouped in `MODULE_GROUPS`), `†` = sensitive:
+**The module keys** (grouped in `MODULE_GROUPS`), `†` = sensitive:
 Catalogue — `products`, `figurine`, `swatch`, `catalogues`, `product_design`
 (V8.16 — Product Design's `/design/*`, not sensitive: it holds brand
 concepts, not costing), `pricing†`;

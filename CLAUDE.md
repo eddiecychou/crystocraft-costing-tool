@@ -42,7 +42,8 @@ and save its evidence template with each release record.
 | `docs/skills/LESSONS-LEARNED.md` | Every significant failure + its verified permanent fix (Symptom / Root cause / Fix) |
 | `docs/skills/DESIGN-SYSTEM.md` | The written spec of the shipped design system (V2.5) — token layer, component inventory + state matrix, WCAG contrast, drift baseline, V3 open decisions. `design-system/` holds the exported reference bundles. |
 | `INDEX.md` | Pointer into `docs/skills/` (kept so old links resolve) |
-| `PROJECT-PLAN.md` | The running record. Newest cycle first. **V8.14 CLOSED 2026-09-04 — read "Current Status — V8.14 CLOSED" + "Where V8.15 starts".** |
+| `PROJECT-PLAN.md` | The running record, newest entry first. **Current cycle: V8.20.** Follow its newest linked release record for deployed source, evidence and remaining work. |
+| `docs/reference/MAINTENANCE-MAP.md` | Feature ownership, extracted CRM components and maintenance verification. The master skill remains the detailed feature-area router. |
 | `docs/plans/JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |
 | `docs/erp/V7.15_ERP_Inventory.md` | What the ERP actually contains — measured, not assumed |
 | `docs/erp/PBIS-IMPORT-FORMAT.md` | The JES→PBIS import contract — what an app-generated invoice must reproduce |
@@ -51,7 +52,7 @@ and save its evidence template with each release record.
 | `docs/specs/Corp_Gift_Customizer_Spec.md`, `docs/plans/Customizer_Build_Plan.md` | Customizer engine design — build history, superseded by current status below |
 | `docs/specs/Crystal_Fabric_Studio_Spec.md` | Swatch library + Physical Design Workbench build history (all closed under V7.21). Workbench paused mid-build: templates/canvas/zones/zone-rendering done, mode-unification and photo-compositing (workstreams 3/5) not started — see doc's own §5j. V7.22 fixed four real bugs in the render engine/admin tool itself (stone size, colour, caching, auth) without touching workstreams 3/5 — see `PROJECT-PLAN.md`'s V7.22 §2 and "Where V7.23 starts" |
 | `docs/reference/LOCAL-TOOLS.md` | What's already installed/logged-in on this Mac's shell (Node, firebase-tools) — check before telling the user to install something or reaching for a scratch-fetch workaround |
-| `docs/reference/API-REFERENCE.md` | All 39 Netlify edge functions (`/api/*`), grouped by feature area — route, purpose, auth posture, caller. Check before adding a new one (to avoid duplicating an existing endpoint) and update it when adding one |
+| `docs/reference/API-REFERENCE.md` | Netlify endpoints (`/api/*`), grouped by feature area — route, purpose, auth posture, caller. Check before adding a new one (to avoid duplicating an existing endpoint) and update it when adding one |
 | `docs/reference/FIRESTORE-COLLECTIONS.md` | Every Firestore collection/subcollection — purpose, auth posture, owning domain file, and the pointer fields that connect collections to each other. Check before adding a collection or tracing data across two of them |
 | `docs/reference/DOMAIN-MODULES.md` | What each `src/domain/*.js` file owns and its main exports — the business-logic layer, distinct from the `src/*Api.js` edge-function wrappers already covered in docs/reference/API-REFERENCE.md |
 | `TECH-DEBT.md` | Known inconsistencies/gaps noticed in passing (unguarded edge functions, duplicate admin-check implementations, etc.) — check before "fixing" something that turns out to already be a known, deliberate tradeoff; add to it when you notice something new |

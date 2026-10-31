@@ -3,7 +3,7 @@
 import {readFile} from 'node:fs/promises'
 import {resolve,dirname} from 'node:path'
 export async function workspaceSyncPlugin(){
- const stubs=new Map(),keep=new Set(['../components/CustomerWorkspace','../hooks/useSummaryPeriod','../hooks/useSummaryUpdate','../hooks/useOcToday','../customerSummary','../domain/customerWorkItems','../customerWorkItems','../ocTime','../ocTime.js','../components/LoadingBar'])
+ const stubs=new Map(),keep=new Set(['../components/crm/CustomerCollapsible','../components/crm/crmDates','../components/CustomerWorkspace','../hooks/useSummaryPeriod','../hooks/useSummaryUpdate','../hooks/useOcToday','../customerSummary','../domain/customerWorkItems','../customerWorkItems','../ocTime','../ocTime.js','../components/LoadingBar'])
  // Keep the real status hook/store; only the unrelated AI boundary is blocked.
  stubs.set(resolve('src/domain/weeklySummary'), "export async function generateWeeklySummary(){throw Error('AI generation is disabled in the workspace sync fixture')}")
  const special={
