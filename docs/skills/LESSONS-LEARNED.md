@@ -1425,6 +1425,15 @@ separate scope. Preserve this distinction: matching extraction bodies is useful
 evidence, not proof that every old feature worked, and a later bug fix must not
 be described as an unchanged move. Keep stateful hooks real in CI fixtures.
 
+2 November: the first Daily Drafts slice moved only targeting presentation.
+Eight real-page cases passed on the original and extracted page; restoring the
+markup recovered the entire baseline source exactly. Original/current desktop
+and mobile DOM, state and geometry matched, as did paired active PNG bytes.
+Keep this page-level coverage with fictional service boundaries: testing a
+standalone control alone would not prove its props still drive the original
+generation handler. Local parity is not GitHub CI or a live release gate.
+See [targeting cleanup](../plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
+
 The code/data-size review is a dated baseline, not a maintainability score or a
 retention instruction. Label source SHA, counting boundary, metric/listing times,
 root versus nested counts, and Firestore data/index bytes versus Storage file

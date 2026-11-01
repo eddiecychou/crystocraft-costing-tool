@@ -1,10 +1,11 @@
 # OC maintenance and code cleanup plan
 
-Updated 1 November 2026 (Sydney). Goal: make changes easier to understand and
+Updated 2 November 2026 (Sydney). Goal: make changes easier to understand and
 verify while preserving existing functions, screens and commercial behaviour.
 This is a staged maintenance plan, not a rewrite or permission to execute every
-future batch. Only the first batch and separately requested fixes below have
-been implemented. The current request documents the remaining work.
+future batch. The first CRM batch and separately requested fixes are released;
+the first Daily Drafts targeting slice is implemented and verified locally.
+Remaining work and release status are distinguished below.
 
 Start with [CLAUDE.md](../../CLAUDE.md), the
 [maintenance map](../reference/MAINTENANCE-MAP.md),
@@ -20,7 +21,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 |---|---|---|---|
 | 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
-| 2 — Daily Drafts presentation | Proposed next | Extract one independent preview/card or recipient-selection surface at a time; parent retains orchestration | Same text, props, state, eligibility and explicit send action; fictional-boundary UI checks before moving code |
+| 2 — Daily Drafts presentation | First targeting slice locally complete; not released | Audience/targeting presentation extracted; parent retains state, generation and writes. Further surfaces remain open | Eight original/extracted real-page cases and desktop/mobile parity pass; exact-SHA CI and live release gates still required |
 | 3 — repeated server authentication helpers | Proposed | Migrate one endpoint at a time to the existing shared helper when behaviour is proved equivalent | Role/module allow/deny matrix and response parity; higher risk than UI extraction |
 | 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
@@ -46,7 +47,12 @@ the missing collection-scoped date indexes and added read-error/Retry handling;
 it was not silently folded into a behaviour-preserving move. Release identities,
 checks and results are in those reports, not inferred from the cycle label.
 
-## Batch 2 — smallest useful next change
+## Batch 2 — presentation, first slice locally complete
+
+On 2 November the owner requested the next cleanup task. The
+[targeting-panel slice](V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md) is implemented
+and locally verified. It has not been pushed/deployed; the rest of the batch
+remains open. The following describes the boundary for subsequent slices.
 
 Start in src/marketing/DailyDrafts.jsx and the existing outreach domain/API
 helpers. The page combines topic composition, recipient selection, generation,

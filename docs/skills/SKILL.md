@@ -497,7 +497,9 @@ Shared `src/components/ProductDesignNav.jsx` appears on project list/detail/edit
 
 Start with the [maintenance map](../reference/MAINTENANCE-MAP.md) and
 [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md). The first CRM extraction
-is released; later batches are proposed. Pin baseline behaviour and move one
+is released; the first [Daily Drafts targeting slice](../plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md)
+is locally implemented, not released. Further slices/batches remain open.
+Pin baseline behaviour and move one
 responsibility at a time, keeping parent subscriptions, write/transaction
 boundaries, customer/lead separation and existing props/contracts. Preserve
 real stateful hooks in fixtures. Separate new bug fixes from extraction parity

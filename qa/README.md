@@ -39,6 +39,17 @@ permission. The token's existing repository scope and expiry were preserved. The
 layout, real login or Firebase rules; release verification below remains
 required when publishing an app.
 
+# Daily Drafts targeting maintenance
+
+`node --test qa/daily-drafts-targeting.test.mjs` renders the real DailyDrafts
+page/state/generation handler with fictional service/data boundaries. It also
+runs in `npm run test:ai-writer`, prebuild and product-search CI. Coverage keeps
+master gating, audiences/categories, prior-contact opt-in, busy/error/retry and
+creation/reset payloads unchanged. Network and unexpected send/upload/CRM calls
+are blocked by the fixture. DOM is initialized before React DOM imports.
+These are local behaviour checks, not live mail or Firebase release proof.
+See the [slice report](../docs/plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
+
 # CRM component maintenance
 
 `npm run test:customer-workspace` includes `qa/crm-components.test.mjs`.

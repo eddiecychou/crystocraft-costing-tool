@@ -93,11 +93,23 @@ expand permissions automatically. Verify READY indexes and actual ordered live
 queries separately from emulator tests; see the
 [history repair evidence](../plans/V8.20-LEAD-INTERACTION-HISTORY.md).
 
+## Daily Drafts presentation — first local slice
+
+src/components/marketing/DailyDraftsTargeting.jsx owns audience/category,
+targeting-note, prior-contact checkbox and generation-button markup only.
+src/marketing/DailyDrafts.jsx retains all state/setters, category definitions,
+eligibility, async generation, payloads, subscriptions and writes/sending.
+qa/daily-drafts-targeting.test.mjs exercises the real page through fictional
+service/data boundaries and runs in test:ai-writer (prebuild and product-search
+CI). No live sends/Firebase writes. First slice locally verified, not released:
+[evidence and limits](../plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
+
 ## Subsequent cleanup batches
 
-The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) proposes Daily Drafts
-presentation next, then one-at-a-time server helper convergence and shipping/
+The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily Drafts
+presentation work open, then one-at-a-time server helper convergence and shipping/
 finance internals. Prototype/import usage audit and storage retention are
-separate reviewed tracks. All are unimplemented beyond the first CRM batch.
+separate reviewed tracks. The first CRM batch is released; the first Daily Drafts
+targeting slice is locally implemented. No later batch is implemented.
 Each has its own scope, invariants and acceptance checks. A file's size or an
 old comment is not evidence that a feature, stored file or import is unused.

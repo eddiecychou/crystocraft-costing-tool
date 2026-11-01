@@ -1,3 +1,18 @@
+# V8.20 — Daily Drafts targeting cleanup — local, 2 November 2026
+
+The next maintenance slice extracts audience/category controls, targeting note,
+prior-contact opt-in and generation-button markup into DailyDraftsTargeting.
+The parent keeps all state, filtering, generation and sending. Fifty markup
+lines moved unchanged apart from indentation; restoring them reproduces the
+original whole page source exactly. Eight real-page cases pass before/after;
+all 33 AI-writer cases, full prebuild/build, whole-source no-undef and 11 Firebase
+configuration cases pass. Original/extracted DOM, control states and geometry
+match in empty/active states at 1280px and 375px; paired active PNGs are identical.
+No live service/data writes or emails. No push/deployment for this slice; GitHub
+and candidate/production role gates remain required for a later authorized
+release. [Implementation and evidence](docs/plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
+The broader Daily Drafts batch remains open in the maintenance plan.
+
 # V8.20 — documentation and cleanup handoff — 1 November 2026
 
 [Current handoff](docs/plans/V8.20-SESSION-HANDOFF-2026-11-01.md) consolidates portal

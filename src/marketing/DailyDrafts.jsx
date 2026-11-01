@@ -1,3 +1,4 @@
+import DailyDraftsTargeting from '../components/marketing/DailyDraftsTargeting'
 import { outreachDaysAgo as daysAgo, outreachBlocked } from '../outreachTiming.js'
 import { formatOcDate } from '../ocTime.js'
 import { useEffect, useMemo, useState } from 'react'
@@ -1538,56 +1539,20 @@ export default function DailyDrafts() {
       </div>
 
       {/* ── 2. Target & Generate ───────────────────────────────────────── */}
-      <div className={`card p-5 space-y-4 ${!hasMaster ? 'opacity-50' : ''}`}>
-        <h2 className="text-sm text-ink">2. Who do you want to reach?</h2>
-        {/* Hard pre-filter, not a hint — see handleGenerate's own comment on
-            why this can't just be folded into the free-text Targeting note
-            below (the AI can ignore/misread free text; this can't be). */}
-        <div>
-          <label className="block text-xs font-medium text-ink-60 mb-1">Audience</label>
-          <div className="flex items-center gap-3 flex-wrap">
-            {[
-              { v: 'b2b', label: 'B2B customers' },
-              { v: 'retail', label: 'Retail customers only' },
-              { v: 'all', label: 'Everyone' },
-            ].map(opt => (
-              <label key={opt.v} className="flex items-center gap-1.5 text-sm text-ink-80">
-                <input type="radio" name="audienceFilter" value={opt.v} checked={audienceFilter === opt.v}
-                  disabled={!hasMaster} onChange={() => setAudienceFilter(opt.v)} />
-                {opt.label}
-              </label>
-            ))}
-          </div>
-          {audienceFilter === 'b2b' && (
-            <div className="flex items-center gap-3 flex-wrap mt-2">
-              {CRM_CATEGORIES.map(cat => (
-                <label key={cat} className="flex items-center gap-1.5 text-xs text-ink-70">
-                  <input type="checkbox" checked={categoryFilter.includes(cat)} disabled={!hasMaster}
-                    onChange={e => setCategoryFilter(prev => e.target.checked ? [...prev, cat] : prev.filter(c => c !== cat))} />
-                  {cat}
-                </label>
-              ))}
-              <span className="text-2xs text-ink-60">{categoryFilter.length ? '' : '(none checked = all categories)'}</span>
-            </div>
-          )}
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-ink-60 mb-1">Targeting (optional)</label>
-          <input value={targetingNote} onChange={e => setTargetingNote(e.target.value)} disabled={!hasMaster}
-            placeholder='e.g. "Hong Kong corporate gift customers" or "Crystocraft distributors in Europe"'
-            className="input w-full md:w-96" />
-          <div className="text-2xs text-ink-60 mt-1">Leave blank and DeepSeek picks who's most relevant on its own judgment.</div>
-        </div>
-        <label className="flex items-center gap-2 text-sm text-ink-70">
-          <input type="checkbox" checked={includeAlreadyContacted} disabled={!hasMaster}
-            onChange={e => setIncludeAlreadyContacted(e.target.checked)} />
-          Include people already contacted about this (drafted as a reminder, not a repeat pitch)
-        </label>
-        <button onClick={handleGenerate} disabled={generating || !hasMaster} className="btn-primary inline-flex items-center gap-1.5">
-          {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-          {generating ? 'Generating…' : 'Generate Drafts'}
-        </button>
-      </div>
+      <DailyDraftsTargeting
+        hasMaster={hasMaster}
+        audienceFilter={audienceFilter}
+        setAudienceFilter={setAudienceFilter}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        targetingNote={targetingNote}
+        setTargetingNote={setTargetingNote}
+        includeAlreadyContacted={includeAlreadyContacted}
+        setIncludeAlreadyContacted={setIncludeAlreadyContacted}
+        generating={generating}
+        handleGenerate={handleGenerate}
+        categories={CRM_CATEGORIES}
+      />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-y-2">

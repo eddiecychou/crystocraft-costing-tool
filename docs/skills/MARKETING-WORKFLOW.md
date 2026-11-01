@@ -23,6 +23,10 @@ a cooldown. Scheduled email/WhatsApp **ingestion** is separate: see
 
 
 **UI:** `src/marketing/DailyDrafts.jsx` (the "Daily Drafts" tab of `Marketing.jsx`).
+Audience/targeting markup is in `src/components/marketing/DailyDraftsTargeting.jsx`;
+the parent still owns all state, eligibility, generation and sends. This first
+slice is locally verified, not released:
+[scope and evidence](../plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
 **Data layer:** `src/domain/outreachDrafts.js` (`outreach_drafts/{id}`).
 **AI client:** `src/outreachApi.js`. **Edge fns:** `draft-outreach-topic`,
 `generate-outreach-drafts`, `discuss-outreach-draft`, `send-personal-email`.
