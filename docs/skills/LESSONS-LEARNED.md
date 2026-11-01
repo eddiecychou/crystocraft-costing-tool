@@ -1414,6 +1414,25 @@ unlocked retry after Dashboard remount, and confirms the saved cache is unchange
 Run the complete CI emulator command when changing Dashboard/CustomerDetail imports,
 not only prebuild: prebuild does not include the page-sync emulator job.
 
+### Preserve the baseline before splitting a large page
+
+1 November 2026: the first CRM cleanup moved independent viewers/cards/dialogs
+while keeping parent subscriptions and writes in place. Fifteen extracted
+function syntax trees matched their originals; real-component and workspace
+tests plus fresh role checks established the release evidence. A pre-existing
+history index failure was reproduced on the old build and repaired later under
+separate scope. Preserve this distinction: matching extraction bodies is useful
+evidence, not proof that every old feature worked, and a later bug fix must not
+be described as an unchanged move. Keep stateful hooks real in CI fixtures.
+
+The code/data-size review is a dated baseline, not a maintainability score or a
+retention instruction. Label source SHA, counting boundary, metric/listing times,
+root versus nested counts, and Firestore data/index bytes versus Storage file
+bytes. Moving code can increase files/lines while clarifying ownership. Large
+files or old prototypes need reference/usage review before any archival/deletion.
+Use the [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) for proposed slices
+and [dated handoff](../plans/V8.20-SESSION-HANDOFF-2026-11-01.md) for released state.
+
 ### Single-field index overrides must preserve each query scope
 
 1 November 2026: enquiries.date had only COLLECTION_GROUP indexes. A lead's

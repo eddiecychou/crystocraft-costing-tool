@@ -6,6 +6,10 @@ does not identify a deployment. The feature-area router in
 [the master skill](../skills/SKILL.md#5-feature-area-router) remains the detailed
 map of pages, business logic, endpoints and collections; this page explains
 ownership and the checks to use before changing those areas.
+The [staged cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) is the ordered
+backlog; [1 November handoff](../plans/V8.20-SESSION-HANDOFF-2026-11-01.md) links
+completed work and [size baseline](OC-SIZE-SNAPSHOT-2026-11-01.md). Plans and
+historical measurements do not authorize subsequent implementation or deletion.
 
 ## Ownership and change boundaries
 
@@ -33,8 +37,11 @@ their data models as part of a file extraction.
 
 ## CRM component ownership — first cleanup batch
 
-All paths below are under src/components/crm. The component bodies and their
-existing props, markup, local state and side effects were moved intact.
+All paths below are under src/components/crm. During the original first batch,
+component bodies and existing props, markup, state and side effects moved intact.
+Later requested spacing/history corrections are recorded separately in the
+[spacing](../plans/V8.20-CUSTOMER-SECTION-SPACING.md) and
+[history](../plans/V8.20-LEAD-INTERACTION-HISTORY.md) release reports.
 
 | File | Responsibility and consumer |
 |---|---|
@@ -88,7 +95,9 @@ queries separately from emulator tests; see the
 
 ## Subsequent cleanup batches
 
-Daily Drafts decomposition, repeated server auth helpers, finance/shipping
-internals, prototype archival and file-retention reviews are separate work.
-They need their own bounded change and acceptance checks. A file's size or an
+The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) proposes Daily Drafts
+presentation next, then one-at-a-time server helper convergence and shipping/
+finance internals. Prototype/import usage audit and storage retention are
+separate reviewed tracks. All are unimplemented beyond the first CRM batch.
+Each has its own scope, invariants and acceptance checks. A file's size or an
 old comment is not evidence that a feature, stored file or import is unused.

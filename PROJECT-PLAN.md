@@ -1,3 +1,20 @@
+# V8.20 — documentation and cleanup handoff — 1 November 2026
+
+[Current handoff](docs/plans/V8.20-SESSION-HANDOFF-2026-11-01.md) consolidates portal
+follow-up, the size review, released CRM maintenance, customer spacing and lead
+history repair, while linking the earlier V8.19/V8.20 business/release record.
+The [cleanup roadmap](docs/plans/OC-MAINTENANCE-CLEANUP-PLAN.md) records the completed
+first batch and proposed Daily Drafts presentation, server auth-helper, shipping/
+finance, prototype/import and separate retention work with unchanged-function
+contracts and release gates. Remaining batches are not implementation approval.
+[Historical size baseline](docs/reference/OC-SIZE-SNAPSHOT-2026-11-01.md) and two
+portable aggregate CSVs preserve per-module functions/code, record counts and
+Storage bytes with dates/scope; no private raw records are committed. The master
+skill, ownership map, onboarding, lessons and historical-report pointers agree.
+Documentation only: no app, rules, index, business-data or deployment change.
+Production readback still identifies ready/current 6ae61e0528a560aa63a019b0;
+source/release verification remains the next entry, not a new test claim.
+
 # V8.20 — lead interaction history — released, 1 November 2026
 
 The enquiries.date override had disabled the collection date-desc query used by

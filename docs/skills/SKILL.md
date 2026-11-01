@@ -88,6 +88,9 @@ wins on *facts*; skill wins on *rules and lessons*.
 | `../reference/FIRESTORE-COLLECTIONS.md` | Every collection/subcollection — auth, owning file, pointer fields |
 | `../reference/DOMAIN-MODULES.md` | What each `src/domain/*.js` owns and its exports |
 | `../reference/MAINTENANCE-MAP.md` | Ownership boundaries, extracted CRM viewers/cards/dialogs and maintenance verification |
+| `../plans/OC-MAINTENANCE-CLEANUP-PLAN.md` | Ordered behaviour-preserving cleanup batches, completed/proposed status and acceptance gates |
+| `../plans/V8.20-SESSION-HANDOFF-2026-11-01.md` | Latest dated handoff for portal follow-up, size review, CRM cleanup and subsequent fixes; earlier business work links back to the 31 October handoff |
+| `../reference/OC-SIZE-SNAPSHOT-2026-11-01.md` | Historical per-module code/functions and Firebase size/count baseline with portable aggregate CSVs and measurement caveats |
 | `../../TECH-DEBT.md` | Known footguns / deliberate tradeoffs |
 | `../reference/LOCAL-TOOLS.md` | What's installed/logged-in on this Mac (Node, firebase-tools, GA4 cred, Fly) |
 | `../../qa/README.md` | Headless render + the pre-push verification checks |
@@ -489,6 +492,18 @@ Shared `src/components/ProductDesignNav.jsx` appears on project list/detail/edit
 - Marketing catalogues (printed PDF): `Catalogues.jsx`, `CatalogueForm.jsx`, `CatalogueDetail.jsx`, `CataloguePreview.jsx` → `catalogues/{id}` (admin-only). V8.20 uses `CatalogueProductPages.jsx`, `catalogueLayout.js` and page-mounted `cataloguePrintStyles.js`: real-font text measurement, overview/comparison/feature layouts, unlimited selected photos with continuation galleries, complete specifications with continuation pages, optional item `layout_mode: 'auto'|'feature'` and `page_break_before`. No live migration; preview validates images/text before printing. Browser fixture: `qa/catalogue-layout-preview.mjs`; regressions: `npm run test:catalogue-cover`. Keep print CSS page-mounted, never globally imported (L-30). Keep the document in the final sheet's named page context (landscape or portrait) to avoid a trailing blank page; each sheet still sets its own orientation. Actual PDF retest results and release state are recorded in `../plans/V8.20-CATALOGUE-PDF-REVIEW.md`. Tested mixed-size export route: Chrome Destination = Save as PDF; the macOS print-dialog Open PDF in Preview branch failed paper-size/orientation checks. Shared `CatalogueCover.jsx` preserves `cover_text_color` white (legacy/default) or black, independent of overlay. The separate `RangeCataloguePDF.jsx` export uses `qa/render-catalogue.jsx`; it is not the Marketing catalogue preview.
 - Per-image sizing (V8.20): optional catalogue-item `image_layouts: [{url, size: 'standard'|'large'|'full'}]`, merged transactionally against current data; existing `selected_images` strings/order stay authoritative. Standard supporting galleries hold up to four, Large up to two, Full one per page. Full uses actual image dimensions to select portrait/landscape named print pages; text continues separately in full. Choices follow URLs across reorder/deselection, and missing choices are Standard. No live migration or rules change. See `../plans/V8.20-CATALOGUE-IMAGE-SIZES.md`; isolated `sizing` preview/builder and 22 catalogue regressions cover persistence, error states, orientation and preservation.
 - Settings/tools: `Settings.jsx`, `ImportData.jsx`, `ImportImages.jsx`, `TagManager.jsx`, `PricingTiers.jsx`, `Dashboard.jsx`. Edge fns: `fx-rates` (**never for the books**), `download-image`, `image-proxy`. `settings/{docId}` auth is mixed (`../reference/FIRESTORE-COLLECTIONS.md`).
+
+### Maintenance and behaviour-preserving refactors
+
+Start with the [maintenance map](../reference/MAINTENANCE-MAP.md) and
+[cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md). The first CRM extraction
+is released; later batches are proposed. Pin baseline behaviour and move one
+responsibility at a time, keeping parent subscriptions, write/transaction
+boundaries, customer/lead separation and existing props/contracts. Preserve
+real stateful hooks in fixtures. Separate new bug fixes from extraction parity
+and preserve their own evidence. Read the feature's existing skill/tests before
+selecting a slice; do not derive permission to rewrite, delete data or deploy
+from the roadmap. Every authorized release still uses RELEASE-WORKFLOW.md.
 
 ## 6. Keeping this current
 

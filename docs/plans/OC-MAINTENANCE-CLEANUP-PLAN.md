@@ -1,0 +1,147 @@
+# OC maintenance and code cleanup plan
+
+Updated 1 November 2026 (Sydney). Goal: make changes easier to understand and
+verify while preserving existing functions, screens and commercial behaviour.
+This is a staged maintenance plan, not a rewrite or permission to execute every
+future batch. Only the first batch and separately requested fixes below have
+been implemented. The current request documents the remaining work.
+
+Start with [CLAUDE.md](../../CLAUDE.md), the
+[maintenance map](../reference/MAINTENANCE-MAP.md),
+[architecture boundaries](../skills/ARCHITECTURE-RULES.md) and
+[current handoff](V8.20-SESSION-HANDOFF-2026-11-01.md).
+The [code/data baseline](../reference/OC-SIZE-SNAPSHOT-2026-11-01.md) explains
+the scope and measurement limits. Large files identify places to inspect;
+line count alone does not justify a rewrite, deletion or changed data model.
+
+## Order and status
+
+| Batch | Status | Deliverable and reason | Risk / completion gate |
+|---|---|---|---|
+| 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
+| 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
+| 2 — Daily Drafts presentation | Proposed next | Extract one independent preview/card or recipient-selection surface at a time; parent retains orchestration | Same text, props, state, eligibility and explicit send action; fictional-boundary UI checks before moving code |
+| 3 — repeated server authentication helpers | Proposed | Migrate one endpoint at a time to the existing shared helper when behaviour is proved equivalent | Role/module allow/deny matrix and response parity; higher risk than UI extraction |
+| 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
+| 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
+| 6 — storage retention | Separate proposed business/data track | Read-only ownership/reference/duplicate review, with evidence and proposed actions | No file deletion, lifecycle policy, stock correction or record migration without specific review/authorization |
+
+The suggested order balances benefit and blast radius. It is not a promise to
+complete all rows in one release. Each batch starts by checking current source,
+usage and tests again; the remaining plan is not implementation approval.
+
+## Completed first batch and subsequent repairs
+
+[CRM maintenance](V8.20-CRM-MAINTENANCE.md) moved four lead viewers and independent
+customer cards/dialogs, keeping original function bodies and compatibility
+exports. CustomerDetail still owns customer subscriptions, task/summary/link
+composition, page saves and invitation handling. MarketingContactDetail imports
+dedicated components rather than a list page. No mass domain-module split or
+new global state system was introduced.
+
+Two later owner-requested corrections are separate from the extraction:
+[customer section spacing](V8.20-CUSTOMER-SECTION-SPACING.md) and
+[lead interaction history](V8.20-LEAD-INTERACTION-HISTORY.md). The latter restored
+the missing collection-scoped date indexes and added read-error/Retry handling;
+it was not silently folded into a behaviour-preserving move. Release identities,
+checks and results are in those reports, not inferred from the cycle label.
+
+## Batch 2 — smallest useful next change
+
+Start in src/marketing/DailyDrafts.jsx and the existing outreach domain/API
+helpers. The page combines topic composition, recipient selection, generation,
+draft editing, media and human-reviewed sending. First extract a self-contained
+display/editor surface whose inputs and callbacks can remain identical. Keep
+subscriptions, async orchestration, generation sequencing and send handlers in
+the parent for this batch. Review desktop/mobile spacing, open/close state,
+unsaved text and busy/error behaviour against the existing screen.
+
+Before moving eligibility or payload logic in a later slice, characterize its
+current behaviour using fictional data: customer versus lead identity, same-email
+deduplication, suppression, already-contacted checks, cooldowns, candidate limits,
+attachment ownership and original response/prompt contracts. Preserve current
+values (including the current 14-day general and 21-day topic cooldowns), random
+tie behaviour and per-recipient decisions. Avoid combining a presentation move
+with changed AI prompts, recipient rules or automatic sends.
+
+Acceptance: editing the approved master topic still precedes personalization;
+users can review/refine each draft; generation/skip/reply status and explicit
+send semantics are retained. Existing outreach-time and AI-writer checks remain;
+add focused real-component/fixture coverage for the moved responsibility where
+it exercises actual behaviour. Sending tests use fictional recipients and a
+mock provider; live smoke checks never send to real customers.
+
+## Batch 3 — server helper convergence
+
+Start with the duplicate-helper entry in [TECH-DEBT.md](../../TECH-DEBT.md),
+netlify/edge-functions/lib/auth.js and the endpoint's actual callers/Gate keys.
+Record current status codes, payload shape, token validation, module keys and
+allowed roles before replacing one local helper. Prove admin, staff with the
+required module, staff without it, approved customer, unauthenticated and invalid
+token outcomes. Preserve module any-match semantics where an array is used.
+
+Do not infer identical permissions from a helper named isAdmin or isFrontOffice.
+Do not retag an endpoint to another module during the extraction. Node Admin-SDK
+initialization and Deno authentication are different boundaries; do not merge
+them into one generic abstraction. The three deliberately open legacy endpoints
+in TECH-DEBT remain an accepted owner decision unless separately reconsidered.
+No broad auth/rules migration belongs in this cleanup batch.
+
+## Batch 4 — shipping and finance
+
+Begin with an independent ShipmentForm display section or read-only summary.
+Use existing helpers such as src/shipping.js, src/packing.js,
+src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second
+calculation layer. A later pure-helper extraction must preserve inputs,
+precision, currency, stored snapshots, line/source identity, document labels,
+discount/deposit treatment and complete PDF/Excel output.
+
+Keep Firestore transactions and stock/reservation/receipt idempotency together.
+Do not split an atomic write into UI-level saves or recompute historical quotes
+from current supplier prices. Relevant invoice, quote, packing/PO and stock
+emulator checks remain mandatory. Export changes also require real saved PDF/
+Excel inspection, including blank/zero deposit, long specs and mixed orientations
+when those outputs are touched. Use fictional write fixtures and view-only live QA.
+
+## Batches 5 and 6 — prove what is unused
+
+Inventory static imports, route strings, scheduled jobs, deployment config,
+external API callers and document links. Graphify must be refreshed before use
+and does not prove runtime/route/external reachability. The paused Fly renderer
+is distinct from the live Firebase swatch catalogue; the paused workbench is not
+permission to delete all customizer files. Existing import tools may be rare
+but necessary for operational recovery. Prefer a documented status first.
+
+For files, map each Storage object/prefix to its owning record, references,
+visibility, immutable generation and historical attachment/audit requirements.
+Equal filenames, large byte counts or old timestamps do not prove duplication.
+Separate confirmed candidates from unknown ownership; do not remove quote PDFs,
+stock evidence, customer assets or shared originals as a code-cleanup side effect.
+Any later archival/deletion proposal needs its own concrete reviewed list and
+recovery/retention approach. This plan does not authorize execution of that list.
+
+## Definition of done for each implementation slice
+
+1. Pin a clean starting SHA, map consumers/data/write boundaries and record a
+   small scope with unchanged contracts. Preserve unrelated work.
+2. Extract one responsibility. Keep compatibility exports/call signatures where
+   consumers need them; avoid unrelated naming/style/formatting churn.
+3. Compare rendered behaviour and source/payload/query contracts. Exercise empty,
+   populated, loading, error/retry, navigation/unmount and unsaved states as
+   applicable. Keep real stateful hooks in emulator fixtures.
+4. Run relevant existing regressions, full prebuild/build, whole-source no-undef
+   and required configuration checks. Production index readiness needs live
+   ordered-query evidence; an emulator pass alone does not establish it.
+5. For an authorized release, follow [RELEASE-WORKFLOW.md](../skills/RELEASE-WORKFLOW.md):
+   both exact-SHA GitHub jobs PASS before any deploy, immediate upload preflight,
+   then fresh admin and approved-customer gates on candidate and production,
+   reusing the verified candidate artifact. Rules/index changes are separate.
+6. Update ownership, feature routing, lessons and a release report with evidence,
+   exceptions and remaining work. Documentation-only closeout must not republish
+   an unverified app. The plan itself does not authorize pushing or deploying.
+
+Success is a clearer ownership boundary, easier review and unchanged existing
+functions with evidence. A lower total line count, fewer files or a single
+universal helper is not an acceptance criterion. If a pre-existing bug is found,
+record/reproduce it against the baseline and handle it as a separately scoped
+fix; do not mislabel a changed workflow as extraction parity.

@@ -7,6 +7,10 @@ over them. Add to this whenever you notice something in passing that isn't
 in scope for the task at hand.
 
 Each entry: what it is, why it's not already fixed, and where to look.
+The [maintenance cleanup plan](docs/plans/OC-MAINTENANCE-CLEANUP-PLAN.md) orders
+proposed behaviour-preserving work; it does not override accepted owner decisions
+or authorize fixing unrelated entries as part of another change. Resolved entries
+retain historical evidence and link their later release records.
 
 ## Three edge functions have no auth check
 
