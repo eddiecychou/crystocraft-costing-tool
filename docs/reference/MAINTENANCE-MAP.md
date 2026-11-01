@@ -101,7 +101,8 @@ src/marketing/DailyDrafts.jsx retains all state/setters, category definitions,
 eligibility, async generation, payloads, subscriptions and writes/sending.
 qa/daily-drafts-targeting.test.mjs exercises the real page through fictional
 service/data boundaries and runs in test:ai-writer (prebuild and product-search
-CI). No live sends/Firebase writes. First slice locally verified, not released:
+CI). No live sends/business-record writes. First slice released after both
+exact-SHA GitHub jobs and fresh candidate/production role checks:
 [evidence and limits](../plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
 
 ## Subsequent cleanup batches
@@ -110,6 +111,6 @@ The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily 
 presentation work open, then one-at-a-time server helper convergence and shipping/
 finance internals. Prototype/import usage audit and storage retention are
 separate reviewed tracks. The first CRM batch is released; the first Daily Drafts
-targeting slice is locally implemented. No later batch is implemented.
+targeting slice is released. No later batch is implemented.
 Each has its own scope, invariants and acceptance checks. A file's size or an
 old comment is not evidence that a feature, stored file or import is unused.
