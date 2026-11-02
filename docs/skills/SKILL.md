@@ -580,3 +580,9 @@ redirects there; /swatch-library remains the OC uploader reached from the single
 Fabric card. The project/sample intent selector shares exact Firebase references.
 No area-price calculator or stock mapping is added. Release evidence:
 docs/plans/V8.19-CRYSTAL-FABRIC-RELEASE.md.
+
+The [topic-composer slice](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md)
+separates saved-topic/topic controls and master subject/body fields into
+src/components/marketing/DailyDraftsComposer.jsx. State, template CRUD, prompts,
+AI and generation handlers remain in DailyDrafts; media and refinement chat
+are later slices. See the linked record for release status and evidence.

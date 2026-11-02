@@ -121,6 +121,13 @@ confirmation. Source/desktop/mobile checks, both exact-SHA jobs and fresh
 candidate/production admin/customer gates pass; no live rules changed:
 [scope/evidence](../plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
 
+DailyDraftsComposer.jsx contains the topic/saved-template controls and master
+subject/body fields only. DailyDrafts keeps state, template CRUD, drafting,
+active-rule prompt assembly and generation. Product/link/media controls and the
+refinement chat remain later slices. Nine fictional real-page composer cases
+run in test:ai-writer/prebuild/product-search CI. No live template or AI writes
+are needed for deployed QA. [Scope and release state](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).
+
 ## Subsequent cleanup batches
 
 The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily Drafts

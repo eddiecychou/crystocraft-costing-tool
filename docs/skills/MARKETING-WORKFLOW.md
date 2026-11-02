@@ -33,6 +33,12 @@ handleLogReply and all writes remain in the page. Source/visual parity, both
 exact-SHA GitHub jobs and fresh candidate/production role gates pass. Live QA
 opens/changes/cancels only; never submit Log reply or send real customer mail.
 [Sent slice](../plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
+The standing-rules panel is DailyDraftsStandingRules.jsx. Topic/saved-template
+controls and master subject/body fields are DailyDraftsComposer.jsx (controlled
+presentation only). The parent retains state, all rule/template writes, AI calls,
+prompts, attachments and refinement chat. Composer QA uses fictional service
+boundaries; deployed checks edit unsaved text only, without drafting, saving,
+generating or sending. [Composer scope/release](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).
 **Data layer:** `src/domain/outreachDrafts.js` (`outreach_drafts/{id}`).
 **AI client:** `src/outreachApi.js`. **Edge fns:** `draft-outreach-topic`,
 `generate-outreach-drafts`, `discuss-outreach-draft`, `send-personal-email`.

@@ -1,3 +1,15 @@
+# V8.20 — Daily Drafts topic-composer cleanup — verification in progress, 2 November 2026
+
+Saved-topic/topic controls and master subject/body markup move into two controlled
+components in DailyDraftsComposer.jsx. State, AI/prompt/template handlers and
+payloads remain unchanged in DailyDrafts; attachments and refinement chat stay
+for later slices. Whole-page source recovery is exact. Nine new + 28 existing
+real-page cases pass against the baseline; all 62 AI-writer cases, lint/config
+and desktop/mobile DOM/control/geometry parity pass after extraction.
+Required exact-SHA GitHub checks, candidate and production verification are
+pending; no deployment or live business write is claimed yet.
+[Scope and evidence](docs/plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).
+
 # V8.20 — workspace CI deadline repair — verified, QA only, 2 November 2026
 
 Owner approved the next cleanup priority: diagnose/fix the recurring workspace

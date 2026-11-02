@@ -41,6 +41,15 @@ required when publishing an app.
 
 # Daily Drafts presentation maintenance
 
+`qa/daily-drafts-composer.test.mjs` adds nine real-page cases for saved-topic
+selection/manual edits, blank/busy gates, trimmed topic/active-rule payloads,
+master edits passed to generation, drafting error/retry, template save/update/
+confirmation/error behavior and long Unicode text retention. Services are
+fictional; unexpected sends, uploads and writes fail. It runs in test:ai-writer,
+prebuild and product-search CI. Source-recovery and desktop/mobile layout
+comparison accompany presentation extraction; live QA never invokes AI, saves
+templates or sends customer email.
+
 `node --test qa/daily-drafts-targeting.test.mjs` renders the real DailyDrafts
 page/state/generation handler with fictional service/data boundaries. It also
 runs in `npm run test:ai-writer`, prebuild and product-search CI. Coverage keeps
