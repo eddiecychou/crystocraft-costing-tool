@@ -5,8 +5,11 @@ Angeles task-mirroring cases (run 41493089982); product-search passed. Separate
 QA-only work resets the page SDK/cache along with server data and adds an
 isolation regression that fails against the old harness. All 22 prior case
 bodies remain byte-identical; 67 local guards/page/timezone cases pass. Production
-and all frozen shipping artifacts remain unchanged. Exact Linux verification
-is required before this follow-up is closed. [Investigation and limits](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md#3-november-documentation-closeout-failure--reset-the-page-client-too).
+and all frozen shipping artifacts remain unchanged. QA source 97547527 passes
+both required jobs on attempt 1 in run 41495678616; all 67 Linux workspace cases
+and all subsequent emulator suites pass. release:ci -- --wait passes. The old
+intermittent SDK trigger remains unconfirmed; the isolation gap is closed.
+[Investigation and limits](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md#3-november-documentation-closeout-failure--reset-the-page-client-too).
 
 First authorized shipping presentation slice moves ERP comparison and stock
 status badge to components/shipping/ShipmentReconciliation.jsx. Parent owns all

@@ -363,6 +363,9 @@ a regression that fails against the original shared-client fixture. All old
 case bodies/assertions, timezones and deadlines remain; application/rules and
 the verified shipping deployment are unchanged. This closes a confirmed test
 isolation gap, not a proven root cause of every intermittent SDK failure.
+QA source 97547527 passes both required jobs first attempt in run 41495678616,
+including all 67 Linux guard/page/timezone cases and later emulator suites;
+release:ci -- --wait passes. No application redeployment was made for this fix.
 See the [3 November investigation](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md#3-november-documentation-closeout-failure--reset-the-page-client-too).
 
 ## Keeping this current
