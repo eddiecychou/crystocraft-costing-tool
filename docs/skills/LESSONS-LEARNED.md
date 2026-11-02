@@ -1510,3 +1510,15 @@ fill: native typeText can append to retained/autofilled values. Browser email
 validation caught one concatenated-input attempt before authentication; explicit
 replacement passed without changing credentials, profiles or app code.
 [Composer scope and verified release](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).
+
+### Preserve shared attachment boundaries during presentation cleanup
+
+2 November 2026: Daily Drafts product/link/image markup moved into controlled
+components while state, public/legacy gallery filtering, storage sequencing,
+the shared two-image cap and createDrafts attachment payload remained in the
+page. Pin the final payload in real-page fictional tests, not only selection
+appearance. Existing Cancel retains unsaved link fields and unlinking a product
+retains selected master images; characterization preserves those semantics.
+Six desktop/mobile states matched DOM/geometry and pixels. Live role QA can
+check product/link controls without uploads, AI, persistence or customer email.
+[Attachment release and verification](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).

@@ -46,7 +46,7 @@ search/identity, public and legacy gallery filtering, selection/removal/image ca
 manual link trimming/fallback/removal/cancel, storage path and file identity,
 busy/cancel/failure/retry and generated-draft attachment payload/reset. Uploads
 are fictional; network and unexpected business writes remain forbidden. The
-harness changeFiles helper supplies a fictional FileList to the real React input
+harness changeFiles helper supplies fictional selected files to the real React input
 handler. Tests run in test:ai-writer/prebuild/product-search CI. Pair with source
 recovery and actual desktop/mobile DOM/geometry/screenshots; live QA does not
 upload files, call AI, persist templates/drafts or send email.

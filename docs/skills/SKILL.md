@@ -592,4 +592,5 @@ The [attachment-controls slice](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.
 moves product/link and master image presentation into DailyDraftsAttachments.jsx.
 The parent retains storage/data reads, public gallery filtering, state, image
 limits and payloads. Its real-page tests use fictional uploads; deployed QA uses
-unsaved controls only. Follow the linked record for release status/evidence.
+unsaved controls only. Both exact-SHA jobs and fresh candidate/production role
+gates pass; follow the linked record for release evidence.

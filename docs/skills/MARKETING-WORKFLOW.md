@@ -36,7 +36,7 @@ opens/changes/cancels only; never submit Log reply or send real customer mail.
 The standing-rules panel is DailyDraftsStandingRules.jsx. Topic/saved-template
 controls and master subject/body fields are DailyDraftsComposer.jsx (controlled
 presentation only). The parent retains state, all rule/template writes, AI calls,
-prompts, attachments and refinement chat. Composer QA uses fictional service
+prompts, attachment state/handlers and refinement chat. Composer QA uses fictional service
 boundaries; deployed checks edit unsaved text only, without drafting, saving,
 generating or sending. [Composer scope/release](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).
 DailyDraftsAttachments.jsx separates product/link selection and master image

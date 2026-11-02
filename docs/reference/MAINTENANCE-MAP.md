@@ -123,8 +123,8 @@ candidate/production admin/customer gates pass; no live rules changed:
 
 DailyDraftsComposer.jsx contains the topic/saved-template controls and master
 subject/body fields only. DailyDrafts keeps state, template CRUD, drafting,
-active-rule prompt assembly and generation. Product/link/media controls and the
-refinement chat remain later slices. Nine fictional real-page composer cases
+active-rule prompt assembly and generation. Product/link/media presentation is covered by the attachment slice below;
+refinement chat remains a later slice. Nine fictional real-page composer cases
 run in test:ai-writer/prebuild/product-search CI. Deployed QA changed no live
 templates and made no AI calls or email sends. Both exact-SHA jobs and fresh
 candidate/production role gates pass.
@@ -134,7 +134,9 @@ DailyDraftsAttachments.jsx owns product/link controls and master image upload/
 gallery/selection markup only. State, loaders, public-image filtering, storage,
 the two-image limit and createDrafts attachment payload stay in DailyDrafts.
 Eleven new real-page cases run through fictional storage/data boundaries in
-test:ai-writer/prebuild/product-search CI. [Scope and release state](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
+test:ai-writer/prebuild/product-search CI. Source/visual checks, both exact-SHA
+jobs and fresh candidate/production role gates pass, without live uploads or sends.
+[Scope and release state](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
 
 ## Subsequent cleanup batches
 
@@ -142,7 +144,7 @@ The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily 
 presentation work open, then one-at-a-time server helper convergence and shipping/
 finance internals. Prototype/import usage audit and storage retention are
 separate reviewed tracks. The first CRM batch and Daily Drafts targeting/Sent/
-standing-rules/topic-composer slices are released. Further presentation slices
+standing-rules/topic-composer/attachment slices are released. Further presentation slices
 and later batches remain open; a separate recurring workspace CI stall is in TECH-DEBT.
 The confirmed QA deadline gaps are repaired and exact-SHA CI verified, with
 the triggering intermittent stall still open:

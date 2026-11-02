@@ -1,14 +1,20 @@
-# V8.20 — Daily Drafts attachment-controls cleanup — verification in progress, 2 November 2026
+# V8.20 — Daily Drafts attachment-controls cleanup — released, 2 November 2026
 
-Product/link controls and master image upload/gallery/selection markup move into
-DailyDraftsAttachments.jsx. State, storage, public-image filtering, image limits
-and generated-draft payloads remain unchanged in DailyDrafts; refinement chat
-stays for the next slice. Restoring 107 moved markup lines reproduces the whole
-baseline page exactly. All 48 real-page cases pass before extraction and all 73
-AI-writer cases pass afterward; lint/config and desktop/mobile layout checks pass.
-Six screenshot pairs match pixel for pixel with no horizontal overflow.
-Required exact-SHA CI and candidate/production role gates remain pending.
-[Scope and evidence](docs/plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
+Product/link controls and master image upload/gallery/selection markup now live
+in DailyDraftsAttachments.jsx. State, storage, public-image filtering, the two-image
+cap and generated-draft payloads remain unchanged in DailyDrafts; refinement chat
+is the next proposed slice. Restoring 107 markup lines reproduces the baseline
+exactly. All 48 baseline real-page and 73 post-extraction AI-writer cases pass;
+full build, lint/config and six pixel-identical desktop/mobile screenshot pairs pass.
+Both exact-SHA GitHub jobs PASS on 8d374b2f in run 41419241784, attempt 1, with
+immediate preflight before both uploads. Candidate 6ae855a551cc1baef0753002 and
+production 6ae856cd6949380e82014b89 pass fresh admin/customer routing, data,
+access, refresh and runtime gates; identical artifact, CSS/server unchanged.
+Served bundle /assets/index-hQwgjLHL.js; final role verification 2 Nov 20:27:52 AEDT /
+17:27:52 HKT. Live QA used unsaved product/link controls only: no uploads, AI calls,
+template/business writes or customer emails. Production is ready/current;
+documentation closeout uses [skip netlify].
+[Scope and release evidence](docs/plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
 
 # V8.20 — Daily Drafts topic-composer cleanup — released, 2 November 2026
 
