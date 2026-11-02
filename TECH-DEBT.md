@@ -32,7 +32,8 @@ open oversight. If abuse ever shows up, add `requireFrontOffice()` (from
 
 **First migration, 3 November 2026:** draft-outreach-topic now delegates to the
 existing requireModule(req, 'marketing'); shared helper and other endpoints are
-unchanged. Before/after contracts and exact source restoration pass; see
+unchanged. Before/after contracts, exact source restoration, both required CI
+jobs and fresh candidate/production role gates pass; see
 [current implementation/release status](docs/plans/V8.20-TOPIC-AUTH-CLEANUP.md).
 The remaining inline refinement check is the next proposed slice. This does not
 change permissions or the accepted open-endpoint posture below.
@@ -40,7 +41,7 @@ change permissions or the accepted open-endpoint posture below.
 **3 November 2026 — characterization, not convergence:** the
 [access-control pilot](docs/reference/ACCESS-CONTROL-MATRIX.md) tests the real
 shared helper and draft-outreach-topic/discuss-outreach-draft gates with signed
-sessions, plus relevant actual Firebase rules. App/auth/rules remain unchanged.
+sessions, plus relevant actual Firebase rules. That QA-only batch left app/auth/rules unchanged.
 Keep method/config ordering and profile-error contracts when separately
 authorizing the first single-endpoint migration. Node helper consolidation is
 still separate. See the [QA record](docs/plans/V8.20-ACCESS-CONTRACTS.md).
