@@ -1,3 +1,20 @@
+# V8.20 — Access-control contract matrix — QA only, 3 November 2026
+
+Owner-approved tests/docs batch pins existing human role/module decisions across
+the real client/shared helper, both Daily Drafts master-message AI endpoints and
+relevant Firebase rules. Node 22 passes 31 offline cases; isolated Firestore/Storage
+passes 15 cases / 180 read/create authorization decisions. Marketing draft/AI access
+and customers CRM access remain distinct. Profile-error, service-identity and
+account-lifecycle limits are documented; no app/auth/rules/permission changes.
+Both required GitHub jobs now run the new checks; prebuild runs the offline suite.
+QA/docs push and exact-SHA CI verification are pending; no app deployment planned.
+The published app remains the prior verified bulk-toolbar release below.
+[Matrix](docs/reference/ACCESS-CONTROL-MATRIX.md),
+[scope and verification](docs/plans/V8.20-ACCESS-CONTRACTS.md),
+[remaining cleanup plan](docs/plans/OC-MAINTENANCE-CLEANUP-PLAN.md).
+Next proposed slice is one draft-outreach-topic shared-helper migration, separately
+authorized; no real customer email or AI request is involved in this batch.
+
 # V8.20 — Daily Drafts bulk-toolbar cleanup — released, 2 November 2026
 
 Pending Review heading/count, bulk editor/progress/errors and Clear controls now

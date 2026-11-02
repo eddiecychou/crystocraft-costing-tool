@@ -30,6 +30,14 @@ open oversight. If abuse ever shows up, add `requireFrontOffice()` (from
 
 ## Parallel implementations of the same auth check
 
+**3 November 2026 — characterization, not convergence:** the
+[access-control pilot](docs/reference/ACCESS-CONTROL-MATRIX.md) tests the real
+shared helper and draft-outreach-topic/discuss-outreach-draft gates with signed
+sessions, plus relevant actual Firebase rules. App/auth/rules remain unchanged.
+Keep method/config ordering and profile-error contracts when separately
+authorizing the first single-endpoint migration. Node helper consolidation is
+still separate. See the [QA record](docs/plans/V8.20-ACCESS-CONTRACTS.md).
+
 Most edge functions inline their own `isAdmin(uid, idToken, projectId)` (a
 Firestore REST check of `users/{uid}.role`). A newer set —
 `credit-note.js`, `compose-message.js`, `extract-pi.js`, `extract-po.js`,
@@ -82,6 +90,14 @@ role string, not a bool) because it needs to distinguish `production` from
 `netlify/edge-functions/lib/auth.js`; `erp.js`'s `getRole()`.
 
 ## RBAC — client capability map vs server rules can drift
+
+**3 November 2026:** a bounded human-role matrix now covers the actual client
+permission functions, shared helper, two Daily Drafts AI endpoints and relevant
+Firestore/Storage read/create gates. It confirms marketing versus customers
+ownership, with service identities and lifecycle checks explicitly outside
+scope. It reduces this pilot's regression risk; wider multi-file drift remains
+open. Both required CI jobs include the new suites. See
+[ACCESS-CONTROL-MATRIX.md](docs/reference/ACCESS-CONTROL-MATRIX.md).
 
 V8.14 model (`admin | staff | customer` + `users/{uid}.modules[]`) is enforced
 in places that must agree, with no single source:

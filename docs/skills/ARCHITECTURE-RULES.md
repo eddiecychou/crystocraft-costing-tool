@@ -57,6 +57,12 @@ call. Never gate confidentiality on anything a model or the client decides.
 
 ## 2. RBAC — roles and the multi-file contract
 
+Before shared-auth cleanup, consult the bounded
+[access-control contract matrix](../reference/ACCESS-CONTROL-MATRIX.md).
+It tests the existing human-role decisions for two Daily Drafts endpoints and
+their relevant data paths, including marketing versus customers ownership.
+It does not authorize permission changes or prove service/account-lifecycle parity.
+
 Roles live on `users/{uid}.role`. As of **V8.14** there are only three:
 `admin | staff | customer`. A `staff` account's access is a **per-user
 `users/{uid}.modules[]` list**, toggled in AccountEdit's Role & access card.

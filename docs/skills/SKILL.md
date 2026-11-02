@@ -88,6 +88,7 @@ wins on *facts*; skill wins on *rules and lessons*.
 | `../reference/FIRESTORE-COLLECTIONS.md` | Every collection/subcollection — auth, owning file, pointer fields |
 | `../reference/DOMAIN-MODULES.md` | What each `src/domain/*.js` owns and its exports |
 | `../reference/MAINTENANCE-MAP.md` | Ownership boundaries, extracted CRM viewers/cards/dialogs and maintenance verification |
+| `../reference/ACCESS-CONTROL-MATRIX.md` | Bounded Daily Drafts client/helper/endpoint/rules contract matrix, test commands and migration limits; no policy change |
 | `../plans/OC-MAINTENANCE-CLEANUP-PLAN.md` | Ordered behaviour-preserving cleanup batches, completed/proposed status and acceptance gates |
 | `../plans/V8.20-SESSION-HANDOFF-2026-11-01.md` | Latest dated handoff for portal follow-up, size review, CRM cleanup and subsequent fixes; earlier business work links back to the 31 October handoff |
 | `../reference/OC-SIZE-SNAPSHOT-2026-11-01.md` | Historical per-module code/functions and Firebase size/count baseline with portable aggregate CSVs and measurement caveats |

@@ -11,6 +11,11 @@ backlog; [1 November handoff](../plans/V8.20-SESSION-HANDOFF-2026-11-01.md) link
 completed work and [size baseline](OC-SIZE-SNAPSHOT-2026-11-01.md). Plans and
 historical measurements do not authorize subsequent implementation or deletion.
 
+The [access-control pilot matrix](ACCESS-CONTROL-MATRIX.md) maps actual client,
+shared-helper, two Daily Drafts endpoint and Firebase rule contracts. Its
+[QA-only record](../plans/V8.20-ACCESS-CONTRACTS.md) distinguishes test/docs work
+from future application/auth migrations; marketing and CRM capabilities differ.
+
 ## Ownership and change boundaries
 
 | Area | Start here | Preserve and verify |

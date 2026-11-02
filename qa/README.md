@@ -1,5 +1,18 @@
 # Automated product search regressions
 
+## Access-control contract pilot
+
+Run `npm run test:access-contracts` for actual client/shared/AI-endpoint source
+with real offline JOSE verification and strict fictional network boundaries.
+Run `node --test qa/access-contracts-emulator.mjs` inside isolated loopback
+Firestore/Storage emulators for the relevant rule paths. The suite refuses live
+hosts/projects. Both required GitHub jobs include these checks; prebuild includes
+the offline suite. See [matrix, full commands and limits](../docs/reference/ACCESS-CONTROL-MATRIX.md)
+and [QA-only evidence](../docs/plans/V8.20-ACCESS-CONTRACTS.md). This is not a new
+permission policy or a substitute for the broader RBAC/release checks below.
+
+## Product search
+
 ```sh
 npm ci
 npm run test:product-search
