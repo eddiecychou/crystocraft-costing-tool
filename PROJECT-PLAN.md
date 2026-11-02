@@ -7,8 +7,12 @@ passes 15 cases / 180 read/create authorization decisions. Marketing draft/AI ac
 and customers CRM access remain distinct. Profile-error, service-identity and
 account-lifecycle limits are documented; no app/auth/rules/permission changes.
 Both required GitHub jobs now run the new checks; prebuild runs the offline suite.
-QA/docs push and exact-SHA CI verification are pending; no app deployment planned.
-The published app remains the prior verified bulk-toolbar release below.
+QA/docs commit fbca48fe is pushed with [skip netlify]; both exact-SHA jobs PASS
+in run 41460026338, attempt 1, confirmed by release:ci -- --wait. All 507 protected
+application/rule files remain byte-identical. Netlify readback still reports
+ready/current 6ae886d9008d59024fdead2f; no app deployment occurred. The published
+app remains the prior verified bulk-toolbar release below; docs closeout also
+skips deployment.
 [Matrix](docs/reference/ACCESS-CONTROL-MATRIX.md),
 [scope and verification](docs/plans/V8.20-ACCESS-CONTRACTS.md),
 [remaining cleanup plan](docs/plans/OC-MAINTENANCE-CLEANUP-PLAN.md).
