@@ -58,6 +58,14 @@ exact customer/lead paths and payloads, form retention, busy and failure/retry.
 Never submit real customer replies merely to verify this presentation refactor.
 [Sent slice evidence](../docs/plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
 
+`node --test qa/daily-drafts-rules.test.mjs` adds twelve standing-rules cases
+through the same real-page harness. Explicit fictional services verify rule
+status/prompt inclusion only after approval, exact payload/reviewer identity,
+collapse/edit/cancel retention, busy/error/retry, dismiss/disable and confirmed
+deletion. It runs in test:ai-writer, prebuild and product-search CI. Live smoke
+checks must never add/save/approve/dismiss/disable/delete an actual rule or send
+customer mail. [Standing-rules evidence](../docs/plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
+
 # CRM component maintenance
 
 `npm run test:customer-workspace` includes `qa/crm-components.test.mjs`.

@@ -504,6 +504,10 @@ released after parity, exact-SHA CI and fresh candidate/production role gates;
 reply state/handlers stay in the page and only presentation/shared source badges
 move. Live verification opens/changes/cancels forms without submitting replies
 or sending customer emails.
+The [standing-rules slice](../plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md)
+is locally verified with release gates pending. Its presentation moves into
+DailyDraftsStandingRules; parent rule state/handlers and the explicit approval
+gate before prompt inclusion remain unchanged.
 Pin baseline behaviour and move one
 responsibility at a time, keeping parent subscriptions, write/transaction
 boundaries, customer/lead separation and existing props/contracts. Preserve

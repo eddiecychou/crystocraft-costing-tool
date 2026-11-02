@@ -113,6 +113,13 @@ with the eight targeting cases and run in test:ai-writer. Source/visual parity,
 both exact-SHA GitHub jobs and fresh candidate/production role gates pass:
 [scope/evidence](../plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
 
+DailyDraftsStandingRules.jsx now owns standing-rules markup only. The page
+keeps loading, state, active/pending filters, MAX_ACTIVE_RULES, all rule handlers
+and prompt assembly. Twelve new real-page cases pin callback payloads,
+explicit approval before prompt inclusion, unsaved edits, busy/error/retry and
+confirmation. Source/desktop/mobile parity passes; release gates are pending:
+[scope/evidence](../plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
+
 ## Subsequent cleanup batches
 
 The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily Drafts

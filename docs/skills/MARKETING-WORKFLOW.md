@@ -66,6 +66,14 @@ Global writing rules shared across every draft prompt: `draft_memory_rules/{id}`
 future draft must not go live off one click. Nothing here is ever written
 automatically.
 
+Standing-rules markup is now in DailyDraftsStandingRules.jsx under
+src/components/marketing; all state, loads, writes and prompt filtering remain
+in DailyDrafts.jsx. Twelve new real-page tests preserve the explicit approval
+gate, callback payloads and unsaved/error/busy behaviour. Local parity passes;
+the authorized release gates are pending. Live QA must only open/collapse the
+panel or open/cancel an editor; test rule writes with fictional fixtures.
+[Standing-rules slice](../plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
+
 ### 1b. Stale-closure rule (Daily Drafts UI)
 
 **MUST NOT** read component state via a captured closure inside an awaited loop

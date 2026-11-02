@@ -1,3 +1,15 @@
+# V8.20 — Daily Drafts standing-rules cleanup — release in progress, 2 November 2026
+
+Standing-rules presentation moves into DailyDraftsStandingRules; all state,
+loading, approvals, rule writes and prompt assembly remain in DailyDrafts.
+Restoring the 73 markup lines/imports recovers the original page exactly.
+Twelve new + sixteen existing real-page cases pass before/after; all 53
+AI-writer cases, lint/config and desktop/mobile DOM/control/geometry checks
+pass. Both exact-SHA GitHub jobs and fresh candidate/production role gates
+remain required before closing the authorized release. No live rules changed
+and no real customer mail sent.
+[Scope and release evidence](docs/plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
+
 # V8.20 — Daily Drafts Sent-history cleanup — released, 2 November 2026
 
 The next slice extracts Sent rows/engagement badges/reply presentation and the
