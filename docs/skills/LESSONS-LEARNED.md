@@ -1497,3 +1497,16 @@ emulator cannot establish production index readiness. Real readback verified
 47 existing lead histories, 358 group records and unchanged unrelated indexes;
 candidate Retry recovered from the actual index-build error, then both fresh
 production roles passed. [Evidence](../plans/V8.20-LEAD-INTERACTION-HISTORY.md).
+
+### Controlled composer extraction and login QA input
+
+2 November 2026: keep Daily Drafts orchestration and template/AI handlers in the
+page while moving only controlled markup. Recover moved child markup in the
+parent and compare the whole baseline source; then pin real-page callbacks with
+fictional boundaries and measure actual desktop/mobile DOM/geometry. Report
+screenshot differences honestly rather than equating matching geometry with
+pixel identity. For fresh browser role checks, replace both login fields with
+fill: native typeText can append to retained/autofilled values. Browser email
+validation caught one concatenated-input attempt before authentication; explicit
+replacement passed without changing credentials, profiles or app code.
+[Composer scope and verified release](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).

@@ -1,13 +1,19 @@
-# V8.20 — Daily Drafts topic-composer cleanup — verification in progress, 2 November 2026
+# V8.20 — Daily Drafts topic-composer cleanup — released, 2 November 2026
 
-Saved-topic/topic controls and master subject/body markup move into two controlled
-components in DailyDraftsComposer.jsx. State, AI/prompt/template handlers and
-payloads remain unchanged in DailyDrafts; attachments and refinement chat stay
-for later slices. Whole-page source recovery is exact. Nine new + 28 existing
-real-page cases pass against the baseline; all 62 AI-writer cases, lint/config
-and desktop/mobile DOM/control/geometry parity pass after extraction.
-Required exact-SHA GitHub checks, candidate and production verification are
-pending; no deployment or live business write is claimed yet.
+Saved-topic/topic controls and master subject/body markup now live in two
+controlled components in DailyDraftsComposer.jsx. State, AI/prompt/template
+handlers and payloads remain unchanged in DailyDrafts; attachments and refinement
+chat stay for later slices. Whole-page source recovery is exact. Nine new + 28
+existing real-page cases pass against the baseline; all 62 AI-writer cases,
+full prebuild/build, lint/config and desktop/mobile DOM/control/geometry pass.
+Both required GitHub jobs PASS on c862d75e in run 41414342463, attempt 1, with
+immediate preflight before each upload. Candidate 6ae84c787326baeb323bf812 and
+production 6ae84dc8285ac6ba3878747c pass fresh admin/customer routing, data,
+access, refresh and runtime gates; identical artifact, CSS/server unchanged.
+Served bundle /assets/index-KHQETcTh.js; final role check 2 Nov 19:50:47 AEDT /
+16:50:47 HKT. Safe live composer checks used selection and unsaved text only;
+no AI calls, template/business writes or customer emails. Production ready/current;
+release documentation is pushed with [skip netlify].
 [Scope and evidence](docs/plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).
 
 # V8.20 — workspace CI deadline repair — verified, QA only, 2 November 2026

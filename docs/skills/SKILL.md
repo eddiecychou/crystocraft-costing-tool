@@ -585,4 +585,5 @@ The [topic-composer slice](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md)
 separates saved-topic/topic controls and master subject/body fields into
 src/components/marketing/DailyDraftsComposer.jsx. State, template CRUD, prompts,
 AI and generation handlers remain in DailyDrafts; media and refinement chat
-are later slices. See the linked record for release status and evidence.
+are later slices. Both exact-SHA jobs and fresh candidate/production role gates
+pass; see the linked record for release evidence.
