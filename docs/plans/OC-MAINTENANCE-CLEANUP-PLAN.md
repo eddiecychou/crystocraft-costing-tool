@@ -26,7 +26,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 | 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
 | 2 — Daily Drafts presentation | Eight planned presentation slices released; workflow logic retained | Targeting, Sent/reply, rules, topic/master fields, attachments, master chat, cards and bulk controls extracted; parent retains state, generation and writes | All eight slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
-| 3 — repeated server authentication helpers | Topic endpoint verified; refinement implementation complete, release pending | Both pilot endpoints now use the existing marketing helper; other endpoint migrations remain proposed | 38 before/after contracts and exact auth-only restoration pass; refinement still requires normal CI/build/two-role release gates |
+| 3 — repeated server authentication helpers | Both pilot endpoints released/verified; broader convergence proposed | Drafting and refinement use the existing marketing helper; other endpoints require separate caller/capability review | 38 contracts, auth-only source restoration, both exact-SHA jobs and fresh candidate/production role gates pass; QA audit repair retains every assertion/deadline |
 | 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
 | 6 — storage retention | Separate proposed business/data track | Read-only ownership/reference/duplicate review, with evidence and proposed actions | No file deletion, lifecycle policy, stock correction or record migration without specific review/authorization |
@@ -157,7 +157,7 @@ keys, profile-error behaviour and service/account-lifecycle limits. The owner
 subsequently authorized the first [topic-endpoint migration](V8.20-TOPIC-AUTH-CLEANUP.md);
 implementation, parity, exact-SHA CI and all candidate/production role gates pass.
 The subsequently authorized [refinement migration](V8.20-REFINEMENT-AUTH-CLEANUP.md)
-now passes local parity/contracts; its release gates are pending. Other endpoint
+now passes parity/contracts, both exact-SHA jobs and all fresh role gates. Other endpoint
 migrations remain proposed work, with caller-specific capability review required.
 
 Start with the duplicate-helper entry in [TECH-DEBT.md](../../TECH-DEBT.md),

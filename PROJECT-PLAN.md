@@ -1,4 +1,4 @@
-# V8.20 — Refinement shared-auth cleanup — release pending, 3 November 2026
+# V8.20 — Refinement shared-auth cleanup — released, 3 November 2026
 
 The authorized discuss-outreach-draft cleanup delegates its existing marketing
 gate to requireModule. Master/per-draft chat history, writing memory, prompts,
@@ -7,11 +7,19 @@ Restoring only auth blocks reproduces the endpoint exactly; other 506 protected
 files are unchanged. All 38 contracts pass before/after, plus 119 AI-writer,
 11 configuration and whole-source lint checks. Shared live QA now supports both
 AI endpoints with empty input and never generates drafts or sends mail.
-Source push, both exact-SHA jobs, build and fresh candidate/production gates
-are pending. Initial 3b51c605 correctly blocked on an existing workspace audit
+Initial 3b51c605 correctly blocked on an existing workspace audit
 read timeout in run 41475038991; product-search passed. A QA-only independent
 server read retains the original assertion/deadlines and passes all 63 local
 workspace/guard/timezone cases. The low-level SDK trigger remains unconfirmed.
+Both exact-SHA jobs then PASS for 671f5e51 in run 41477279696, attempt 1;
+the Linux audit completes and all assertions/deadlines remain. Full build and
+immediate preflights pass. Candidate 6ae8b58feccaf7aa781cd616 and production
+6ae8b6a3e47a34e85211e79c pass fresh admin/approved-customer checks, both API
+auth probes, routing/data/access/refresh/runtime gates. Same static/server inputs
+reused; served index-Nat4uT0B.js and Firebase probes verified; production current.
+Final fresh check 3 Nov 03:15:18 AEDT / 00:15:18 HKT. Rules unchanged; docs
+closeout skips deployment. Other auth migrations and shipping display work remain
+proposed, with no financial/stock logic changes authorized by this slice.
 [Scope and release record](docs/plans/V8.20-REFINEMENT-AUTH-CLEANUP.md).
 
 # V8.20 — Topic-drafting shared-auth cleanup — released, 3 November 2026

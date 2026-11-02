@@ -302,8 +302,11 @@ now locates this occurrence at case 21's final Web SDK `read original cache`
 verification, after both actual pages loaded all selected periods. The named
 15s guard failed and blocked the release. That audit-only assertion now uses an
 independent emulator Admin SDK server read; its expected value, real page SDK /
-listeners / rules and all deadlines remain. All 63 local cases pass. This removes
-the observed audit's dependency on the UI watch stream; the underlying intermittent
+listeners / rules and all deadlines remain. All 63 local cases pass. Both
+required jobs pass on repaired 671f5e51
+in run 41477279696, attempt 1. Deliberately changed server data still fails the
+original assertion in the isolated fault check. The audit no longer depends on
+the UI watch stream; the underlying intermittent
 SDK stall mechanism is still unconfirmed. See the
 [investigation update](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md) and
 [refinement release gates](docs/plans/V8.20-REFINEMENT-AUTH-CLEANUP.md).
