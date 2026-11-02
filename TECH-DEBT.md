@@ -265,6 +265,30 @@ requests. Fresh candidate/production admin and customer checks pass on source
 d99b8fc4 after both required GitHub jobs passed. Query paths, records and rules
 are unchanged. [Repair and release evidence](docs/plans/V8.20-LEAD-INTERACTION-HISTORY.md).
 
+## Recurring workspace emulator stall after the last reported case 20
+
+Observed 2 November 2026 in first attempts of runs
+[41376548278](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/41376548278)
+and [41383016404](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/41383016404).
+Rules/earlier suites and workspace cases 1–20 passed, then no further case was
+reported before the 10-minute job cancellation. Unchanged-SHA retries passed
+both required jobs, and the complete local emulator command passed during the
+Sent release. Neither presentation extraction changed the workspace tests,
+Dashboard or CustomerDetail. The cause/location of the stall is unconfirmed;
+the last log line alone does not prove which setup, assertion or cleanup hung.
+
+Separate QA reliability investigation: reproduce/isolate the transition after
+case 20 and the following fixture/setup, instrument asynchronous waits and
+cleanup, and use bounded diagnostics without replacing real stateful hooks or
+skipping assertions. Do not just extend the CI timeout or treat retries as the
+repair. All exact-SHA release gates remain mandatory. Recorded separately to
+preserve the behaviour-only scope of the standing-rules extraction.
+
+**Where:** qa/customer-workspace-sync-emulator.mjs,
+qa/customer-workspace-sync-fixture.mjs, qa/local-day-clock.mjs and
+.github/workflows/product-search.yml. Evidence:
+[standing-rules release](docs/plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
+
 ## Keeping this current
 
 Add an entry when you notice something like this in passing during

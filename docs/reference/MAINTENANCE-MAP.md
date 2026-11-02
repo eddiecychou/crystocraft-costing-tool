@@ -117,7 +117,8 @@ DailyDraftsStandingRules.jsx now owns standing-rules markup only. The page
 keeps loading, state, active/pending filters, MAX_ACTIVE_RULES, all rule handlers
 and prompt assembly. Twelve new real-page cases pin callback payloads,
 explicit approval before prompt inclusion, unsaved edits, busy/error/retry and
-confirmation. Source/desktop/mobile parity passes; release gates are pending:
+confirmation. Source/desktop/mobile checks, both exact-SHA jobs and fresh
+candidate/production admin/customer gates pass; no live rules changed:
 [scope/evidence](../plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
 
 ## Subsequent cleanup batches
@@ -125,7 +126,8 @@ confirmation. Source/desktop/mobile parity passes; release gates are pending:
 The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily Drafts
 presentation work open, then one-at-a-time server helper convergence and shipping/
 finance internals. Prototype/import usage audit and storage retention are
-separate reviewed tracks. The first CRM batch and Daily Drafts targeting/Sent
-slices are released. Further presentation slices and later batches remain open.
+separate reviewed tracks. The first CRM batch and Daily Drafts targeting/Sent/
+standing-rules slices are released. Further presentation slices and later
+batches remain open; a separate recurring workspace CI stall is in TECH-DEBT.
 Each has its own scope, invariants and acceptance checks. A file's size or an
 old comment is not evidence that a feature, stored file or import is unused.

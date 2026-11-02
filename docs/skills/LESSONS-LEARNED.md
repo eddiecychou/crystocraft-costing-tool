@@ -1443,6 +1443,15 @@ cancels the form, while submitted replies are tested only with fictional data.
 Paired original/current desktop/mobile open and closed captures were byte-
 identical. [Sent cleanup evidence](../plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
 
+The standing-rules slice likewise retains all state/approval/write handlers in
+the parent. Twelve new real-page cases verify that direct adds stay pending,
+only explicit approval includes a rule in the next prompt, and editing/cancel,
+reviewer identity, busy/error and delete confirmation stay unchanged. Live QA
+uses only unsaved input and Cancel. Compare saved PNG dimensions per tab before
+claiming byte parity: viewport overrides did not resize both tabs in a two-tab
+check, so those unequal-size captures were excluded. Report DOM/geometry and
+image-byte evidence separately. [Standing-rules evidence](../plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
+
 The code/data-size review is a dated baseline, not a maintainability score or a
 retention instruction. Label source SHA, counting boundary, metric/listing times,
 root versus nested counts, and Firestore data/index bytes versus Storage file

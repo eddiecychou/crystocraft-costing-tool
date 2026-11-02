@@ -1,13 +1,20 @@
-# V8.20 — Daily Drafts standing-rules cleanup — release in progress, 2 November 2026
+# V8.20 — Daily Drafts standing-rules cleanup — released, 2 November 2026
 
 Standing-rules presentation moves into DailyDraftsStandingRules; all state,
 loading, approvals, rule writes and prompt assembly remain in DailyDrafts.
 Restoring the 73 markup lines/imports recovers the original page exactly.
 Twelve new + sixteen existing real-page cases pass before/after; all 53
-AI-writer cases, lint/config and desktop/mobile DOM/control/geometry checks
-pass. Both exact-SHA GitHub jobs and fresh candidate/production role gates
-remain required before closing the authorized release. No live rules changed
-and no real customer mail sent.
+AI-writer cases, full prebuild/build, lint/config and desktop/mobile DOM/control/
+geometry checks pass. Both exact-SHA GitHub jobs PASS on c5fdc13f (run
+41383016404, attempt 2), rechecked immediately before both uploads. Candidate
+6ae8061b68d6e35567109c93 and production 6ae8075a5dbf2de9ce84e74f pass fresh
+admin/customer routing, data, access, refresh and runtime gates using the same
+artifact; served bundle /assets/index-BMmsRtnh.js. Both origins load three active
+rules and pass unsaved-input retention/editor Cancel checks. No live rule or
+business record changed, and no email sent. Production is ready/current; final
+role verification 2 Nov, 14:49:43 AEDT / 11:49:43 HKT. The recurring workspace
+CI stall needed an unchanged-SHA retry and is recorded separately in TECH-DEBT;
+it remains a proposed QA reliability follow-up, not a presentation change.
 [Scope and release evidence](docs/plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
 
 # V8.20 — Daily Drafts Sent-history cleanup — released, 2 November 2026

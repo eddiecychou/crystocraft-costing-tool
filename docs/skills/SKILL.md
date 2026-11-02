@@ -505,9 +505,11 @@ reply state/handlers stay in the page and only presentation/shared source badges
 move. Live verification opens/changes/cancels forms without submitting replies
 or sending customer emails.
 The [standing-rules slice](../plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md)
-is locally verified with release gates pending. Its presentation moves into
-DailyDraftsStandingRules; parent rule state/handlers and the explicit approval
-gate before prompt inclusion remain unchanged.
+is also released after source/visual checks, 28 real-page cases, exact-SHA CI
+and fresh candidate/production role gates. Its presentation moves into
+DailyDraftsStandingRules; parent rule state/handlers and explicit approval
+before prompt inclusion remain unchanged. The recurring workspace CI stall is
+recorded separately in TECH-DEBT; no tests/gates were skipped to release.
 Pin baseline behaviour and move one
 responsibility at a time, keeping parent subscriptions, write/transaction
 boundaries, customer/lead separation and existing props/contracts. Preserve

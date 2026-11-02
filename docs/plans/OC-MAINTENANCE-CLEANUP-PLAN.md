@@ -7,8 +7,8 @@ future batch. The first CRM batch and separately requested fixes are released;
 the Daily Drafts targeting and Sent-history/source-badge slices are released
 and verified after both exact-SHA jobs and fresh candidate/production role gates.
 Remaining work and release status are distinguished below.
-The standing-rules presentation slice is locally verified with release gates
-pending under the owner's subsequent explicit request.
+The standing-rules presentation slice is also released and verified under the
+owner's subsequent explicit request.
 
 Start with [CLAUDE.md](../../CLAUDE.md), the
 [maintenance map](../reference/MAINTENANCE-MAP.md),
@@ -24,7 +24,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 |---|---|---|---|
 | 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
-| 2 — Daily Drafts presentation | Targeting/Sent released; standing rules in release; broader batch open | Targeting, Sent/reply and standing-rules presentation extracted; parent retains state, generation and writes | Targeting/Sent gates PASS; standing-rules source/visual parity and 28 real-page cases PASS, release gates pending |
+| 2 — Daily Drafts presentation | Targeting, Sent and standing rules released; broader batch open | Targeting, Sent/reply and standing-rules presentation extracted; parent retains state, generation and writes | All three slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
 | 3 — repeated server authentication helpers | Proposed | Migrate one endpoint at a time to the existing shared helper when behaviour is proved equivalent | Role/module allow/deny matrix and response parity; higher risk than UI extraction |
 | 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
@@ -67,11 +67,18 @@ no reply submitted or email sent. Further slices remain open, not authorized
 automatically by this roadmap.
 
 The [standing-rules slice](V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md) is
-implemented and locally verified. It preserves the two-step approval gate and
-all parent handlers/state; only presentation moves. Exact-SHA CI, clean build
-and candidate/production role gates are pending. Next possible presentation
+implemented and released. It preserves the two-step approval gate and all
+parent handlers/state; only presentation moves. Twenty-eight real-page cases,
+source/visual checks, exact-SHA CI, clean build and candidate/production role
+gates pass. Live checks only opened/changed/cancelled unsaved input. Next possible presentation
 slices are topic composition and individual Pending draft cards, selected and
 verified separately; no change to AI prompts, recipients or sending is implied.
+
+Suggested separate QA follow-up before further cleanup: investigate the
+recurring workspace emulator stall recorded in [TECH-DEBT.md](../../TECH-DEBT.md).
+Both recent releases needed unchanged-SHA retries after the last reported
+workspace case 20. The cause is unconfirmed; retain all assertions and mandatory
+release gates while reproducing/instrumenting it. This is not an implemented fix.
 
 Start in src/marketing/DailyDrafts.jsx and the existing outreach domain/API
 helpers. The page combines topic composition, recipient selection, generation,

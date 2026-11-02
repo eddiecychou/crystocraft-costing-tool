@@ -69,8 +69,8 @@ automatically.
 Standing-rules markup is now in DailyDraftsStandingRules.jsx under
 src/components/marketing; all state, loads, writes and prompt filtering remain
 in DailyDrafts.jsx. Twelve new real-page tests preserve the explicit approval
-gate, callback payloads and unsaved/error/busy behaviour. Local parity passes;
-the authorized release gates are pending. Live QA must only open/collapse the
+gate, callback payloads and unsaved/error/busy behaviour. Parity, exact-SHA CI
+and fresh candidate/production role gates pass. Live QA must only open/collapse the
 panel or open/cancel an editor; test rule writes with fictional fixtures.
 [Standing-rules slice](../plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
 
