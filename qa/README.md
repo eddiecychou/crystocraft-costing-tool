@@ -1,5 +1,11 @@
 # Automated regressions and release checks
 
+Workspace emulator cases reset both server data and the real page SDK client.
+The cache-isolation regression runs in the full page suite and UTC / Sydney /
+Los Angeles, retaining real hooks/listeners/transactions/rules and all deadlines.
+Use `npm run test:workspace-sync` inside the guarded loopback emulator; see the
+[QA reliability record](../docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
+
 ## Shipment display cleanup
 
 `npm run test:shipment-display` renders actual ERP comparison/stock presentation

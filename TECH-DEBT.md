@@ -355,6 +355,16 @@ zero failures/skips. Production is unchanged. The original trigger
 remains open; fail-fast guards are not evidence that it cannot recur:
 [active investigation](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
 
+The shipping documentation closeout 4ca351b2 later failed in the Los Angeles
+workspace run (41493089982): a second task was missing before any calendar
+advance. This differs from the earlier final audit-read stall. The QA-only
+fixture now resets the real page client/cache as well as emulator data, with
+a regression that fails against the original shared-client fixture. All old
+case bodies/assertions, timezones and deadlines remain; application/rules and
+the verified shipping deployment are unchanged. This closes a confirmed test
+isolation gap, not a proven root cause of every intermittent SDK failure.
+See the [3 November investigation](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md#3-november-documentation-closeout-failure--reset-the-page-client-too).
+
 ## Keeping this current
 
 Add an entry when you notice something like this in passing during

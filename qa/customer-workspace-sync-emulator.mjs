@@ -15,7 +15,7 @@ import {JSDOM} from 'jsdom'
 import {initializeTestEnvironment,assertFails} from '@firebase/rules-unit-testing'
 import {initializeApp as initializeAuditApp,deleteApp as deleteAuditApp} from 'firebase-admin/app'
 import {getFirestore as getAuditFirestore} from 'firebase-admin/firestore'
-import {doc,getDoc,getDocs,collection,setDoc,Timestamp} from 'firebase/firestore'
+import {doc,getDoc,getDocFromCache,getDocs,collection,setDoc,Timestamp} from 'firebase/firestore'
 import {calendarClock} from './local-day-clock.mjs'
 import {workspaceSyncPlugin} from './customer-workspace-sync-fixture.mjs'
 import {testStep} from './async-test-step.mjs'
@@ -37,12 +37,13 @@ before(async()=>{
  auditApp=initializeAuditApp({projectId:'crystocraft-rbac-test'},'workspace-audit')
  auditDb=getAuditFirestore(auditApp)
  db=env.authenticatedContext('sync_admin').firestore();globalThis.__workspaceSyncDb=db
+ globalThis.__workspaceSyncDbSetters=new Set()
  await mkdir(resolve('qa/out'),{recursive:true})
  scratch=await mkdtemp(resolve('qa/out/workspace-sync-'))
  await build({entryPoints:['src/pages/Dashboard.jsx','src/pages/CustomerDetail.jsx'],outdir:scratch,outExtension:{'.js':'.mjs'},bundle:true,banner:{js:'const Date=globalThis.__workspaceCalendarDate;'},jsx:'automatic',format:'esm',platform:'node',external:['react','react-dom','react-router-dom','lucide-react','firebase/firestore','firebase/storage'],plugins:[await workspaceSyncPlugin()]})
  Dashboard=(await import(pathToFileURL(join(scratch,'Dashboard.mjs')))).default;CustomerDetail=(await import(pathToFileURL(join(scratch,'CustomerDetail.mjs')))).default
 })
-after(async()=>{await auditDb?.terminate();if(auditApp)await deleteAuditApp(auditApp);await env?.cleanup();if(scratch)await rm(scratch,{recursive:true,force:true});dom?.window.close();delete globalThis.__workspaceSyncDb;delete globalThis.__workspaceCalendarDate;delete globalThis.__workspaceCalendarNow})
+after(async()=>{await auditDb?.terminate();if(auditApp)await deleteAuditApp(auditApp);await env?.cleanup();if(scratch)await rm(scratch,{recursive:true,force:true});dom?.window.close();delete globalThis.__workspaceSyncDb;delete globalThis.__workspaceSyncDbSetters;delete globalThis.__workspaceCalendarDate;delete globalThis.__workspaceCalendarNow})
 async function eventually(check,label){
  let last;const until=Date.now()+10000
  while(Date.now()<until){try{let result;await act(async()=>{await delay(25);result=check()});if(result)return}catch(e){last=e}}
@@ -62,7 +63,13 @@ function CustomerNavigation({id}) {
 }
 async function fixture(t,{withLegacy=false,withCategories=false}={}){
  const step=stepFor(t)
+ // Reset the client as well as the server. clearFirestore() does not reset a
+ // surviving Web SDK cache/watch stream. Both real page bundles receive this
+ // same fresh SDK instance; remounts inside a case still share it unchanged.
+ await step('terminate previous page client',()=>db.terminate())
  await step('clear Firestore',()=>env.clearFirestore());localStorage.clear()
+ db=env.authenticatedContext('sync_admin').firestore();globalThis.__workspaceSyncDb=db
+ for(const setDb of globalThis.__workspaceSyncDbSetters)setDb(db)
  await step('seed base records',()=>env.withSecurityRulesDisabled(async ctx=>{
   const admin=ctx.firestore();await setDoc(doc(admin,'users/sync_admin'),{role:'admin'})
   for(const id of [C,OTHER])await setDoc(doc(admin,'customers',id),{company_name:id,contacts:[],tags:withCategories&&id===C?['Retail Customer']:[],channels:[],...(withCategories?{crm_category:id===C?'Distributor':'Gift / OEM'}:{})})
@@ -71,9 +78,11 @@ async function fixture(t,{withLegacy=false,withCategories=false}={}){
  }))
  const hosts=[document.createElement('div'),document.createElement('div')];hosts.forEach(h=>document.body.append(h));let roots=hosts.map(h=>createRoot(h))
  const render=async(index,id=C)=>{await act(async()=>roots[index].render(React.createElement(MemoryRouter,{initialEntries:[index?`/customers/${id}`:'/dashboard']},index?React.createElement(React.Fragment,null,React.createElement(CustomerNavigation,{id}),React.createElement(Routes,null,React.createElement(Route,{path:'/customers/:id',element:React.createElement(CustomerDetail)}))):React.createElement(Dashboard))));await eventually(()=>workspace(hosts[index],id),'Actual page workspace loads')}
- t.after(async()=>{await step('unmount pages',async()=>{for(const r of roots)await act(async()=>r.unmount());hosts.forEach(h=>h.remove())})})
+ let closed=false
+ const close=async()=>{if(closed)return;closed=true;await step('unmount pages',async()=>{for(const r of roots)await act(async()=>r.unmount());hosts.forEach(h=>h.remove())})}
+ t.after(close)
  await step('render Dashboard',()=>render(0));await step('choose customer',()=>choose(hosts[0],C));await step('render CustomerDetail',()=>render(1))
- return {dash:hosts[0],customer:hosts[1],d:()=>workspace(hosts[0]),c:()=>workspace(hosts[1]),render,remount:async(index,id=C)=>{await act(async()=>roots[index].unmount());roots[index]=createRoot(hosts[index]);await render(index,id);if(!index)await choose(hosts[index],id)}}
+ return {dash:hosts[0],customer:hosts[1],d:()=>workspace(hosts[0]),c:()=>workspace(hosts[1]),render,close,remount:async(index,id=C)=>{await act(async()=>roots[index].unmount());roots[index]=createRoot(hosts[index]);await render(index,id);if(!index)await choose(hosts[index],id)}}
 }
 async function create(w,kind,text,{date,state}={}){await click(w,kind==='task'?'Add task':'Add note');await fill(w.querySelector('textarea'),text);if(date!==undefined)await fill(w.querySelector('input[type=date]'),date);if(state)await fill(w.querySelector('form select'),state);await save(w)}
 async function edit(w,text,next,{date,state}={}){await click(row(w,text),'Edit');await fill(w.querySelector('textarea'),next);if(date!==undefined)await fill(w.querySelector('input[type=date]'),date);if(state)await fill(w.querySelector('form select'),state);await save(w)}
@@ -296,4 +305,21 @@ test('real summary-status hook retains failure on Dashboard remount without AI o
  assert.match(v.dash.querySelector('[role="alert"]').textContent,/AI generation is disabled in the workspace sync fixture/)
  assert.equal(button(v.dash,'Update AI summaries').disabled,false)
  assert.deepEqual((await getDoc(cache)).data(),before)
+})
+
+test('Follow-ups Due fixtures isolate client caches and keep both real pages connected after reset',async t=>{
+ const first=await fixture(t)
+ await create(first.d(),'task','Previous case task',{date:PAST});await mirrored(first,'Previous case task',{date:PAST});await expectDue(first,1)
+ const oldDb=db,previous=(await getDocs(collection(db,'customers',C,'work_items'))).docs[0]
+ assert.equal((await getDocFromCache(previous.ref)).data().text,'Previous case task','First fixture really populated the SDK cache')
+ await first.close()
+ const next=await fixture(t)
+ assert.notEqual(db,oldDb,'A server reset must also replace the page client')
+ await assert.rejects(getDocFromCache(doc(db,previous.ref.path)),{code:'unavailable'},'Fresh client must not retain the prior task in its cache')
+ assert.equal((await auditDb.doc(previous.ref.path).get()).exists,false,'Server reset removed the prior task')
+ for(const w of [next.d(),next.c()])assert.ok(!row(w,'Previous case task'))
+ await expectDue(next,0)
+ await create(next.c(),'task','Current case task',{date:hkToday(),state:'waiting'});await mirrored(next,'Current case task',{date:hkToday(),state:'Waiting'});await expectDue(next,1)
+ await next.remount(0);await next.remount(1);await mirrored(next,'Current case task',{date:hkToday(),state:'Waiting'});await expectDue(next,1)
+ assert.equal((await getDocs(collection(db,'customers',C,'work_items'))).size,1)
 })

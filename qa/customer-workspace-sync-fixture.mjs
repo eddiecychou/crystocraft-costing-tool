@@ -39,7 +39,7 @@ export async function workspaceSyncPlugin(){
    const path=resolve(a.resolveDir,a.path);if(stubs.has(path))return {path,namespace:'sync-fixture'}
   })
   b.onLoad({filter:/.*/,namespace:'sync-fixture'},a=>({loader:'js',contents:a.path==='firebase'
-   ? 'export const db=globalThis.__workspaceSyncDb;export const storage={};export const authedUser=async()=>({uid:"sync_admin"});export const authHeader=async()=>({});'
+   ? 'export let db=globalThis.__workspaceSyncDb;globalThis.__workspaceSyncDbSetters?.add(value=>{db=value});export const storage={};export const authedUser=async()=>({uid:"sync_admin"});export const authHeader=async()=>({});'
    :stubs.get(a.path)}))
  }}
 }

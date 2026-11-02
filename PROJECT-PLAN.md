@@ -1,5 +1,13 @@
 # V8.20 — Shipment display cleanup — released, 3 November 2026
 
+The docs-only closeout 4ca351b2 later failed customer-merge-emulator in the Los
+Angeles task-mirroring cases (run 41493089982); product-search passed. Separate
+QA-only work resets the page SDK/cache along with server data and adds an
+isolation regression that fails against the old harness. All 22 prior case
+bodies remain byte-identical; 67 local guards/page/timezone cases pass. Production
+and all frozen shipping artifacts remain unchanged. Exact Linux verification
+is required before this follow-up is closed. [Investigation and limits](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md#3-november-documentation-closeout-failure--reset-the-page-client-too).
+
 First authorized shipping presentation slice moves ERP comparison and stock
 status badge to components/shipping/ShipmentReconciliation.jsx. Parent owns all
 reads/state/adoption, status warnings, totals, deposits, allocation/saves and
