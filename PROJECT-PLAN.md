@@ -1,4 +1,4 @@
-# V8.20 — Shipment display cleanup — release pending, 3 November 2026
+# V8.20 — Shipment display cleanup — released, 3 November 2026
 
 First authorized shipping presentation slice moves ERP comparison and stock
 status badge to components/shipping/ShipmentReconciliation.jsx. Parent owns all
@@ -8,7 +8,13 @@ page 1484→1420 lines, other 506 protected files unchanged. Thirteen component
 cases pass against original/extracted JSX, 40 invoice and 30 packing/PO cases
 pass before/after, lint passes, and eight desktop/mobile pairs are pixel/DOM /
 geometry identical. Read-only live checker baseline passes; no business writes.
-Source push, exact-SHA CI, build and fresh role/shipping release gates pending.
+Both exact-SHA jobs PASS for 8551bc98 in run 41490522130, attempt 1; full build
+and immediate CI preflights pass. Candidate 6ae8c8267c8fe2fc6a1a2daf and production
+6ae8c93578ac83f9425cab85 pass fresh admin/approved-customer and read-only shipping
+gates. Same static/server inputs reused; both CSS assets and all server source
+unchanged. Served index-CpYTLU-M.js and Firebase probes verified; production
+ready/current. Final fresh check 3 Nov 04:34:59 AEDT / 01:34:59 HKT. No order,
+stock, invoice, import or email action was performed. Docs closeout skips deploy.
 [Scope and evidence](docs/plans/V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
 
 # V8.20 — Refinement shared-auth cleanup — released, 3 November 2026

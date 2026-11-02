@@ -18,7 +18,8 @@ retain historical evidence and link their later release records.
 components/shipping/ShipmentReconciliation.jsx, leaving the parent 64 lines
 shorter. Exact restoration and before/after component/visual tests retain current
 behaviour; all calculations, subscriptions, adoption and financial/stock writes
-stay in the page. This is partial cleanup, not resolution of the entire large
+stay in the page. Both exact-SHA jobs, full build and fresh candidate/production
+role/shipping checks pass; released as 8551bc98. This is partial cleanup, not resolution of the entire large
 form. Further sections need separate bounded slices. See
 [current release status](docs/plans/V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
 

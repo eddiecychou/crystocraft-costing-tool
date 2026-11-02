@@ -1,4 +1,4 @@
-# Automated product search regressions
+# Automated regressions and release checks
 
 ## Shipment display cleanup
 
