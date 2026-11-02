@@ -1547,3 +1547,14 @@ CustomerPicker fixture tests its parent contract, not its internal search. Both
 live queues were empty; populated UI/actions were tested fictionally and the gap
 recorded, without creating business records or sending customer mail.
 [Verified Pending Review release](../plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
+
+### Bulk rewrite extraction needs async-state characterization
+
+2 November 2026: moving bulk controls into presentation preserved the page's
+sequential target snapshot, histories/memory, partial successes, timers and Clear
+confirmation. Test edits during awaits and a skipped target mid-batch, not only
+button states. Keep progress expiry frozen only for disclosed visual snapshots;
+test the real two-second behavior with a controlled unit-test clock. Apply and
+Clear success/failure/cancel ran through fictional services. Both live queues
+were empty, so populated action proof stayed fictional with no live writes/mail.
+[Verified bulk-toolbar release](../plans/V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).

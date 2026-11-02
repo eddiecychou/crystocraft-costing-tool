@@ -8,8 +8,8 @@ the Daily Drafts targeting and Sent-history/source-badge slices are released
 and verified after both exact-SHA jobs and fresh candidate/production role gates.
 Remaining work and release status are distinguished below.
 The standing-rules, topic-composer, attachment-control and master-refinement
-presentation slices, followed by Pending Review cards, are released and verified
-under the owner's subsequent explicit requests.
+presentation slices, followed by Pending Review cards and the bulk toolbar, are
+released and verified under the owner's subsequent explicit requests.
 
 Start with [CLAUDE.md](../../CLAUDE.md), the
 [maintenance map](../reference/MAINTENANCE-MAP.md),
@@ -25,7 +25,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 |---|---|---|---|
 | 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
-| 2 — Daily Drafts presentation | Seven presentation slices released; bulk toolbar in verification | Targeting, Sent/reply, rules, topic/master fields, attachments, master chat and Pending Review cards extracted; parent retains state, generation and writes | All seven slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
+| 2 — Daily Drafts presentation | Eight planned presentation slices released; workflow logic retained | Targeting, Sent/reply, rules, topic/master fields, attachments, master chat, cards and bulk controls extracted; parent retains state, generation and writes | All eight slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
 | 3 — repeated server authentication helpers | Proposed | Migrate one endpoint at a time to the existing shared helper when behaviour is proved equivalent | Role/module allow/deny matrix and response parity; higher risk than UI extraction |
 | 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
@@ -118,8 +118,8 @@ No subsequent presentation or server-helper slice is authorized by this plan.
 The newly authorized bulk-toolbar slice moves header/count, editor/progress/error
 and Clear-control markup into DailyDraftsPendingToolbar.jsx. The page retains
 all sequencing, snapshots, edit/history updates and confirmation/deletion.
-Twelve new cases and six pixel-identical desktop/mobile states pass locally;
-release gates are pending in the [bulk record](V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
+Twelve new cases, six pixel-identical desktop/mobile states, both exact-SHA jobs
+and fresh candidate/production role gates pass in the [bulk record](V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
 The next proposed technical-debt step is an access-control allow/deny contract
 matrix before any shared-auth migration. No permission policy changes, import
 repair, storage deletion or other roadmap work is included in this slice.

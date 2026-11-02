@@ -160,6 +160,8 @@ DailyDraftsPendingToolbar.jsx owns the Pending Review heading/count, bulk toggle
 Clear control and rewrite editor/progress/error markup. The page retains all
 state, sequential AI work, target snapshots, edits/history, confirmation/delete
 and reload handlers. Twelve fictional cases pin these contracts in prebuild/CI.
+Source/layout checks, both exact-SHA jobs and fresh candidate/production role
+gates pass. Live queues were empty; no Apply/Clear actions or emails were used.
 [Scope and release state](../plans/V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
 
 ## Subsequent cleanup batches
@@ -168,8 +170,8 @@ The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily 
 presentation work open, then one-at-a-time server helper convergence and shipping/
 finance internals. Prototype/import usage audit and storage retention are
 separate reviewed tracks. The first CRM batch and Daily Drafts targeting/Sent/
-standing-rules/topic-composer/attachment/master-refinement/Pending Review slices
-are released.
+standing-rules/topic-composer/attachment/master-refinement/Pending Review/bulk
+slices are released.
 Further presentation slices and later batches remain open; a separate recurring
 workspace CI stall is in TECH-DEBT.
 The confirmed QA deadline gaps are repaired and exact-SHA CI verified, with

@@ -617,4 +617,5 @@ Pending Review header/count, bulk editor/progress/errors and Clear controls in
 DailyDraftsPendingToolbar.jsx. The page keeps state, AI sequencing, snapshots,
 confirmation and writes. Twelve fictional cases pin async edit preservation,
 partial failures, progress expiry and Clear outcomes. Live QA is read-only;
-follow the linked record for release state and empty-queue limits.
+both exact-SHA jobs and fresh candidate/production role gates pass. Follow the
+linked record for release evidence and empty-queue limits.

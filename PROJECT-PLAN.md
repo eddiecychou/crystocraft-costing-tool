@@ -1,13 +1,21 @@
-# V8.20 — Daily Drafts bulk-toolbar cleanup — verification in progress, 2 November 2026
+# V8.20 — Daily Drafts bulk-toolbar cleanup — released, 2 November 2026
 
-Pending Review heading/count, bulk editor/progress/errors and Clear controls move
-into DailyDraftsPendingToolbar.jsx. Page state, sequential AI calls, target snapshots,
-edit/history updates, timers and confirmation/deletion remain unchanged. Restoring
-44 markup lines/imports recovers the whole baseline exactly. All 94 baseline
+Pending Review heading/count, bulk editor/progress/errors and Clear controls now
+live in DailyDraftsPendingToolbar.jsx. State, sequential AI calls, target snapshots,
+edit/history updates, timers and confirmation/delete remain unchanged in the page.
+Restoring 44 markup lines/imports recovers the baseline exactly. All 94 baseline
 real-page and 119 post-extraction AI-writer cases pass; 12 new cases pass on Node
-22. Lint/config and six pixel-identical desktop/mobile states pass. Exact-SHA CI
-and candidate/production role gates remain pending. Live QA will be read-only.
-[Scope and evidence](docs/plans/V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
+22. Full build, lint/config and six pixel-identical desktop/mobile states pass.
+Both exact-SHA GitHub jobs PASS on 24b6e10b in run 41446795119, attempt 1, with
+immediate preflight before both uploads. Candidate 6ae885d5d149a96441e4be3f and
+production 6ae886d9008d59024fdead2f pass fresh admin/customer routing, data,
+access, refresh and runtime gates; identical artifact, CSS/server unchanged.
+Served bundle /assets/index-B-KKw-76.js; final role check 2 Nov 23:53:05 AEDT /
+20:53:05 HKT. Both live queues were empty, correctly hiding Bulk/Clear; populated
+controls/actions were verified fictionally, without live rewrites/deletions,
+emails or business writes. Production ready/current; docs closeout [skip netlify].
+Next proposed debt work: access-control contract matrix before shared-auth changes.
+[Scope, verification limits and release evidence](docs/plans/V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
 
 # V8.20 — Daily Drafts Pending Review cleanup — released, 2 November 2026
 
