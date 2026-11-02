@@ -33,6 +33,7 @@ jobs:
       - run: npm run test:quote-pdf
       - run: npm run test:quote-excel
       - run: npm run test:invoice-units
+      - run: npm run test:shipment-display
       - run: npm run test:packing-po
       - run: npm run test:ai-writer
       - run: npm run test:catalogue-cover

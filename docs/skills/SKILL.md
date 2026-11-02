@@ -237,6 +237,7 @@ emulator job. App and private read-only credentials deployed with fresh two-role
 ### Shipments / Proforma Invoice / packing / UC registry
 - Pages: `ShipmentForm.jsx`, `Shipments.jsx`, `Shipping.jsx`, `ProformaInvoicePrint.jsx`, `PackingListEditor.jsx`, `PackingListPrint.jsx`, `UcRegistry.jsx`
 - Logic: `src/shipping.js` (`normLine` — **strict whitelist**), `src/packing.js`, `src/mrp.js`, `src/ucRegistry.js`, `src/soNumber.js`, `src/pdfFilename.js` · Edge fns: `extract-pi`, `uc`
+- Presentation: `components/shipping/ShipmentReconciliation.jsx` owns ERP comparison and the stock badge, with existing callback/domain helper contracts. ShipmentForm retains all state, reads, adoption, warnings, calculations and writes. `test:shipment-display` covers the views; [scope/release](../plans/V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
 - Component reserve panel (`OrderStockIssue.jsx` → `orderStock.js` → `mrp.computeRequirements`): a figurine line explodes via its Range BOM; a line whose `item_code` is itself a `range_components` code reserves that component 1:1 × qty (V8.15, **L-19**). A figurine line with no Range match / no BOM is a visible gap, never a silent drop.
 - A reserved (pre-production-in) line's qty is editable inline on all three panels (Component / Crystal / Packaging) — `adjustReservedLine` (`orderStock.js`) posts the reserve/release delta and rewrites the stored line; `EditableQty.jsx` is the cell (V8.15, `../plans/RESERVE-QTY-EDIT-AUDIT.md`).
 - V8.20 released 29 Oct 2026 (`b840a711`): reserved Crystal/Packaging panels also expose

@@ -47,6 +47,15 @@ existing import contracts until callers have been checked. Similar-looking
 features can have different privacy, pricing or lifecycle rules; do not merge
 their data models as part of a file extraction.
 
+## Shipping presentation ownership
+
+Shipping presentation ownership is now explicit in
+components/shipping/ShipmentReconciliation.jsx: ERP comparison (controlled onUse)
+and stock-status badge (existing domain labels/detail). ShipmentForm retains all
+state, subscriptions, import/adoption, financial calculations, confirmations and
+writes. See [display scope/release](../plans/V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
+Run test:shipment-display plus invoice/packing regressions and normal release gates.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

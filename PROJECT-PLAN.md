@@ -1,3 +1,16 @@
+# V8.20 — Shipment display cleanup — release pending, 3 November 2026
+
+First authorized shipping presentation slice moves ERP comparison and stock
+status badge to components/shipping/ShipmentReconciliation.jsx. Parent owns all
+reads/state/adoption, status warnings, totals, deposits, allocation/saves and
+stock transactions. Restoring markup/imports recovers the full page exactly;
+page 1484→1420 lines, other 506 protected files unchanged. Thirteen component
+cases pass against original/extracted JSX, 40 invoice and 30 packing/PO cases
+pass before/after, lint passes, and eight desktop/mobile pairs are pixel/DOM /
+geometry identical. Read-only live checker baseline passes; no business writes.
+Source push, exact-SHA CI, build and fresh role/shipping release gates pending.
+[Scope and evidence](docs/plans/V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
+
 # V8.20 — Refinement shared-auth cleanup — released, 3 November 2026
 
 The authorized discuss-outreach-draft cleanup delegates its existing marketing

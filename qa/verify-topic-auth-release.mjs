@@ -14,7 +14,8 @@ const endpoints = [
   { path: '/api/draft-outreach-topic', error: 'topic is required' },
   ...(scope === 'both' ? [{ path: '/api/discuss-outreach-draft', error: 'message is required' }] : []),
 ]
-const origin = base.origin, out = scope === 'both' ? 'qa/out/refinement-auth' : 'qa/out/topic-auth', phase = process.argv[3]
+const origin = base.origin, out = process.argv[5] || (scope === 'both' ? 'qa/out/refinement-auth' : 'qa/out/topic-auth'), phase = process.argv[3]
+assert.match(out, /^qa\/out\/[\w-]+$/, 'Evidence must stay in a named qa/out directory')
 assert.ok(['baseline', 'candidate', 'production'].includes(phase), 'Specify baseline, candidate or production')
 const require = createRequire(new URL('../.qa-playwright/package.json', import.meta.url))
 const { chromium } = require('playwright-core')

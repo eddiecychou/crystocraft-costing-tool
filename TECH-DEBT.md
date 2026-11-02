@@ -12,6 +12,16 @@ proposed behaviour-preserving work; it does not override accepted owner decision
 or authorize fixing unrelated entries as part of another change. Resolved entries
 retain historical evidence and link their later release records.
 
+## ShipmentForm mixes presentation with workflow orchestration — first slice extracted
+
+3 November 2026: ERP comparison and stock badge presentation now live in
+components/shipping/ShipmentReconciliation.jsx, leaving the parent 64 lines
+shorter. Exact restoration and before/after component/visual tests retain current
+behaviour; all calculations, subscriptions, adoption and financial/stock writes
+stay in the page. This is partial cleanup, not resolution of the entire large
+form. Further sections need separate bounded slices. See
+[current release status](docs/plans/V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
+
 ## Three edge functions have no auth check
 
 `customizer-render.js`, `customizer-palette.js`, and `enhance-image.js`

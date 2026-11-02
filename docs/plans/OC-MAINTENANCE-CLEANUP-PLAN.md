@@ -27,7 +27,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
 | 2 — Daily Drafts presentation | Eight planned presentation slices released; workflow logic retained | Targeting, Sent/reply, rules, topic/master fields, attachments, master chat, cards and bulk controls extracted; parent retains state, generation and writes | All eight slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
 | 3 — repeated server authentication helpers | Both pilot endpoints released/verified; broader convergence proposed | Drafting and refinement use the existing marketing helper; other endpoints require separate caller/capability review | 38 contracts, auth-only source restoration, both exact-SHA jobs and fresh candidate/production role gates pass; QA audit repair retains every assertion/deadline |
-| 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
+| 4 — shipping and finance page internals | First display slice implemented, release pending | ERP comparison and stock badge move to controlled presentation; page retains all workflows and calculations | Exact source restoration, 13 before/after display cases, invoice/packing regressions and eight pixel-identical pairs pass; release gates pending |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
 | 6 — storage retention | Separate proposed business/data track | Read-only ownership/reference/duplicate review, with evidence and proposed actions | No file deletion, lifecycle policy, stock correction or record migration without specific review/authorization |
 
@@ -175,6 +175,12 @@ in TECH-DEBT remain an accepted owner decision unless separately reconsidered.
 No broad auth/rules migration belongs in this cleanup batch.
 
 ## Batch 4 — shipping and finance
+
+The owner authorized the first [shipment display slice](V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
+It extracts ERP comparison and the stock-state badge only, with exact source /
+visual parity and independent display coverage. Parent calculations, subscriptions,
+adoption and transactions remain. Candidate/production release gates are pending.
+Further panels and pure-helper work remain proposed, separately bounded work.
 
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,

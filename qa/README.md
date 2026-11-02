@@ -1,5 +1,21 @@
 # Automated product search regressions
 
+## Shipment display cleanup
+
+`npm run test:shipment-display` renders actual ERP comparison/stock presentation
+and the real stock-status helper. Included in prebuild and product-search;
+invoice/packing and required emulator coverage remain. For an authorized release:
+
+```sh
+node qa/verify-topic-auth-release.mjs <https-url> candidate both qa/out/shipment-display
+node qa/verify-shipment-display-release.mjs <https-url> candidate
+```
+
+Use `production` for the actually published origin. The first script provides
+shared fresh-role/profile/data/access/refresh checks; the second views blank
+orders, a saved badge and customer shipping refusal without saving, importing,
+allocating, duplicating or stock actions. [Scope/evidence](../docs/plans/V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
+
 ## Access-control contract pilot
 
 Run `npm run test:access-contracts` for actual client/shared/AI-endpoint source
