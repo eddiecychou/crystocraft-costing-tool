@@ -41,6 +41,16 @@ required when publishing an app.
 
 # Daily Drafts presentation maintenance
 
+`qa/daily-drafts-pending.test.mjs` adds 22 real-page cases covering isolated
+card edits, customer/lead send and write targets, busy/error/retry, QA-self test
+send with badge expiry, Skip, 90-day block, attachments/links, manual WhatsApp,
+CRM create/link errors and field preservation, per-draft Enter/Shift+Enter chat,
+mismatch warning and separate note/conclusion/rule writes. All service actions
+are fictional, including email. CustomerPicker is a controlled-select fixture;
+its internal search is outside this slice. Storage ref/serverTimestamp stubs
+return synchronously like the SDK, and fixture modules declare resolveDir so
+React works in Node and browser bundles. Runs in test:ai-writer/prebuild/CI.
+
 `qa/daily-drafts-refinement.test.mjs` adds 12 real-page cases for master gating,
 autofocus/unsaved input, blank and Enter/button submissions, exact prompt/history/
 active-rule payloads, revised master fields, busy/error/retry, closed-panel

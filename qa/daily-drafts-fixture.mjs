@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 export function dailyDraftsFixturePlugin() {
   const categories = readFileSync('src/domain/customer.js', 'utf8').match(/export const CRM_CATEGORIES = \[[^\n]+/)[0]
   const boundary = names => names.map(name => `export const ${name}=(...args)=>globalThis.__dailyDraftsFixture.call(${JSON.stringify(name)},...args);`).join('\n')
+  const syncBoundary = names => names.map(name => `export const ${name}=(...args)=>globalThis.__dailyDraftsFixture.syncCall(${JSON.stringify(name)},...args);`).join('\n')
   const stubs = new Map([
     ['src/firebase', 'export const db={};export const storage={};' + boundary(['authedUser'])],
     ['src/domain/customer', categories + ';\nexport const primaryContact=contacts=>contacts?.find(c=>c.is_primary)||contacts?.[0];\n' + boundary(['loadCustomers', 'getCustomer', 'saveCustomer'])],
@@ -15,7 +16,7 @@ export function dailyDraftsFixturePlugin() {
     ['src/domain/outreachTopicTemplates', boundary(['listTopicTemplates', 'saveTopicTemplate', 'updateTopicTemplate', 'deleteTopicTemplate'])],
     ['src/outreachApi', boundary(['generateDrafts', 'draftTopic', 'sendPersonalEmail', 'discussDraft'])],
     ['src/productSource', boundary(['loadBlogProducts', 'loadBlogImages'])],
-    ['src/pages/CustomerAccounts', 'export const CustomerPicker=()=>null;'],
+    ['src/pages/CustomerAccounts', 'import {createElement as h} from "react"; export const CustomerPicker=({customers,value,onChange})=>h("select",{"aria-label":"Fictional customer picker",value,onChange:e=>onChange(e.target.value)},h("option",{value:""},"Choose fictional customer"),...customers.map(c=>h("option",{key:c.id,value:c.id},c.company_name)));'],
   ].map(([path, contents]) => [resolve(path), contents]))
   return { name: 'fictional-daily-drafts-boundaries', setup(b) {
     b.onResolve({ filter: /^firebase\/(firestore|storage)$/ }, a => ({ path: a.path, namespace: 'daily-drafts-qa' }))
@@ -23,10 +24,10 @@ export function dailyDraftsFixturePlugin() {
       const path = resolve(a.resolveDir, a.path)
       if (stubs.has(path)) return { path, namespace: 'daily-drafts-qa' }
     })
-    b.onLoad({ filter: /.*/, namespace: 'daily-drafts-qa' }, a => ({ loader: 'js', contents: stubs.get(a.path) || (
+    b.onLoad({ filter: /.*/, namespace: 'daily-drafts-qa' }, a => ({ loader: 'js', resolveDir: resolve('src'), contents: stubs.get(a.path) || (
       a.path === 'firebase/firestore'
-        ? 'export const collection=(_, ...p)=>({kind:"collection",path:p.join("/")});export const collectionGroup=(_,name)=>({kind:"group",path:name});export const doc=(_, ...p)=>({path:p.join("/")});export const where=(...args)=>args;export const query=(ref,...filters)=>({...ref,filters});' + boundary(['getDoc', 'getDocs', 'serverTimestamp', 'updateDoc'])
-        : boundary(['ref', 'uploadBytes', 'getDownloadURL'])
+        ? 'export const collection=(_, ...p)=>({kind:"collection",path:p.join("/")});export const collectionGroup=(_,name)=>({kind:"group",path:name});export const doc=(_, ...p)=>({path:p.join("/")});export const where=(...args)=>args;export const query=(ref,...filters)=>({...ref,filters});' + boundary(['getDoc', 'getDocs', 'updateDoc']) + syncBoundary(['serverTimestamp'])
+        : boundary(['uploadBytes', 'getDownloadURL']) + syncBoundary(['ref'])
     ) }))
   } }
 }
@@ -37,6 +38,11 @@ export function createDailyDraftsFixture() {
     crm_category: category, crm_status: 'Active', customer_type })
   const f = { calls: [], handlers: {}, customers: [customer('trade', 'Distributor'), customer('gift', 'Gift / OEM'), customer('retail', '', 'retail')],
     contacts: [], prior: [], existing: [], pending: [], sent: [], rules: [] }
+  f.syncCall = (name, ...args) => {
+    f.calls.push([name, ...args])
+    if (f.handlers[name]) return f.handlers[name](...args)
+    throw Error('Unexpected synchronous fictional boundary: ' + name)
+  }
   f.call = async (name, ...args) => {
     f.calls.push([name, ...args])
     if (f.handlers[name]) return f.handlers[name](...args)

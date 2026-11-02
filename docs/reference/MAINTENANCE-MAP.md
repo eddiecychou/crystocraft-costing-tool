@@ -146,6 +146,13 @@ Source/visual checks, both exact-SHA jobs and fresh candidate/production roles
 pass; live chat used unsaved QA-only copy with no recipient drafts/emails.
 [Scope and release state](../plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
 
+DailyDraftReviewCard.jsx owns each Pending Review card's markup, including
+editing, attachments, actions, WhatsApp controls, customer-link form and chat.
+The page retains the map/derived fields, state, all handlers, uploads, AI, writes
+and send/skip workflow. Props group unchanged view values, callbacks and limits;
+there is no new state owner. Twenty-two fictional real-page cases run in
+prebuild/product-search CI. [Scope and release state](../plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
+
 ## Subsequent cleanup batches
 
 The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily Drafts

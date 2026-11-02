@@ -53,6 +53,14 @@ fictional services. Its deployed QA may draft/refine a clearly labelled unsaved
 fictional master message to exercise the real chat; never Generate Drafts,
 remember/approve a live rule, save templates, upload or send customer email.
 [Refinement scope/release](../plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
+DailyDraftReviewCard.jsx contains Pending Review card presentation. DailyDrafts
+retains state/derived fields and all send/test/skip/block, upload, CRM linking,
+WhatsApp logging and AI handlers. The card receives grouped view/actions/limits
+with unchanged values and callbacks. Test actions only with fictional services;
+live QA must not Send, test-send, skip/block, link/create customers, log WhatsApp,
+save notes/rules, upload or generate drafts. If the live queue is empty, record
+that limit and use real-page fixtures for populated card/action evidence.
+[Pending Review scope/release](../plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
 **Data layer:** `src/domain/outreachDrafts.js` (`outreach_drafts/{id}`).
 **AI client:** `src/outreachApi.js`. **Edge fns:** `draft-outreach-topic`,
 `generate-outreach-drafts`, `discuss-outreach-draft`, `send-personal-email`.

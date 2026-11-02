@@ -602,3 +602,10 @@ real-page cases use fictional AI/rules. Live verification uses an unsaved QA-onl
 master and chat, with no recipient generation, saved rule or email send. Both
 exact-SHA jobs and fresh candidate/production role gates pass; follow the linked
 record for release evidence.
+
+The [Pending Review card slice](../plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md)
+moves card markup into DailyDraftReviewCard.jsx with grouped view/actions/limits.
+Page state, handlers, send/write boundaries and derived fields remain unchanged.
+Twenty-two fictional cases pin sender/recipient targets, edits/attachments, CRM,
+WhatsApp and AI behavior. Live QA stays read-only; an empty queue is recorded,
+not populated with test records. Follow the linked record for release state.
