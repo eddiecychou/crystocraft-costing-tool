@@ -130,6 +130,12 @@ templates and made no AI calls or email sends. Both exact-SHA jobs and fresh
 candidate/production role gates pass.
 [Scope and release state](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).
 
+DailyDraftsAttachments.jsx owns product/link controls and master image upload/
+gallery/selection markup only. State, loaders, public-image filtering, storage,
+the two-image limit and createDrafts attachment payload stay in DailyDrafts.
+Eleven new real-page cases run through fictional storage/data boundaries in
+test:ai-writer/prebuild/product-search CI. [Scope and release state](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
+
 ## Subsequent cleanup batches
 
 The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily Drafts

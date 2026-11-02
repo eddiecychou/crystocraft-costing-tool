@@ -16,6 +16,11 @@ let dom, scratch, DailyDrafts, createRoot, Simulate, root, originalFetch
 export const button = text => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
 export const click = async el => { assert.ok(el); await act(async () => el.click()) }
 export const change = async (el, value) => { assert.ok(el); await act(async () => Simulate.change(el, { target: { value } })) }
+export const changeFiles = async (el, files) => {
+  assert.ok(el)
+  Object.defineProperty(el, 'files', { configurable: true, value: files })
+  await act(async () => Simulate.change(el, { target: el }))
+}
 export async function remount() {
   if (root) await act(async () => root.unmount())
   root = createRoot(host)

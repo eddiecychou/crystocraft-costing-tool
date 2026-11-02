@@ -24,7 +24,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 |---|---|---|---|
 | 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
-| 2 — Daily Drafts presentation | Targeting, Sent, standing rules and topic composer released; broader batch open | Targeting, Sent/reply, standing-rules and topic/master-field presentation extracted; parent retains state, generation and writes | All four slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
+| 2 — Daily Drafts presentation | Targeting, Sent, standing rules and composer released; attachment controls in verification | Targeting, Sent/reply, standing-rules and topic/master-field presentation extracted; parent retains state, generation and writes | All four slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
 | 3 — repeated server authentication helpers | Proposed | Migrate one endpoint at a time to the existing shared helper when behaviour is proved equivalent | Role/module allow/deny matrix and response parity; higher risk than UI extraction |
 | 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
@@ -92,6 +92,13 @@ assembly and template handlers stay in the page. Nine new real-page cases and
 source/desktop/mobile parity pass. Both exact-SHA jobs and fresh candidate/
 production admin/customer gates pass in the [composer record](V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md). Attachments/product/link
 controls, refinement chat and Pending-review cards remain future slices.
+
+The newly authorized attachment slice moves product/link controls and master
+image presentation into DailyDraftsAttachments.jsx. Storage, gallery visibility,
+state, the two-image cap and payloads stay in the page. Eleven new cases, exact
+source recovery and six desktop/mobile screenshot pairs pass locally; release
+gates are pending in the [attachment record](V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
+Refinement chat, then Pending-review cards, are the next proposed slices.
 
 Start in src/marketing/DailyDrafts.jsx and the existing outreach domain/API
 helpers. The page combines topic composition, recipient selection, generation,

@@ -41,6 +41,16 @@ required when publishing an app.
 
 # Daily Drafts presentation maintenance
 
+`qa/daily-drafts-attachments.test.mjs` adds 11 real-page cases for cross-catalogue
+search/identity, public and legacy gallery filtering, selection/removal/image cap,
+manual link trimming/fallback/removal/cancel, storage path and file identity,
+busy/cancel/failure/retry and generated-draft attachment payload/reset. Uploads
+are fictional; network and unexpected business writes remain forbidden. The
+harness changeFiles helper supplies a fictional FileList to the real React input
+handler. Tests run in test:ai-writer/prebuild/product-search CI. Pair with source
+recovery and actual desktop/mobile DOM/geometry/screenshots; live QA does not
+upload files, call AI, persist templates/drafts or send email.
+
 `qa/daily-drafts-composer.test.mjs` adds nine real-page cases for saved-topic
 selection/manual edits, blank/busy gates, trimmed topic/active-rule payloads,
 master edits passed to generation, drafting error/retry, template save/update/

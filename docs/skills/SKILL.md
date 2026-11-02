@@ -587,3 +587,9 @@ src/components/marketing/DailyDraftsComposer.jsx. State, template CRUD, prompts,
 AI and generation handlers remain in DailyDrafts; media and refinement chat
 are later slices. Both exact-SHA jobs and fresh candidate/production role gates
 pass; see the linked record for release evidence.
+
+The [attachment-controls slice](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md)
+moves product/link and master image presentation into DailyDraftsAttachments.jsx.
+The parent retains storage/data reads, public gallery filtering, state, image
+limits and payloads. Its real-page tests use fictional uploads; deployed QA uses
+unsaved controls only. Follow the linked record for release status/evidence.

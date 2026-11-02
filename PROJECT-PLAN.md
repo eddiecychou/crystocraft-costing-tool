@@ -1,3 +1,15 @@
+# V8.20 — Daily Drafts attachment-controls cleanup — verification in progress, 2 November 2026
+
+Product/link controls and master image upload/gallery/selection markup move into
+DailyDraftsAttachments.jsx. State, storage, public-image filtering, image limits
+and generated-draft payloads remain unchanged in DailyDrafts; refinement chat
+stays for the next slice. Restoring 107 moved markup lines reproduces the whole
+baseline page exactly. All 48 real-page cases pass before extraction and all 73
+AI-writer cases pass afterward; lint/config and desktop/mobile layout checks pass.
+Six screenshot pairs match pixel for pixel with no horizontal overflow.
+Required exact-SHA CI and candidate/production role gates remain pending.
+[Scope and evidence](docs/plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
+
 # V8.20 — Daily Drafts topic-composer cleanup — released, 2 November 2026
 
 Saved-topic/topic controls and master subject/body markup now live in two

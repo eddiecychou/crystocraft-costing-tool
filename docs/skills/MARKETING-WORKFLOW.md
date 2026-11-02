@@ -39,6 +39,13 @@ presentation only). The parent retains state, all rule/template writes, AI calls
 prompts, attachments and refinement chat. Composer QA uses fictional service
 boundaries; deployed checks edit unsaved text only, without drafting, saving,
 generating or sending. [Composer scope/release](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).
+DailyDraftsAttachments.jsx separates product/link selection and master image
+controls. The parent keeps gallery loading/public visibility, all state and
+uploads, the current two-image limit, manual multi-link semantics and generated
+draft attachment payloads. Refinement chat stays in the page. Use fictional
+storage for success/error/busy checks; live QA makes unsaved selections/edits
+only, without uploading, drafting, saving templates, generating or sending.
+[Attachment scope/release](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
 **Data layer:** `src/domain/outreachDrafts.js` (`outreach_drafts/{id}`).
 **AI client:** `src/outreachApi.js`. **Edge fns:** `draft-outreach-topic`,
 `generate-outreach-drafts`, `discuss-outreach-draft`, `send-personal-email`.
