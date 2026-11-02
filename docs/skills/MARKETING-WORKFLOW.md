@@ -74,8 +74,11 @@ records or send mail. An empty live queue is recorded as a verification limit.
 
 draft-outreach-topic delegates its existing marketing capability check to
 lib/auth.js requireModule. Method/config ordering, prompts and responses remain
-unchanged; refinement still has its inline check. See the [contract matrix](../reference/ACCESS-CONTROL-MATRIX.md)
-and [single-endpoint release record](../plans/V8.20-TOPIC-AUTH-CLEANUP.md).
+unchanged. Refinement now delegates to the same helper after separate owner
+approval, preserving its 20-turn chat/memory/provider and response contracts.
+See the [contract matrix](../reference/ACCESS-CONTROL-MATRIX.md),
+[topic release](../plans/V8.20-TOPIC-AUTH-CLEANUP.md) and
+[refinement release status](../plans/V8.20-REFINEMENT-AUTH-CLEANUP.md).
 
 Flow: a free-text topic → `draftTopic()` → one master message →
 `generateDrafts(master, topicLabel, candidates, historicalHints, targetingNote,

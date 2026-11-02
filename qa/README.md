@@ -17,6 +17,12 @@ For an authorized topic-auth app release, run
 actual profiles and safe empty-topic endpoint probes; no model generation,
 draft saves or email sends. See the [release record](../docs/plans/V8.20-TOPIC-AUTH-CLEANUP.md).
 
+For refinement cleanup, append `both` after the phase argument to probe both
+draft-outreach-topic and discuss-outreach-draft in the same fresh role sessions:
+`node qa/verify-topic-auth-release.mjs <https-url> candidate both`.
+Evidence goes to ignored qa/out/refinement-auth; default topic-only arguments
+remain supported. See [refinement scope/gates](../docs/plans/V8.20-REFINEMENT-AUTH-CLEANUP.md).
+
 ## Product search
 
 ```sh

@@ -73,8 +73,8 @@ matching module; admin succeeds even for an empty requested array. Explicit
 
 - This is an ordinary human-account matrix. Both rule sets exclude the reserved
   mcp-range-upload-service identity at their signed-in helper. The shared helper
-  and remaining inline refinement source do not contain that UID exclusion; their profile
-  REST read is itself subject to Firestore rules. Service identities and their
+  does not contain that UID exclusion; both endpoints' profile REST read is
+  itself subject to Firestore rules. Service identities and their
   scoped exceptions must be reviewed separately before claiming general parity.
 - These gates do not check profile.status. Signup approval, suspension and
   customer routing are separate concerns; this is not an account-lifecycle audit.
@@ -90,15 +90,15 @@ matching module; admin succeeds even for an empty requested array. Explicit
   needed for this QA-only batch. Existing application verification remains dated
   in its own release record.
 
-Before a later authorized migration, replace only one endpoint's local gate with
-`requireModule(req, 'marketing')`, retain method/config ordering and its exact
+For subsequent authorized migrations, replace only one endpoint's local gate with
+requireModule and its caller-verified capability, retaining method/config ordering and its exact
 failure/success contracts, rerun both suites and all required checks, then use
 the normal candidate/production release gates. Transport-error normalization,
 policy changes and Node Admin SDK consolidation are separate work.
 
 ## Run and maintain
 
-`npm run test:access-contracts` runs 34 offline cases, including 14 explicit
+`npm run test:access-contracts` runs 38 offline cases, including 14 explicit
 profile rows. `qa/access-contracts-emulator.mjs` runs 15 role/session cases and
 180 read/create authorization decisions against real rule source:
 
@@ -118,7 +118,13 @@ suite. Workflow permissions, existing cases and timeouts are unchanged.
 ## First migration
 
 The owner authorized the topic endpoint's migration after this pilot. It now
-uses the existing shared marketing helper; refinement remains inline. All 34
+uses the existing shared marketing helper; refinement remained inline at that release. All 34
 contracts (three added for topic/provider behaviour) pass before and after the
 change. No role/module policy changes are included. Deployment state and new
 evidence are recorded separately in the [topic-auth record](../plans/V8.20-TOPIC-AUTH-CLEANUP.md).
+
+The owner subsequently authorized refinement. It now uses the same helper;
+four new refinement cases bring the offline total to 38, passing before and
+after the change. The [refinement record](../plans/V8.20-REFINEMENT-AUTH-CLEANUP.md)
+tracks its separate deployment gates. The pair's shared-helper use does not
+prove general service/account-lifecycle parity or authorize other migrations.

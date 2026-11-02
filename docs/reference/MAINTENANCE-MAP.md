@@ -19,6 +19,9 @@ The first authorized [topic-auth migration](../plans/V8.20-TOPIC-AUTH-CLEANUP.md
 reuses the existing marketing helper in one endpoint; consult its release record
 for actual deployment and fresh-role evidence. Other endpoint migrations remain
 separate work.
+The separately authorized [refinement migration](../plans/V8.20-REFINEMENT-AUTH-CLEANUP.md)
+now uses the same marketing helper; its record distinguishes local proof from
+candidate/production release verification. No client/rules change is included.
 
 ## Ownership and change boundaries
 

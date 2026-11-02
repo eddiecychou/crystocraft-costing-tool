@@ -24,28 +24,12 @@
 // Env (Netlify site vars, server-side only):
 //   DEEPSEEK_API_KEY — required (shared with generate-outreach-drafts.js)
 //   VITE_FIREBASE_PROJECT_ID / FIREBASE_PROJECT_ID — for admin-token verification
-import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
+import { requireModule } from './lib/auth.js'
 import { buildMemoryBlock } from './lib/draftMemory.js'
 import { EDDIE_STYLE_GUIDE } from './lib/writingStyle.js'
 
-const JWKS = createRemoteJWKSet(
-  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
-)
 const json = (b, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
-
-async function isFrontOffice(uid, idToken, projectId, moduleKey) {
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
-  if (!r.ok) return false
-  const doc = await r.json()
-  // V8.14: admin, OR a `staff` account whose modules[] contains this key.
-  const role = doc?.fields?.role?.stringValue
-  if (role === 'admin') return true
-  if (role !== 'staff') return false
-  const mods = (doc?.fields?.modules?.arrayValue?.values || []).map(v => v?.stringValue)
-  return mods.includes(moduleKey)
-}
 
 // Hard ceiling on how much conversation gets resent — protects both the
 // token budget and this function's running time; a chat this long should
@@ -102,16 +86,8 @@ export default async function handler(req) {
   const PROJECT_ID = Deno.env.get('VITE_FIREBASE_PROJECT_ID') || Deno.env.get('FIREBASE_PROJECT_ID')
   if (!DEEPSEEK_API_KEY || !PROJECT_ID) return json({ error: 'Server not configured' }, 500)
 
-  const token = (req.headers.get('authorization') || '').match(/^Bearer (.+)$/i)?.[1]
-  if (!token) return json({ error: 'Not signed in' }, 401)
-  let uid
-  try {
-    const { payload } = await jwtVerify(token, JWKS, {
-      issuer: `https://securetoken.google.com/${PROJECT_ID}`, audience: PROJECT_ID,
-    })
-    uid = payload.sub
-  } catch { return json({ error: 'Invalid or expired session' }, 401) }
-  if (!(await isFrontOffice(uid, token, PROJECT_ID, 'marketing'))) return json({ error: 'Access denied' }, 403)
+  const auth = await requireModule(req, 'marketing')
+  if (!auth.ok) return auth.response
 
   let body
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }

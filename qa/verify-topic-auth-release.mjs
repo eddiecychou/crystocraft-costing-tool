@@ -8,7 +8,13 @@ import assert from 'node:assert/strict'
 const base = new URL(process.argv[2] || '')
 assert.equal(base.protocol, 'https:')
 assert.ok(base.hostname === 'portal.crystocraft.com' || /^[a-f0-9]{24}--ua-product-manager\.netlify\.app$/.test(base.hostname), 'Only the canonical site or a pinned OC candidate is authorized')
-const origin = base.origin, out = 'qa/out/topic-auth', phase = process.argv[3]
+const scope = process.argv[4] || 'topic'
+assert.ok(['topic', 'both'].includes(scope), 'Probe scope must be topic or both')
+const endpoints = [
+  { path: '/api/draft-outreach-topic', error: 'topic is required' },
+  ...(scope === 'both' ? [{ path: '/api/discuss-outreach-draft', error: 'message is required' }] : []),
+]
+const origin = base.origin, out = scope === 'both' ? 'qa/out/refinement-auth' : 'qa/out/topic-auth', phase = process.argv[3]
 assert.ok(['baseline', 'candidate', 'production'].includes(phase), 'Specify baseline, candidate or production')
 const require = createRequire(new URL('../.qa-playwright/package.json', import.meta.url))
 const { chromium } = require('playwright-core')
@@ -19,12 +25,12 @@ for (const key of ['QA_ADMIN_EMAIL', 'QA_ADMIN_PASSWORD', 'QA_CUSTOMER_EMAIL', '
   env[key] = match[1].trim().replace(/^(['"])(.*)\1$/, '$2')
 }
 await mkdir(out, { recursive: true })
-const report = { origin, phase, checkoutSha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), roles: [] }
+const report = { origin, phase, scope, checkoutSha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), roles: [] }
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--disable-quic'] })
 try {
   const anonymous = await browser.newContext()
-  for (const [method, status, error] of [['POST', 401, 'Not signed in'], ['GET', 405, 'Method not allowed']]) {
-    const r = await anonymous.request.fetch(origin + '/api/draft-outreach-topic', { method, ...(method === 'POST' ? { data: '{}' } : {}) })
+  for (const endpoint of endpoints) for (const [method, status, error] of [['POST', 401, 'Not signed in'], ['GET', 405, 'Method not allowed']]) {
+    const r = await anonymous.request.fetch(origin + endpoint.path, { method, ...(method === 'POST' ? { data: '{}' } : {}) })
     assert.equal(r.status(), status)
     assert.deepEqual(await r.json(), { error })
   }
@@ -81,7 +87,7 @@ try {
         assert.ok(!/INTERNAL REMARKS|BILL OF MATERIALS|SUPPLIER QUOTES/.test(await page.locator('body').innerText()))
         result.catalogueAndDetail = 'PASS'
       }
-      const probe = await page.evaluate(async () => {
+      const probe = await page.evaluate(async endpoints => {
         const records = await new Promise((resolve, reject) => {
           const r = indexedDB.open('firebaseLocalStorageDb')
           r.onerror = () => reject(Error('QA auth store unavailable'))
@@ -99,15 +105,23 @@ try {
         if (!profile.ok) throw Error('QA profile read failed')
         const fields = (await profile.json()).fields
         // Empty input is deliberate: allowed admin reaches 400 before AI;
-        // customer must stop at 403. No usable topic is ever sent to this API.
-        const r = await fetch('/api/draft-outreach-topic', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}' })
-        return { status: r.status, body: await r.json(), email: account.email, role: fields.role?.stringValue, approval: fields.status?.stringValue || null }
-      })
+        // customer must stop at 403. Neither API receives usable generation input.
+        const probes = []
+        for (const endpoint of endpoints) {
+          const r = await fetch(endpoint.path, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}' })
+          probes.push({ path: endpoint.path, status: r.status, body: await r.json() })
+        }
+        return { ...probes[0], probes, email: account.email, role: fields.role?.stringValue, approval: fields.status?.stringValue || null }
+      }, endpoints)
       assert.equal(probe.email, result.identity)
       assert.equal(probe.role, role.toLowerCase())
       if (role === 'CUSTOMER') assert.equal(probe.approval, 'approved')
-      assert.equal(probe.status, role === 'ADMIN' ? 400 : 403)
-      assert.deepEqual(probe.body, { error: role === 'ADMIN' ? 'topic is required' : 'Access denied' })
+      assert.equal(probe.probes.length, endpoints.length)
+      for (const [i, endpoint] of endpoints.entries()) {
+        assert.equal(probe.probes[i].path, endpoint.path)
+        assert.equal(probe.probes[i].status, role === 'ADMIN' ? 400 : 403)
+        assert.deepEqual(probe.probes[i].body, { error: role === 'ADMIN' ? endpoint.error : 'Access denied' })
+      }
       result.profileAndEndpoint = probe
       await page.reload({ waitUntil: 'domcontentloaded' })
       if (role === 'ADMIN') {

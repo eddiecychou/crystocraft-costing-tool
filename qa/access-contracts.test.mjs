@@ -305,3 +305,60 @@ test('topic drafting retains unusable-result and exhausted-retry responses', asy
     assert.equal(f.aiCalls.length, mode === 'provider-failure' ? 2 : 1)
   }
 })
+
+test('refinement preserves contexts, memory, latest 20 turns and provider settings', async () => {
+  const e = endpoints[1], t = await token()
+  const history = Array.from({ length: 22 }, (_, i) => ({ role: i % 2 ? 'unexpected' : 'assistant', content: i === 3 ? 42 : `Fictional turn ${i}` }))
+  const body = { ...e.payload, productContext: 'Fictional product', customerContext: 'Fictional customer', message: '  Fictional instruction  ', history,
+    memory: { globalRules: ['Fictional writing rule'], contactSummary: 'Fictional summary', recentConclusions: ['Fictional conclusion'] } }
+  assert.equal((await e.handler(request(t, e, { body: JSON.stringify(body) }))).status, 200)
+  assert.equal(f.aiCalls.length, 1)
+  const call = f.aiCalls[0], payload = JSON.parse(call.options.body)
+  assert.equal(call.options.method, 'POST')
+  assert.equal(call.options.headers.Authorization, 'Bearer fictional-key')
+  assert.equal(payload.model, 'deepseek-flash')
+  assert.equal(payload.reasoning_effort, 'none')
+  assert.equal(payload.temperature, 0.6)
+  assert.equal(payload.max_tokens, 500)
+  assert.deepEqual(payload.response_format, { type: 'json_object' })
+  assert.equal(payload.messages.length, 23)
+  assert.equal(payload.messages[0].role, 'system')
+  for (const text of ['Fictional writing rule', 'Fictional summary', 'Fictional conclusion']) assert.ok(payload.messages[0].content.includes(text))
+  assert.deepEqual(payload.messages[1], { role: 'user', content: 'Current draft:\nSubject: Draft\nBody: Body\n\nProduct context: Fictional product\nCustomer context: Fictional customer' })
+  assert.deepEqual(payload.messages.slice(2, -1), history.slice(2).map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content) })))
+  assert.deepEqual(payload.messages.at(-1), { role: 'user', content: 'Fictional instruction' })
+})
+
+test('refinement preserves unchanged subject/body as null for question-only replies', async () => {
+  const e = endpoints[1], t = await token()
+  for (const value of [undefined, null, '']) {
+    reset(); f.aiResponses = [() => Response.json({ choices: [{ message: { content: JSON.stringify({ reply: 'Fictional answer', subject: value, body: value }) } }] })]
+    const r = await e.handler(request(t, e))
+    assert.equal(r.status, 200)
+    assert.deepEqual(await r.json(), { reply: 'Fictional answer', subject: null, body: null })
+    assert.equal(f.aiCalls.length, 1)
+  }
+})
+
+test('refinement retains the second attempt after provider or parse failure', async () => {
+  const e = endpoints[1], t = await token()
+  for (const failure of [() => new Response('', { status: 503 }), () => Response.json({ choices: [{ message: { content: '{bad' } }] }), () => { throw Error('Fictional provider outage') }]) {
+    reset(); f.aiResponses = [failure]
+    const r = await e.handler(request(t, e))
+    assert.equal(r.status, 200)
+    assert.deepEqual(await r.json(), e.expected)
+    assert.equal(f.aiCalls.length, 2)
+    assert.deepEqual(f.aiCalls[0], f.aiCalls[1])
+  }
+})
+
+test('refinement retains unusable-reply and exhausted-retry responses', async () => {
+  const e = endpoints[1], t = await token()
+  for (const mode of ['provider-failure', 'unusable-result']) {
+    reset()
+    const reply = mode === 'provider-failure' ? () => new Response('', { status: 503 }) : () => Response.json({ choices: [{ message: { content: '{"subject":"Fictional subject"}' } }] })
+    f.aiResponses = [reply, reply]
+    await deny(await e.handler(request(t, e)), 502, 'DeepSeek did not return a usable reply — try again.')
+    assert.equal(f.aiCalls.length, mode === 'provider-failure' ? 2 : 1)
+  }
+})

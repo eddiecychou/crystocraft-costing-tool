@@ -30,12 +30,18 @@ open oversight. If abuse ever shows up, add `requireFrontOffice()` (from
 
 ## Parallel implementations of the same auth check
 
+**Second pilot migration, 3 November 2026:** discuss-outreach-draft now delegates
+its marketing gate to requireModule. Topic/shared/client/rules are unchanged;
+38 before/after contracts pass. See the [refinement implementation/release status](docs/plans/V8.20-REFINEMENT-AUTH-CLEANUP.md).
+Other inline endpoint checks remain open; this does not complete global auth
+convergence or authorize policy changes.
+
 **First migration, 3 November 2026:** draft-outreach-topic now delegates to the
 existing requireModule(req, 'marketing'); shared helper and other endpoints are
 unchanged. Before/after contracts, exact source restoration, both required CI
 jobs and fresh candidate/production role gates pass; see
 [current implementation/release status](docs/plans/V8.20-TOPIC-AUTH-CLEANUP.md).
-The remaining inline refinement check is the next proposed slice. This does not
+At that stage the inline refinement check was the next proposed slice. This does not
 change permissions or the accepted open-endpoint posture below.
 
 **3 November 2026 — characterization, not convergence:** the

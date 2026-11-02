@@ -1,3 +1,15 @@
+# V8.20 — Refinement shared-auth cleanup — release pending, 3 November 2026
+
+The authorized discuss-outreach-draft cleanup delegates its existing marketing
+gate to requireModule. Master/per-draft chat history, writing memory, prompts,
+provider/retry settings, null unchanged fields and validation remain identical.
+Restoring only auth blocks reproduces the endpoint exactly; other 506 protected
+files are unchanged. All 38 contracts pass before/after, plus 119 AI-writer,
+11 configuration and whole-source lint checks. Shared live QA now supports both
+AI endpoints with empty input and never generates drafts or sends mail.
+Source push, both exact-SHA jobs, build and fresh candidate/production gates
+are pending. [Scope and release record](docs/plans/V8.20-REFINEMENT-AUTH-CLEANUP.md).
+
 # V8.20 — Topic-drafting shared-auth cleanup — released, 3 November 2026
 
 Owner approved the next single-endpoint migration. draft-outreach-topic now
