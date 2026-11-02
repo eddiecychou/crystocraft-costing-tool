@@ -1,13 +1,21 @@
-# V8.20 — Daily Drafts Sent-history cleanup — release in progress, 2 November 2026
+# V8.20 — Daily Drafts Sent-history cleanup — released, 2 November 2026
 
 The next slice extracts Sent rows/engagement badges/reply presentation and the
 shared Lead/Customer badge. All state, reply channels, logging, reads, generation
 and sending remain in the original page. Restoring moved source/imports recovers
 the entire baseline page exactly. Eight Sent + eight targeting real-page cases
 pass before/after; desktop/mobile closed/open DOM/control/geometry and PNG bytes
-match. No live writes or emails. Push/deployment are authorized only after both
-exact-SHA GitHub jobs, followed by fresh candidate/production role and feature
-checks. [Scope and release evidence](docs/plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
+match. Full build, 41 AI-writer cases, lint/config and complete local emulator
+command pass. Both exact-SHA GitHub jobs PASS on d3afd4c3 (run 41376548278,
+attempt 2), rechecked immediately before candidate/production uploads.
+Candidate 6ae7f57e7ef9c6e7979349dc and production 6ae7f6d3a23873c972a1727d pass
+fresh admin/customer routing, data, access, refresh and runtime gates using the
+same artifact; served bundle /assets/index-DfJEcGJX.js. Both origins load 188 Sent
+rows and pass reply-form open/channel/cancel checks. No reply logged, draft
+generated or email sent; Firebase rules/indexes and business records unchanged.
+Production is ready/current; last role verification 2 Nov, 13:39:15 AEDT /
+10:39:15 HKT. Broader Daily Drafts batch remains open.
+[Scope and release evidence](docs/plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
 
 # V8.20 — Daily Drafts targeting cleanup — released, 2 November 2026
 

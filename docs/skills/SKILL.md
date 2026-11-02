@@ -499,9 +499,11 @@ Start with the [maintenance map](../reference/MAINTENANCE-MAP.md) and
 [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md). The first CRM extraction
 is released; the first [Daily Drafts targeting slice](../plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md)
 is released and verified. Further slices/batches remain open.
-The next [Sent-history slice](../plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md) is
-locally verified with release gates pending; reply state/handlers stay in the
-page and only presentation/shared source badges move.
+The [Sent-history slice](../plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md) is also
+released after parity, exact-SHA CI and fresh candidate/production role gates;
+reply state/handlers stay in the page and only presentation/shared source badges
+move. Live verification opens/changes/cancels forms without submitting replies
+or sending customer emails.
 Pin baseline behaviour and move one
 responsibility at a time, keeping parent subscriptions, write/transaction
 boundaries, customer/lead separation and existing props/contracts. Preserve

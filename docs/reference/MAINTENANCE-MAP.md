@@ -105,12 +105,12 @@ CI). No live sends/business-record writes. First slice released after both
 exact-SHA GitHub jobs and fresh candidate/production role checks:
 [evidence and limits](../plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
 
-The next slice puts Sent rows/engagement/reply markup in DailyDraftsSentHistory.jsx
+The released Sent slice puts rows/engagement/reply markup in DailyDraftsSentHistory.jsx
 and the shared Pending/Sent source label in DailyDraftSourceBadge.jsx, both under
 src/components/marketing. The page retains reply state/channels and handleLogReply
 with its existing draft/CRM writes. Eight Sent cases share the real-page harness
-with the eight targeting cases and run in test:ai-writer. This slice is locally
-verified with release gates pending:
+with the eight targeting cases and run in test:ai-writer. Source/visual parity,
+both exact-SHA GitHub jobs and fresh candidate/production role gates pass:
 [scope/evidence](../plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
 
 ## Subsequent cleanup batches
@@ -118,7 +118,7 @@ verified with release gates pending:
 The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily Drafts
 presentation work open, then one-at-a-time server helper convergence and shipping/
 finance internals. Prototype/import usage audit and storage retention are
-separate reviewed tracks. The first CRM batch is released; the first Daily Drafts
-targeting slice is released. No later batch is implemented.
+separate reviewed tracks. The first CRM batch and Daily Drafts targeting/Sent
+slices are released. Further presentation slices and later batches remain open.
 Each has its own scope, invariants and acceptance checks. A file's size or an
 old comment is not evidence that a feature, stored file or import is unused.

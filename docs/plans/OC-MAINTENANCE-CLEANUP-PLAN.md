@@ -4,8 +4,8 @@ Updated 2 November 2026 (Sydney). Goal: make changes easier to understand and
 verify while preserving existing functions, screens and commercial behaviour.
 This is a staged maintenance plan, not a rewrite or permission to execute every
 future batch. The first CRM batch and separately requested fixes are released;
-the first Daily Drafts targeting slice is released and verified. The next Sent-
-history/source-badge slice is locally verified with release gates pending.
+the Daily Drafts targeting and Sent-history/source-badge slices are released
+and verified after both exact-SHA jobs and fresh candidate/production role gates.
 Remaining work and release status are distinguished below.
 
 Start with [CLAUDE.md](../../CLAUDE.md), the
@@ -22,7 +22,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 |---|---|---|---|
 | 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
-| 2 — Daily Drafts presentation | Targeting released; Sent slice in release; broader batch open | Targeting and Sent/reply presentation extracted; parent retains state, generation and writes | Targeting gates PASS; Sent local parity/16 real-page cases PASS, release CI and role gates pending |
+| 2 — Daily Drafts presentation | Targeting and Sent released; broader batch open | Targeting and Sent/reply presentation extracted; parent retains state, generation and writes | Both slices: source/visual parity, real-page tests, exact-SHA GitHub jobs and fresh candidate/production role gates PASS |
 | 3 — repeated server authentication helpers | Proposed | Migrate one endpoint at a time to the existing shared helper when behaviour is proved equivalent | Role/module allow/deny matrix and response parity; higher risk than UI extraction |
 | 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
@@ -48,7 +48,7 @@ the missing collection-scoped date indexes and added read-error/Retry handling;
 it was not silently folded into a behaviour-preserving move. Release identities,
 checks and results are in those reports, not inferred from the cycle label.
 
-## Batch 2 — presentation, targeting released; Sent slice in release
+## Batch 2 — presentation, targeting and Sent released
 
 On 2 November the owner requested the next cleanup task. The
 [targeting-panel slice](V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md) is implemented
@@ -57,9 +57,12 @@ after both GitHub jobs passed. The rest of the batch remains open. The following
 describes the boundary for subsequent slices.
 
 The [Sent-history slice](V8.20-DAILY-DRAFTS-SENT-CLEANUP.md) is now implemented
-and locally verified. It moves presentation and the shared source label only;
-reply handlers/state and writes remain in the page. Both exact-SHA jobs and
-candidate/production role checks are required before closing its authorized release.
+and released. It moves presentation and the shared source label only; reply
+handlers/state and writes remain in the page. Source/desktop/mobile parity,
+16 real-page cases, both exact-SHA GitHub jobs and fresh candidate/production
+admin/customer gates pass. Live reply forms were opened/changed/cancelled;
+no reply submitted or email sent. Further slices remain open, not authorized
+automatically by this roadmap.
 
 Start in src/marketing/DailyDrafts.jsx and the existing outreach domain/API
 helpers. The page combines topic composition, recipient selection, generation,

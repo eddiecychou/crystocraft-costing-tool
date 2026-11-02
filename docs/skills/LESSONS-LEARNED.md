@@ -1434,6 +1434,15 @@ standalone control alone would not prove its props still drive the original
 generation handler. Local parity is not GitHub CI or a live release gate.
 See [targeting cleanup](../plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
 
+The subsequent Sent-history extraction kept reply state and handleLogReply in
+the parent. Eight real-page cases pin source identity, exact CRM payloads,
+optional text, per-row state, busy handling and both write-failure stages through
+fictional boundaries. Preserve even existing retry behaviour during a pure
+extraction; changing write ordering is a separate repair. Live QA opens and
+cancels the form, while submitted replies are tested only with fictional data.
+Paired original/current desktop/mobile open and closed captures were byte-
+identical. [Sent cleanup evidence](../plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
+
 The code/data-size review is a dated baseline, not a maintainability score or a
 retention instruction. Label source SHA, counting boundary, metric/listing times,
 root versus nested counts, and Firestore data/index bytes versus Storage file
