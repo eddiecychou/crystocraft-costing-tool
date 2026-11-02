@@ -61,6 +61,13 @@ live QA must not Send, test-send, skip/block, link/create customers, log WhatsAp
 save notes/rules, upload or generate drafts. If the live queue is empty, record
 that limit and use real-page fixtures for populated card/action evidence.
 [Pending Review scope/release](../plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
+DailyDraftsPendingToolbar.jsx contains the Pending Review header and bulk-rewrite
+controls. It receives pendingCount, view state and unchanged callbacks; all
+sequencing, progress/expiry, partial-failure handling, edit/history updates and
+Clear confirmation/delete/reload remain in DailyDrafts. Use fictional services
+for Apply/Clear tests; live QA must not rewrite or delete customer drafts, seed
+records or send mail. An empty live queue is recorded as a verification limit.
+[Bulk scope/release](../plans/V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
 **Data layer:** `src/domain/outreachDrafts.js` (`outreach_drafts/{id}`).
 **AI client:** `src/outreachApi.js`. **Edge fns:** `draft-outreach-topic`,
 `generate-outreach-drafts`, `discuss-outreach-draft`, `send-personal-email`.

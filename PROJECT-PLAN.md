@@ -1,3 +1,14 @@
+# V8.20 — Daily Drafts bulk-toolbar cleanup — verification in progress, 2 November 2026
+
+Pending Review heading/count, bulk editor/progress/errors and Clear controls move
+into DailyDraftsPendingToolbar.jsx. Page state, sequential AI calls, target snapshots,
+edit/history updates, timers and confirmation/deletion remain unchanged. Restoring
+44 markup lines/imports recovers the whole baseline exactly. All 94 baseline
+real-page and 119 post-extraction AI-writer cases pass; 12 new cases pass on Node
+22. Lint/config and six pixel-identical desktop/mobile states pass. Exact-SHA CI
+and candidate/production role gates remain pending. Live QA will be read-only.
+[Scope and evidence](docs/plans/V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
+
 # V8.20 — Daily Drafts Pending Review cleanup — released, 2 November 2026
 
 Pending Review card markup now lives in DailyDraftReviewCard.jsx. State, derived

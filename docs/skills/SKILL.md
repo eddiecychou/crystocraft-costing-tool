@@ -611,3 +611,10 @@ WhatsApp and AI behavior. Live QA stays read-only; an empty queue is recorded,
 not populated with test records. Source/layout checks, both exact-SHA jobs and
 fresh candidate/production role gates pass. Follow the linked release record for
 evidence and the empty-queue verification limit.
+
+The [bulk-toolbar slice](../plans/V8.20-DAILY-DRAFTS-BULK-CLEANUP.md) separates
+Pending Review header/count, bulk editor/progress/errors and Clear controls in
+DailyDraftsPendingToolbar.jsx. The page keeps state, AI sequencing, snapshots,
+confirmation and writes. Twelve fictional cases pin async edit preservation,
+partial failures, progress expiry and Clear outcomes. Live QA is read-only;
+follow the linked record for release state and empty-queue limits.

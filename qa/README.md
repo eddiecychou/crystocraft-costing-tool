@@ -41,6 +41,15 @@ required when publishing an app.
 
 # Daily Drafts presentation maintenance
 
+`qa/daily-drafts-bulk.test.mjs` adds 12 real-page cases for count/empty/plural
+copy, focus/toggled input, blank gates, Enter/button/busy, exact per-target AI
+payload/history/memory, sequential progress, partial failure/retry, in-flight edit
+preservation, target snapshots across Skip, closed-panel completion, two-second
+progress expiry and Clear confirmation/cancel/success/failure. AI and deletion
+services are fictional; unexpected email/business writes fail. Tests run in
+test:ai-writer/prebuild/CI. The visual fixture freezes only the two-second progress
+expiry to compare stable layouts; unit tests assert its actual timed behavior.
+
 `qa/daily-drafts-pending.test.mjs` adds 22 real-page cases covering isolated
 card edits, customer/lead send and write targets, busy/error/retry, QA-self test
 send with badge expiry, Skip, 90-day block, attachments/links, manual WhatsApp,

@@ -1,3 +1,4 @@
+import DailyDraftsPendingToolbar from '../components/marketing/DailyDraftsPendingToolbar'
 import DailyDraftReviewCard from '../components/marketing/DailyDraftReviewCard'
 import DailyDraftsMasterChat from '../components/marketing/DailyDraftsMasterChat'
 import { DailyDraftsProductLinks, DailyDraftsImages } from '../components/marketing/DailyDraftsAttachments'
@@ -13,7 +14,6 @@ import {
   serverTimestamp, updateDoc,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { Loader2, Sparkles, Trash2, AlertTriangle } from 'lucide-react'
 import { db, storage, authedUser } from '../firebase'
 import { loadCustomers, primaryContact, getCustomer, saveCustomer, CRM_CATEGORIES } from '../domain/customer'
 import { normalizeContact, markContactOutreach, blockContactOutreach, promoteContactsToCustomers, linkContactToCustomer } from '../domain/marketingContact'
@@ -1331,50 +1331,13 @@ export default function DailyDrafts() {
       />
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-y-2">
-          <h2 className="text-sm text-ink">Pending review ({drafts.length})</h2>
-          {drafts.length > 0 && (
-            <div className="flex items-center gap-3">
-              <button onClick={() => setBulkRewriteOpen(v => !v)} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
-                <Sparkles size={12} /> Bulk rewrite
-              </button>
-              <button onClick={handleClearAllPending} className="text-xs text-red-600 hover:text-red-800 inline-flex items-center gap-1">
-                <Trash2 size={12} /> Clear all pending
-              </button>
-            </div>
-          )}
-        </div>
-
-        {bulkRewriteOpen && drafts.length > 0 && (
-          <div className="border border-ivory-dark rounded-none p-3 bg-ivory-light space-y-2">
-            <p className="text-xs text-ink-60">
-              Applies to all {drafts.length} pending draft{drafts.length === 1 ? '' : 's'} — same instruction, sent
-              to each one individually (a real AI call per draft, so this takes a moment for a large batch).
-            </p>
-            <div className="flex gap-2">
-              <input
-                value={bulkRewriteInput}
-                onChange={e => setBulkRewriteInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !bulkRewriteBusy && handleBulkRewrite()}
-                placeholder="e.g. sign off with 'Best regards, Eddie' instead"
-                className="input w-full text-sm" autoFocus
-                autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false"
-                name="bulk-rewrite-input"
-                data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
-                data-lpignore="true" data-1p-ignore="true"
-                data-dashlane-ignore="true" data-bwignore="true" data-form-type="other"
-                data-ms-editor="false"
-              />
-              <button type="button" onClick={handleBulkRewrite} disabled={bulkRewriteBusy || !bulkRewriteInput.trim()} className="btn-secondary shrink-0">
-                {bulkRewriteBusy ? <Loader2 size={14} className="animate-spin" /> : 'Apply to all'}
-              </button>
-            </div>
-            {bulkRewriteProgress && (
-              <p className="text-xs text-ink-60">Rewrote {bulkRewriteProgress.done} of {bulkRewriteProgress.total}…</p>
-            )}
-            {bulkRewriteError && <p className="text-xs text-red-600">{bulkRewriteError}</p>}
-          </div>
-        )}
+        <DailyDraftsPendingToolbar
+          pendingCount={drafts.length} bulkRewriteOpen={bulkRewriteOpen}
+          setBulkRewriteOpen={setBulkRewriteOpen} bulkRewriteInput={bulkRewriteInput}
+          setBulkRewriteInput={setBulkRewriteInput} bulkRewriteBusy={bulkRewriteBusy}
+          bulkRewriteProgress={bulkRewriteProgress} bulkRewriteError={bulkRewriteError}
+          handleBulkRewrite={handleBulkRewrite} handleClearAllPending={handleClearAllPending}
+        />
 
         {drafts.length === 0 && <div className="text-sm text-ink-60">No drafts waiting — generate some above.</div>}
         {drafts.map(d => {

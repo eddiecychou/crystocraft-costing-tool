@@ -156,6 +156,12 @@ candidate/production role gates pass. Live queues were empty; populated actions
 used fictional services only, with no live emails or business writes.
 [Scope and release state](../plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
 
+DailyDraftsPendingToolbar.jsx owns the Pending Review heading/count, bulk toggle,
+Clear control and rewrite editor/progress/error markup. The page retains all
+state, sequential AI work, target snapshots, edits/history, confirmation/delete
+and reload handlers. Twelve fictional cases pin these contracts in prebuild/CI.
+[Scope and release state](../plans/V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
+
 ## Subsequent cleanup batches
 
 The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily Drafts
