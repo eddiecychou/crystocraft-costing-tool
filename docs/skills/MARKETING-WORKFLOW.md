@@ -27,6 +27,10 @@ Audience/targeting markup is in `src/components/marketing/DailyDraftsTargeting.j
 the parent still owns all state, eligibility, generation and sends. This first
 slice is released after exact-SHA CI and fresh candidate/production role gates:
 [scope and evidence](../plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
+The next Sent-history slice uses DailyDraftsSentHistory.jsx and shared
+DailyDraftSourceBadge.jsx under src/components/marketing. Reply channels/state,
+handleLogReply and all writes remain in the page; local parity passes and release
+gates are pending. [Sent slice](../plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
 **Data layer:** `src/domain/outreachDrafts.js` (`outreach_drafts/{id}`).
 **AI client:** `src/outreachApi.js`. **Edge fns:** `draft-outreach-topic`,
 `generate-outreach-drafts`, `discuss-outreach-draft`, `send-personal-email`.

@@ -39,7 +39,7 @@ permission. The token's existing repository scope and expiry were preserved. The
 layout, real login or Firebase rules; release verification below remains
 required when publishing an app.
 
-# Daily Drafts targeting maintenance
+# Daily Drafts presentation maintenance
 
 `node --test qa/daily-drafts-targeting.test.mjs` renders the real DailyDrafts
 page/state/generation handler with fictional service/data boundaries. It also
@@ -49,6 +49,14 @@ creation/reset payloads unchanged. Network and unexpected send/upload/CRM calls
 are blocked by the fixture. DOM is initialized before React DOM imports.
 These are local behaviour checks, not live mail or Firebase release proof.
 See the [slice report](../docs/plans/V8.20-DAILY-DRAFTS-TARGETING-CLEANUP.md).
+
+`node --test qa/daily-drafts-sent.test.mjs` adds eight Sent-history/reply cases,
+also in test:ai-writer. Both suites use qa/daily-drafts-test-harness.mjs for the
+real page/hooks and qa/daily-drafts-fixture.mjs for fictional boundaries. Sent
+tests explicitly authorize only their mock draft/interaction writes and assert
+exact customer/lead paths and payloads, form retention, busy and failure/retry.
+Never submit real customer replies merely to verify this presentation refactor.
+[Sent slice evidence](../docs/plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
 
 # CRM component maintenance
 

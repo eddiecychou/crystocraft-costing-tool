@@ -1,23 +1,11 @@
-import { test, before, beforeEach, after, afterEach } from 'node:test'
+import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { createRequire } from 'node:module'
-import { build } from 'esbuild'
-import { JSDOM } from 'jsdom'
-import React, { act } from 'react'
-import { dailyDraftsFixturePlugin, createDailyDraftsFixture } from './daily-drafts-fixture.mjs'
+import { act } from 'react'
+import { setupDailyDraftsTests, host, f, button, click, change } from './daily-drafts-test-harness.mjs'
 
-const require = createRequire(import.meta.url)
-let dom, scratch, DailyDrafts, createRoot, Simulate, root, host, f, originalFetch
-const button = text => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
 const panel = () => [...host.querySelectorAll('h2')].find(e => e.textContent === '2. Who do you want to reach?').parentElement
 const targeting = () => panel().querySelector('input:not([type])')
 const includePrior = () => [...panel().querySelectorAll('label')].find(el => el.textContent.includes('Include people already contacted')).querySelector('input')
-const click = async el => { assert.ok(el); await act(async () => el.click()) }
-const change = async (el, value) => { assert.ok(el); await act(async () => Simulate.change(el, { target: { value } })) }
 const readyMaster = async () => {
   await change(host.querySelector('textarea'), '  Fictional topic  ')
   await click(button('Draft with AI'))
@@ -25,26 +13,7 @@ const readyMaster = async () => {
 const generated = () => f.calls.filter(c => c[0] === 'generateDrafts').at(-1)
 const candidateIds = () => generated()[3].map(c => c.id).sort()
 
-before(async () => {
-  dom = new JSDOM('<html><body></body></html>', { url: 'https://example.test/marketing' })
-  for (const name of ['window', 'document', 'HTMLElement', 'Event', 'MouseEvent']) globalThis[name] = dom.window[name]
-  globalThis.IS_REACT_ACT_ENVIRONMENT = true
-  createRoot = (await import('react-dom/client')).createRoot
-  Simulate = (await import('react-dom/test-utils')).Simulate
-  originalFetch = globalThis.fetch
-  globalThis.fetch = () => { throw Error('Network forbidden in Daily Drafts fixture') }
-  scratch = await mkdtemp(join(tmpdir(), 'daily-drafts-'))
-  await build({ entryPoints: ['src/marketing/DailyDrafts.jsx'], outfile: join(scratch, 'ui.mjs'), bundle: true, format: 'esm', platform: 'node', jsx: 'automatic',
-    plugins: [{ name: 'same-react-runtime', setup(b) { b.onResolve({ filter: /^(?:react(?:-dom)?(?:\/.*)?|lucide-react)$/ }, a => ({ path: require.resolve(a.path), external: true })) } }, dailyDraftsFixturePlugin()] })
-  DailyDrafts = (await import(pathToFileURL(join(scratch, 'ui.mjs')))).default
-})
-beforeEach(async () => {
-  f = createDailyDraftsFixture(); globalThis.__dailyDraftsFixture = f
-  host = document.createElement('div'); document.body.append(host); root = createRoot(host)
-  await act(async () => root.render(React.createElement(DailyDrafts)))
-})
-afterEach(async () => { await act(async () => root.unmount()); host.remove() })
-after(async () => { globalThis.fetch = originalFetch; delete globalThis.__dailyDraftsFixture; dom.window.close(); await rm(scratch, { recursive: true, force: true }) })
+setupDailyDraftsTests()
 
 test('empty master keeps every targeting control and generation disabled', async () => {
   assert.equal(panel().querySelector('input[value=b2b]').checked, true)

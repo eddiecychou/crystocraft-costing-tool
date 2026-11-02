@@ -1,3 +1,14 @@
+# V8.20 — Daily Drafts Sent-history cleanup — release in progress, 2 November 2026
+
+The next slice extracts Sent rows/engagement badges/reply presentation and the
+shared Lead/Customer badge. All state, reply channels, logging, reads, generation
+and sending remain in the original page. Restoring moved source/imports recovers
+the entire baseline page exactly. Eight Sent + eight targeting real-page cases
+pass before/after; desktop/mobile closed/open DOM/control/geometry and PNG bytes
+match. No live writes or emails. Push/deployment are authorized only after both
+exact-SHA GitHub jobs, followed by fresh candidate/production role and feature
+checks. [Scope and release evidence](docs/plans/V8.20-DAILY-DRAFTS-SENT-CLEANUP.md).
+
 # V8.20 — Daily Drafts targeting cleanup — released, 2 November 2026
 
 The next maintenance slice extracts audience/category controls, targeting note,
