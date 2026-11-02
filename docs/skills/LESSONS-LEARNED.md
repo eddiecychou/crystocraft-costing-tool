@@ -1534,3 +1534,16 @@ copy; no recipient drafts or emails. Refresh discarded QA state. Read textarea
 live values rather than expecting a value HTML attribute, and wait for actual
 catalogue/image loading before recording a role gate.
 [Verified refinement release](../plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
+
+### Pending-card extraction and faithful SDK fixtures
+
+2 November 2026: Pending Review presentation moved into a controlled card with
+grouped view/actions/limits, retaining parent state and all send/write workflows.
+Recover keys and imports along with markup for whole-page parity. The new tests
+caught a fixture mismatch: synchronous ref/serverTimestamp had been wrapped in
+promises. Correct those contracts and provide resolveDir for a React-importing
+custom namespace before trusting Node/browser fixture parity. A controlled-select
+CustomerPicker fixture tests its parent contract, not its internal search. Both
+live queues were empty; populated UI/actions were tested fictionally and the gap
+recorded, without creating business records or sending customer mail.
+[Verified Pending Review release](../plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).

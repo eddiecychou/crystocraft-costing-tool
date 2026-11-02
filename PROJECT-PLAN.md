@@ -1,14 +1,20 @@
-# V8.20 — Daily Drafts Pending Review cleanup — verification in progress, 2 November 2026
+# V8.20 — Daily Drafts Pending Review cleanup — released, 2 November 2026
 
-Pending Review card markup moves into DailyDraftReviewCard.jsx; page-owned state,
-derived fields, callbacks and send/write workflows are unchanged. Restoring 345
+Pending Review card markup now lives in DailyDraftReviewCard.jsx. State, derived
+fields, callbacks and all send/write workflows remain in the page. Restoring 345
 markup lines/imports recovers the whole baseline exactly. All 82 baseline real-page
-cases, 107 post-extraction AI-writer cases, Node 22's 22 new cases, lint/config
-and six pixel-identical desktop/mobile states pass. Fixture SDK sync values and
-browser React resolution were corrected; no app behavior changed. Exact-SHA CI
-and candidate/production role gates remain pending. Live QA will make no sends
-or business writes; an empty queue will be recorded rather than seeded.
-[Scope and evidence](docs/plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
+and 107 post-extraction AI-writer cases pass, including 22 new cases on Node 22;
+full build, lint/config and six pixel-identical desktop/mobile states pass.
+Both exact-SHA GitHub jobs PASS on 21dbd35b in run 41431411116, attempt 1, with
+immediate preflight before both uploads. Candidate 6ae86ab33d1e0c912f7aa4ad and
+production 6ae86b8db605d6feb9109b12 pass fresh admin/customer routing, data,
+access, refresh and runtime gates; identical artifact, CSS/server unchanged.
+Served bundle /assets/index-BTr-hBtc.js; final fresh role check 2 Nov 21:55:59 AEDT /
+18:55:59 HKT. Both live queues were empty (Sent 188); populated cards/actions
+were verified with fictional services, not seeded records or live customer sends.
+No live emails, AI calls, uploads or business writes. Production ready/current;
+documentation closeout uses [skip netlify].
+[Scope, limits and release evidence](docs/plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
 
 # V8.20 — Daily Drafts master refinement cleanup — released, 2 November 2026
 

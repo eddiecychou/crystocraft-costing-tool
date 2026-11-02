@@ -8,8 +8,8 @@ the Daily Drafts targeting and Sent-history/source-badge slices are released
 and verified after both exact-SHA jobs and fresh candidate/production role gates.
 Remaining work and release status are distinguished below.
 The standing-rules, topic-composer, attachment-control and master-refinement
-presentation slices are also released and verified under the owner's subsequent
-explicit requests.
+presentation slices, followed by Pending Review cards, are released and verified
+under the owner's subsequent explicit requests.
 
 Start with [CLAUDE.md](../../CLAUDE.md), the
 [maintenance map](../reference/MAINTENANCE-MAP.md),
@@ -25,7 +25,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 |---|---|---|---|
 | 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
-| 2 — Daily Drafts presentation | Six presentation slices released; Pending Review cards in verification | Targeting, Sent/reply, standing-rules, topic/master fields, attachments and master chat extracted; parent retains state, generation and writes | All six slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
+| 2 — Daily Drafts presentation | Seven presentation slices released; broader orchestration review remains open | Targeting, Sent/reply, rules, topic/master fields, attachments, master chat and Pending Review cards extracted; parent retains state, generation and writes | All seven slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
 | 3 — repeated server authentication helpers | Proposed | Migrate one endpoint at a time to the existing shared helper when behaviour is proved equivalent | Role/module allow/deny matrix and response parity; higher risk than UI extraction |
 | 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
@@ -106,13 +106,13 @@ DailyDraftsMasterChat.jsx. State, discussDraft payload/history, master updates a
 rule approval stay in the page. Twelve new cases, whole-page source recovery,
 six desktop/mobile screenshot pairs, both exact-SHA jobs and fresh candidate/production role gates pass in the
 [refinement record](V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
-Pending-review cards remain the next separately proposed slice.
+Pending Review cards were authorized separately and are recorded below.
 
 The authorized Pending Review slice moves card presentation to
 DailyDraftReviewCard.jsx. The page retains derived fields, state and every action/
-write handler. Twenty-two new cases, exact whole-page source recovery and six
-pixel-identical desktop/mobile states pass locally; release gates are pending
-in the [Pending Review record](V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
+write handler. Twenty-two new cases, exact whole-page source recovery, six
+pixel-identical desktop/mobile states, both exact-SHA jobs and fresh deployed
+role gates pass in the [Pending Review record](V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
 No subsequent presentation or server-helper slice is authorized by this plan.
 
 Start in src/marketing/DailyDrafts.jsx and the existing outreach domain/API

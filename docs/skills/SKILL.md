@@ -608,4 +608,6 @@ moves card markup into DailyDraftReviewCard.jsx with grouped view/actions/limits
 Page state, handlers, send/write boundaries and derived fields remain unchanged.
 Twenty-two fictional cases pin sender/recipient targets, edits/attachments, CRM,
 WhatsApp and AI behavior. Live QA stays read-only; an empty queue is recorded,
-not populated with test records. Follow the linked record for release state.
+not populated with test records. Source/layout checks, both exact-SHA jobs and
+fresh candidate/production role gates pass. Follow the linked release record for
+evidence and the empty-queue verification limit.

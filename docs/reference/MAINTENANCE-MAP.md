@@ -151,7 +151,10 @@ editing, attachments, actions, WhatsApp controls, customer-link form and chat.
 The page retains the map/derived fields, state, all handlers, uploads, AI, writes
 and send/skip workflow. Props group unchanged view values, callbacks and limits;
 there is no new state owner. Twenty-two fictional real-page cases run in
-prebuild/product-search CI. [Scope and release state](../plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
+prebuild/product-search CI. Source/layout checks, both exact-SHA jobs and fresh
+candidate/production role gates pass. Live queues were empty; populated actions
+used fictional services only, with no live emails or business writes.
+[Scope and release state](../plans/V8.20-DAILY-DRAFTS-PENDING-CLEANUP.md).
 
 ## Subsequent cleanup batches
 
@@ -159,7 +162,8 @@ The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily 
 presentation work open, then one-at-a-time server helper convergence and shipping/
 finance internals. Prototype/import usage audit and storage retention are
 separate reviewed tracks. The first CRM batch and Daily Drafts targeting/Sent/
-standing-rules/topic-composer/attachment/master-refinement slices are released.
+standing-rules/topic-composer/attachment/master-refinement/Pending Review slices
+are released.
 Further presentation slices and later batches remain open; a separate recurring
 workspace CI stall is in TECH-DEBT.
 The confirmed QA deadline gaps are repaired and exact-SHA CI verified, with
