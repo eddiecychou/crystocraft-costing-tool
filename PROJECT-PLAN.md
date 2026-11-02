@@ -1,4 +1,4 @@
-# V8.20 — workspace CI deadline repair — final CI pending, 2 November 2026
+# V8.20 — workspace CI deadline repair — verified, QA only, 2 November 2026
 
 Owner approved the next cleanup priority: diagnose/fix the recurring workspace
 emulator stall while preserving app behaviour and all assertions. Ten unchanged
@@ -10,8 +10,12 @@ unbounded-await/process gaps are now repaired with named deadlines and a 90s
 parent watchdog, preserving all assertions. Eight guard regressions include a
 real blocked test worker, false-success prevention and descendant cleanup;
 the full guarded local emulator sequence and final workspace command pass.
-Final exact-SHA CI is pending. The intermittent trigger is still unconfirmed;
-this is QA-only, not an app release.
+Both required GitHub jobs PASS on final QA source 31dbd725 in run 41407404097,
+attempt 1; exact-SHA release checker PASS. Linux retains all 22 real-page and
+33 timezone cases, plus eight safeguard cases, with zero failures/skips. The
+intermittent trigger is still unconfirmed and remains recorded for observation.
+Production 6ae8075a5dbf2de9ce84e74f stays ready/current (2 Nov, 18:41 AEDT /
+15:41 HKT); src/server/rules/workflow are unchanged and no app was deployed.
 [Investigation and evidence](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
 
 # V8.20 — Daily Drafts standing-rules cleanup — released, 2 November 2026

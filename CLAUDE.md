@@ -44,7 +44,7 @@ and save its evidence template with each release record.
 | `INDEX.md` | Pointer into `docs/skills/` (kept so old links resolve) |
 | `PROJECT-PLAN.md` | The running record, newest entry first. **Current cycle: V8.20.** Follow its newest linked release record for deployed source, evidence and remaining work. |
 | `docs/reference/MAINTENANCE-MAP.md` | Feature ownership, extracted CRM components and maintenance verification. The master skill remains the detailed feature-area router. |
-| `docs/plans/OC-MAINTENANCE-CLEANUP-PLAN.md` | Staged cleanup: released CRM batch and Daily Drafts targeting/Sent/standing-rules slices, recurring CI reliability follow-up, remaining presentation/auth/shipping work and separate archival/retention review; preserve existing functions and release gates. |
+| `docs/plans/OC-MAINTENANCE-CLEANUP-PLAN.md` | Staged cleanup: released CRM and Daily Drafts presentation slices, verified QA deadline repair with the intermittent trigger still open, remaining presentation/auth/shipping work and separate archival/retention review; preserve existing functions and release gates. |
 | `docs/plans/V8.20-SESSION-HANDOFF-2026-11-01.md` | Dated handoff linking portal follow-up, size audit, CRM cleanup, spacing/history fixes, current release evidence and remaining work; extends the 31 October business/release index. |
 | `docs/reference/OC-SIZE-SNAPSHOT-2026-11-01.md` | Historical per-module functions/code/files and Firebase counts/bytes, portable aggregate CSVs, scope/time and measurement limits. Not a live billing or deletion assessment. |
 | `docs/plans/JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |

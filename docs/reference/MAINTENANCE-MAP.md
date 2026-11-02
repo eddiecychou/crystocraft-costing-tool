@@ -129,5 +129,8 @@ finance internals. Prototype/import usage audit and storage retention are
 separate reviewed tracks. The first CRM batch and Daily Drafts targeting/Sent/
 standing-rules slices are released. Further presentation slices and later
 batches remain open; a separate recurring workspace CI stall is in TECH-DEBT.
+The confirmed QA deadline gaps are repaired and exact-SHA CI verified, with
+the triggering intermittent stall still open:
+[QA safeguards and limits](../plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
 Each has its own scope, invariants and acceptance checks. A file's size or an
 old comment is not evidence that a feature, stored file or import is unused.

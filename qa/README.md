@@ -78,7 +78,8 @@ both required release jobs stay intact. See the
 alone are not a root-cause repair.
 
 The full page suite and every timezone child now run through qa/test-process.mjs
-with an independent 90s deadline. It preserves real failure codes, kills its
+with an independent 90s deadline. It retains child failure codes in the error
+and always fails the caller, kills its
 owned process group on timeout and strips inherited NODE_TEST_CONTEXT so a new
 Node --test launcher cannot silently skip execution. Eight guard tests include
 a blocked promise, a real event-loop-blocked Node test worker and descendant

@@ -79,8 +79,11 @@ recurring workspace emulator stall recorded in [TECH-DEBT.md](../../TECH-DEBT.md
 Both recent releases needed unchanged-SHA retries after the last reported
 workspace case 20. The cause is unconfirmed; retain all assertions and mandatory
 release gates while reproducing/instrumenting it. The investigation repaired
-the confirmed missing await/process deadlines; final CI is pending. The
-original intermittent trigger was not reproduced and remains open.
+the confirmed missing await/process deadlines; both GitHub jobs passed on
+31dbd725, first attempt. All assertions remain and production is unchanged.
+The original intermittent trigger was not reproduced and remains open; a
+future failure should now name its step or bounded test process before any
+release proceeds. Further presentation slices remain separately proposed.
 [Evidence and limits](V8.20-WORKSPACE-CI-RELIABILITY.md).
 
 Start in src/marketing/DailyDrafts.jsx and the existing outreach domain/API

@@ -510,6 +510,11 @@ and fresh candidate/production role gates. Its presentation moves into
 DailyDraftsStandingRules; parent rule state/handlers and explicit approval
 before prompt inclusion remain unchanged. The recurring workspace CI stall is
 recorded separately in TECH-DEBT; no tests/gates were skipped to release.
+Workspace QA now has named async deadlines and a 90s owned-process watchdog
+in qa/test-process.mjs, retaining all real page/timezone assertions. It must
+fail on timeout and strip inherited NODE_TEST_CONTEXT for fresh test launchers;
+never replace it with force-exit-to-success. The original intermittent trigger
+remains unconfirmed. [QA repair and evidence](../plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
 Pin baseline behaviour and move one
 responsibility at a time, keeping parent subscriptions, write/transaction
 boundaries, customer/lead separation and existing props/contracts. Preserve

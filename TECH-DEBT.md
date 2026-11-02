@@ -265,7 +265,7 @@ requests. Fresh candidate/production admin and customer checks pass on source
 d99b8fc4 after both required GitHub jobs passed. Query paths, records and rules
 are unchanged. [Repair and release evidence](docs/plans/V8.20-LEAD-INTERACTION-HISTORY.md).
 
-## Recurring workspace emulator stall after the last reported case 20
+## Workspace emulator stall — deadlines repaired, intermittent trigger open
 
 Observed 2 November 2026 in first attempts of runs
 [41376548278](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/41376548278)
@@ -294,7 +294,9 @@ trigger in ten unchanged Node 22 runs, the complete local sequence or the
 instrumented Linux run (both jobs passed first attempt). Confirmed unbounded
 wait/process defects are now repaired locally with named 15s steps, a 45s case
 bound and an independent 90s parent watchdog; eight guard regressions preserve
-failures and verify worker cleanup. Final CI is pending. The original trigger
+failures and verify worker cleanup. Final QA source 31dbd725 passed both jobs
+first attempt in run 41407404097, with every page/timezone case retained and
+zero failures/skips. Production is unchanged. The original trigger
 remains open; fail-fast guards are not evidence that it cannot recur:
 [active investigation](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
 
