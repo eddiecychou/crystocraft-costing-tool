@@ -297,6 +297,17 @@ are unchanged. [Repair and release evidence](docs/plans/V8.20-LEAD-INTERACTION-H
 
 ## Workspace emulator stall — deadlines repaired, intermittent trigger open
 
+**3 November recurrence:** [run 41475038991](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/41475038991)
+now locates this occurrence at case 21's final Web SDK `read original cache`
+verification, after both actual pages loaded all selected periods. The named
+15s guard failed and blocked the release. That audit-only assertion now uses an
+independent emulator Admin SDK server read; its expected value, real page SDK /
+listeners / rules and all deadlines remain. All 63 local cases pass. This removes
+the observed audit's dependency on the UI watch stream; the underlying intermittent
+SDK stall mechanism is still unconfirmed. See the
+[investigation update](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md) and
+[refinement release gates](docs/plans/V8.20-REFINEMENT-AUTH-CLEANUP.md).
+
 Observed 2 November 2026 in first attempts of runs
 [41376548278](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/41376548278)
 and [41383016404](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/41383016404).

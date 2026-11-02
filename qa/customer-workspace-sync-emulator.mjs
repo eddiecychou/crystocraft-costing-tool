@@ -13,12 +13,14 @@ import {MemoryRouter,Routes,Route,useNavigate} from 'react-router-dom'
 import {Simulate} from 'react-dom/test-utils'
 import {JSDOM} from 'jsdom'
 import {initializeTestEnvironment,assertFails} from '@firebase/rules-unit-testing'
+import {initializeApp as initializeAuditApp,deleteApp as deleteAuditApp} from 'firebase-admin/app'
+import {getFirestore as getAuditFirestore} from 'firebase-admin/firestore'
 import {doc,getDoc,getDocs,collection,setDoc,Timestamp} from 'firebase/firestore'
 import {calendarClock} from './local-day-clock.mjs'
 import {workspaceSyncPlugin} from './customer-workspace-sync-fixture.mjs'
 import {testStep} from './async-test-step.mjs'
 if(!/^(127\.0\.0\.1|localhost):\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST||''))throw Error('Loopback Firestore emulator required; live fixture writes forbidden.')
-let env,db,Dashboard,CustomerDetail,scratch,dom
+let env,db,auditApp,auditDb,Dashboard,CustomerDetail,scratch,dom
 // Freeze only the bundled page calendar. SDK/network timers and polling stay real.
 const CALENDAR_NOW=Date.parse('2026-10-17T13:30:00Z')
 const C='sync_customer',OTHER='sync_other',legacy={description:'Original conversation',status:'Quoted',date:Timestamp.fromMillis(1000),follow_up_date:Timestamp.fromMillis(2000),attachments:[{name:'original.pdf'}]}
@@ -30,13 +32,17 @@ before(async()=>{
  globalThis.__workspaceCalendarNow=()=>CALENDAR_NOW
  globalThis.__workspaceCalendarDate=class extends Date {constructor(...args){super(...(args.length?args:[globalThis.__workspaceCalendarNow()]))}static now(){return globalThis.__workspaceCalendarNow()}}
  env=await initializeTestEnvironment({projectId:'crystocraft-rbac-test',firestore:{rules:await readFile('firestore.rules','utf8')}})
+ // Server-only audit reads must not depend on the page client's active watch
+ // stream. The real pages keep their original Web SDK, listeners and rules.
+ auditApp=initializeAuditApp({projectId:'crystocraft-rbac-test'},'workspace-audit')
+ auditDb=getAuditFirestore(auditApp)
  db=env.authenticatedContext('sync_admin').firestore();globalThis.__workspaceSyncDb=db
  await mkdir(resolve('qa/out'),{recursive:true})
  scratch=await mkdtemp(resolve('qa/out/workspace-sync-'))
  await build({entryPoints:['src/pages/Dashboard.jsx','src/pages/CustomerDetail.jsx'],outdir:scratch,outExtension:{'.js':'.mjs'},bundle:true,banner:{js:'const Date=globalThis.__workspaceCalendarDate;'},jsx:'automatic',format:'esm',platform:'node',external:['react','react-dom','react-router-dom','lucide-react','firebase/firestore','firebase/storage'],plugins:[await workspaceSyncPlugin()]})
  Dashboard=(await import(pathToFileURL(join(scratch,'Dashboard.mjs')))).default;CustomerDetail=(await import(pathToFileURL(join(scratch,'CustomerDetail.mjs')))).default
 })
-after(async()=>{await env?.cleanup();if(scratch)await rm(scratch,{recursive:true,force:true});dom?.window.close();delete globalThis.__workspaceSyncDb;delete globalThis.__workspaceCalendarDate;delete globalThis.__workspaceCalendarNow})
+after(async()=>{await auditDb?.terminate();if(auditApp)await deleteAuditApp(auditApp);await env?.cleanup();if(scratch)await rm(scratch,{recursive:true,force:true});dom?.window.close();delete globalThis.__workspaceSyncDb;delete globalThis.__workspaceCalendarDate;delete globalThis.__workspaceCalendarNow})
 async function eventually(check,label){
  let last;const until=Date.now()+10000
  while(Date.now()<until){try{let result;await act(async()=>{await delay(25);result=check()});if(result)return}catch(e){last=e}}
@@ -277,7 +283,7 @@ test(SUMMARY_CASE,{timeout:45000},async t=>{
   assert.deepEqual([...select.options].map(o=>o.value),['14','30','90','180','365'])
   for(const days of [180,365]){await step(`select ${label} ${days}`,()=>fill(select,String(days)));await step(`wait for ${label} ${days}`,()=>eventually(()=>workspace(host).textContent.includes('Saved '+days+' day customer context'),'Selected long-period saved summary appears'))}
  }
- assert.equal((await step('read original cache',()=>getDoc(doc(db,'dashboard_cache/weekly_summary')))).data().items[0].digest,'Current saved summary')
+ assert.equal((await step('read original cache',()=>auditDb.doc('dashboard_cache/weekly_summary').get())).data().items[0].digest,'Current saved summary')
 })
 
 test('real summary-status hook retains failure on Dashboard remount without AI or cache writes',async t=>{

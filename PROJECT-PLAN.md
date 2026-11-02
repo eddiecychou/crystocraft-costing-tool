@@ -8,7 +8,11 @@ files are unchanged. All 38 contracts pass before/after, plus 119 AI-writer,
 11 configuration and whole-source lint checks. Shared live QA now supports both
 AI endpoints with empty input and never generates drafts or sends mail.
 Source push, both exact-SHA jobs, build and fresh candidate/production gates
-are pending. [Scope and release record](docs/plans/V8.20-REFINEMENT-AUTH-CLEANUP.md).
+are pending. Initial 3b51c605 correctly blocked on an existing workspace audit
+read timeout in run 41475038991; product-search passed. A QA-only independent
+server read retains the original assertion/deadlines and passes all 63 local
+workspace/guard/timezone cases. The low-level SDK trigger remains unconfirmed.
+[Scope and release record](docs/plans/V8.20-REFINEMENT-AUTH-CLEANUP.md).
 
 # V8.20 — Topic-drafting shared-auth cleanup — released, 3 November 2026
 
