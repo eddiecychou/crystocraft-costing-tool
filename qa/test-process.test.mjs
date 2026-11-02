@@ -38,6 +38,8 @@ test('timeout stops a child test process and its descendant worker', async t => 
   try { runNodeTest(['-e', parent], { label: 'worker fixture', timeoutMs: 1500, stdio: 'pipe' }) }
   catch (error) { failure = error }
   assert.equal(failure?.code, 'QA_PROCESS_TIMEOUT')
+  // Signal delivery is asynchronous; let any in-flight filesystem write settle.
+  await delay(100)
   const stopped = await readFile(marker, 'utf8')
   await delay(100)
   assert.equal(await readFile(marker, 'utf8'), stopped, 'Descendant heartbeat must stop after the process-group deadline')
