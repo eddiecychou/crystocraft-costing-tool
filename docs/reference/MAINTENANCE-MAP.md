@@ -138,6 +138,12 @@ test:ai-writer/prebuild/product-search CI. Source/visual checks, both exact-SHA
 jobs and fresh candidate/production role gates pass, without live uploads or sends.
 [Scope and release state](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
 
+DailyDraftsMasterChat.jsx owns the master-message refinement toggle, history,
+input and Send/remember controls only. DailyDrafts retains chat state, AI request/
+history payloads, master updates, errors and rule approval. Twelve new real-page
+cases use fictional AI/rule services in test:ai-writer/prebuild/product-search CI.
+[Scope and release state](../plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
+
 ## Subsequent cleanup batches
 
 The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily Drafts

@@ -41,6 +41,15 @@ required when publishing an app.
 
 # Daily Drafts presentation maintenance
 
+`qa/daily-drafts-refinement.test.mjs` adds 12 real-page cases for master gating,
+autofocus/unsaved input, blank and Enter/button submissions, exact prompt/history/
+active-rule payloads, revised master fields, busy/error/retry, closed-panel
+completion, redraft semantics and remember-rule pending/approval/failure. Services
+are fictional and unexpected sends/writes fail. It runs in test:ai-writer/prebuild/
+product-search CI. Pair with source recovery and desktop/mobile long-history
+layout checks. Deployed QA uses a labelled unsaved fictional master/chat only;
+never generate recipient drafts, save rules/templates or send email.
+
 `qa/daily-drafts-attachments.test.mjs` adds 11 real-page cases for cross-catalogue
 search/identity, public and legacy gallery filtering, selection/removal/image cap,
 manual link trimming/fallback/removal/cancel, storage path and file identity,

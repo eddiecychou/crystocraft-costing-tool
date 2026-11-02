@@ -46,6 +46,13 @@ draft attachment payloads. Refinement chat stays in the page. Use fictional
 storage for success/error/busy checks; live QA makes unsaved selections/edits
 only, without uploading, drafting, saving templates, generating or sending.
 [Attachment scope/release](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
+DailyDraftsMasterChat.jsx owns master refinement-chat presentation only. State,
+discussDraft payload/history, master updates and the pending-rule approval gate
+stay in DailyDrafts. The refinement slice tests AI/error/approval paths with
+fictional services. Its deployed QA may draft/refine a clearly labelled unsaved
+fictional master message to exercise the real chat; never Generate Drafts,
+remember/approve a live rule, save templates, upload or send customer email.
+[Refinement scope/release](../plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
 **Data layer:** `src/domain/outreachDrafts.js` (`outreach_drafts/{id}`).
 **AI client:** `src/outreachApi.js`. **Edge fns:** `draft-outreach-topic`,
 `generate-outreach-drafts`, `discuss-outreach-draft`, `send-personal-email`.

@@ -1,3 +1,14 @@
+# V8.20 — Daily Drafts master refinement cleanup — verification in progress, 2 November 2026
+
+Master chat presentation moves into DailyDraftsMasterChat.jsx. State, AI requests,
+history/prompt payloads, master updates and pending-rule approval stay in the
+page. Restoring 38 moved markup lines reproduces the whole baseline exactly.
+All 60 baseline real-page and 85 post-extraction AI-writer cases pass; lint/config
+and six pixel-identical desktop/mobile screenshot pairs pass. Long history keeps
+the original 224px scroll box with no horizontal overflow. Exact-SHA CI and
+candidate/production role gates remain pending.
+[Scope and evidence](docs/plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
+
 # V8.20 — Daily Drafts attachment-controls cleanup — released, 2 November 2026
 
 Product/link controls and master image upload/gallery/selection markup now live

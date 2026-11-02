@@ -594,3 +594,10 @@ The parent retains storage/data reads, public gallery filtering, state, image
 limits and payloads. Its real-page tests use fictional uploads; deployed QA uses
 unsaved controls only. Both exact-SHA jobs and fresh candidate/production role
 gates pass; follow the linked record for release evidence.
+
+The [master-refinement slice](../plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md)
+moves the master chat toggle/history/input/buttons into DailyDraftsMasterChat.jsx.
+State, AI payloads/history and pending-rule review remain in DailyDrafts. Twelve
+real-page cases use fictional AI/rules. Live verification uses an unsaved QA-only
+master and chat, with no recipient generation, saved rule or email send. Follow
+the linked record for release status/evidence.
