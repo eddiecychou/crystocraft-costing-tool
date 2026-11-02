@@ -289,9 +289,13 @@ qa/customer-workspace-sync-fixture.mjs, qa/local-day-clock.mjs and
 .github/workflows/product-search.yml. Evidence:
 [standing-rules release](docs/plans/V8.20-DAILY-DRAFTS-STANDING-RULES-CLEANUP.md).
 
-Owner approved investigation on 2 November. Ten unchanged Node 22 runs and the
-complete local emulator sequence pass; Linux phase diagnostics are being added
-without changing assertions or application code. Cause is still unconfirmed:
+Owner-approved investigation on 2 November could not reproduce the original
+trigger in ten unchanged Node 22 runs, the complete local sequence or the
+instrumented Linux run (both jobs passed first attempt). Confirmed unbounded
+wait/process defects are now repaired locally with named 15s steps, a 45s case
+bound and an independent 90s parent watchdog; eight guard regressions preserve
+failures and verify worker cleanup. Final CI is pending. The original trigger
+remains open; fail-fast guards are not evidence that it cannot recur:
 [active investigation](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
 
 ## Keeping this current

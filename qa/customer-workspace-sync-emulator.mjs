@@ -2,7 +2,7 @@
 // data on a loopback emulator only. No .env, service account, or network API.
 import {test,before,after} from 'node:test'
 import assert from 'node:assert/strict'
-import {readFile,mkdtemp,rm} from 'node:fs/promises'
+import {readFile,mkdir,mkdtemp,rm} from 'node:fs/promises'
 import {resolve,join} from 'node:path'
 import {pathToFileURL} from 'node:url'
 import {setTimeout as delay} from 'node:timers/promises'
@@ -31,7 +31,8 @@ before(async()=>{
  globalThis.__workspaceCalendarDate=class extends Date {constructor(...args){super(...(args.length?args:[globalThis.__workspaceCalendarNow()]))}static now(){return globalThis.__workspaceCalendarNow()}}
  env=await initializeTestEnvironment({projectId:'crystocraft-rbac-test',firestore:{rules:await readFile('firestore.rules','utf8')}})
  db=env.authenticatedContext('sync_admin').firestore();globalThis.__workspaceSyncDb=db
- scratch=await mkdtemp(resolve('.qa-workspace-sync-'))
+ await mkdir(resolve('qa/out'),{recursive:true})
+ scratch=await mkdtemp(resolve('qa/out/workspace-sync-'))
  await build({entryPoints:['src/pages/Dashboard.jsx','src/pages/CustomerDetail.jsx'],outdir:scratch,outExtension:{'.js':'.mjs'},bundle:true,banner:{js:'const Date=globalThis.__workspaceCalendarDate;'},jsx:'automatic',format:'esm',platform:'node',external:['react','react-dom','react-router-dom','lucide-react','firebase/firestore','firebase/storage'],plugins:[await workspaceSyncPlugin()]})
  Dashboard=(await import(pathToFileURL(join(scratch,'Dashboard.mjs')))).default;CustomerDetail=(await import(pathToFileURL(join(scratch,'CustomerDetail.mjs')))).default
 })

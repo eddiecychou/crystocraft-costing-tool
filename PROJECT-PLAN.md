@@ -1,11 +1,17 @@
-# V8.20 — workspace CI reliability — investigation in progress, 2 November 2026
+# V8.20 — workspace CI deadline repair — final CI pending, 2 November 2026
 
 Owner approved the next cleanup priority: diagnose/fix the recurring workspace
 emulator stall while preserving app behaviour and all assertions. Ten unchanged
 Node 22.23.4 workspace runs and the full UTC emulator sequence pass locally;
 cause remains unconfirmed. Named, bounded QA steps now expose the missing phase
 on the Linux runner; local diagnostics + all workspace/timezone cases pass.
-This is a QA-only checkpoint, not a completed root-cause fix or app release.
+Diagnostic Linux run 41404582774 passed both jobs first attempt. Confirmed
+unbounded-await/process gaps are now repaired with named deadlines and a 90s
+parent watchdog, preserving all assertions. Eight guard regressions include a
+real blocked test worker, false-success prevention and descendant cleanup;
+the full guarded local emulator sequence and final workspace command pass.
+Final exact-SHA CI is pending. The intermittent trigger is still unconfirmed;
+this is QA-only, not an app release.
 [Investigation and evidence](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
 
 # V8.20 — Daily Drafts standing-rules cleanup — released, 2 November 2026

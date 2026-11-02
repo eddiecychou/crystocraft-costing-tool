@@ -1414,6 +1414,23 @@ unlocked retry after Dashboard remount, and confirms the saved cache is unchange
 Run the complete CI emulator command when changing Dashboard/CustomerDetail imports,
 not only prebuild: prebuild does not include the page-sync emulator job.
 
+### A polling deadline cannot interrupt the operation it is awaiting
+
+2 November 2026: CI twice reached its job limit after the last reported
+workspace case 20. The original intermittent trigger was not reproduced by
+ten unchanged Node 22 runs or a phase-instrumented Linux run, so it is not
+claimed repaired. A confirmed harness gap was independent of that trigger:
+eventually checked time only around await act; a stuck await never returned
+to the check, and no parent-process deadline bounded the suite/worker.
+
+Named Node deadlines now fail asynchronous stages with their exact label;
+the parent watchdog also interrupts a busy JS worker and cleans up its owned
+process group, always failing the run. Eight fault tests verify those paths.
+A real nested Node-worker test caught NODE_TEST_CONTEXT inheritance returning
+false success; the new launcher strips that internal flag. Keep every original
+assertion and real stateful hook; do not hide failures with force-exit, retries
+or a longer job timeout. [QA repair and limits](../plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
+
 ### Preserve the baseline before splitting a large page
 
 1 November 2026: the first CRM cleanup moved independent viewers/cards/dialogs

@@ -77,6 +77,15 @@ both required release jobs stay intact. See the
 [CI investigation](../docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md); diagnostics
 alone are not a root-cause repair.
 
+The full page suite and every timezone child now run through qa/test-process.mjs
+with an independent 90s deadline. It preserves real failure codes, kills its
+owned process group on timeout and strips inherited NODE_TEST_CONTEXT so a new
+Node --test launcher cannot silently skip execution. Eight guard tests include
+a blocked promise, a real event-loop-blocked Node test worker and descendant
+cleanup. Bundles use unique ignored qa/out/workspace-sync-* directories; a
+killed test must not dirty the release checkout. No --test-force-exit or timeout
+extension is used; every original page/timezone assertion remains.
+
 `npm run test:customer-workspace` includes `qa/crm-components.test.mjs`.
 It renders real extracted viewers/cards/dialogs through fictional Firebase,
 domain and AI boundaries. Coverage includes subscriptions/cleanup, summaries,
