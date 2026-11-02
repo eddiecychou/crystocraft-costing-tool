@@ -15,6 +15,10 @@ The [access-control pilot matrix](ACCESS-CONTROL-MATRIX.md) maps actual client,
 shared-helper, two Daily Drafts endpoint and Firebase rule contracts. Its
 [QA-only record](../plans/V8.20-ACCESS-CONTRACTS.md) distinguishes test/docs work
 from future application/auth migrations; marketing and CRM capabilities differ.
+The first authorized [topic-auth migration](../plans/V8.20-TOPIC-AUTH-CLEANUP.md)
+reuses the existing marketing helper in one endpoint; consult its release record
+for actual deployment and fresh-role evidence. Other endpoint migrations remain
+separate work.
 
 ## Ownership and change boundaries
 

@@ -73,7 +73,7 @@ matching module; admin succeeds even for an empty requested array. Explicit
 
 - This is an ordinary human-account matrix. Both rule sets exclude the reserved
   mcp-range-upload-service identity at their signed-in helper. The shared helper
-  and inline endpoint source do not contain that UID exclusion; their profile
+  and remaining inline refinement source do not contain that UID exclusion; their profile
   REST read is itself subject to Firestore rules. Service identities and their
   scoped exceptions must be reviewed separately before claiming general parity.
 - These gates do not check profile.status. Signup approval, suspension and
@@ -98,7 +98,7 @@ policy changes and Node Admin SDK consolidation are separate work.
 
 ## Run and maintain
 
-`npm run test:access-contracts` runs 31 offline cases, including 14 explicit
+`npm run test:access-contracts` runs 34 offline cases, including 14 explicit
 profile rows. `qa/access-contracts-emulator.mjs` runs 15 role/session cases and
 180 read/create authorization decisions against real rule source:
 
@@ -114,3 +114,11 @@ do not attach to another task's emulator data. The shared case file has explicit
 expected outcomes, never expectations calculated from a permission helper.
 Both required GitHub jobs run the new checks; prebuild also runs the offline
 suite. Workflow permissions, existing cases and timeouts are unchanged.
+
+## First migration
+
+The owner authorized the topic endpoint's migration after this pilot. It now
+uses the existing shared marketing helper; refinement remains inline. All 34
+contracts (three added for topic/provider behaviour) pass before and after the
+change. No role/module policy changes are included. Deployment state and new
+evidence are recorded separately in the [topic-auth record](../plans/V8.20-TOPIC-AUTH-CLEANUP.md).

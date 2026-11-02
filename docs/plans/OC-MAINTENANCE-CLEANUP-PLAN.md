@@ -26,7 +26,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 | 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
 | 2 — Daily Drafts presentation | Eight planned presentation slices released; workflow logic retained | Targeting, Sent/reply, rules, topic/master fields, attachments, master chat, cards and bulk controls extracted; parent retains state, generation and writes | All eight slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
-| 3 — repeated server authentication helpers | Contract tests/docs verified and pushed; migration proposed | Daily Drafts human allow/deny pilot across client/helper/two endpoints and Firebase rules; both exact-SHA jobs pass, no app deployment | Exact responses and method/config ordering preserved; service/lifecycle limits explicit |
+| 3 — repeated server authentication helpers | Contract pilot verified; first topic-endpoint migration implemented, release pending | draft-outreach-topic delegates to existing marketing helper; refinement and other endpoints remain proposed | Before/after contracts and exact auth-only source restoration pass; normal CI/build/two-role release gates still required |
 | 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
 | 6 — storage retention | Separate proposed business/data track | Read-only ownership/reference/duplicate review, with evidence and proposed actions | No file deletion, lifecycle policy, stock correction or record migration without specific review/authorization |
@@ -122,7 +122,7 @@ Twelve new cases, six pixel-identical desktop/mobile states, both exact-SHA jobs
 and fresh candidate/production role gates pass in the [bulk record](V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
 The owner subsequently authorized the access-control allow/deny contract matrix,
 implemented as a tests/docs-only batch in the [contract record](V8.20-ACCESS-CONTRACTS.md).
-It changes no application code or rules. Shared-auth migration, permission policy
+It changes no application code or rules. Further shared-auth migrations, permission policy
 changes, import repair and storage deletion remain separate proposed work.
 
 Start in src/marketing/DailyDrafts.jsx and the existing outreach domain/API
@@ -153,8 +153,10 @@ mock provider; live smoke checks never send to real customers.
 The [Daily Drafts pilot matrix](../reference/ACCESS-CONTROL-MATRIX.md) now pins
 human role/module decisions, real signed-session verification, endpoint responses
 and relevant Firestore/Storage read/create gates. It records CRM-versus-marketing
-keys, profile-error behaviour and service/account-lifecycle limits. First proposed
-migration is draft-outreach-topic only; approval is separate from this QA batch.
+keys, profile-error behaviour and service/account-lifecycle limits. The owner
+subsequently authorized the first [topic-endpoint migration](V8.20-TOPIC-AUTH-CLEANUP.md);
+local implementation and parity checks are complete, with release gates pending.
+Refinement and other endpoints remain proposed work.
 
 Start with the duplicate-helper entry in [TECH-DEBT.md](../../TECH-DEBT.md),
 netlify/edge-functions/lib/auth.js and the endpoint's actual callers/Gate keys.

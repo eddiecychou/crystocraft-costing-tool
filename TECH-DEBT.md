@@ -30,6 +30,13 @@ open oversight. If abuse ever shows up, add `requireFrontOffice()` (from
 
 ## Parallel implementations of the same auth check
 
+**First migration, 3 November 2026:** draft-outreach-topic now delegates to the
+existing requireModule(req, 'marketing'); shared helper and other endpoints are
+unchanged. Before/after contracts and exact source restoration pass; see
+[current implementation/release status](docs/plans/V8.20-TOPIC-AUTH-CLEANUP.md).
+The remaining inline refinement check is the next proposed slice. This does not
+change permissions or the accepted open-endpoint posture below.
+
 **3 November 2026 — characterization, not convergence:** the
 [access-control pilot](docs/reference/ACCESS-CONTROL-MATRIX.md) tests the real
 shared helper and draft-outreach-topic/discuss-outreach-draft gates with signed

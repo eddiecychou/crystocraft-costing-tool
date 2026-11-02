@@ -22,7 +22,7 @@ function reset(profile = { role: 'admin' }) {
     env: { VITE_FIREBASE_PROJECT_ID: project, DEEPSEEK_API_KEY: 'fictional-key' },
     profile, profileStatus: profile === null ? 404 : 200, profileError: null,
     invalidProfileJson: false, publicJwks: [jwk], profileCalls: [], aiCalls: [],
-    unexpected: [], verifications: [], keyLookups: 0,
+    unexpected: [], verifications: [], keyLookups: 0, aiResponses: [],
   })
 }
 reset()
@@ -44,6 +44,7 @@ globalThis.fetch = async (url, options = {}) => {
   }
   if (String(url) === 'https://api.deepseek.com/chat/completions') {
     f.aiCalls.push({ url: String(url), options })
+    if (f.aiResponses.length) return f.aiResponses.shift()()
     return Response.json({ choices: [{ message: { content: JSON.stringify({
       subject: 'Fictional subject', body: 'Fictional body', reply: 'Fictional reply',
     }) } }] })
@@ -117,7 +118,7 @@ after(async () => {
 })
 
 test('actual source binds both routes and the expected Google JWKS URL', () => {
-  assert.deepEqual(f.createdUrls, [googleJwks, googleJwks, googleJwks])
+  assert.deepEqual([...new Set(f.createdUrls)], [googleJwks])
   for (const e of endpoints) assert.equal(e.config.path, e.path)
 })
 
@@ -262,5 +263,45 @@ test('unauthorized requests cannot reach body validation or AI', async () => {
     await deny(await e.handler(request(t, e, { body: '{}' })), 400, missing)
     if (e.name === 'refinement') await deny(await e.handler(request(t, e, { body: '{"message":"Fictional"}' })), 400, 'draftSubject and draftBody are required')
     assert.equal(f.aiCalls.length, 0)
+  }
+})
+
+test('topic drafting retains input limits, memory selection and AI request settings', async () => {
+  const e = endpoints[0], t = await token()
+  const body = { topic: `  ${'x'.repeat(510)}  `, memory: { globalRules: Array.from({ length: 10 }, (_, i) => `Fictional rule ${i}`) } }
+  assert.equal((await e.handler(request(t, e, { body: JSON.stringify(body) }))).status, 200)
+  const call = f.aiCalls[0], payload = JSON.parse(call.options.body)
+  assert.equal(call.options.method, 'POST')
+  assert.equal(call.options.headers.Authorization, 'Bearer fictional-key')
+  assert.equal(payload.model, 'deepseek-flash')
+  assert.equal(payload.reasoning_effort, 'none')
+  assert.equal(payload.temperature, 0.8)
+  assert.equal(payload.max_tokens, 400)
+  assert.deepEqual(payload.response_format, { type: 'json_object' })
+  assert.equal(payload.messages[1].content, `Topic: ${'x'.repeat(500)}`)
+  for (let i = 0; i < 8; i++) assert.ok(payload.messages[0].content.includes(`Fictional rule ${i}`))
+  for (const i of [8, 9]) assert.ok(!payload.messages[0].content.includes(`Fictional rule ${i}`))
+})
+
+test('topic drafting retains the second attempt after provider or parse failure', async () => {
+  const e = endpoints[0], t = await token()
+  for (const failure of [() => new Response('', { status: 503 }), () => Response.json({ choices: [{ message: { content: '{bad' } }] }), () => { throw Error('Fictional provider outage') }]) {
+    reset(); f.aiResponses = [failure]
+    const r = await e.handler(request(t, e))
+    assert.equal(r.status, 200)
+    assert.deepEqual(await r.json(), e.expected)
+    assert.equal(f.aiCalls.length, 2)
+    assert.deepEqual(f.aiCalls[0], f.aiCalls[1])
+  }
+})
+
+test('topic drafting retains unusable-result and exhausted-retry responses', async () => {
+  const e = endpoints[0], t = await token()
+  for (const mode of ['provider-failure', 'unusable-result']) {
+    reset()
+    const reply = mode === 'provider-failure' ? () => new Response('', { status: 503 }) : () => Response.json({ choices: [{ message: { content: '{"subject":"Fictional subject"}' } }] })
+    f.aiResponses = [reply, reply]
+    await deny(await e.handler(request(t, e)), 502, 'DeepSeek did not return a usable draft — try again.')
+    assert.equal(f.aiCalls.length, mode === 'provider-failure' ? 2 : 1)
   }
 })

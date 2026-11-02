@@ -72,6 +72,11 @@ records or send mail. An empty live queue is recorded as a verification limit.
 **AI client:** `src/outreachApi.js`. **Edge fns:** `draft-outreach-topic`,
 `generate-outreach-drafts`, `discuss-outreach-draft`, `send-personal-email`.
 
+draft-outreach-topic delegates its existing marketing capability check to
+lib/auth.js requireModule. Method/config ordering, prompts and responses remain
+unchanged; refinement still has its inline check. See the [contract matrix](../reference/ACCESS-CONTROL-MATRIX.md)
+and [single-endpoint release record](../plans/V8.20-TOPIC-AUTH-CLEANUP.md).
+
 Flow: a free-text topic → `draftTopic()` → one master message →
 `generateDrafts(master, topicLabel, candidates, historicalHints, targetingNote,
 memory)` produces 10–20 **personalized** draft emails for review → an admin

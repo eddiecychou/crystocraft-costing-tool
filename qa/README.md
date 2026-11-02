@@ -11,6 +11,12 @@ the offline suite. See [matrix, full commands and limits](../docs/reference/ACCE
 and [QA-only evidence](../docs/plans/V8.20-ACCESS-CONTRACTS.md). This is not a new
 permission policy or a substitute for the broader RBAC/release checks below.
 
+For an authorized topic-auth app release, run
+`node qa/verify-topic-auth-release.mjs <pinned-candidate-or-canonical-https-url> candidate`
+(or `production`). It uses isolated fresh QA admin/customer Chrome sessions,
+actual profiles and safe empty-topic endpoint probes; no model generation,
+draft saves or email sends. See the [release record](../docs/plans/V8.20-TOPIC-AUTH-CLEANUP.md).
+
 ## Product search
 
 ```sh

@@ -1,3 +1,15 @@
+# V8.20 — Topic-drafting shared-auth cleanup — release pending, 3 November 2026
+
+Owner approved the next single-endpoint migration. draft-outreach-topic now
+delegates to existing requireModule(req, 'marketing'); method/config ordering,
+prompts, model settings, retries and responses remain identical. Reversing only
+the auth extraction restores the original file exactly; other 506 protected
+app/rule files are unchanged. All 34 contracts pass before/after on Node 22,
+plus 119 AI-writer, 11 config and whole-source lint checks. No live model calls
+or customer emails are used by QA. Source push, both exact-SHA jobs, build and
+fresh candidate/production role gates remain pending; production is unchanged.
+[Scope and release evidence](docs/plans/V8.20-TOPIC-AUTH-CLEANUP.md).
+
 # V8.20 — Access-control contract matrix — QA only, 3 November 2026
 
 Owner-approved tests/docs batch pins existing human role/module decisions across
