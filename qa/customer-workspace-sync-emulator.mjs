@@ -16,11 +16,14 @@ import {initializeTestEnvironment,assertFails} from '@firebase/rules-unit-testin
 import {doc,getDoc,getDocs,collection,setDoc,Timestamp} from 'firebase/firestore'
 import {calendarClock} from './local-day-clock.mjs'
 import {workspaceSyncPlugin} from './customer-workspace-sync-fixture.mjs'
+import {testStep} from './async-test-step.mjs'
 if(!/^(127\.0\.0\.1|localhost):\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST||''))throw Error('Loopback Firestore emulator required; live fixture writes forbidden.')
 let env,db,Dashboard,CustomerDetail,scratch,dom
 // Freeze only the bundled page calendar. SDK/network timers and polling stay real.
 const CALENDAR_NOW=Date.parse('2026-10-17T13:30:00Z')
 const C='sync_customer',OTHER='sync_other',legacy={description:'Original conversation',status:'Quoted',date:Timestamp.fromMillis(1000),follow_up_date:Timestamp.fromMillis(2000),attachments:[{name:'original.pdf'}]}
+const SUMMARY_CASE='both real pages expose six months and one year and load their independent saved summaries'
+const stepFor=t=>(label,operation)=>t.name===SUMMARY_CASE?testStep(label,operation):operation()
 before(async()=>{
  dom=new JSDOM('<!doctype html><body></body>',{url:'http://localhost'});for(const name of ['window','document','HTMLElement','Event','MouseEvent','localStorage'])globalThis[name]=dom.window[name]
  globalThis.IS_REACT_ACT_ENVIRONMENT=true
@@ -51,17 +54,18 @@ function CustomerNavigation({id}) {
  return null
 }
 async function fixture(t,{withLegacy=false,withCategories=false}={}){
- await env.clearFirestore();localStorage.clear()
- await env.withSecurityRulesDisabled(async ctx=>{
+ const step=stepFor(t)
+ await step('clear Firestore',()=>env.clearFirestore());localStorage.clear()
+ await step('seed base records',()=>env.withSecurityRulesDisabled(async ctx=>{
   const admin=ctx.firestore();await setDoc(doc(admin,'users/sync_admin'),{role:'admin'})
   for(const id of [C,OTHER])await setDoc(doc(admin,'customers',id),{company_name:id,contacts:[],tags:withCategories&&id===C?['Retail Customer']:[],channels:[],...(withCategories?{crm_category:id===C?'Distributor':'Gift / OEM'}:{})})
   await setDoc(doc(admin,'dashboard_cache/weekly_summary'),{items:[{customerId:C,digest:'Current saved summary'},{customerId:OTHER,digest:'Other customer summary'}]})
   if(withLegacy)await setDoc(doc(admin,'customers',C,'enquiries/legacy'),legacy)
- })
+ }))
  const hosts=[document.createElement('div'),document.createElement('div')];hosts.forEach(h=>document.body.append(h));let roots=hosts.map(h=>createRoot(h))
  const render=async(index,id=C)=>{await act(async()=>roots[index].render(React.createElement(MemoryRouter,{initialEntries:[index?`/customers/${id}`:'/dashboard']},index?React.createElement(React.Fragment,null,React.createElement(CustomerNavigation,{id}),React.createElement(Routes,null,React.createElement(Route,{path:'/customers/:id',element:React.createElement(CustomerDetail)}))):React.createElement(Dashboard))));await eventually(()=>workspace(hosts[index],id),'Actual page workspace loads')}
- t.after(async()=>{for(const r of roots)await act(async()=>r.unmount());hosts.forEach(h=>h.remove())})
- await render(0);await choose(hosts[0],C);await render(1)
+ t.after(async()=>{await step('unmount pages',async()=>{for(const r of roots)await act(async()=>r.unmount());hosts.forEach(h=>h.remove())})})
+ await step('render Dashboard',()=>render(0));await step('choose customer',()=>choose(hosts[0],C));await step('render CustomerDetail',()=>render(1))
  return {dash:hosts[0],customer:hosts[1],d:()=>workspace(hosts[0]),c:()=>workspace(hosts[1]),render,remount:async(index,id=C)=>{await act(async()=>roots[index].unmount());roots[index]=createRoot(hosts[index]);await render(index,id);if(!index)await choose(hosts[index],id)}}
 }
 async function create(w,kind,text,{date,state}={}){await click(w,kind==='task'?'Add task':'Add note');await fill(w.querySelector('textarea'),text);if(date!==undefined)await fill(w.querySelector('input[type=date]'),date);if(state)await fill(w.querySelector('form select'),state);await save(w)}
@@ -264,15 +268,15 @@ for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])
  await click(v.c(),'Cancel')
 })
 
-test('both real pages expose six months and one year and load their independent saved summaries',async t=>{
- const v=await fixture(t)
- await env.withSecurityRulesDisabled(async ctx=>{for(const days of [180,365])await setDoc(doc(ctx.firestore(),'dashboard_cache','customer_summary_'+days),{lookbackDays:days,items:[{customerId:C,digest:'Saved '+days+' day customer context'}]})})
+test(SUMMARY_CASE,{timeout:45000},async t=>{
+ const step=stepFor(t),v=await fixture(t)
+ await step('seed long-period caches',()=>env.withSecurityRulesDisabled(async ctx=>{for(const days of [180,365])await setDoc(doc(ctx.firestore(),'dashboard_cache','customer_summary_'+days),{lookbackDays:days,items:[{customerId:C,digest:'Saved '+days+' day customer context'}]})}))
  for(const [host,label] of [[v.dash,'Conversation window'],[v.customer,'Summary period']]){
   const select=[...host.querySelectorAll('label')].find(l=>l.textContent.includes(label)).querySelector('select')
   assert.deepEqual([...select.options].map(o=>o.value),['14','30','90','180','365'])
-  for(const days of [180,365]){await fill(select,String(days));await eventually(()=>workspace(host).textContent.includes('Saved '+days+' day customer context'),'Selected long-period saved summary appears')}
+  for(const days of [180,365]){await step(`select ${label} ${days}`,()=>fill(select,String(days)));await step(`wait for ${label} ${days}`,()=>eventually(()=>workspace(host).textContent.includes('Saved '+days+' day customer context'),'Selected long-period saved summary appears'))}
  }
- assert.equal((await getDoc(doc(db,'dashboard_cache/weekly_summary'))).data().items[0].digest,'Current saved summary')
+ assert.equal((await step('read original cache',()=>getDoc(doc(db,'dashboard_cache/weekly_summary')))).data().items[0].digest,'Current saved summary')
 })
 
 test('real summary-status hook retains failure on Dashboard remount without AI or cache writes',async t=>{

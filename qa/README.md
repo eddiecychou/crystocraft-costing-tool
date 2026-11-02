@@ -68,6 +68,15 @@ customer mail. [Standing-rules evidence](../docs/plans/V8.20-DAILY-DRAFTS-STANDI
 
 # CRM component maintenance
 
+Workspace CI diagnostics: qa/async-test-step.mjs logs and bounds the individual
+setup/render/select/read/cleanup operations in the long-period summary case.
+It rejects a stuck operation with its exact phase; it never treats a timeout
+as success. Its three tests run before the unchanged workspace/timezone
+assertions in test:workspace-sync. The job timeout, real stateful hooks and
+both required release jobs stay intact. See the
+[CI investigation](../docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md); diagnostics
+alone are not a root-cause repair.
+
 `npm run test:customer-workspace` includes `qa/crm-components.test.mjs`.
 It renders real extracted viewers/cards/dialogs through fictional Firebase,
 domain and AI boundaries. Coverage includes subscriptions/cleanup, summaries,

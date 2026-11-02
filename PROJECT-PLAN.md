@@ -1,3 +1,13 @@
+# V8.20 — workspace CI reliability — investigation in progress, 2 November 2026
+
+Owner approved the next cleanup priority: diagnose/fix the recurring workspace
+emulator stall while preserving app behaviour and all assertions. Ten unchanged
+Node 22.23.4 workspace runs and the full UTC emulator sequence pass locally;
+cause remains unconfirmed. Named, bounded QA steps now expose the missing phase
+on the Linux runner; local diagnostics + all workspace/timezone cases pass.
+This is a QA-only checkpoint, not a completed root-cause fix or app release.
+[Investigation and evidence](docs/plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
+
 # V8.20 — Daily Drafts standing-rules cleanup — released, 2 November 2026
 
 Standing-rules presentation moves into DailyDraftsStandingRules; all state,
