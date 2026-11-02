@@ -1,13 +1,20 @@
-# V8.20 — Daily Drafts master refinement cleanup — verification in progress, 2 November 2026
+# V8.20 — Daily Drafts master refinement cleanup — released, 2 November 2026
 
-Master chat presentation moves into DailyDraftsMasterChat.jsx. State, AI requests,
-history/prompt payloads, master updates and pending-rule approval stay in the
-page. Restoring 38 moved markup lines reproduces the whole baseline exactly.
-All 60 baseline real-page and 85 post-extraction AI-writer cases pass; lint/config
-and six pixel-identical desktop/mobile screenshot pairs pass. Long history keeps
-the original 224px scroll box with no horizontal overflow. Exact-SHA CI and
-candidate/production role gates remain pending.
-[Scope and evidence](docs/plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
+Master chat presentation now lives in DailyDraftsMasterChat.jsx. State, AI
+requests/history/prompt payloads, master updates and pending-rule approval remain
+unchanged in DailyDrafts. Restoring 38 markup lines reproduces the whole baseline
+exactly. All 60 baseline real-page and 85 post-extraction AI-writer cases pass;
+full build, lint/config and six pixel-identical desktop/mobile states pass.
+Both exact-SHA GitHub jobs PASS on 88c3908f in run 41426640839, attempt 1, with
+immediate preflight before both uploads. Candidate 6ae8626db77f4d72d057b30e and
+production 6ae863fb6fc701247f722ade pass fresh admin/customer routing, data,
+access, refresh and runtime gates using the identical artifact; CSS/server unchanged.
+Served bundle /assets/index-BTdjZ3UT.js; final fresh role check 2 Nov 21:25:13 AEDT /
+18:25:13 HKT. Live QA exercised a fictional unsaved master/chat on each origin
+(button on candidate, Enter on production); pending/sent UI counts stayed 0/188.
+No recipient drafts, emails, rule/template saves or uploads. QA state cleared by
+refresh; production ready/current. Documentation closeout uses [skip netlify].
+[Scope and release evidence](docs/plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
 
 # V8.20 — Daily Drafts attachment-controls cleanup — released, 2 November 2026
 

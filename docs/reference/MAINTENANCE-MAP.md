@@ -123,10 +123,10 @@ candidate/production admin/customer gates pass; no live rules changed:
 
 DailyDraftsComposer.jsx contains the topic/saved-template controls and master
 subject/body fields only. DailyDrafts keeps state, template CRUD, drafting,
-active-rule prompt assembly and generation. Product/link/media presentation is covered by the attachment slice below;
-refinement chat remains a later slice. Nine fictional real-page composer cases
-run in test:ai-writer/prebuild/product-search CI. Deployed QA changed no live
-templates and made no AI calls or email sends. Both exact-SHA jobs and fresh
+active-rule prompt assembly and generation. Product/link/media and master chat
+presentation are covered by the later slices below. Nine fictional real-page
+composer cases run in test:ai-writer/prebuild/product-search CI. In that release,
+live QA changed no templates and made no AI calls or email sends. Both exact-SHA jobs and fresh
 candidate/production role gates pass.
 [Scope and release state](../plans/V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md).
 
@@ -142,6 +142,8 @@ DailyDraftsMasterChat.jsx owns the master-message refinement toggle, history,
 input and Send/remember controls only. DailyDrafts retains chat state, AI request/
 history payloads, master updates, errors and rule approval. Twelve new real-page
 cases use fictional AI/rule services in test:ai-writer/prebuild/product-search CI.
+Source/visual checks, both exact-SHA jobs and fresh candidate/production roles
+pass; live chat used unsaved QA-only copy with no recipient drafts/emails.
 [Scope and release state](../plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
 
 ## Subsequent cleanup batches
@@ -150,8 +152,9 @@ The [cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) keeps further Daily 
 presentation work open, then one-at-a-time server helper convergence and shipping/
 finance internals. Prototype/import usage audit and storage retention are
 separate reviewed tracks. The first CRM batch and Daily Drafts targeting/Sent/
-standing-rules/topic-composer/attachment slices are released. Further presentation slices
-and later batches remain open; a separate recurring workspace CI stall is in TECH-DEBT.
+standing-rules/topic-composer/attachment/master-refinement slices are released.
+Further presentation slices and later batches remain open; a separate recurring
+workspace CI stall is in TECH-DEBT.
 The confirmed QA deadline gaps are repaired and exact-SHA CI verified, with
 the triggering intermittent stall still open:
 [QA safeguards and limits](../plans/V8.20-WORKSPACE-CI-RELIABILITY.md).

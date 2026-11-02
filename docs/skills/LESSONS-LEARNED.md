@@ -1522,3 +1522,15 @@ retains selected master images; characterization preserves those semantics.
 Six desktop/mobile states matched DOM/geometry and pixels. Live role QA can
 check product/link controls without uploads, AI, persistence or customer email.
 [Attachment release and verification](../plans/V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
+
+### Master refinement is AI chat, with a separate email boundary
+
+2 November 2026: moving the master chat into controlled presentation preserved
+its parent payload/history, redraft and closed-panel completion behavior, and
+pending-rule review. Twelve real-page cases pin Enter/button, errors/busy and
+explicit approval. Six desktop/mobile states matched DOM, geometry and pixels.
+Live QA scoped Send to the master-chat input container and used unsaved fictional
+copy; no recipient drafts or emails. Refresh discarded QA state. Read textarea
+live values rather than expecting a value HTML attribute, and wait for actual
+catalogue/image loading before recording a role gate.
+[Verified refinement release](../plans/V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).

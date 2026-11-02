@@ -7,8 +7,9 @@ future batch. The first CRM batch and separately requested fixes are released;
 the Daily Drafts targeting and Sent-history/source-badge slices are released
 and verified after both exact-SHA jobs and fresh candidate/production role gates.
 Remaining work and release status are distinguished below.
-The standing-rules, topic-composer and attachment-control presentation slices
-are also released and verified under the owner's subsequent explicit requests.
+The standing-rules, topic-composer, attachment-control and master-refinement
+presentation slices are also released and verified under the owner's subsequent
+explicit requests.
 
 Start with [CLAUDE.md](../../CLAUDE.md), the
 [maintenance map](../reference/MAINTENANCE-MAP.md),
@@ -24,7 +25,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 |---|---|---|---|
 | 0 — ownership and baseline | Complete | Maintenance map, feature routing, source/data snapshot and release evidence links | Keep facts dated; do not call historical measurements current |
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
-| 2 — Daily Drafts presentation | Targeting, Sent, rules, composer and attachments released; master refinement in verification | Targeting, Sent/reply, standing-rules, topic/master fields and attachments extracted; parent retains state, generation and writes | All five slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
+| 2 — Daily Drafts presentation | Targeting, Sent, rules, composer, attachments and master refinement released; broader batch open | Targeting, Sent/reply, standing-rules, topic/master fields, attachments and master chat extracted; parent retains state, generation and writes | All six slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
 | 3 — repeated server authentication helpers | Proposed | Migrate one endpoint at a time to the existing shared helper when behaviour is proved equivalent | Role/module allow/deny matrix and response parity; higher risk than UI extraction |
 | 4 — shipping and finance page internals | Proposed | Separate independent display sections, then pure calculations only where a clear existing boundary exists | Pricing, quantities, invoice/export parity and transaction boundaries unchanged |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
@@ -90,21 +91,21 @@ The authorized topic-composer slice moves only topic/saved-template controls
 and master subject/body fields into DailyDraftsComposer.jsx. State, AI/prompt
 assembly and template handlers stay in the page. Nine new real-page cases and
 source/desktop/mobile parity pass. Both exact-SHA jobs and fresh candidate/
-production admin/customer gates pass in the [composer record](V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md). Attachment presentation is covered by the later slice below; refinement chat
-and Pending-review cards remain future slices.
+production admin/customer gates pass in the
+[composer record](V8.20-DAILY-DRAFTS-COMPOSER-CLEANUP.md). Product/link/media
+presentation is covered by the attachment slice below.
 
 The newly authorized attachment slice moves product/link controls and master
 image presentation into DailyDraftsAttachments.jsx. Storage, gallery visibility,
 state, the two-image cap and payloads stay in the page. Eleven new cases, exact
 source recovery, six desktop/mobile screenshot pairs, both exact-SHA jobs and
 fresh candidate/production role gates pass in the [attachment record](V8.20-DAILY-DRAFTS-ATTACHMENTS-CLEANUP.md).
-Refinement chat, then Pending-review cards, are the next proposed slices.
 
 The newly authorized master refinement-chat slice moves controlled markup to
 DailyDraftsMasterChat.jsx. State, discussDraft payload/history, master updates and
-rule approval stay in the page. Twelve new cases, whole-page source recovery and
-six desktop/mobile screenshot pairs pass locally; release gates remain pending
-in the [refinement record](V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
+rule approval stay in the page. Twelve new cases, whole-page source recovery,
+six desktop/mobile screenshot pairs, both exact-SHA jobs and fresh candidate/production role gates pass in the
+[refinement record](V8.20-DAILY-DRAFTS-REFINEMENT-CLEANUP.md).
 Pending-review cards remain the next separately proposed slice.
 
 Start in src/marketing/DailyDrafts.jsx and the existing outreach domain/API
