@@ -4,7 +4,8 @@ import {createRequire} from 'node:module'
 import {readFile,mkdir,writeFile} from 'node:fs/promises'
 import {execFileSync} from 'node:child_process'
 import assert from 'node:assert/strict'
-const base=new URL(process.argv[2]||''),phase=process.argv[3],out='qa/out/shipment-display'
+const base=new URL(process.argv[2]||''),phase=process.argv[3],out=process.argv[4]||'qa/out/shipment-display'
+assert.match(out,/^qa\/out\/[\w-]+$/)
 assert.equal(base.protocol,'https:')
 assert.ok(base.hostname==='portal.crystocraft.com'||/^[a-f0-9]{24}--ua-product-manager\.netlify\.app$/.test(base.hostname))
 assert.ok(['baseline','candidate','production'].includes(phase))
@@ -35,8 +36,24 @@ try{
     assert.equal(await page.getByRole('button',{name:'Create Order',exact:true}).isDisabled(),true)
     assert.equal(await page.getByText(/found in the ERP —/).count(),0)
     result.blankOrder='PASS; no comparison before import'
+    const refs=page.getByRole('heading',{name:'Document References',exact:true}).locator('..')
+    const referenceInputs=['e.g. SO260017','e.g. UC4950/26','e.g. SI260094','e.g. 56909','Original']
+    for(const placeholder of referenceInputs)assert.equal(await refs.getByPlaceholder(placeholder,{exact:true}).inputValue(),'')
+    // The current buttons sit inside labels, so their accessible names include
+    // the field label. Preserve that markup and select their actual text here.
+    const allocateButtons=()=>refs.locator('button').filter({hasText:/^\s*Allocate\s*$/})
+    assert.equal(await allocateButtons().count(),3)
+    for(const [placeholder,value]of referenceInputs.slice(0,4).map((p,i)=>[p,['SO-QA-UNSAVED','UC-QA-UNSAVED','SI-QA-UNSAVED','Fictional unsaved PO 中文 &'][i]]))await refs.getByPlaceholder(placeholder,{exact:true}).fill(value)
+    await refs.locator('button').filter({hasText:'+ New Rev'}).click()
+    await refs.locator('button').filter({hasText:'+ New Rev'}).click()
+    assert.equal(await refs.getByPlaceholder('Original',{exact:true}).inputValue(),'2')
+    assert.equal(await allocateButtons().count(),0)
     await page.reload();await page.getByRole('heading',{name:'New Order',exact:true}).waitFor()
     assert.equal(await page.getByRole('button',{name:'Create Order',exact:true}).isDisabled(),true)
+    for(const placeholder of referenceInputs)assert.equal(await refs.getByPlaceholder(placeholder,{exact:true}).inputValue(),'')
+    assert.equal(await allocateButtons().count(),3)
+    await refs.screenshot({path:`${out}/${phase}-admin-document-references.png`})
+    result.blankReferences='PASS; original blanks, unsaved manual fields/revision and reload reset; no allocation clicks'
     await go('/shipping');await page.getByRole('heading',{name:'Production',exact:true}).waitFor()
     const row=page.locator('tbody tr').filter({has:page.locator('button[title^="Duplicate this order"]')}).first()
     await row.waitFor();await row.click({position:{x:10,y:10}});await page.waitForURL(u=>/^\/shipments\/(?!new$)[^/]+$/.test(u.pathname))
@@ -47,9 +64,15 @@ try{
     assert.ok(title)
     result.existingOrderPath=new URL(page.url()).pathname
     result.stockLabel=label;result.stockTooltip=title
+    const savedRefs=await refs.locator('input').evaluateAll(inputs=>inputs.map(i=>i.value))
     await page.reload();await badge.waitFor();assert.equal(await badge.textContent(),label);assert.equal(await badge.getAttribute('title'),title)
+    assert.deepEqual(await refs.locator('input').evaluateAll(inputs=>inputs.map(i=>i.value)),savedRefs)
     await badge.screenshot({path:`${out}/${phase}-admin-stock.png`})
     result.savedOrderAndStockRefresh='PASS; view only'
+    await go(result.existingOrderPath+'?invoice=1')
+    await page.waitForFunction(()=>document.activeElement===document.querySelector('input[placeholder="e.g. SI260094"]'))
+    assert.deepEqual(await refs.locator('input').evaluateAll(inputs=>inputs.map(i=>i.value)),savedRefs)
+    result.invoiceFocus='PASS; parent invoice query focuses the same saved-order input without edits/allocation'
    }else{
     await page.waitForURL(u=>u.pathname==='/shop');await page.getByText(/QA ONLY/).first().waitFor()
     assert.equal(await page.getByRole('heading',{name:'New Order',exact:true}).count(),0)

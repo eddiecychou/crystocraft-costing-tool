@@ -14,6 +14,12 @@ retain historical evidence and link their later release records.
 
 ## ShipmentForm mixes presentation with workflow orchestration — first slice extracted
 
+The owner subsequently authorized Document References only. Its controlled card
+now lives in components/shipping/ShipmentDocumentReferences.jsx; number/revision
+updates, focus, validation and all writes remain parent-owned. Nineteen real-page
+cases pass on original/extracted source; the parent is another 61 lines shorter.
+Release gates/evidence: [Document References cleanup](docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
+
 3 November 2026: ERP comparison and stock badge presentation now live in
 components/shipping/ShipmentReconciliation.jsx, leaving the parent 64 lines
 shorter. Exact restoration and before/after component/visual tests retain current
@@ -22,6 +28,24 @@ stay in the page. Both exact-SHA jobs, full build and fresh candidate/production
 role/shipping checks pass; released as 8551bc98. This is partial cleanup, not resolution of the entire large
 form. Further sections need separate bounded slices. See
 [current release status](docs/plans/V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
+
+## Saved WooCommerce invoice allocation loses total/HKD payout metadata
+
+Found during Document References characterization, before extracting any app
+code. ShipmentForm's existing getOrder/header-load whitelist omits total_amount;
+doAllocateSi uses header.total_amount for the best-effort UC Registry total /
+deposit. Separately, shipping.normOrder omits woo_net_payout_hkd even though
+ShipmentForm reads it for non-HKD fee/payout remarks. A fictional raw saved order
+with total 1222 and HKD payout 9456 produces null registry total/deposit and the
+manual HKD-payout fallback. The number allocation and zero-balance payload remain.
+
+These existing gaps are characterized, not corrected by the presentation slice.
+A separate accounting repair should pin the intended totals/fee semantics and
+all affected load/save whitelists, then propose a read-only live audit before
+any historical-data correction. Actual affected records/counts are unknown;
+no live registry/order data was inspected or rewritten for this finding. Future
+repair must intentionally update the characterization assertions, not silently
+inherit them as the desired financial behavior. [Scope/tests](docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
 
 ## Three edge functions have no auth check
 

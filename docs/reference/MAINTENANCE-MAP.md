@@ -56,6 +56,12 @@ state, subscriptions, import/adoption, financial calculations, confirmations and
 writes. See [display scope/release](../plans/V8.20-SHIPMENT-DISPLAY-CLEANUP.md).
 Run test:shipment-display plus invoice/packing regressions and normal release gates.
 
+The next controlled card, components/shipping/ShipmentDocumentReferences.jsx,
+owns SO/UC/invoice/PO/revision inputs and source-PI presentation. Original number
+allocation, revision update, invoice ref/focus, lifecycle, validation and all
+saves remain in ShipmentForm. Nineteen additional real-page cases run through
+test:shipment-display. [Scope/release](../plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

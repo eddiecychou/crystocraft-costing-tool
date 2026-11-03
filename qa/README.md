@@ -8,6 +8,16 @@ Use `npm run test:workspace-sync` inside the guarded loopback emulator; see the
 
 ## Shipment display cleanup
 
+The same test:shipment-display command also runs 19 real ShipmentForm Document
+References cases: controlled fields/revision, SO/UC/SI busy/error/retry, latest
+callbacks, immediate saved-order invoice write, bundled/existing UC, HK invoice
+date, Woo payload/warnings, ref/focus, route reuse and save/reopen. I/O is
+fictional; unexpected writes fail. [Scope/limits](../docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
+The supplemental release checker accepts an optional fourth evidence-directory
+argument, e.g. qa/out/shipment-references; old defaults remain. It adds unsaved
+blank-form edits/reset and saved reference/focus readbacks without allocating,
+saving or touching stock.
+
 `npm run test:shipment-display` renders actual ERP comparison/stock presentation
 and the real stock-status helper. Included in prebuild and product-search;
 invoice/packing and required emulator coverage remain. For an authorized release:

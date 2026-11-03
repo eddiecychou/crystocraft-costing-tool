@@ -1,3 +1,17 @@
+# V8.20 — Document References cleanup — implementation, 3 November 2026
+
+Owner approved a careful, bounded extraction of the shipping/order Document
+References panel. New controlled component; all allocation, revision state,
+focus, validation, saves and stock/financial logic stay in ShipmentForm. Exact
+source restoration, 507 other protected files unchanged; parent 1420→1359 lines.
+Nineteen actual-page cases pass against original/extracted source, existing
+40 invoice/30 packing cases and no-undef pass, and eight desktop/mobile states
+are pixel/DOM/geometry identical. Fresh baseline shipping checks pass with
+unsaved blank-form edits and view/focus/refresh only on saved orders. A separate
+pre-existing WooCommerce whitelist gap is recorded in TECH-DEBT, with no live
+financial audit/correction. Candidate/production and exact-SHA gates pending.
+[Scope and release evidence](docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
+
 # V8.20 — Shipment display cleanup — released, 3 November 2026
 
 The docs-only closeout 4ca351b2 later failed customer-merge-emulator in the Los

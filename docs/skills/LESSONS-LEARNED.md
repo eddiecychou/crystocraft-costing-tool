@@ -1500,6 +1500,16 @@ production roles passed. [Evidence](../plans/V8.20-LEAD-INTERACTION-HISTORY.md).
 
 ### Controlled composer extraction and login QA input
 
+3 November 2026 — Document References follows the same controlled-extraction
+boundary. Keep the ordinary named invoiceFieldRef on the original input so the
+parent's query-driven scroll/focus effect still runs after loading. Number
+allocation, immediate invoice persistence and functional revision updates stay
+in the parent. Characterize actual page/service payloads before moving markup:
+the original saved Woo fixture exposed distinct missing total/HKD-payout load
+fields. Record that accounting debt separately, preserving its own repair scope
+and tests rather than silently changing financial behavior during extraction.
+[Document References evidence](../plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
+
 2 November 2026: keep Daily Drafts orchestration and template/AI handlers in the
 page while moving only controlled markup. Recover moved child markup in the
 parent and compare the whole baseline source; then pin real-page callbacks with

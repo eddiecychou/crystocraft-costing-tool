@@ -183,6 +183,13 @@ adoption and transactions remain. Both exact-SHA jobs and all fresh candidate /
 production role/shipping gates pass; no financial or stock data was edited.
 Further panels and pure-helper work remain proposed, separately bounded work.
 
+The owner next authorized [Document References](V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
+Its controlled markup is extracted with original-page/actual-page, ref/focus,
+allocation/error/write-boundary and source/visual parity checks. Parent number
+and revision handlers, reads and writes remain unchanged; release gates tracked
+in that record. A newly characterized saved WooCommerce total/HKD-payout gap is
+separate financial work in TECH-DEBT, not silently fixed in the extraction.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second
