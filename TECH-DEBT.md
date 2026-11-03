@@ -12,13 +12,15 @@ proposed behaviour-preserving work; it does not override accepted owner decision
 or authorize fixing unrelated entries as part of another change. Resolved entries
 retain historical evidence and link their later release records.
 
-## ShipmentForm mixes presentation with workflow orchestration — first slice extracted
+## ShipmentForm mixes presentation with workflow orchestration — display/reference slices extracted
 
 The owner subsequently authorized Document References only. Its controlled card
 now lives in components/shipping/ShipmentDocumentReferences.jsx; number/revision
 updates, focus, validation and all writes remain parent-owned. Nineteen real-page
 cases pass on original/extracted source; the parent is another 61 lines shorter.
-Release gates/evidence: [Document References cleanup](docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
+Released as 42fdaa51 after both exact-SHA jobs, the full build and fresh
+candidate/production role/reference/focus checks; no live allocation/save/stock
+actions. [Document References evidence](docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
 
 3 November 2026: ERP comparison and stock badge presentation now live in
 components/shipping/ShipmentReconciliation.jsx, leaving the parent 64 lines

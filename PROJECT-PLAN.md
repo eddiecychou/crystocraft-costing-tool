@@ -1,4 +1,4 @@
-# V8.20 — Document References cleanup — implementation, 3 November 2026
+# V8.20 — Document References cleanup — released, 3 November 2026
 
 Owner approved a careful, bounded extraction of the shipping/order Document
 References panel. New controlled component; all allocation, revision state,
@@ -9,7 +9,15 @@ Nineteen actual-page cases pass against original/extracted source, existing
 are pixel/DOM/geometry identical. Fresh baseline shipping checks pass with
 unsaved blank-form edits and view/focus/refresh only on saved orders. A separate
 pre-existing WooCommerce whitelist gap is recorded in TECH-DEBT, with no live
-financial audit/correction. Candidate/production and exact-SHA gates pending.
+financial audit/correction. Both exact-SHA jobs pass for 42fdaa51 in run
+41566591374, attempt 1; full prebuild/build and immediate upload preflights pass.
+Candidate 6ae948c9247cc9b0d26c9439 and production 6ae94a7cb69292fea7bcb354 pass
+all fresh admin/approved-customer core and shipping/reference/focus gates.
+Same frozen artifact reused, CSS/server source unchanged, served index-DLJqFLKx.js
+and Firebase probes verified; production ready/current. Final fresh check
+3 Nov 13:48:03 AEDT / 10:48:03 HKT. No live numbers, orders, invoices, stock or
+emails were created/changed by QA. Docs closeout skips deployment; Schedule &
+Terms and the separate Woo accounting repair remain proposed.
 [Scope and release evidence](docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
 
 # V8.20 — Shipment display cleanup — released, 3 November 2026
