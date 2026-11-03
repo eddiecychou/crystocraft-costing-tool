@@ -39,6 +39,19 @@ try{
     assert.equal(await page.getByText(/found in the ERP —/).count(),0)
     result.blankOrder='PASS; no comparison before import'
     const refs=page.getByRole('heading',{name:'Document References',exact:true}).locator('..')
+    const destination=page.getByRole('heading',{name:'Destination',exact:true}).locator('..')
+    const remarks=page.locator('textarea[placeholder^="Prints on the Proforma and Sales Invoice"]')
+    const hideQuantity=page.getByRole('checkbox',{name:/Hide "Total Qty"/})
+    const orderDetails=async()=>({
+      destination:await destination.locator('input').evaluateAll(inputs=>inputs.map(input=>input.value)),
+      remarks:await remarks.inputValue(),hideQuantity:await hideQuantity.isChecked(),
+    })
+    const blankDetails=await orderDetails()
+    const fictionalDestination=['QA Country','QA City','QA Port']
+    for(const [i,value] of fictionalDestination.entries())await destination.locator('input').nth(i).fill(value)
+    await remarks.fill('Fictional unsaved QA remarks')
+    await hideQuantity.setChecked(!blankDetails.hideQuantity)
+    assert.deepEqual(await orderDetails(),{destination:fictionalDestination,remarks:'Fictional unsaved QA remarks',hideQuantity:!blankDetails.hideQuantity})
     const schedule=page.getByRole('heading',{name:'Schedule & Terms',exact:true}).locator('..')
     const scheduleFields=()=>schedule.locator('input,select').evaluateAll(fields=>fields.map(field=>({value:field.value,placeholder:field.getAttribute('placeholder')})))
     const originalSchedule=await scheduleFields()
@@ -67,6 +80,8 @@ try{
     assert.equal(await allocateButtons().count(),3)
     await refs.screenshot({path:`${out}/${phase}-admin-document-references.png`})
     assert.deepEqual(await scheduleFields(),originalSchedule)
+    assert.deepEqual(await orderDetails(),blankDetails)
+    result.blankOrderDetails='PASS; destination, remarks and quantity checkbox edit and reset'
     await schedule.screenshot({path:`${out}/${phase}-admin-schedule.png`})
     result.blankSchedule='PASS; dates, currency, Incoterm and free text edit/reset; new order hides status/invoice date'
     result.blankReferences='PASS; original blanks, unsaved manual fields/revision and reload reset; no allocation clicks'
@@ -85,11 +100,14 @@ try{
     result.stockLabel=label;result.stockTooltip=title
     const savedRefs=await refs.locator('input').evaluateAll(inputs=>inputs.map(i=>i.value))
     const savedSchedule=await scheduleFields()
+    const savedOrderDetails=await orderDetails()
     assert.equal(await schedule.getByText('Status',{exact:true}).count(),1)
     assert.equal(await schedule.getByText('Invoice Date',{exact:true}).count(),savedRefs[2]?1:0)
     await page.reload();await badge.waitFor();assert.equal(await badge.textContent(),label);assert.equal(await badge.getAttribute('title'),title)
     assert.deepEqual(await refs.locator('input').evaluateAll(inputs=>inputs.map(i=>i.value)),savedRefs)
     assert.deepEqual(await scheduleFields(),savedSchedule)
+    assert.deepEqual(await orderDetails(),savedOrderDetails)
+    result.savedOrderDetails='PASS; read-only destination, remarks and quantity preference survive refresh'
     result.savedSchedule='PASS; read-only dates, terms, status and conditional invoice date survive refresh'
     await badge.screenshot({path:`${out}/${phase}-admin-stock.png`})
     result.savedOrderAndStockRefresh='PASS; view only'

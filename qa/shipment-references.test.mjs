@@ -32,7 +32,7 @@ const stubs={
  export const runTransaction=async()=>{if(f().createError){f().createAttempts++;throw f().createError}throw Error('No creates/transactions authorized')};
  const fail=()=>{throw Error('No creates/deletes authorized')};export{fail as addDoc,fail as deleteDoc};`,
  router:`import React from 'react';const f=()=>globalThis.__shipmentReferences;export const useParams=()=>({id:f().id}),useSearchParams=()=>[new URLSearchParams(f().search)],useNavigate=()=>to=>{f().destination=to};export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children)`,
- customer:'export const loadCustomers=async()=>[];export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error("No customer writes")}',
+ customer:'export const loadCustomers=async()=>globalThis.__shipmentReferences.customers||[];export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error("No customer writes")}',
  criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
  ContactPicker:'export default ()=>null',ConfirmDialog:'export default ()=>null',LineImagePicker:'export default ()=>null',PackingListEditor:'export default ()=>null',FreightComparison:'export default ()=>null',OrderStockIssue:'export default ()=>null',OrderInventoryIssue:'export default ()=>null',
  crystals:'export const crystalInventory={order:{reserved:"crystals_reserved",committed:"crystals_committed"}}',
@@ -375,4 +375,79 @@ test('stock snapshots drive the existing shipping warning and cancel or accept s
   } finally {
     window.confirm = originalConfirm
   }
+})
+
+const destinationPanel = () => [...host.querySelectorAll('h2')]
+  .find(heading => heading.textContent === 'Destination').parentElement
+const destinationInput = label => [...destinationPanel().querySelectorAll('label')]
+  .find(el => el.textContent === label).parentElement.querySelector('input')
+const remarksInput = () => host.querySelector('textarea[placeholder^="Prints on the Proforma"]')
+const hideQty = () => [...host.querySelectorAll('label')]
+  .find(label => label.textContent.includes('Hide "Total Qty"')).querySelector('input')
+
+test('customer selection fills destination country and address while preserving city and port', async () => {
+  f.customers = [
+    { id: 'qa-customer', company_name: 'Original customer' },
+    { id: 'qa-new', company_name: 'New customer', country: 'Canada', address: 'New address' },
+    { id: 'qa-region', company_name: 'Region-only customer', region: 'Australia' },
+  ]
+  f.order.destination = { country: 'Germany', city: 'Hamburg', port: 'HH', address: 'Original address' }
+  f.allowWrite = true
+  await render()
+  const customerSelect = [...host.querySelectorAll('h2')]
+    .find(heading => heading.textContent === 'Customer').parentElement.querySelector('select')
+  await fill(customerSelect, 'qa-new')
+  assert.equal(destinationInput('Dest. Country').value, 'Canada')
+  assert.equal(destinationInput('Dest. City').value, 'Hamburg')
+  assert.equal(destinationInput('Port (optional)').value, 'HH')
+  await fill(customerSelect, 'qa-region')
+  assert.equal(destinationInput('Dest. Country').value, 'Australia')
+  assert.deepEqual(f.orderWrites, [])
+  await click(submit())
+  assert.equal(f.orderWrites.length, 1)
+  assert.equal(f.orderWrites[0].data.customer_id, 'qa-region')
+  assert.deepEqual(f.orderWrites[0].data.destination, {
+    country: 'Australia', city: 'Hamburg', port: 'HH', address: 'New address',
+  })
+})
+
+test('destination edits and multiline remarks save and reopen with the print quantity preference', async () => {
+  f.order.destination = { country: 'Germany', city: 'Hamburg', port: 'HH', address: 'Retain this address' }
+  f.allowWrite = true
+  await render()
+  assert.equal(destinationInput('Dest. Country').value, 'Germany')
+  assert.equal(destinationInput('Dest. City').value, 'Hamburg')
+  assert.equal(destinationInput('Port (optional)').value, 'HH')
+  assert.equal(remarksInput().value, 'Keep original notes')
+  assert.equal(hideQty().checked, false)
+
+  const notes = 'Fictional delivery instructions\n第二行 & reference'
+  await fill(destinationInput('Dest. Country'), '日本')
+  await fill(destinationInput('Dest. City'), '東京')
+  await fill(destinationInput('Port (optional)'), '')
+  await fill(remarksInput(), notes)
+  await click(hideQty())
+  assert.equal(hideQty().checked, true)
+  assert.deepEqual(f.orderWrites, [])
+  await click(submit())
+  assert.equal(f.orderWrites.length, 1)
+  assert.deepEqual(f.orderWrites[0].data.destination, {
+    country: '日本', city: '東京', port: '', address: 'Retain this address',
+  })
+  assert.equal(f.orderWrites[0].data.notes, notes)
+  assert.equal(f.orderWrites[0].data.hide_total_qty, true)
+
+  await act(async () => root.unmount())
+  root = createRoot(host)
+  await render()
+  assert.equal(destinationInput('Dest. Country').value, '日本')
+  assert.equal(destinationInput('Dest. City').value, '東京')
+  assert.equal(destinationInput('Port (optional)').value, '')
+  assert.equal(remarksInput().value, notes)
+  assert.equal(hideQty().checked, true)
+  await click(hideQty())
+  await click(submit())
+  assert.equal(f.orderWrites.length, 2)
+  assert.equal(f.orderWrites[1].data.hide_total_qty, false)
+  assert.deepEqual(f.calls, [])
 })

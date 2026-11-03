@@ -79,6 +79,10 @@ and shipping regressions; no financial or customer writes during live QA.
 presentation component; ShipmentForm still owns status confirmation and all
 state, calculations and writes. Shipping regressions cover the full page.
 
+[Destination and Remarks](../plans/V8.20-DESTINATION-REMARKS-CLEANUP.md)
+render through ShipmentOrderDetails.jsx. The parent owns customer autofill
+and persistence. Shipping form and invoice print fixtures cover the boundary.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

@@ -30,6 +30,7 @@ import { orderStockStatus, stockStatusDetail } from '../orderStockStatus'
 import { ErpCrossCheck } from '../components/shipping/ShipmentReconciliation'
 import ShipmentDocumentReferences from '../components/shipping/ShipmentDocumentReferences'
 import ShipmentScheduleTerms from '../components/shipping/ShipmentScheduleTerms'
+import { ShipmentDestination, ShipmentRemarks } from '../components/shipping/ShipmentOrderDetails'
 import { invoicePaymentTotals, invoiceDepositError } from '../invoicePayments'
 import { doc, onSnapshot, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -959,14 +960,7 @@ export default function ShipmentForm() {
 
         <ShipmentScheduleTerms header={header} setH={setH} isEdit={isEdit} setStatus={setStatus} stock={stock} />
 
-        <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs text-ink-60 uppercase tracking-wide">Destination</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div><label className="label">Dest. Country</label><input className="input" value={header.destination.country} onChange={setDest('country')} placeholder="Germany" /></div>
-            <div><label className="label">Dest. City</label><input className="input" value={header.destination.city} onChange={setDest('city')} placeholder="Hamburg" /></div>
-            <div><label className="label">Port (optional)</label><input className="input" value={header.destination.port} onChange={setDest('port')} placeholder="Hamburg" /></div>
-          </div>
-        </div>
+        <ShipmentDestination destination={header.destination} setDest={setDest} />
 
         {/* Reconciliation. Rendered unconditionally: "+ Add line" lives inside
             this card, so gating it on `lines.length > 0 || isEdit` meant a
@@ -1250,19 +1244,12 @@ export default function ShipmentForm() {
             "Remarks" there (see order.notes in SalesInvoicePrint.jsx /
             ProformaInvoicePrint.jsx). Free text: an exception, a name that was
             dropped, or other accounting context (SR-06). */}
-        <div className="card p-4">
-          <label className="label">Remarks</label>
-          <textarea className="input" rows={2} value={header.notes} onChange={setH('notes')}
-                     placeholder="Prints on the Proforma and Sales Invoice — accounting context, exceptions, etc." />
-          <label className="flex items-center gap-2 mt-3 text-sm text-ink-70">
-            <input
-              type="checkbox"
-              checked={!!header.hide_total_qty}
-              onChange={e => setHeader(h => ({ ...h, hide_total_qty: e.target.checked }))}
-            />
-            Hide "Total Qty" on the printed Proforma Invoice and Sales Invoice
-          </label>
-        </div>
+        <ShipmentRemarks
+          notes={header.notes}
+          onNotesChange={setH('notes')}
+          hideTotalQty={!!header.hide_total_qty}
+          onHideTotalQtyChange={e => setHeader(h => ({ ...h, hide_total_qty: e.target.checked }))}
+        />
 
         {/* Component stock — issue this order's figurine BOM to the ledger (V7.13a) */}
         {isEdit && <OrderStockIssue orderId={id} orderLabel={header.uc_no || header.erp_so_no || id} />}

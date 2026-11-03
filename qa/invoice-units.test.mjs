@@ -134,6 +134,26 @@ test('historical negative quantities and amounts remain visible and numeric',asy
 },{key:'erp-RETURN'}))
 
 const tierNote='1 pair 2 glasses in a gift box\n獨立禮盒及紙套'
+for (const kind of ['pi', 'sales']) test(`${kind}: saved order remarks and quantity visibility reach the print page`, async () => {
+ const original = fixture.order
+ const notes = 'Deliver to the side entrance\n請從側門交貨'
+ const quantityRow = host => [...host.querySelectorAll('tr')].find(row => row.cells[0]?.textContent === 'Total Qty')
+ try {
+  fixture.order = { ...original, notes, hide_total_qty: true }
+  await withPage(kind, async host => {
+   assert.equal(host.querySelector(kind === 'pi' ? '.pi-notes' : '.si-notes')?.textContent, 'Remarks' + notes)
+   assert.equal(quantityRow(host), undefined)
+   assert.equal(host.querySelectorAll(kind === 'pi' ? '.pi-lines tbody tr' : '.si-lines tbody tr').length, 9)
+  })
+  fixture.order = { ...original, notes: '', hide_total_qty: false }
+  await withPage(kind, async host => {
+   assert.ok(quantityRow(host))
+   assert.equal(host.querySelector(kind === 'pi' ? '.pi-notes' : '.si-notes'), null)
+  })
+ } finally {
+  fixture.order = original
+ }
+})
 for(const kind of ['pi','sales','customer'])test(`${kind}: quote tier remark survives normalization into PDF and Excel beside the correct amount`,async()=>{
  const original=fixture.lines
  const converted=quoteItemToOrderLine({product_name:'Gift glasses',product_unit:'pair',remarks:'PRODUCT NOTE',tiers:[{quantity:10,price:800,remarks:tierNote},{quantity:20,price:630,remarks:'ALTERNATIVE TIER'}]},0)
