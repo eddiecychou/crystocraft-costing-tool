@@ -14,7 +14,7 @@ import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
 import ContactPicker from '../components/ContactPicker'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
-import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Receipt, Image as ImageIcon } from 'lucide-react'
+import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, Receipt, Image as ImageIcon } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LineImagePicker from '../components/LineImagePicker'
 import PackingListEditor from './PackingListEditor'
@@ -31,6 +31,7 @@ import { ErpCrossCheck } from '../components/shipping/ShipmentReconciliation'
 import ShipmentDocumentReferences from '../components/shipping/ShipmentDocumentReferences'
 import ShipmentScheduleTerms from '../components/shipping/ShipmentScheduleTerms'
 import { ShipmentDestination, ShipmentRemarks } from '../components/shipping/ShipmentOrderDetails'
+import ShipmentLineItemsHeader from '../components/shipping/ShipmentLineItemsHeader'
 import { invoicePaymentTotals, invoiceDepositError } from '../invoicePayments'
 import { doc, onSnapshot, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -969,24 +970,11 @@ export default function ShipmentForm() {
             but never *originate* one. */}
         {(
           <div className="card p-4 md:p-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm text-ink-80">Line items &amp; reconciliation</h2>
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setLines(ls => rematchLines(ls, rangeProducts))}
-                  className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1"
-                  title="Re-run product matching by item code (keeps lines you classified manually)">
-                  <RefreshCw size={12} /> Re-match
-                </button>
-                <button type="button" onClick={addBlankLine} className="text-xs text-brand-600 hover:text-brand-800">+ Add line</button>
-              </div>
-            </div>
-
-            {unclassified > 0 && (
-              <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-3">
-                <AlertTriangle size={14} />
-                {unclassified} line{unclassified > 1 ? 's' : ''} still need a type. Classify every line before packing.
-              </div>
-            )}
+            <ShipmentLineItemsHeader
+              unclassified={unclassified}
+              onRematch={() => setLines(ls => rematchLines(ls, rangeProducts))}
+              onAddLine={addBlankLine}
+            />
 
             {lines.length === 0 && (
               <p className="text-sm text-ink-60 py-3 text-center">

@@ -39,6 +39,19 @@ try{
     assert.equal(await page.getByText(/found in the ERP —/).count(),0)
     result.blankOrder='PASS; no comparison before import'
     const refs=page.getByRole('heading',{name:'Document References',exact:true}).locator('..')
+    const lineItems=page.getByRole('heading',{name:'Line items & reconciliation',exact:true})
+    const addLine=page.getByRole('button',{name:'+ Add line',exact:true})
+    const lineCodes=page.getByPlaceholder('Item code',{exact:true})
+    const unclassified=page.getByText(/still need a type\. Classify every line before packing\./)
+    await lineItems.waitFor()
+    assert.equal(await lineCodes.count(),0)
+    await addLine.click()
+    assert.equal(await lineCodes.count(),1)
+    assert.match(await unclassified.innerText(),/^1 line still/)
+    await addLine.click()
+    assert.match(await unclassified.innerText(),/^2 lines still/)
+    await page.getByRole('button',{name:'Ad-hoc',exact:true}).first().click()
+    assert.match(await unclassified.innerText(),/^1 line still/)
     const destination=page.getByRole('heading',{name:'Destination',exact:true}).locator('..')
     const remarks=page.locator('textarea[placeholder^="Prints on the Proforma and Sales Invoice"]')
     const hideQuantity=page.getByRole('checkbox',{name:/Hide "Total Qty"/})
@@ -81,6 +94,9 @@ try{
     await refs.screenshot({path:`${out}/${phase}-admin-document-references.png`})
     assert.deepEqual(await scheduleFields(),originalSchedule)
     assert.deepEqual(await orderDetails(),blankDetails)
+    assert.equal(await lineCodes.count(),0)
+    assert.equal(await unclassified.count(),0)
+    result.lineItemsHeader='PASS; add and classify on a blank form, warning count and reload reset'
     result.blankOrderDetails='PASS; destination, remarks and quantity checkbox edit and reset'
     await schedule.screenshot({path:`${out}/${phase}-admin-schedule.png`})
     result.blankSchedule='PASS; dates, currency, Incoterm and free text edit/reset; new order hides status/invoice date'

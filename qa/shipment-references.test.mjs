@@ -25,15 +25,20 @@ const stubs={
  firestore:`const f=()=>globalThis.__shipmentReferences;
  export const doc=(...p)=>Object.assign(p,{id:typeof p.at(-1)==='string'?p.at(-1):'new-line'}),collection=(...p)=>p,query=(...p)=>p,orderBy=()=>{};
  export const getDoc=async p=>{if(p.includes('client_quotes')&&f().quote)return{id:p.at(-1),exists:()=>true,data:()=>f().quote};if(!p.includes('orders'))throw Error('Unexpected document read');return{id:p.at(-1),exists:()=>true,data:()=>f().order}};
- export const getDocs=async p=>({docs:p.includes('client_quotes')&&f().quote?(f().quoteItems||[]).map((l,i)=>({id:'quote-item-'+i,data:()=>l})):JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
+ export const getDocs=async path=>{
+   const data=f();
+   if(path.includes('range_products'))return {docs:(data.rangeProducts||[]).map(({id,...product})=>({id,data:()=>product}))};
+   if(path.includes('client_quotes')&&data.quote)return {docs:(data.quoteItems||[]).map((item,i)=>({id:'quote-item-'+i,data:()=>item}))};
+   if(JSON.stringify(path).includes('"orders"'))return {docs:data.lines.map(line=>({id:line.id,ref:line.id,data:()=>line}))};
+   return {docs:[]};
+ };
  export const onSnapshot=(path,next)=>{if(!path.includes("orders"))throw Error("Unexpected subscription");f().stockSnapshot=next;return()=>{delete f().stockSnapshot}},serverTimestamp=()=> 'FICTIONAL timestamp',where=()=>{},limit=()=>{};
  export const updateDoc=async(p,data)=>{if(!f().allowWrite)throw Error('Unexpected order write');f().orderWrites.push({path:[...p],data:structuredClone(data)});if(f().writeError)throw f().writeError;f().order={...f().order,...data}};
  export const writeBatch=()=>({set(p,data){if(!f().allowWrite)throw Error('Unexpected line write');f().lineWrites.push(structuredClone(data))},delete(){throw Error('No deletes authorized')},commit:async()=>{}});
  export const runTransaction=async()=>{if(f().createError){f().createAttempts++;throw f().createError}throw Error('No creates/transactions authorized')};
- const fail=()=>{throw Error('No creates/deletes authorized')};export{fail as addDoc,fail as deleteDoc};`,
+ const fail=()=>{throw Error('No creates/deletes authorized')};export{fail as addDoc,fail as deleteDoc,fail as setDoc,fail as increment};`,
  router:`import React from 'react';const f=()=>globalThis.__shipmentReferences;export const useParams=()=>({id:f().id}),useSearchParams=()=>[new URLSearchParams(f().search)],useNavigate=()=>to=>{f().destination=to};export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children)`,
  customer:'export const loadCustomers=async()=>globalThis.__shipmentReferences.customers||[];export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error("No customer writes")}',
- criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
  ContactPicker:'export default ()=>null',ConfirmDialog:'export default ()=>null',LineImagePicker:'export default ()=>null',PackingListEditor:'export default ()=>null',FreightComparison:'export default ()=>null',OrderStockIssue:'export default ()=>null',OrderInventoryIssue:'export default ()=>null',
  crystals:'export const crystalInventory={order:{reserved:"crystals_reserved",committed:"crystals_committed"}}',
  packaging:'export const packagingInventory={order:{reserved:"packaging_reserved",committed:"packaging_committed"}}',
@@ -449,5 +454,70 @@ test('destination edits and multiline remarks save and reopen with the print qua
   await click(submit())
   assert.equal(f.orderWrites.length, 2)
   assert.equal(f.orderWrites[1].data.hide_total_qty, false)
+  assert.deepEqual(f.calls, [])
+})
+
+const reconciliation = () => [...host.querySelectorAll('h2')]
+  .find(heading => heading.textContent === 'Line items & reconciliation').parentElement.parentElement
+const reconciliationButton = (label, root = reconciliation()) => [...root.querySelectorAll('button')]
+  .find(button => button.textContent.trim() === label)
+const itemCodeInputs = () => [...reconciliation().querySelectorAll('input[placeholder="Item code"]')]
+const lineCard = index => itemCodeInputs()[index].closest('.rounded-none.border')
+const classificationWarning = () => reconciliation().querySelector('.border-amber-200.mb-3')?.textContent
+
+test('blank form adds its first line from the header and updates the warning through classification and removal', async () => {
+  f.id = undefined
+  await render()
+  assert.match(reconciliation().textContent, /No lines yet/)
+  assert.equal(classificationWarning(), undefined)
+  assert.equal(reconciliationButton('+ Add line').type, 'button')
+  await click(reconciliationButton('+ Add line'))
+  assert.equal(itemCodeInputs().length, 1)
+  assert.equal(itemCodeInputs()[0].value, '')
+  assert.match(classificationWarning(), /1 line still need a type/)
+  await click(reconciliationButton('+ Add line'))
+  assert.equal(itemCodeInputs().length, 2)
+  assert.match(classificationWarning(), /2 lines still need a type/)
+  await click(reconciliationButton('Ad-hoc', lineCard(0)))
+  assert.match(classificationWarning(), /1 line still need a type/)
+  const trash = lineCard(1).querySelector('svg.lucide-trash-2').closest('button')
+  await click(trash)
+  assert.equal(itemCodeInputs().length, 1)
+  assert.equal(classificationWarning(), undefined)
+  assert.equal(f.createAttempts, 0)
+  assert.deepEqual(f.orderWrites, [])
+  assert.deepEqual(f.calls, [])
+})
+
+test('Re-match resolves a real product match while preserving a manually classified line', async () => {
+  f.rangeProducts = [{ id: 'range-match', design_code: 'D0001', format_code: '001', description: 'Fictional matching design' }]
+  f.lines = [
+    { ...f.lines[0], item_code: 'D0001-001-C', description: 'Manual line wording', line_type: 'ad_hoc', match_status: 'manual' },
+    { ...f.lines[0], id: 'auto-line', line_no: 2, item_code: 'D0001-001-C', description: '', line_type: null, match_status: 'unmatched' },
+  ]
+  f.allowWrite = true
+  await render()
+  assert.match(classificationWarning(), /1 line still need a type/)
+  const rematch = reconciliationButton('Re-match')
+  assert.equal(rematch.type, 'button')
+  assert.match(rematch.title, /keeps lines you classified manually/)
+  await click(rematch)
+  assert.equal(classificationWarning(), undefined)
+  assert.equal(lineCard(0).querySelector('textarea[placeholder="Description"]').value, 'Manual line wording')
+  assert.doesNotMatch(lineCard(0).textContent, /Fictional matching design/)
+  assert.equal(lineCard(1).querySelector('textarea[placeholder="Description"]').value, 'Fictional matching design')
+  assert.match(lineCard(1).textContent, /Fictional matching design/)
+  assert.deepEqual(f.orderWrites, [])
+  assert.deepEqual(f.lineWrites, [])
+
+  await click(submit())
+  assert.equal(f.orderWrites.length, 1)
+  assert.equal(f.lineWrites.length, 2)
+  assert.equal(f.lineWrites[0].line_type, 'ad_hoc')
+  assert.equal(f.lineWrites[0].match_status, 'manual')
+  assert.equal(f.lineWrites[0].matched_product_ref, null)
+  assert.equal(f.lineWrites[1].line_type, 'range')
+  assert.equal(f.lineWrites[1].match_status, 'matched')
+  assert.equal(f.lineWrites[1].matched_product_ref.id, 'range-match')
   assert.deepEqual(f.calls, [])
 })

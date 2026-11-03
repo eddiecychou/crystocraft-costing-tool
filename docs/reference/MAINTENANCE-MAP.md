@@ -83,6 +83,10 @@ state, calculations and writes. Shipping regressions cover the full page.
 render through ShipmentOrderDetails.jsx. The parent owns customer autofill
 and persistence. Shipping form and invoice print fixtures cover the boundary.
 
+[Line Items header](../plans/V8.20-LINE-ITEMS-HEADER-CLEANUP.md) renders
+Re-match, Add line and the warning count. ShipmentForm owns the callbacks,
+line state and row editor.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,
