@@ -223,6 +223,10 @@ ShipmentForm supplies the Add line and Re-match callbacks and warning count.
 The form fixtures cover classification, removal and preservation of manual
 classifications during matching.
 
+The [Line row editor](V8.20-LINE-ROW-EDITOR-CLEANUP.md) is released.
+ShipmentForm owns row identity, matching, image selection and persistence.
+Form fixtures cover save and reopen, picker targeting and charge behavior.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second

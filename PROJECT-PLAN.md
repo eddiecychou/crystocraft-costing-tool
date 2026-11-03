@@ -1,3 +1,11 @@
+# V8.20 — Line row editor cleanup — released, 3 November 2026
+
+ShipmentLineRow renders the editable row. ShipmentForm owns row identity,
+matching, the picker and writes. Source restoration, 60 before/after form cases,
+visual comparisons and the 778-test build pass. Both required GitHub jobs passed on ff833872; fresh admin/customer
+checks passed on candidate and production. Production 6ae9bce8cfeedc7b6609824c.
+[Release evidence](docs/plans/V8.20-LINE-ROW-EDITOR-CLEANUP.md).
+
 # V8.20 — Line Items & Reconciliation header cleanup — released, 3 November 2026
 
 The header now renders through a controlled component. ShipmentForm owns
