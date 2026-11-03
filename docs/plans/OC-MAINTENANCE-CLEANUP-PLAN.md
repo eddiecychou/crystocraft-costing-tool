@@ -229,7 +229,12 @@ Form fixtures cover save and reopen, picker targeting and charge behavior.
 
 The [read-only Order Totals rows](V8.20-ORDER-TOTALS-ROWS-CLEANUP.md) are
 released. ShipmentForm calculates and formats the values, and owns the
-editable discount, accounting and deposit controls.
+editable financial controls.
+
+The [Discount row](V8.20-SHIPMENT-DISCOUNT-CLEANUP.md) is released.
+ShipmentDiscountRow renders the two controlled inputs. ShipmentForm retains
+subtotal selection, both conversions, rounding and persistence. Review
+Accounting Total and Deposit Paid as separate slices.
 
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,

@@ -93,7 +93,11 @@ the image picker, totals and persistence.
 
 [Order Totals rows](../plans/V8.20-ORDER-TOTALS-ROWS-CLEANUP.md) render
 formatted subtotal, PI comparison, charges and total. ShipmentForm owns
-calculation, formatting, validation and editable financial controls.
+calculation, formatting and validation.
+
+[Discount row](../plans/V8.20-SHIPMENT-DISCOUNT-CLEANUP.md) renders
+percentage and amount controls through ShipmentDiscountRow.jsx.
+ShipmentForm owns conversion, rounding, totals and persistence.
 
 ## CRM component ownership — first cleanup batch
 

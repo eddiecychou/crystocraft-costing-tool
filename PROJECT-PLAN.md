@@ -1,3 +1,11 @@
+# V8.20 — Shipping Discount cleanup — released, 4 November 2026
+
+The Discount row now has a dedicated component. ShipmentForm owns the
+conversion, rounding and persistence. All 65 form cases, 12 visual pairs
+and 783 build tests passed. Both GitHub jobs passed on b16004ff;
+candidate and production passed fresh admin/customer verification.
+Production 6ae9feb7e1db50d4ecd49917. [Release evidence](docs/plans/V8.20-SHIPMENT-DISCOUNT-CLEANUP.md).
+
 # V8.20 — Read-only Order Totals cleanup — released, 3 November 2026
 
 The subtotal, PI comparison, charges and final total use display components.
