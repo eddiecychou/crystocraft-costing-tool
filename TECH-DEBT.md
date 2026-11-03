@@ -14,16 +14,17 @@ retain historical evidence and link their later release records.
 
 ## ShipmentForm mixes presentation with workflow orchestration — display/reference slices extracted
 
-Owner-authorized save validation/visible-error corrections now pass focused local
-regressions. See the [correction record](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md)
-for release gates; the discovery below is historical, not a completed-deploy claim.
+Save validation/visible-error corrections are released as 37ea5b2a after both
+exact-SHA jobs, full build and fresh candidate/production role/feature gates.
+[Correction evidence](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md).
+The discovery below describes the now-corrected pre-release behavior.
 
 **3 November health review:** pause the next extraction for a confirmed save
 regression from the separate Woo metadata repair: a loaded saved total is checked
 against an edited Accounting Total before the live line-derived check, so matching
 edited line/accounting amounts can be rejected. Baseline 43073fc saves; current
 source does not. An older UI defect hides edit-form save errors inside an absent
-import card. Both have isolated actual-form reproductions and remain unfixed.
+import card. Both had isolated actual-form reproductions before correction.
 Correct the validation context and visible error path without weakening genuine
 adjustment guards. [Assessment and revised order](docs/plans/V8.20-CLEANUP-HEALTH-REVIEW-2026-11-03.md).
 
@@ -74,10 +75,11 @@ presentation slice did not inspect/correct live records.
 
 ## Customer navigation can retain stale customer data and section state
 
-Owner-authorized keyed page/section isolation and guarded-loader/error/Retry
-corrections pass 12 actual-page and 19 component cases locally. The
-[correction record](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md) tracks
-release gates; original discovery and baseline evidence remain below.
+Keyed page/section isolation and guarded-loader/error/Retry corrections are
+released as 37ea5b2a: 12 actual-page and 19 component cases pass, both exact-SHA
+jobs and all fresh candidate/production role/feature gates pass. See the
+[correction evidence](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md).
+Original discovery and baseline evidence remain below.
 
 3 November health review confirms two pre-existing problems: CustomerDetail's
 unguarded Promise.all loader can finish A after navigation to B, displaying A
@@ -87,7 +89,7 @@ same-instance navigation; current and frozen original both reproduce it. These
 are not extraction regressions. Fix navigation response/state isolation before
 more extraction; test delayed loads and same-instance preferences. The isolated
 repro proves a read/render mismatch, not a cross-customer write. Both findings
-remain unfixed. [Assessment and evidence](docs/plans/V8.20-CLEANUP-HEALTH-REVIEW-2026-11-03.md).
+were open at discovery and are corrected by the release above. [Assessment and evidence](docs/plans/V8.20-CLEANUP-HEALTH-REVIEW-2026-11-03.md).
 
 ## Three edge functions have no auth check
 

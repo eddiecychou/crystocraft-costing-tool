@@ -19,9 +19,10 @@ invoice save validation/feedback, then customer read/state isolation, then
 Schedule & Terms. None is repaired or released by the audit.
 [Findings, reproductions and limits](V8.20-CLEANUP-HEALTH-REVIEW-2026-11-03.md).
 
-The owner has now authorized those corrections. Local save and customer-navigation
-fixes pass; the [correction record](V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md)
-tracks deployment. Resume Schedule & Terms after their corrective release gates.
+The owner subsequently authorized those corrections. Save and customer-navigation
+fixes are released as 37ea5b2a after both exact-SHA jobs, full build and fresh
+candidate/production role/feature gates. [Correction evidence](V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md).
+The next proposed extraction is Schedule & Terms; it has not started.
 
 
 Start with [CLAUDE.md](../../CLAUDE.md), the

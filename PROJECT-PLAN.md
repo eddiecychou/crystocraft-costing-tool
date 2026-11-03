@@ -1,12 +1,18 @@
-# V8.20 — Save and customer navigation corrections — local verification, 3 November 2026
+# V8.20 — Save and customer navigation corrections — released, 3 November 2026
 
-Owner authorized all four audit findings. Current-total invoice save validation,
-submit-adjacent errors, keyed customer/section state and abandoned-load/error/Retry
-handling pass focused actual-page/component tests: 64 shipping and 115 customer-
-workspace. Independent review finds no blocking regression. Full exact-SHA CI,
-build and candidate/production fresh role gates remain pending; production is
-unchanged. No live financial/stock/customer saves or emails in QA.
-[Scope and release record](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md).
+Owner approved all four audit findings. Current-total invoice save validation,
+submit-adjacent errors, customer-ID page isolation/abandoned-read guards and
+storageKey-scoped section preferences are corrected. Baseline red/green actual-
+page/component proof; 64 shipping, 115 customer-workspace and complete 767-test
+prebuild/build pass, with no-undef/config checks. Both exact-SHA GitHub jobs pass
+for 37ea5b2a in run 41580400699, attempt 1. Candidate 6ae969218f8c560b1f3abec1 and
+production 6ae96a0cb0c9affe796b5b93 pass all fresh core/shipping roles and QA
+customer preference/return/mobile checks. Same artifact reused, CSS/server/rules
+unchanged; served index-CGe-TLx8.js and config verified. Final fresh check 3 Nov 16:01:36 AEDT / 3 Nov 13:01:36 HKT.
+No QA business saves, allocations, stock changes, AI calls or emails. Normal QA
+login telemetry may update. Historical financial review remains separate; next
+proposed cleanup is Schedule & Terms. Closeout docs skip deployment.
+[Scope and release evidence](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md).
 
 # V8.20 — Cleanup health review — open corrections, 3 November 2026
 
