@@ -214,6 +214,10 @@ non-QA finance activity; historical review remains separate.
 [Schedule & Terms](V8.20-SCHEDULE-TERMS-CLEANUP.md) moves controlled markup only;
 status confirmation, header state and all writes remain parent-owned.
 
+[Destination and Remarks](V8.20-DESTINATION-REMARKS-CLEANUP.md) are released as
+controlled panels. The form tests cover customer autofill and save/reopen.
+The Proforma and Sales Invoice tests cover remarks and quantity visibility.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second

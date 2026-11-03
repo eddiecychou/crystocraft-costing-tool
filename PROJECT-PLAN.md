@@ -1,3 +1,11 @@
+# V8.20 — Destination and Remarks cleanup — released, 3 November 2026
+
+Destination and Remarks moved into controlled components. The parent
+owns customer autofill and persistence. Source restoration, 56 form cases,
+42 invoice cases and the 774-test build pass. Both required GitHub jobs passed on 4fb06ded; fresh admin/customer
+checks passed on candidate and production. Production 6ae9a8054e1578552fdd391f.
+[Release evidence](docs/plans/V8.20-DESTINATION-REMARKS-CLEANUP.md).
+
 # V8.20 — Schedule & Terms cleanup — released, 3 November 2026
 
 Schedule & Terms moved to a controlled presentation component. The parent
