@@ -26,7 +26,7 @@ const stubs={
  export const doc=(...p)=>Object.assign(p,{id:typeof p.at(-1)==='string'?p.at(-1):'new-line'}),collection=(...p)=>p,query=(...p)=>p,orderBy=()=>{};
  export const getDoc=async p=>{if(p.includes('client_quotes')&&f().quote)return{id:p.at(-1),exists:()=>true,data:()=>f().quote};if(!p.includes('orders'))throw Error('Unexpected document read');return{id:p.at(-1),exists:()=>true,data:()=>f().order}};
  export const getDocs=async p=>({docs:p.includes('client_quotes')&&f().quote?(f().quoteItems||[]).map((l,i)=>({id:'quote-item-'+i,data:()=>l})):JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
- export const onSnapshot=()=>()=>{},serverTimestamp=()=> 'FICTIONAL timestamp',where=()=>{},limit=()=>{};
+ export const onSnapshot=(path,next)=>{if(!path.includes("orders"))throw Error("Unexpected subscription");f().stockSnapshot=next;return()=>{delete f().stockSnapshot}},serverTimestamp=()=> 'FICTIONAL timestamp',where=()=>{},limit=()=>{};
  export const updateDoc=async(p,data)=>{if(!f().allowWrite)throw Error('Unexpected order write');f().orderWrites.push({path:[...p],data:structuredClone(data)});if(f().writeError)throw f().writeError;f().order={...f().order,...data}};
  export const writeBatch=()=>({set(p,data){if(!f().allowWrite)throw Error('Unexpected line write');f().lineWrites.push(structuredClone(data))},delete(){throw Error('No deletes authorized')},commit:async()=>{}});
  export const runTransaction=async()=>{if(f().createError){f().createAttempts++;throw f().createError}throw Error('No creates/transactions authorized')};
@@ -35,8 +35,9 @@ const stubs={
  customer:'export const loadCustomers=async()=>[];export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error("No customer writes")}',
  criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
  ContactPicker:'export default ()=>null',ConfirmDialog:'export default ()=>null',LineImagePicker:'export default ()=>null',PackingListEditor:'export default ()=>null',FreightComparison:'export default ()=>null',OrderStockIssue:'export default ()=>null',OrderInventoryIssue:'export default ()=>null',
- crystals:'export const crystalInventory={}',packaging:'export const packagingInventory={}',orderStock:'export const metalOrderConfig={}',
- orderStockStatus:'export const orderStockStatus=()=>null;export const stockStatusDetail=()=>"";export const STOCK_STATUS_LABEL={},STOCK_STATUS_STYLE={}',
+ crystals:'export const crystalInventory={order:{reserved:"crystals_reserved",committed:"crystals_committed"}}',
+ packaging:'export const packagingInventory={order:{reserved:"packaging_reserved",committed:"packaging_committed"}}',
+ orderStock:'export const metalOrderConfig={order:{reserved:"metal_reserved",committed:"metal_committed"}}',
  erpSoImport:'export const fetchErpSoLines=async()=>{throw Error("No ERP extraction")};export const diffLines=()=>null',
  soNumber:'import{ocYear}from"./src/ocTime.js";export const soYear=()=>String(ocYear(new Date())%100).padStart(2,"0");export const allocateSoNo=(...a)=>globalThis.__shipmentReferences.invoke("so",a);export const JES_SEED_BY_YEAR={};export const formatSoNo=()=>{throw Error("No order creation authorized")}',
  ucRegistry:'export const allocateOrderUc=(...a)=>globalThis.__shipmentReferences.invoke("uc",a);export const allocateInvoice=(...a)=>globalThis.__shipmentReferences.invoke("si",a);export const updateUcInvoice=(...a)=>globalThis.__shipmentReferences.invoke("registry",a);export const upsertInvoice=async data=>{const f=globalThis.__shipmentReferences;if(!f.allowAccounting)throw Error("No accounting upsert authorized");f.accountingWrites.push(structuredClone(data))}',
@@ -275,3 +276,103 @@ for(const mode of ['import','direct','quote']){
   assert.match(formError()?.textContent||'',/Deposit paid cannot exceed the invoice total/);assert.equal(submit().disabled,false);assert.equal(f.createAttempts,0);assert.equal(f.destination,undefined);assert.deepEqual(f.calls,[]);assert.deepEqual(f.orderWrites,[]);assert.deepEqual(f.lineWrites,[])
  })
 }
+
+const schedule = () => [...host.querySelectorAll('h2')]
+  .find(heading => heading.textContent === 'Schedule & Terms').parentElement
+const scheduleField = label => [...schedule().querySelectorAll('label')]
+  .find(el => el.textContent === label)?.parentElement.querySelector('input, select')
+
+test('new schedule uses defaults, allows custom terms and reveals invoice date only with an invoice number', async () => {
+  f.id = undefined
+  await render()
+  for (const [label, expected] of [
+    ['Order Date', ''], ['Est. Ship Date', ''], ['Currency', 'USD'],
+    ['Incoterm', 'FOB'], ['Payment Terms', ''],
+  ]) assert.equal(scheduleField(label).value, expected)
+  assert.equal(scheduleField('Status'), undefined)
+  assert.equal(scheduleField('Invoice Date'), undefined)
+  assert.ok([...scheduleField('Payment Terms').list.options].some(option => option.value === 'Net 30 Days'))
+
+  await fill(scheduleField('Payment Terms'), 'Net 45 days · agreed separately')
+  await fill(input('Invoice No'), 'SI-MANUAL')
+  assert.equal(scheduleField('Invoice Date').value, '')
+  assert.equal(scheduleField('Payment Terms').value, 'Net 45 days · agreed separately')
+  assert.deepEqual(f.calls, [])
+  assert.deepEqual(f.orderWrites, [])
+})
+
+test('edited schedule fields persist through the actual save and reopen path', async () => {
+  Object.assign(f.order, {
+    erp_si_no: 'SI-EXISTING', invoiced_at: '2026-10-20',
+    order_date: '2026-10-18', est_ship_date: '2026-11-03', deposit_paid: null,
+  })
+  f.allowWrite = true
+  f.allowAccounting = true
+  await render()
+  assert.equal(scheduleField('Order Date').value, '2026-10-18')
+  assert.equal(scheduleField('Est. Ship Date').value, '2026-11-03')
+  assert.equal(scheduleField('Invoice Date').value, '')
+  assert.equal(scheduleField('Invoice Date').placeholder, '2026-10-20')
+
+  const edits = [
+    ['Order Date', 'order_date', '2026-10-19'],
+    ['Est. Ship Date', 'est_ship_date', '2026-11-08'],
+    ['Invoice Date', 'invoice_date', '2026-10-22'],
+    ['Currency', 'currency', 'CAD'],
+    ['Incoterm', 'incoterm', 'DAP'],
+    ['Payment Terms', 'payment_terms', 'Net 45 days · agreed separately'],
+    ['Status', 'status', 'packing'],
+  ]
+  for (const [label, , value] of edits) await fill(scheduleField(label), value)
+  assert.deepEqual(f.orderWrites, [])
+  await click(submit())
+  assert.equal(f.orderWrites.length, 1)
+  assert.equal(f.accountingWrites.length, 1)
+  for (const [, field, value] of edits) assert.equal(f.orderWrites[0].data[field], value)
+  assert.equal(f.accountingWrites[0].invoice_date, '2026-10-22')
+  assert.equal(f.orderWrites[0].data.invoiced_at, '2026-10-20')
+  await act(async () => root.unmount())
+  root = createRoot(host)
+  await render()
+  for (const [label, , value] of edits) assert.equal(scheduleField(label).value, value)
+  assert.deepEqual(f.calls, [])
+})
+
+test('stock snapshots drive the existing shipping warning and cancel or accept status changes', async () => {
+  const originalConfirm = window.confirm
+  const prompts = []
+  let accepted = false
+  window.confirm = message => {
+    prompts.push(message)
+    return accepted
+  }
+  try {
+    await render()
+    await act(async () => f.stockSnapshot({ data: () => ({ metal_reserved: true }) }))
+    assert.match(schedule().textContent, /Stock: partly recorded/)
+    await fill(scheduleField('Status'), 'shipped')
+    assert.equal(scheduleField('Status').value, 'draft')
+    assert.equal(prompts.length, 1)
+    assert.match(prompts[0], /reserved but never consumed/)
+    assert.match(prompts[0], /Mark it shipped anyway/)
+
+    accepted = true
+    await fill(scheduleField('Status'), 'delivered')
+    assert.equal(scheduleField('Status').value, 'delivered')
+    assert.equal(prompts.length, 2)
+    await fill(scheduleField('Status'), 'shipped')
+    assert.equal(prompts.length, 2)
+
+    await act(async () => f.stockSnapshot({ data: () => ({ metal_committed: true }) }))
+    assert.match(schedule().textContent, /Stock: recorded/)
+    await fill(scheduleField('Status'), 'ready')
+    await fill(scheduleField('Status'), 'shipped')
+    assert.equal(scheduleField('Status').value, 'shipped')
+    assert.equal(prompts.length, 2)
+    assert.deepEqual(f.orderWrites, [])
+    assert.deepEqual(f.lineWrites, [])
+    assert.deepEqual(f.calls, [])
+  } finally {
+    window.confirm = originalConfirm
+  }
+})

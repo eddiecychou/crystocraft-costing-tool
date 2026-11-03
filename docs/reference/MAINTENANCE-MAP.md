@@ -75,6 +75,10 @@ guards abandoned initial reads; CustomerCollapsible keys section state by the
 existing storageKey. Run customer-workspace (including actual-page navigation)
 and shipping regressions; no financial or customer writes during live QA.
 
+[Schedule & Terms](../plans/V8.20-SCHEDULE-TERMS-CLEANUP.md) is a controlled
+presentation component; ShipmentForm still owns status confirmation and all
+state, calculations and writes. Shipping regressions cover the full page.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

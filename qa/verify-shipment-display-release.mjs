@@ -39,6 +39,17 @@ try{
     assert.equal(await page.getByText(/found in the ERP —/).count(),0)
     result.blankOrder='PASS; no comparison before import'
     const refs=page.getByRole('heading',{name:'Document References',exact:true}).locator('..')
+    const schedule=page.getByRole('heading',{name:'Schedule & Terms',exact:true}).locator('..')
+    const scheduleFields=()=>schedule.locator('input,select').evaluateAll(fields=>fields.map(field=>({value:field.value,placeholder:field.getAttribute('placeholder')})))
+    const originalSchedule=await scheduleFields()
+    assert.equal(await schedule.locator('input[type=date]').count(),2)
+    assert.equal(await schedule.getByText('Status',{exact:true}).count(),0)
+    assert.ok(await schedule.locator('#payment-terms option').count())
+    const dates=schedule.locator('input[type=date]'), options=schedule.locator('select')
+    await dates.nth(0).fill('2026-11-04');await dates.nth(1).fill('2026-11-16')
+    await options.nth(0).selectOption('EUR');await options.nth(1).selectOption('DAP')
+    await schedule.locator('input[list=payment-terms]').fill('Fictional unsaved QA terms')
+    assert.deepEqual((await scheduleFields()).map(field=>field.value),['2026-11-04','2026-11-16','EUR','DAP','Fictional unsaved QA terms'])
     const referenceInputs=['e.g. SO260017','e.g. UC4950/26','e.g. SI260094','e.g. 56909','Original']
     for(const placeholder of referenceInputs)assert.equal(await refs.getByPlaceholder(placeholder,{exact:true}).inputValue(),'')
     // The current buttons sit inside labels, so their accessible names include
@@ -55,6 +66,9 @@ try{
     for(const placeholder of referenceInputs)assert.equal(await refs.getByPlaceholder(placeholder,{exact:true}).inputValue(),'')
     assert.equal(await allocateButtons().count(),3)
     await refs.screenshot({path:`${out}/${phase}-admin-document-references.png`})
+    assert.deepEqual(await scheduleFields(),originalSchedule)
+    await schedule.screenshot({path:`${out}/${phase}-admin-schedule.png`})
+    result.blankSchedule='PASS; dates, currency, Incoterm and free text edit/reset; new order hides status/invoice date'
     result.blankReferences='PASS; original blanks, unsaved manual fields/revision and reload reset; no allocation clicks'
     await go('/shipping');await page.getByRole('heading',{name:'Production',exact:true}).waitFor()
     if(savedWooPath)await go(savedWooPath)
@@ -70,8 +84,13 @@ try{
     result.existingOrderPath=new URL(page.url()).pathname
     result.stockLabel=label;result.stockTooltip=title
     const savedRefs=await refs.locator('input').evaluateAll(inputs=>inputs.map(i=>i.value))
+    const savedSchedule=await scheduleFields()
+    assert.equal(await schedule.getByText('Status',{exact:true}).count(),1)
+    assert.equal(await schedule.getByText('Invoice Date',{exact:true}).count(),savedRefs[2]?1:0)
     await page.reload();await badge.waitFor();assert.equal(await badge.textContent(),label);assert.equal(await badge.getAttribute('title'),title)
     assert.deepEqual(await refs.locator('input').evaluateAll(inputs=>inputs.map(i=>i.value)),savedRefs)
+    assert.deepEqual(await scheduleFields(),savedSchedule)
+    result.savedSchedule='PASS; read-only dates, terms, status and conditional invoice date survive refresh'
     await badge.screenshot({path:`${out}/${phase}-admin-stock.png`})
     result.savedOrderAndStockRefresh='PASS; view only'
     await go(result.existingOrderPath+'?invoice=1')
@@ -81,6 +100,7 @@ try{
    }else{
     await page.waitForURL(u=>u.pathname==='/shop');await page.getByText(/QA ONLY/).first().waitFor()
     assert.equal(await page.getByRole('heading',{name:'New Order',exact:true}).count(),0)
+    assert.equal(await page.getByRole('heading',{name:'Schedule & Terms',exact:true}).count(),0)
     assert.equal(await page.getByRole('button',{name:'Create Order',exact:true}).count(),0)
     await page.reload();await page.getByText(/QA ONLY/).first().waitFor()
     result.shippingRouteRefused='PASS'

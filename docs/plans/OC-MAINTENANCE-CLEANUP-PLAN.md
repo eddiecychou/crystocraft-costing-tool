@@ -22,7 +22,7 @@ Schedule & Terms. None is repaired or released by the audit.
 The owner subsequently authorized those corrections. Save and customer-navigation
 fixes are released as 37ea5b2a after both exact-SHA jobs, full build and fresh
 candidate/production role/feature gates. [Correction evidence](V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md).
-The next proposed extraction is Schedule & Terms; it has not started.
+The owner authorized [Schedule & Terms](V8.20-SCHEDULE-TERMS-CLEANUP.md) as the next extraction.
 
 
 Start with [CLAUDE.md](../../CLAUDE.md), the
@@ -211,8 +211,8 @@ allocator/backend/calculations. Historical discrepancies remain review-only;
 no backfill or guessed conversion. Exact-SHA/build/fresh candidate/production
 gates pass and the runtime fix is released. Dated snapshots preserve concurrent
 non-QA finance activity; historical review remains separate.
-Schedule & Terms remains proposed, following the corrective work identified in
-the 3 November health review above.
+[Schedule & Terms](V8.20-SCHEDULE-TERMS-CLEANUP.md) moves controlled markup only;
+status confirmation, header state and all writes remain parent-owned.
 
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
