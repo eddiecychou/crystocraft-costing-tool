@@ -1,3 +1,12 @@
+# V8.20 — Schedule & Terms cleanup — released, 3 November 2026
+
+Schedule & Terms moved to a controlled presentation component. The parent
+retains status confirmation, state, validation and saves. Exact restoration,
+54 baseline/current form cases, eight Chrome visual pairs and 770 build tests
+pass. Both required GitHub jobs passed on ea02b563; fresh admin/customer
+checks passed on candidate and production. Production 6ae9790eb203a227882af51a.
+[Release evidence](docs/plans/V8.20-SCHEDULE-TERMS-CLEANUP.md).
+
 # V8.20 — Save and customer navigation corrections — released, 3 November 2026
 
 Owner approved all four audit findings. Current-total invoice save validation,
