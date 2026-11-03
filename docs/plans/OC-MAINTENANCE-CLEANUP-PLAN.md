@@ -11,6 +11,19 @@ The standing-rules, topic-composer, attachment-control and master-refinement
 presentation slices, followed by Pending Review cards and the bulk toolbar, are
 released and verified under the owner's subsequent explicit requests.
 
+**3 November health review:** the existing suites/build, exact-SHA jobs and fresh
+production role checks pass, but new actual-page checks expose an invoice-save
+regression from the separate Woo repair and older hidden save-error/customer
+navigation defects. Pause further extraction for bounded corrective work:
+invoice save validation/feedback, then customer read/state isolation, then
+Schedule & Terms. None is repaired or released by the audit.
+[Findings, reproductions and limits](V8.20-CLEANUP-HEALTH-REVIEW-2026-11-03.md).
+
+The owner has now authorized those corrections. Local save and customer-navigation
+fixes pass; the [correction record](V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md)
+tracks deployment. Resume Schedule & Terms after their corrective release gates.
+
+
 Start with [CLAUDE.md](../../CLAUDE.md), the
 [maintenance map](../reference/MAINTENANCE-MAP.md),
 [architecture boundaries](../skills/ARCHITECTURE-RULES.md) and
@@ -197,7 +210,8 @@ allocator/backend/calculations. Historical discrepancies remain review-only;
 no backfill or guessed conversion. Exact-SHA/build/fresh candidate/production
 gates pass and the runtime fix is released. Dated snapshots preserve concurrent
 non-QA finance activity; historical review remains separate.
-Schedule & Terms remains proposed.
+Schedule & Terms remains proposed, following the corrective work identified in
+the 3 November health review above.
 
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,

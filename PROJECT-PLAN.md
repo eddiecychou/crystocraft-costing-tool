@@ -1,3 +1,28 @@
+# V8.20 — Save and customer navigation corrections — local verification, 3 November 2026
+
+Owner authorized all four audit findings. Current-total invoice save validation,
+submit-adjacent errors, keyed customer/section state and abandoned-load/error/Retry
+handling pass focused actual-page/component tests: 64 shipping and 115 customer-
+workspace. Independent review finds no blocking regression. Full exact-SHA CI,
+build and candidate/production fresh role gates remain pending; production is
+unchanged. No live financial/stock/customer saves or emails in QA.
+[Scope and release record](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md).
+
+# V8.20 — Cleanup health review — open corrections, 3 November 2026
+
+Owner requested current cleanup success/regression assessment and next steps.
+Existing prebuild/build (740 TAP assertions plus script checks), no-undef,
+11 config checks, both exact-SHA GitHub jobs and fresh production admin/customer
+core/read-only shipping checks pass. No regression found in the reviewed
+presentation/auth extractions. New actual-form assertions nevertheless confirm
+an invoice-save regression from the separate Woo total preservation repair;
+an older hidden save-error path masks it. Actual customer-page diagnostics also
+confirm pre-existing late-response A/B data mismatch and per-customer collapse
+state leakage. No live writes beyond normal QA sign-in telemetry, app changes,
+push or deployment. Correct save validation/feedback and customer navigation
+isolation before resuming Schedule & Terms. Findings remain open; review notes
+are local until committed. [Assessment and evidence](docs/plans/V8.20-CLEANUP-HEALTH-REVIEW-2026-11-03.md).
+
 # V8.20 — Woo invoice metadata — released/read-only review, 3 November 2026
 
 Owner approved the focused checkout-total/HKD-payout fix and read-only audit.

@@ -102,6 +102,12 @@ const CHANNEL_BADGE = {
 
 export default function CustomerDetail() {
   const { id } = useParams()
+  // React Router reuses this route element. Keep each customer's reads,
+  // subscriptions and unsaved UI state in its own mounted page instance.
+  return <CustomerDetailPage key={id} id={id} />
+}
+
+function CustomerDetailPage({ id }) {
   const navigate = useNavigate()
   const can = useCan()
   const role = useRole()
@@ -145,6 +151,8 @@ export default function CustomerDetail() {
   // >1 means "don't claim per-customer history for this code."
   const [erpCodeShareCount, setErpCodeShareCount] = useState(null)
   const [loading, setLoading]           = useState(true)
+  const [loadError, setLoadError]       = useState('')
+  const [loadRevision, setLoadRevision] = useState(0)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmDeleteEnquiry, setConfirmDeleteEnquiry] = useState(null)
   const [merging, setMerging] = useState(false)
@@ -191,6 +199,9 @@ export default function CustomerDetail() {
   const [composeCopied, setComposeCopied]       = useState(false)
 
   useEffect(() => {
+    let active = true
+    setLoading(true)
+    setLoadError('')
     Promise.all([
       getDoc(doc(db, 'customers', id)),
       getDocs(query(collection(db, 'client_quotes'), where('customer_id', '==', id))),
@@ -199,6 +210,7 @@ export default function CustomerDetail() {
       loadBlogProducts('range'),
       getDocs(query(collection(db, 'orders'), where('customer_id', '==', id))),
     ]).then(([cSnap, qSnap, pSnap, uSnap, rangeProducts, oSnap]) => {
+      if (!active) return
       setAccounts(uSnap.docs.map(d => ({ id: d.id, ...d.data() })))
       setOrders(
         oSnap.docs
@@ -209,7 +221,7 @@ export default function CustomerDetail() {
         const c = { id: cSnap.id, ...normalizeCustomer(cSnap.data()) }
         setCustomer(c)
         setComposeChannel(c.channels?.[0] || c.primary_channel || '')
-      }
+      } else setCustomer(null)
       setQuotes(
         qSnap.docs
           .map(d => ({ id: d.id, ...d.data() }))
@@ -224,9 +236,15 @@ export default function CustomerDetail() {
       setAllProducts(
         [...corporate, ...range].sort((a, b) => a.name.localeCompare(b.name))
       )
-      setLoading(false)
+    }).catch(() => {
+      if (!active) return
+      setCustomer(null)
+      setLoadError('Could not load this customer. Please try again.')
+    }).finally(() => {
+      if (active) setLoading(false)
     })
-  }, [id])
+    return () => { active = false }
+  }, [id, loadRevision])
 
   // V8.1 email ingestion (Phase 2) — customers/{id}/email_threads is written
   // by email-sync/sync.py (a script run outside this app, see PROJECT-PLAN.md's
@@ -754,6 +772,15 @@ export default function CustomerDetail() {
   }
 
   if (loading) return <LoadingBar />
+  if (loadError) return (
+    <div className="p-4 md:p-6 max-w-2xl">
+      <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
+      <div role="alert" className="card mt-4 p-4 space-y-3">
+        <p className="text-sm text-brand-600">{loadError}</p>
+        <button type="button" onClick={() => setLoadRevision(v => v + 1)} className="btn-secondary text-sm min-h-11">Retry</button>
+      </div>
+    </div>
+  )
   if (!customer) return <div className="p-4 text-ink-60">Customer not found.</div>
 
   const followUpEnquiries = enquiries.filter(e => e.follow_up_date && e.todo_status !== 'done')
@@ -1912,13 +1939,8 @@ export default function CustomerDetail() {
           customer={customer}
           onClose={() => setMerging(false)}
           onMerged={(survivorId) => {
-            // Close first: /customers/:id reuses the same CustomerDetail instance
-            // rather than remounting (React Router keeps one element for the
-            // route), so navigating alone left this modal open. It then re-ran
-            // its own preview effect once `customer` re-fetched as the survivor
-            // — merging the survivor into itself — which is the "Cannot merge a
-            // customer into itself" error, even though the merge had already
-            // succeeded before that point.
+            // Close the completed dialog before navigating to the survivor's
+            // separately scoped customer page.
             setMerging(false)
             navigate(`/customers/${survivorId}`)
           }}

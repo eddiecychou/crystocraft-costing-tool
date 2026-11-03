@@ -17,19 +17,20 @@ const dom=new JSDOM('<!doctype html><body></body>',{url:'http://fictional.test'}
 for(const k of ['window','document','HTMLElement','Event','MouseEvent'])globalThis[k]=dom.window[k]
 globalThis.IS_REACT_ACT_ENVIRONMENT=true
 const {createRoot}=await import('react-dom/client'),{Simulate}=await import('react-dom/test-utils')
-let scratch,Page,normOrder,mapWooOrderToOrder,host,root,f,errors,originalError,originalFetch
+let scratch,Page,normOrder,validateOrder,mapWooOrderToOrder,host,root,f,errors,originalError,originalFetch
 const fail=()=>{throw Error('Unexpected service/database action in shipment references fixture')}
 const order=()=>({customer_id:'qa-customer',customer_name:'Fictional 客戶 & Co',erp_so_no:'',erp_si_no:'',uc_no:'',erp_pi_no:'',customer_po:'PO-Original',currency:'USD',status:'draft',incoterm:'FOB',payment_terms:'30% deposit',notes:'Keep original notes',deposit_paid:155,discount_amount:0,pi_revision:2})
 const stubs={
  firebase:'export const db={},storage={};export const authHeader=async()=>{throw Error("No network requests")}',
  firestore:`const f=()=>globalThis.__shipmentReferences;
  export const doc=(...p)=>Object.assign(p,{id:typeof p.at(-1)==='string'?p.at(-1):'new-line'}),collection=(...p)=>p,query=(...p)=>p,orderBy=()=>{};
- export const getDoc=async p=>{if(!p.includes('orders'))throw Error('Unexpected document read');return{id:p.at(-1),exists:()=>true,data:()=>f().order}};
- export const getDocs=async p=>({docs:JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
+ export const getDoc=async p=>{if(p.includes('client_quotes')&&f().quote)return{id:p.at(-1),exists:()=>true,data:()=>f().quote};if(!p.includes('orders'))throw Error('Unexpected document read');return{id:p.at(-1),exists:()=>true,data:()=>f().order}};
+ export const getDocs=async p=>({docs:p.includes('client_quotes')&&f().quote?(f().quoteItems||[]).map((l,i)=>({id:'quote-item-'+i,data:()=>l})):JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
  export const onSnapshot=()=>()=>{},serverTimestamp=()=> 'FICTIONAL timestamp',where=()=>{},limit=()=>{};
  export const updateDoc=async(p,data)=>{if(!f().allowWrite)throw Error('Unexpected order write');f().orderWrites.push({path:[...p],data:structuredClone(data)});if(f().writeError)throw f().writeError;f().order={...f().order,...data}};
  export const writeBatch=()=>({set(p,data){if(!f().allowWrite)throw Error('Unexpected line write');f().lineWrites.push(structuredClone(data))},delete(){throw Error('No deletes authorized')},commit:async()=>{}});
- const fail=()=>{throw Error('No creates/transactions/deletes authorized')};export{fail as addDoc,fail as runTransaction,fail as deleteDoc};`,
+ export const runTransaction=async()=>{if(f().createError){f().createAttempts++;throw f().createError}throw Error('No creates/transactions authorized')};
+ const fail=()=>{throw Error('No creates/deletes authorized')};export{fail as addDoc,fail as deleteDoc};`,
  router:`import React from 'react';const f=()=>globalThis.__shipmentReferences;export const useParams=()=>({id:f().id}),useSearchParams=()=>[new URLSearchParams(f().search)],useNavigate=()=>to=>{f().destination=to};export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children)`,
  customer:'export const loadCustomers=async()=>[];export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error("No customer writes")}',
  criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
@@ -44,7 +45,7 @@ const stubs={
 before(async()=>{
  scratch=await mkdtemp(join(tmpdir(),'oc-shipment-references-'))
  const source=await readFile(process.env.SHIPMENT_REF_SOURCE||'src/pages/ShipmentForm.jsx','utf8')
- await build({stdin:{contents:source+'\nexport {normOrder} from "../shipping";export {mapWooOrderToOrder} from "../wooImport";',resolveDir:resolve('src/pages'),loader:'jsx'},outfile:join(scratch,'page.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'fictional-shipment-io',setup(b){
+ await build({stdin:{contents:source+'\nexport {normOrder,validateOrder} from "../shipping";export {mapWooOrderToOrder} from "../wooImport";',resolveDir:resolve('src/pages'),loader:'jsx'},outfile:join(scratch,'page.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'fictional-shipment-io',setup(b){
   b.onResolve({filter:/^(react(?:\/.*)?|lucide-react)$/},a=>({path:require.resolve(a.path),external:true}))
   b.onResolve({filter:/^react-router-dom$/},()=>({path:'router',namespace:'fixture'}))
   b.onResolve({filter:/^firebase\/(firestore|storage)$/},a=>({path:a.path.split('/')[1],namespace:'fixture'}))
@@ -52,11 +53,11 @@ before(async()=>{
   if(process.env.SHIPMENT_MODEL_SOURCE)b.onLoad({filter:/\/src\/shipping\.js$/},async()=>({contents:await readFile(process.env.SHIPMENT_MODEL_SOURCE,'utf8'),loader:'js',resolveDir:resolve('src')}))
   b.onLoad({filter:/.*/,namespace:'fixture'},a=>({contents:stubs[a.path],loader:'js',resolveDir:process.cwd()}))
  }}]})
- const module=await import(pathToFileURL(join(scratch,'page.mjs')));Page=module.default;normOrder=module.normOrder;mapWooOrderToOrder=module.mapWooOrderToOrder
+ const module=await import(pathToFileURL(join(scratch,'page.mjs')));Page=module.default;normOrder=module.normOrder;validateOrder=module.validateOrder;mapWooOrderToOrder=module.mapWooOrderToOrder
  originalFetch=globalThis.fetch;globalThis.fetch=fail
 })
 beforeEach(()=>{
- f={id:'qa-order',search:'',order:order(),lines:[{id:'qa-line',line_no:1,item_code:'QA-ITEM',description:'Fictional item',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'}],calls:[],actions:{so:async()=> 'SO-FICTIONAL',uc:async()=>({full:'UC-FICTIONAL'}),si:async()=>({si_no:'SI-FICTIONAL',uc_no:'UC-FICTIONAL'}),registry:async()=>({})},orderWrites:[],lineWrites:[],accountingWrites:[],allowWrite:false,allowAccounting:false}
+ f={id:'qa-order',search:'',order:order(),lines:[{id:'qa-line',line_no:1,item_code:'QA-ITEM',description:'Fictional item',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'}],calls:[],actions:{so:async()=> 'SO-FICTIONAL',uc:async()=>({full:'UC-FICTIONAL'}),si:async()=>({si_no:'SI-FICTIONAL',uc_no:'UC-FICTIONAL'}),registry:async()=>({})},orderWrites:[],lineWrites:[],accountingWrites:[],createAttempts:0,allowWrite:false,allowAccounting:false}
  f.invoke=(kind,args)=>{f.calls.push({kind,args:structuredClone(args)});return f.actions[kind](...args)}
  globalThis.__shipmentReferences=f
  errors=[];originalError=console.error;console.error=(...a)=>errors.push(a.map(String).join(' '))
@@ -201,3 +202,76 @@ for(const channel of ['wholesale','amazon',null])test(`${String(channel)} alloca
  f.allowWrite=true;Object.assign(f.order,{channel,total_amount:146.18,woo_net_payout_hkd:1140.12});f.actions.si=async()=>({si_no:'SI-MANUAL',uc_no:'UC-MANUAL',uc_id:'qa-registry'})
  await render();await click(allocation('Invoice No'));assert.equal(f.calls.filter(c=>c.kind==='registry').length,0);assert.equal(f.calls.filter(c=>c.kind==='si').length,1);assert.equal(f.orderWrites.length,1)
 })
+
+const submit=()=>host.querySelector('button[type="submit"]')
+const formError=()=>host.querySelector('#shipment-form-error')
+const accountingInput=()=>[...host.querySelectorAll('span')].find(s=>s.textContent==='Accounting Total')?.parentElement.querySelector('input')
+const savedInvoice=(overrides={})=>{
+ Object.assign(f.order,{erp_si_no:'SI-EXISTING',total_amount:100,accounting_total:100,adjustment_reason:'',deposit_paid:null,...overrides})
+ f.lines=[{id:'qa-line',line_no:1,item_code:'QA-ITEM',description:'Fictional item',qty_ordered:1,unit:'pcs',unit_price:100,line_type:'ad_hoc'}]
+ f.allowWrite=true;f.allowAccounting=true
+}
+for(const channel of ['wholesale','woocommerce'])test(`${channel}: matching edited line/accounting totals save without a fictitious adjustment`,async()=>{
+ savedInvoice({channel});await render();await fill(host.querySelector('input[placeholder="Unit price"]'),'200');await fill(accountingInput(),'200')
+ assert.equal(host.querySelector('input[placeholder="Reason for the adjustment (required)"]'),null)
+ await click(submit());assert.equal(f.orderWrites.length,1);assert.equal(f.orderWrites[0].data.total_amount,200);assert.equal(f.orderWrites[0].data.accounting_total,200)
+ assert.equal(f.orderWrites[0].data.adjustment,null);assert.equal(f.orderWrites[0].data.adjustment_reason,'');assert.equal(f.accountingWrites[0].total,200);assert.equal(f.accountingWrites[0].accounting_total,200)
+ assert.equal(f.destination,'/shipments');assert.deepEqual(f.calls,[])
+})
+test('quantity and discount edits use the current total while retaining stored line precision and deposit',async()=>{
+ savedInvoice({currency:'EUR',total_amount:2.44,accounting_total:2.44,deposit_paid:1.22});f.lines[0].qty_ordered=2;f.lines[0].unit_price=1.222
+ await render();await fill(host.querySelector('input[placeholder="Qty"]'),'3')
+ const discount=[...host.querySelectorAll('input[placeholder="0.00"]')].find(i=>!i.id)
+ await fill(discount,'1');await fill(accountingInput(),'2.67');await click(submit())
+ assert.equal(f.orderWrites.length,1);const p=f.orderWrites[0].data;assert.equal(p.total_amount,2.67);assert.equal(p.accounting_total,2.67);assert.equal(p.discount_amount,1);assert.equal(p.deposit_paid,1.22);assert.equal(p.currency,'EUR');assert.equal(p.notes,'Keep original notes')
+ assert.equal(f.lineWrites[0].qty_ordered,3);assert.equal(f.lineWrites[0].unit_price,1.222);assert.deepEqual(f.calls,[])
+})
+test('genuine accounting adjustment blocks all writes visibly until its reason is supplied',async()=>{
+ savedInvoice();await render();await fill(host.querySelector('input[placeholder="Unit price"]'),'200');await fill(accountingInput(),'210');await click(submit())
+ assert.deepEqual(f.orderWrites,[]);assert.deepEqual(f.lineWrites,[]);assert.deepEqual(f.accountingWrites,[]);assert.equal(f.destination,undefined)
+ assert.match(formError()?.textContent||'',/Accounting total differs.*reason is required/);assert.equal(formError().getAttribute('role'),'alert');assert.equal(submit().disabled,false)
+ assert.equal(accountingInput().value,'210');assert.equal(host.querySelector('input[placeholder="Unit price"]').value,'200')
+ await fill(host.querySelector('input[placeholder="Reason for the adjustment (required)"]'),'  Agreed handling adjustment  ');await click(submit())
+ assert.equal(f.orderWrites.length,1);assert.equal(f.orderWrites[0].data.total_amount,200);assert.equal(f.orderWrites[0].data.accounting_total,210);assert.equal(f.orderWrites[0].data.adjustment,10);assert.equal(f.orderWrites[0].data.adjustment_reason,'Agreed handling adjustment');assert.equal(f.accountingWrites[0].accounting_total,210);assert.deepEqual(f.calls,[])
+})
+test('stored-record audit validation still compares the persisted totals and requires a real adjustment reason',()=>{
+ const stored={...order(),erp_si_no:'SI-EXISTING',deposit_paid:null,total_amount:100,accounting_total:110,adjustment_reason:''}
+ assert.ok(validateOrder(stored).errors.some(e=>e.code==='order.invoice.adjustment_reason_required'))
+ assert.equal(validateOrder({...stored,adjustment_reason:'Agreed adjustment'}).ok,true)
+})
+test('an edited invoice still rejects excessive deposits before any writes',async()=>{
+ savedInvoice();await render();await fill(host.querySelector('input[placeholder="Unit price"]'),'200');await fill(accountingInput(),'200');await fill(host.querySelector('#deposit-paid'),'201')
+ // Dispatch submit to exercise the shared guard even when native max validation
+ // would already prevent an ordinary click from submitting this amount.
+ await act(async()=>Simulate.submit(host.querySelector('form')))
+ assert.match(formError()?.textContent||'',/Deposit paid cannot exceed the invoice total/);assert.deepEqual(f.orderWrites,[]);assert.deepEqual(f.lineWrites,[]);assert.deepEqual(f.accountingWrites,[]);assert.deepEqual(f.calls,[])
+ assert.equal(host.querySelector('#deposit-paid').value,'201');assert.equal(accountingInput().value,'200')
+})
+test('rejected edit save shows its error beside the actions, retains edits and permits an explicit retry',async()=>{
+ savedInvoice();f.writeError=Error('Fictional save failure');await render();await fill(input('Customer PO'),'Edited PO kept');await click(submit())
+ assert.match(formError()?.textContent||'',/Fictional save failure/);assert.equal(formError().getAttribute('role'),'alert');assert.equal(formError().nextElementSibling.contains(submit()),true)
+ assert.equal(submit().disabled,false);assert.equal(input('Customer PO').value,'Edited PO kept');assert.equal(accountingInput().value,'100');assert.equal(f.destination,undefined);assert.deepEqual(f.accountingWrites,[]);assert.deepEqual(f.calls,[])
+ f.writeError=null;await click(submit());assert.equal(f.orderWrites.length,2);assert.equal(f.orderWrites[1].data.customer_po,'Edited PO kept');assert.equal(f.accountingWrites.length,1);assert.equal(f.destination,'/shipments');assert.equal(formError(),null)
+})
+const prepareNew=async mode=>{
+ f.id=undefined;f.search=mode==='direct'?'direct=1':mode==='quote'?'from_quote=qa-quote':''
+ if(mode==='quote'){
+  f.quote={quote_type:'built',customer_id:'qa-customer',client_name:'Fictional quote buyer',quote_currency:'USD',quote_no:'QA-QUOTE'}
+  f.quoteItems=[{is_custom:true,product_name:'Fictional quoted item',tiers:[{quantity:1,price:100}]}]
+ }
+ await render()
+ if(mode!=='quote'){await click([...host.querySelectorAll('button')].find(b=>b.textContent.trim()==='+ Add line'));await fill(host.querySelector('input[placeholder="Qty"]'),'1');await fill(host.querySelector('input[placeholder="Unit price"]'),'100')}
+ await fill(input('Customer PO'),'Unsaved PO kept')
+}
+for(const mode of ['import','direct','quote']){
+ test(`${mode}: rejected create shows an adjacent error and preserves unsaved values without allocating`,async()=>{
+  f.createError=Error('Fictional create rejection');await prepareNew(mode);await click(submit())
+  assert.equal(f.createAttempts,1);assert.match(formError()?.textContent||'',/Could not create the order: Fictional create rejection/);assert.equal(formError().getAttribute('role'),'alert');assert.equal(formError().nextElementSibling.contains(submit()),true)
+  assert.equal(submit().disabled,false);assert.equal(input('Customer PO').value,'Unsaved PO kept');assert.equal(host.querySelector('input[placeholder="Qty"]').value,'1');assert.equal(host.querySelector('input[placeholder="Unit price"]').value,'100')
+  assert.equal(f.destination,undefined);assert.deepEqual(f.calls,[]);assert.deepEqual(f.orderWrites,[]);assert.deepEqual(f.lineWrites,[]);assert.deepEqual(f.accountingWrites,[])
+ })
+ test(`${mode}: validation failures show beside submit before any create or number allocation`,async()=>{
+  await prepareNew(mode);await fill(host.querySelector('#deposit-paid'),'101');await act(async()=>Simulate.submit(host.querySelector('form')))
+  assert.match(formError()?.textContent||'',/Deposit paid cannot exceed the invoice total/);assert.equal(submit().disabled,false);assert.equal(f.createAttempts,0);assert.equal(f.destination,undefined);assert.deepEqual(f.calls,[]);assert.deepEqual(f.orderWrites,[]);assert.deepEqual(f.lineWrites,[])
+ })
+}

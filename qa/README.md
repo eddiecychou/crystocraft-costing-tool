@@ -1,5 +1,17 @@
 # Automated regressions and release checks
 
+Invoice save/customer navigation corrections: `npm run test:shipment-display`
+includes current edited accounting totals, real adjustment/deposit guards and
+visible failure/retry in all create/edit modes. `npm run test:customer-workspace`
+includes `qa/customer-navigation.test.mjs`: actual Router/page delayed reads,
+A→B→A, missing/error/Retry/unmount and unsaved state isolation. CRM component
+cases cover same-instance storageKey preferences. All new writes are fictional.
+For an authorized release, core/shipping gates also run; the supplemental
+`node qa/verify-maintenance-fixes-release.mjs <pinned-https-url> candidate`
+uses the existing QA ONLY customer for view/toggle/reload/return checks. Repeat
+on production. Never use live Save/Allocate/merge/invite/email to test failures.
+
+
 Workspace emulator cases reset both server data and the real page SDK client.
 The cache-isolation regression runs in the full page suite and UTC / Sydney /
 Los Angeles, retaining real hooks/listeners/transactions/rules and all deadlines.

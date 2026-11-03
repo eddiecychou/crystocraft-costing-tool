@@ -1,5 +1,17 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## Saved values and customer identities need distinct editing lifecycles
+
+3 November 2026: loading a recorded Woo checkout total into a general form header
+activated a stored-record validator during edits. Validate live form totals with
+a current computed value while retaining saved checkout values for allocation;
+keep genuine accounting reasons and stored-record audits. Error state must render
+beside submit in edit/direct/quote modes as well as the import card. Test actual
+failed saves, not only allocation failures. Customer route changes must isolate
+page state and abandoned async reads; a storage-key initializer alone does not
+react to a new customer. Use actual Router A→B→A/delayed-read cases and same-instance
+section tests. [Fix and release status](../plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md).
+
 ## Woo fields need normalization and page-load coverage
 
 3 November 2026: an import mapper can carry a value that the canonical order

@@ -16,7 +16,12 @@ function readCollapsed(key, defaultOpen) {
     return v === null ? !defaultOpen : v === '1'
   } catch { return !defaultOpen }
 }
-export default function Collapsible({ storageKey, title, right, defaultOpen = true, children, className = 'card mb-4', bodyClassName = 'px-5 py-4' }) {
+export default function Collapsible(props) {
+  // A caller may change customer without remounting this wrapper. Read that
+  // section's saved preference immediately, and retain state for the same key.
+  return <CollapsibleSection key={props.storageKey} {...props} />
+}
+function CollapsibleSection({ storageKey, title, right, defaultOpen = true, children, className = 'card mb-4', bodyClassName = 'px-5 py-4' }) {
   const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey, defaultOpen))
   function toggle() {
     setCollapsed(c => {

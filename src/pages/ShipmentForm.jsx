@@ -709,16 +709,17 @@ export default function ShipmentForm() {
     setSaving(true)
     setExtractError('')
     try {
-      const v = validateOrder(header, lines)
-      if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); setSaving(false); return }
       // Same fallback as create — persist the line-computed total when no PI-
       // stated total was ever captured, so the order isn't left valueless.
       const computed = computeOrderTotals(header, lines)
+      // Validate these edits against their current total. header.total_amount
+      // retains the saved Woo checkout amount for allocation, not live edits.
+      const v = validateOrder({ ...header, total_amount: computed.total }, lines)
+      if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); setSaving(false); return }
       // Accounting total defaults to the computed total when left blank — see
-      // the Accounting Total field above. Validated here against the LIVE
-      // computed total (header carries no persisted total_amount to check
-      // against — validateOrder's own check is for stored records, e.g. Schema
-      // Audit). Checked again server-side in /api/uc: this is not the only gate.
+      // the Accounting Total field above. Validate the live computed total;
+      // stored-record audits still compare their persisted totals. Checked
+      // again server-side in /api/uc: this is not the only gate.
       const accountingTotal = header.accounting_total !== '' ? parseFloat(header.accounting_total) : computed.total
       const adjustment = Math.round((accountingTotal - computed.total) * 100) / 100
       if (Math.abs(adjustment) > 0.005 && !header.adjustment_reason.trim()) {
@@ -1314,6 +1315,7 @@ export default function ShipmentForm() {
         {isEdit && <OrderInventoryIssue orderId={id} orderLabel={header.uc_no || header.erp_so_no || id} inv={crystalInventory} />}
         {isEdit && <OrderInventoryIssue orderId={id} orderLabel={header.uc_no || header.erp_so_no || id} inv={packagingInventory} />}
 
+        {extractError && <p id="shipment-form-error" role="alert" className="text-sm text-brand-600 break-words">{extractError}</p>}
         <div className="flex items-center gap-3 pt-1">
           <button type="submit" className="btn-primary" disabled={saving || (!isEdit && lines.length === 0)}>
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Order'}

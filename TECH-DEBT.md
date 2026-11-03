@@ -14,6 +14,19 @@ retain historical evidence and link their later release records.
 
 ## ShipmentForm mixes presentation with workflow orchestration — display/reference slices extracted
 
+Owner-authorized save validation/visible-error corrections now pass focused local
+regressions. See the [correction record](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md)
+for release gates; the discovery below is historical, not a completed-deploy claim.
+
+**3 November health review:** pause the next extraction for a confirmed save
+regression from the separate Woo metadata repair: a loaded saved total is checked
+against an edited Accounting Total before the live line-derived check, so matching
+edited line/accounting amounts can be rejected. Baseline 43073fc saves; current
+source does not. An older UI defect hides edit-form save errors inside an absent
+import card. Both have isolated actual-form reproductions and remain unfixed.
+Correct the validation context and visible error path without weakening genuine
+adjustment guards. [Assessment and revised order](docs/plans/V8.20-CLEANUP-HEALTH-REVIEW-2026-11-03.md).
+
 The owner subsequently authorized Document References only. Its controlled card
 now lives in components/shipping/ShipmentDocumentReferences.jsx; number/revision
 updates, focus, validation and all writes remain parent-owned. Nineteen real-page
@@ -58,6 +71,23 @@ updates characterization assertions. The historical review supplies dated lists,
 not a guessed backfill; concurrent finance work is preserved. The original
 presentation slice did not inspect/correct live records.
 [Original discovery](docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
+
+## Customer navigation can retain stale customer data and section state
+
+Owner-authorized keyed page/section isolation and guarded-loader/error/Retry
+corrections pass 12 actual-page and 19 component cases locally. The
+[correction record](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md) tracks
+release gates; original discovery and baseline evidence remain below.
+
+3 November health review confirms two pre-existing problems: CustomerDetail's
+unguarded Promise.all loader can finish A after navigation to B, displaying A
+under B's URL. Its 37-line loader matches pre-cleanup ee3e32c.
+CustomerCollapsible also keeps the previous storageKey's initialized state on
+same-instance navigation; current and frozen original both reproduce it. These
+are not extraction regressions. Fix navigation response/state isolation before
+more extraction; test delayed loads and same-instance preferences. The isolated
+repro proves a read/render mismatch, not a cross-customer write. Both findings
+remain unfixed. [Assessment and evidence](docs/plans/V8.20-CLEANUP-HEALTH-REVIEW-2026-11-03.md).
 
 ## Three edge functions have no auth check
 

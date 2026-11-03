@@ -68,6 +68,13 @@ parent allocation/registry orchestration gains an unknown-total guard. Real
 mapper/model/page/save regressions run in the shipping command. Historical
 review is separate from runtime field preservation.
 
+The [save/navigation correction](../plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md)
+adds current-total form validation and submit-adjacent errors without changing
+saved Woo allocation amounts. CustomerDetail keys customer-scoped page state and
+guards abandoned initial reads; CustomerCollapsible keys section state by the
+existing storageKey. Run customer-workspace (including actual-page navigation)
+and shipping regressions; no financial or customer writes during live QA.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

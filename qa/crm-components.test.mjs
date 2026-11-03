@@ -1,6 +1,6 @@
 import { test, before, beforeEach, after, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -40,7 +40,10 @@ before(async () => {
     ['default as InvitePricingDialog', 'InvitePricingDialog'], ['default as MergeCustomerModal', 'MergeCustomerModal'],
   ].map(([name, file]) => 'export {' + name + '} from "./src/components/crm/' + file + '.jsx";').join('\n')
   await build({ stdin: { contents: exports, resolveDir: process.cwd() }, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic', outfile: join(scratch, 'ui.mjs'),
-    plugins: [{ name: 'same-react-runtime', setup(b) { b.onResolve({ filter: /^(?:react(?:-dom|-router-dom)?(?:\/.*)?|lucide-react)$/ }, a => ({ path: require.resolve(a.path), external: true })) } }, crmFixturePlugin()] })
+    plugins: [{ name: 'same-react-runtime', setup(b) {
+      if (process.env.CRM_COLLAPSIBLE_SOURCE) b.onLoad({ filter: /CustomerCollapsible\.jsx$/ }, async () => ({ contents: await readFile(process.env.CRM_COLLAPSIBLE_SOURCE, 'utf8'), loader: 'jsx', resolveDir: join(process.cwd(), 'src/components/crm') }))
+      b.onResolve({ filter: /^(?:react(?:-dom|-router-dom)?(?:\/.*)?|lucide-react)$/ }, a => ({ path: require.resolve(a.path), external: true }))
+    } }, crmFixturePlugin()] })
   ui = await import(pathToFileURL(join(scratch, 'ui.mjs')))
 })
 beforeEach(() => { f = createCrmFixture(); globalThis.__crmFixture = f; runtimeErrors = []; sessionStorage.clear(); window.confirm = () => true })
@@ -176,6 +179,32 @@ test('collapse state survives remount, stays customer-specific, and ignores righ
   await act(async () => host.querySelector('.cursor-pointer').click()); assert.doesNotMatch(host.textContent, /Private content/)
   await unmount(); await mount(ui.Collapsible, props); assert.doesNotMatch(host.textContent, /Private content/)
   await unmount(); await mount(ui.Collapsible, { ...props, storageKey: 'other:history' }); assert.match(host.textContent, /Private content/)
+})
+test('same-instance customer changes immediately read each section saved preference', async () => {
+  const props = { storageKey: 'first:history', title: 'History', children: 'First customer content' }
+  await mount(ui.Collapsible, props)
+  await act(async () => host.querySelector('.cursor-pointer').click())
+  sessionStorage.setItem('cd-collapse:second:history', '0')
+  const render = async (storageKey, children) => act(async () => root.render(React.createElement(MemoryRouter, null, React.createElement(ui.Collapsible, { ...props, storageKey, children }))))
+  await render('second:history', 'Second customer content')
+  assert.match(host.textContent, /Second customer content/)
+  assert.doesNotMatch(host.textContent, /First customer content/)
+  await act(async () => host.querySelector('.cursor-pointer').click())
+  assert.equal(sessionStorage.getItem('cd-collapse:first:history'), '1')
+  assert.equal(sessionStorage.getItem('cd-collapse:second:history'), '1')
+  await render('first:history', 'First customer content'); assert.doesNotMatch(host.textContent, /First customer content/)
+  sessionStorage.setItem('cd-collapse:second:history', '0')
+  await render('second:history', 'Second customer content'); assert.match(host.textContent, /Second customer content/)
+})
+test('new section keys use their default without resetting same-key edits or preferences', async () => {
+  const props = { storageKey: 'first:notes', title: 'Notes', children: 'Customer notes', defaultOpen: false }
+  await mount(ui.Collapsible, props); assert.doesNotMatch(host.textContent, /Customer notes/)
+  const render = async next => act(async () => root.render(React.createElement(MemoryRouter, null, React.createElement(ui.Collapsible, { ...props, ...next }))))
+  await render({ storageKey: 'second:notes', defaultOpen: true }); assert.match(host.textContent, /Customer notes/)
+  await render({ storageKey: 'second:notes', defaultOpen: false }); assert.match(host.textContent, /Customer notes/)
+  await act(async () => host.querySelector('.cursor-pointer').click())
+  await render({ storageKey: 'third:notes', defaultOpen: true }); assert.match(host.textContent, /Customer notes/)
+  await render({ storageKey: 'second:notes', defaultOpen: true }); assert.doesNotMatch(host.textContent, /Customer notes/)
 })
 test('brand card preserves thumbnail limits, PDF placeholders, links and design gating', async () => {
   f.assets.fictional = Array.from({ length: 7 }, (_, i) => ({ id: String(i), category: 'brand_asset', filename: i === 0 ? 'brand.pdf' : 'brand.png', file_url: '/fictional.png' }))
