@@ -39,7 +39,18 @@ const stubs={
  const fail=()=>{throw Error('No creates/deletes authorized')};export{fail as addDoc,fail as deleteDoc,fail as setDoc,fail as increment};`,
  router:`import React from 'react';const f=()=>globalThis.__shipmentReferences;export const useParams=()=>({id:f().id}),useSearchParams=()=>[new URLSearchParams(f().search)],useNavigate=()=>to=>{f().destination=to};export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children)`,
  customer:'export const loadCustomers=async()=>globalThis.__shipmentReferences.customers||[];export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error("No customer writes")}',
- ContactPicker:'export default ()=>null',ConfirmDialog:'export default ()=>null',LineImagePicker:'export default ()=>null',PackingListEditor:'export default ()=>null',FreightComparison:'export default ()=>null',OrderStockIssue:'export default ()=>null',OrderInventoryIssue:'export default ()=>null',
+ ContactPicker:'export default ()=>null',ConfirmDialog:'export default ()=>null',LineImagePicker:`import {createElement as h} from 'react';
+ export default function Picker({orderId,itemCode,matchedProductRef,selectedUrl,onSelect,onClear,onClose}) {
+   const fixture=globalThis.__shipmentReferences;
+   return h('div', {
+     'data-test-picker':orderId,'data-item-code':itemCode,
+     'data-product-id':matchedProductRef?.id,'data-selected-url':selectedUrl
+   },
+     h('button',{type:'button',onClick:()=>onSelect(fixture.selectedLineImage)},'Choose fictional image'),
+     h('button',{type:'button',onClick:onClear},'Clear fictional image'),
+     h('button',{type:'button',onClick:onClose},'Close fictional picker')
+   );
+ }`,PackingListEditor:'export default ()=>null',FreightComparison:'export default ()=>null',OrderStockIssue:'export default ()=>null',OrderInventoryIssue:'export default ()=>null',
  crystals:'export const crystalInventory={order:{reserved:"crystals_reserved",committed:"crystals_committed"}}',
  packaging:'export const packagingInventory={order:{reserved:"packaging_reserved",committed:"packaging_committed"}}',
  orderStock:'export const metalOrderConfig={order:{reserved:"metal_reserved",committed:"metal_committed"}}',
@@ -519,5 +530,102 @@ test('Re-match resolves a real product match while preserving a manually classif
   assert.equal(f.lineWrites[1].line_type, 'range')
   assert.equal(f.lineWrites[1].match_status, 'matched')
   assert.equal(f.lineWrites[1].matched_product_ref.id, 'range-match')
+  assert.deepEqual(f.calls, [])
+})
+
+test('line editor updates only the targeted row, preserving multiline copy and unit cost precision', async () => {
+  f.lines.push({ ...f.lines[0], id: 'second-line', line_no: 2, item_code: 'SECOND', qty_ordered: 1 })
+  f.allowWrite = true
+  await render()
+  const original = lineCard(0)
+  const edited = lineCard(1)
+  const edits = [
+    ['Item code', 'SECOND-EDITED'],
+    ['Description', 'Fictional custom item\n第二行'],
+    ['Tier remarks (customer-facing)', 'Tier A\nTier B'],
+    ['Qty', '25'],
+    ['pcs', 'set'],
+    ['Unit price', '4.567'],
+  ]
+  for (const [placeholder, value] of edits) {
+    await fill(edited.querySelector(`[placeholder="${placeholder}"]`), value)
+  }
+  assert.equal(original.querySelector('[placeholder="Item code"]').value, 'QA-ITEM')
+  assert.equal(original.querySelector('[placeholder="Unit price"]').value, '1.222')
+  assert.equal(edited.querySelector('[placeholder="Tier remarks (customer-facing)"]').getAttribute('aria-label'), 'Tier remarks for line 2')
+  assert.deepEqual(f.lineWrites, [])
+  await click(submit())
+  assert.equal(f.lineWrites.length, 2)
+  assert.equal(f.lineWrites[0].line_no, 1)
+  assert.equal(f.lineWrites[0].unit_price, 1.222)
+  assert.equal(f.lineWrites[1].line_no, 2)
+  assert.equal(f.lineWrites[1].item_code, 'SECOND-EDITED')
+  assert.equal(f.lineWrites[1].description, 'Fictional custom item\n第二行')
+  assert.equal(f.lineWrites[1].tier_remarks, 'Tier A\nTier B')
+  assert.equal(f.lineWrites[1].qty_ordered, 25)
+  assert.equal(f.lineWrites[1].unit, 'set')
+  assert.equal(f.lineWrites[1].unit_price, 4.567)
+  assert.deepEqual(f.calls, [])
+
+  f.lines = f.lineWrites.map((line, index) => ({ ...line, id: f.lines[index].id }))
+  await act(async () => root.unmount())
+  root = createRoot(host)
+  await render()
+  assert.equal(lineCard(0).querySelector('[placeholder="Item code"]').value, 'QA-ITEM')
+  assert.equal(lineCard(0).querySelector('[placeholder="Unit price"]').value, '1.222')
+  for (const [placeholder, value] of edits) {
+    assert.equal(lineCard(1).querySelector(`[placeholder="${placeholder}"]`).value, value)
+  }
+})
+
+test('parent image picker targets the selected row and preserves charge packing and image behavior', async () => {
+  const firstImage = 'https://fictional.invalid/first.png'
+  const secondImage = 'https://fictional.invalid/second.png'
+  f.selectedLineImage = 'https://fictional.invalid/selected.png'
+  f.lines[0].line_image = firstImage
+  f.lines.push(
+    {
+      ...f.lines[0], id: 'image-line', line_no: 2, item_code: 'FIGURE-2', line_type: 'range',
+      line_image: secondImage, matched_product_ref: { collection: 'range_products', id: 'range-2', name: 'Fictional product' },
+    },
+    { ...f.lines[0], id: 'charge-line', line_no: 3, item_code: 'CHARGE-3', line_type: 'non_product', line_image: null },
+  )
+  f.allowWrite = true
+  await render()
+  const rowImageButton = row => lineCard(row).querySelector('button[title*="invoice image"], button[title^="Add an image"]')
+  const picker = () => host.querySelector('[data-test-picker]')
+  const pickerButton = label => [...picker().querySelectorAll('button')].find(button => button.textContent === label)
+  const rowImage = row => lineCard(row).querySelector('img')?.getAttribute('src')
+
+  assert.equal(rowImageButton(2), null)
+  assert.match(lineCard(2).textContent, /excluded from packing/)
+  await click(rowImageButton(1))
+  assert.equal(picker().dataset.testPicker, f.id)
+  assert.equal(picker().dataset.itemCode, 'FIGURE-2')
+  assert.equal(picker().dataset.productId, 'range-2')
+  assert.equal(picker().dataset.selectedUrl, secondImage)
+  await click(pickerButton('Close fictional picker'))
+  assert.equal(picker(), null)
+  assert.equal(rowImage(1), secondImage)
+
+  await click(rowImageButton(1))
+  await click(pickerButton('Choose fictional image'))
+  assert.equal(picker(), null)
+  assert.equal(rowImage(0), firstImage)
+  assert.equal(rowImage(1), f.selectedLineImage)
+  await click(rowImageButton(1))
+  assert.equal(picker().dataset.selectedUrl, f.selectedLineImage)
+  await click(pickerButton('Clear fictional image'))
+  assert.equal(rowImage(1), undefined)
+  assert.equal(rowImage(0), firstImage)
+  assert.deepEqual(f.lineWrites, [])
+
+  await click(submit())
+  assert.equal(f.lineWrites.length, 3)
+  assert.equal(f.lineWrites[0].line_image, firstImage)
+  assert.equal(f.lineWrites[1].line_image, null)
+  assert.equal(f.lineWrites[1].matched_product_ref.id, 'range-2')
+  assert.equal(f.lineWrites[2].line_type, 'non_product')
+  assert.equal(f.lineWrites[2].packable, false)
   assert.deepEqual(f.calls, [])
 })

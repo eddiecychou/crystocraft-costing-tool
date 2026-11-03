@@ -52,6 +52,16 @@ try{
     assert.match(await unclassified.innerText(),/^2 lines still/)
     await page.getByRole('button',{name:'Ad-hoc',exact:true}).first().click()
     assert.match(await unclassified.innerText(),/^1 line still/)
+    const editedRow=lineCodes.first().locator('../../..')
+    await lineCodes.first().fill('QA-ROW')
+    await editedRow.getByPlaceholder('Description',{exact:true}).fill('Fictional QA row')
+    await editedRow.getByPlaceholder('Tier remarks (customer-facing)',{exact:true}).fill('Fictional tier remarks')
+    await editedRow.getByPlaceholder('Qty',{exact:true}).fill('3')
+    await editedRow.getByPlaceholder('pcs',{exact:true}).fill('pair')
+    await editedRow.getByPlaceholder('Unit price',{exact:true}).fill('1.222')
+    assert.deepEqual(await editedRow.locator('input,textarea').evaluateAll(fields=>fields.map(field=>field.value)),
+      ['QA-ROW','Fictional QA row','Fictional tier remarks','3','pair','1.222'])
+    assert.equal(await editedRow.getByTitle('Add an image for the Proforma / Invoice',{exact:true}).count(),1)
     const destination=page.getByRole('heading',{name:'Destination',exact:true}).locator('..')
     const remarks=page.locator('textarea[placeholder^="Prints on the Proforma and Sales Invoice"]')
     const hideQuantity=page.getByRole('checkbox',{name:/Hide "Total Qty"/})
@@ -97,6 +107,7 @@ try{
     assert.equal(await lineCodes.count(),0)
     assert.equal(await unclassified.count(),0)
     result.lineItemsHeader='PASS; add and classify on a blank form, warning count and reload reset'
+    result.lineRowEditor='PASS; item code, description, tier remarks, quantity, unit, price, image control and reload reset'
     result.blankOrderDetails='PASS; destination, remarks and quantity checkbox edit and reset'
     await schedule.screenshot({path:`${out}/${phase}-admin-schedule.png`})
     result.blankSchedule='PASS; dates, currency, Incoterm and free text edit/reset; new order hides status/invoice date'

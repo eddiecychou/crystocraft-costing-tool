@@ -87,6 +87,10 @@ and persistence. Shipping form and invoice print fixtures cover the boundary.
 Re-match, Add line and the warning count. ShipmentForm owns the callbacks,
 line state and row editor.
 
+[Line row editor](../plans/V8.20-LINE-ROW-EDITOR-CLEANUP.md) renders through
+ShipmentLineRow.jsx. ShipmentForm owns row identity, mutations, matching,
+the image picker, totals and persistence.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,
