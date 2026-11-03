@@ -218,6 +218,11 @@ status confirmation, header state and all writes remain parent-owned.
 controlled panels. The form tests cover customer autofill and save/reopen.
 The Proforma and Sales Invoice tests cover remarks and quantity visibility.
 
+The [Line Items header](V8.20-LINE-ITEMS-HEADER-CLEANUP.md) is released.
+ShipmentForm supplies the Add line and Re-match callbacks and warning count.
+The form fixtures cover classification, removal and preservation of manual
+classifications during matching.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second

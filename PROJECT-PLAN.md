@@ -1,3 +1,11 @@
+# V8.20 — Line Items & Reconciliation header cleanup — released, 3 November 2026
+
+The header now renders through a controlled component. ShipmentForm owns
+line state and callbacks. Source restoration, 58 before/after form cases,
+visual comparisons and the 776-test build pass. Both required GitHub jobs passed on 02c7be0e; fresh admin/customer
+checks passed on candidate and production. Production 6ae9b6305c8f573357f5f9fe.
+[Release evidence](docs/plans/V8.20-LINE-ITEMS-HEADER-CLEANUP.md).
+
 # V8.20 — Destination and Remarks cleanup — released, 3 November 2026
 
 Destination and Remarks moved into controlled components. The parent
