@@ -1,4 +1,4 @@
-# V8.20 — Woo invoice metadata — implementation/read-only review, 3 November 2026
+# V8.20 — Woo invoice metadata — released/read-only review, 3 November 2026
 
 Owner approved the focused checkout-total/HKD-payout fix and read-only audit.
 Seven added app lines preserve values and skip registry fill when the saved
@@ -8,7 +8,17 @@ cases, shipping 51, invoice 40, packing 30, config 11 and no-undef. Review of 12
 Woo orders found three invoiced registry discrepancies, six separate pending
 blank entries, one unmatched application invoice and absent structured historical
 HKD payouts. No historical correction. Detailed references stay in ignored QA
-output. Release gates pending. [Scope/audit/release](docs/plans/V8.20-WOO-INVOICE-DATA-FIX.md).
+output. Both exact-SHA jobs pass for 159c4d8d in run 41572034209, attempt 1;
+full build/preflights pass. Candidate 6ae955196e758e46b20491fc and production
+6ae9569d43464c76270ec92e pass all fresh role/core/read-only Woo gates. Frozen
+artifact reused, CSS/server/rules unchanged, index-C22C7ABs.js/config verified.
+Final fresh check 3 Nov 14:39:46 AEDT / 11:39:46 HKT.
+
+The follow-up at 14:41:58 AEDT / 11:41:58 HKT observes concurrent non-QA activity:
+11 invoiced/1 pending, eight registry review entries and one unmatched app invoice.
+All five newly observed allocations predate publication. Both snapshots and
+actor flags are preserved; no historical writes by this task. Docs closeout skips
+deploy. [Scope/audit/release](docs/plans/V8.20-WOO-INVOICE-DATA-FIX.md).
 
 # V8.20 — Document References cleanup — released, 3 November 2026
 

@@ -194,7 +194,9 @@ separate financial work in TECH-DEBT, not silently fixed in the extraction.
 The owner then authorized the bounded [Woo metadata repair/audit](V8.20-WOO-INVOICE-DATA-FIX.md):
 preserve recorded checkout/HKD settlement data and guard unknown totals, retaining
 allocator/backend/calculations. Historical discrepancies remain review-only;
-no backfill or guessed conversion. Its own release gates/evidence are separate.
+no backfill or guessed conversion. Exact-SHA/build/fresh candidate/production
+gates pass and the runtime fix is released. Dated snapshots preserve concurrent
+non-QA finance activity; historical review remains separate.
 Schedule & Terms remains proposed.
 
 Begin with an independent ShipmentForm display section or read-only summary.

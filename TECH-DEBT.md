@@ -38,7 +38,11 @@ whitelists preserve recorded values; an unknown-total guard prevents registry
 zeroing while keeping the issued SI/UC. Seven added app lines; all 38 cases pass,
 with 18 targeted failures against frozen original. Review flags three invoiced
 registry discrepancies and one unmatched app invoice; historical values remain
-untouched, with no inferred bank/HKD settlement. [Release/review status](docs/plans/V8.20-WOO-INVOICE-DATA-FIX.md).
+untouched by this task, with no inferred bank/HKD settlement. Runtime repair
+released as 159c4d8d after exact-SHA CI/build/fresh candidate/production gates.
+Concurrent non-QA finance activity changes the follow-up review list to eight
+entries; both dated snapshots remain. Historical review stays open.
+[Release/review status](docs/plans/V8.20-WOO-INVOICE-DATA-FIX.md).
 
 Found during Document References characterization, before extracting any app
 code. ShipmentForm's existing getOrder/header-load whitelist omits total_amount;
@@ -49,12 +53,11 @@ with total 1222 and HKD payout 9456 produces null registry total/deposit and the
 manual HKD-payout fallback. The number allocation and zero-balance payload remain.
 
 These existing gaps were characterized, not corrected by the presentation slice.
-A separate accounting repair should pin the intended totals/fee semantics and
-all affected load/save whitelists, then propose a read-only live audit before
-any historical-data correction. Actual affected records/counts are unknown;
-no live registry/order data was inspected or rewritten for this finding. Future
-repair must intentionally update the characterization assertions, not silently
-inherit them as the desired financial behavior. [Scope/tests](docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
+The runtime repair now pins the original total/fee semantics and intentionally
+updates characterization assertions. The historical review supplies dated lists,
+not a guessed backfill; concurrent finance work is preserved. The original
+presentation slice did not inspect/correct live records.
+[Original discovery](docs/plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
 
 ## Three edge functions have no auth check
 
