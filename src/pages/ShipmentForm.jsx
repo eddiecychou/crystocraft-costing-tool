@@ -33,6 +33,7 @@ import ShipmentScheduleTerms from '../components/shipping/ShipmentScheduleTerms'
 import { ShipmentDestination, ShipmentRemarks } from '../components/shipping/ShipmentOrderDetails'
 import ShipmentLineItemsHeader from '../components/shipping/ShipmentLineItemsHeader'
 import ShipmentLineRow from '../components/shipping/ShipmentLineRow'
+import ShipmentDiscountRow from '../components/shipping/ShipmentDiscountRow'
 import { ShipmentSubtotalRows, ShipmentTotalRow } from '../components/shipping/ShipmentOrderTotalRows'
 import { invoicePaymentTotals, invoiceDepositError } from '../invoicePayments'
 import { doc, onSnapshot, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore'
@@ -1027,48 +1028,23 @@ export default function ShipmentForm() {
                   chargesText={chargesTotal > 0 ? fmt(chargesTotal) : null}
                 />
 
-                {/* Discount row — either field can drive it (Cuiling, 2026-08-01:
-                    typing the exact discount PRICE is often easier than working
-                    out what percentage it is). Editing % derives the amount, same
-                    as before; editing the amount now works the other way, deriving
-                    % back for display. computeOrderTotals() already preferred
-                    discount_amount over discount_pct when both are present — this
-                    just exposes the input that was missing, it doesn't add new
-                    calculation logic. */}
-                <div className="flex items-center justify-between pt-1 border-t border-warm-grey mt-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-ink-60">Discount</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number" step="0.01" min="0" max="100"
-                        className="input py-0.5 text-xs w-16 text-right"
-                        value={header.discount_pct}
-                        onChange={e => {
-                          const pct = e.target.value
-                          const amt = pct !== '' ? +((parseFloat(piSubtotal || computedSubtotal) * parseFloat(pct) / 100)).toFixed(2) : ''
-                          setHeader(h => ({ ...h, discount_pct: pct, discount_amount: isNaN(amt) ? '' : amt }))
-                        }}
-                        placeholder="0"
-                      />
-                      <span className="text-xs text-ink-60">%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-ink-60">−  {header.currency}</span>
-                    <input
-                      type="number" step="0.01" min="0"
-                      className="input py-0.5 text-xs w-20 text-right font-mono text-red-600"
-                      value={header.discount_amount}
-                      onChange={e => {
-                        const amt = e.target.value
-                        const base = parseFloat(piSubtotal || computedSubtotal)
-                        const pct = amt !== '' && base > 0 ? +((parseFloat(amt) / base) * 100).toFixed(2) : ''
-                        setHeader(h => ({ ...h, discount_amount: amt, discount_pct: isNaN(pct) ? '' : pct }))
-                      }}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
+                {/* Either field drives the other. Use the stated PI subtotal when available. */}
+                <ShipmentDiscountRow
+                  currency={header.currency}
+                  percentage={header.discount_pct}
+                  amount={header.discount_amount}
+                  onPercentageChange={e => {
+                    const pct = e.target.value
+                    const amt = pct !== '' ? +((parseFloat(piSubtotal || computedSubtotal) * parseFloat(pct) / 100)).toFixed(2) : ''
+                    setHeader(h => ({ ...h, discount_pct: pct, discount_amount: isNaN(amt) ? '' : amt }))
+                  }}
+                  onAmountChange={e => {
+                    const amt = e.target.value
+                    const base = parseFloat(piSubtotal || computedSubtotal)
+                    const pct = amt !== '' && base > 0 ? +((parseFloat(amt) / base) * 100).toFixed(2) : ''
+                    setHeader(h => ({ ...h, discount_amount: amt, discount_pct: isNaN(pct) ? '' : pct }))
+                  }}
+                />
 
                 <ShipmentTotalRow
                   currency={header.currency}

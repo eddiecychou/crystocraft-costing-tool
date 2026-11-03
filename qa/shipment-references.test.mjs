@@ -686,3 +686,86 @@ test('order total rows omit unstated PI comparisons and nonpositive charges', as
   assert.equal(totalRow('Discount').nextElementSibling, totalRow('Total Amount'))
   assert.deepEqual(f.orderWrites, [])
 })
+
+const discountPercentInput = () => totalRow('Discount').querySelector('[placeholder="0"]')
+const discountAmountInput = () => totalRow('Discount').querySelector('[placeholder="0.00"]')
+
+test('discount uses the PI subtotal in both directions and keeps both fields after save and reopen', async () => {
+  Object.assign(f.order, { pi_subtotal: 80, deposit_paid: null })
+  f.lines[0].qty_ordered = 4
+  f.lines[0].unit_price = 25
+  f.allowWrite = true
+  await render()
+
+  await fill(discountPercentInput(), '12.5')
+  assert.equal(discountAmountInput().value, '10')
+  assert.match(totalRow('Total Amount').textContent, /USD 90\.00/)
+  await fill(discountAmountInput(), '17.77')
+  assert.equal(discountPercentInput().value, '22.21')
+  assert.match(totalRow('Total Amount').textContent, /USD 82\.23/)
+  assert.deepEqual(f.orderWrites, [])
+
+  await click(submit())
+  assert.equal(f.orderWrites.length, 1)
+  const persisted = f.orderWrites[0].data
+  assert.equal(persisted.pi_subtotal, 80)
+  assert.equal(persisted.subtotal, 100)
+  assert.equal(persisted.discount_pct, 22.21)
+  assert.equal(persisted.discount_amount, 17.77)
+  assert.equal(persisted.total_amount, 82.23)
+  await act(async () => root.unmount())
+  root = createRoot(host)
+  await render()
+  assert.equal(discountPercentInput().value, '22.21')
+  assert.equal(discountAmountInput().value, '17.77')
+  assert.match(totalRow('Total Amount').textContent, /USD 82\.23/)
+  assert.deepEqual(f.calls, [])
+})
+
+test('discount falls back to the computed subtotal when PI is zero, preserves explicit zero and clears both fields', async () => {
+  Object.assign(f.order, { pi_subtotal: 0, deposit_paid: null })
+  f.lines[0].qty_ordered = 4
+  f.lines[0].unit_price = 30
+  await render()
+
+  await fill(discountPercentInput(), '12.5')
+  assert.equal(discountAmountInput().value, '15')
+  await fill(discountAmountInput(), '')
+  assert.equal(discountPercentInput().value, '')
+  assert.equal(discountAmountInput().value, '')
+  assert.match(totalRow('Total Amount').textContent, /USD 120\.00/)
+
+  await fill(discountAmountInput(), '18')
+  assert.equal(discountPercentInput().value, '15')
+  await fill(discountPercentInput(), '0')
+  assert.equal(discountPercentInput().value, '0')
+  assert.equal(discountAmountInput().value, '0')
+  assert.match(totalRow('Total Amount').textContent, /USD 120\.00/)
+  await fill(discountAmountInput(), '18')
+  await fill(discountAmountInput(), '0')
+  assert.equal(discountPercentInput().value, '0')
+  assert.equal(discountAmountInput().value, '0')
+  await fill(discountAmountInput(), '18')
+  await fill(discountPercentInput(), '')
+  assert.equal(discountPercentInput().value, '')
+  assert.equal(discountAmountInput().value, '')
+  assert.match(totalRow('Total Amount').textContent, /USD 120\.00/)
+  assert.deepEqual(f.orderWrites, [])
+  assert.deepEqual(f.lineWrites, [])
+})
+
+test('an amount discount on a charge-only order leaves the percentage blank', async () => {
+  Object.assign(f.order, { pi_subtotal: null, deposit_paid: null })
+  f.lines[0].line_type = 'non_product'
+  f.lines[0].qty_ordered = null
+  f.lines[0].unit_price = 15
+  await render()
+
+  await fill(discountAmountInput(), '2')
+  assert.equal(discountAmountInput().value, '2')
+  assert.equal(discountPercentInput().value, '')
+  assert.match(totalRow('Charges').textContent, /\+ USD 15\.00/)
+  assert.match(totalRow('Total Amount').textContent, /USD 13\.00/)
+  assert.deepEqual(f.orderWrites, [])
+  assert.deepEqual(f.calls, [])
+})
