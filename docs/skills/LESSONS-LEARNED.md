@@ -1,5 +1,16 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## Woo fields need normalization and page-load coverage
+
+3 November 2026: an import mapper can carry a value that the canonical order
+normalizer or header-load whitelist silently drops. Test the actual mapper →
+normalizer → saved form → allocation → save/reopen chain. Checkout currency/total
+and recorded HKD bank payout are distinct; never infer settlement from a rate or
+transaction net. Missing is not known zero: skip unknown-total registry fill
+when the endpoint coerces null to zero, preserving the issued invoice and warning.
+Historical review/backfill is separate; pending un-invoiced registry blanks are
+not issued-record discrepancies. [Evidence](../plans/V8.20-WOO-INVOICE-DATA-FIX.md).
+
 ## L-75 · A catalogue ending in portrait changed page context and added a blank sheet
 
 - **Symptom (30 Oct 2026):** mixed-size catalogues retained all content but ended

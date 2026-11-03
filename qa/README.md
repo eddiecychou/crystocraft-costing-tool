@@ -8,6 +8,15 @@ Use `npm run test:workspace-sync` inside the guarded loopback emulator; see the
 
 ## Shipment display cleanup
 
+The Woo fix extends the real-page file to 38 cases (51 with existing display
+checks): precision/null/zero, actual Woo mapping/normalization/page/save/reopen
+in four currencies, unknown-total no-write guard, legacy payout fallback and
+non-Woo policy. Two bug-characterization expectations intentionally change;
+the other 17 original bodies remain. SHIPMENT_MODEL_SOURCE complements the
+frozen-page option for red/green proof without editing app files. The checker
+accepts a fifth /shipments/woo-<digits> sample path, view/focus/refresh only.
+[Fix/audit/limits](../docs/plans/V8.20-WOO-INVOICE-DATA-FIX.md).
+
 The same test:shipment-display command also runs 19 real ShipmentForm Document
 References cases: controlled fields/revision, SO/UC/SI busy/error/retry, latest
 callbacks, immediate saved-order invoice write, bundled/existing UC, HK invoice

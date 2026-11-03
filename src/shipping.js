@@ -264,6 +264,7 @@ export const normOrder = o => ({
   // readable summary, these carry the same figures as real numbers/dates.
   woo_fee: numOrNull(o.woo_fee),
   woo_net_payout: numOrNull(o.woo_net_payout),
+  woo_net_payout_hkd: numOrNull(o.woo_net_payout_hkd),
   woo_payout_date: o.woo_payout_date || null,
   // Print option: hide the combined "Total Qty" line on the printed PI/
   // Sales Invoice (ProformaInvoicePrint.jsx/SalesInvoicePrint.jsx). Learned

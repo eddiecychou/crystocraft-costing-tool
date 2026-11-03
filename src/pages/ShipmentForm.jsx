@@ -62,6 +62,8 @@ const blankHeader = {
   // cross-check only. The order's real subtotal/total are computed from the
   // lines at save time, not carried in editable header state.
   pi_subtotal: '', pi_total: '', discount_pct: '', discount_amount: '', deposit_paid: '',
+  // Recorded checkout amount for Woo's paid-in-full UC fill, not a recalculation.
+  total_amount: null,
   // Print option (2026-08-26) — some customers' PIs/invoices shouldn't show a
   // combined "Total Qty" line (e.g. mixed-unit orders where a single summed
   // count is meaningless, or the customer just doesn't want it). Persisted on
@@ -175,6 +177,7 @@ export default function ShipmentForm() {
             discount_pct:    o.discount_pct    ?? '',
             discount_amount: o.discount_amount ?? '',
             deposit_paid: o.deposit_paid ?? '',
+            total_amount: o.total_amount ?? null,
             hide_total_qty: !!o.hide_total_qty,
             pi_revision: o.pi_revision ? String(o.pi_revision) : '',
             // Reference figures for the mismatch check. New orders carry their
@@ -349,6 +352,9 @@ export default function ShipmentForm() {
       // SI/UC allocation that already succeeded above.
       if (header.channel === 'woocommerce' && res.uc_id) {
         try {
+          // The registry endpoint coerces missing numeric values to zero.
+          // Keep an unknown checkout amount from overwriting existing accounts.
+          if (header.total_amount == null) throw new Error('WooCommerce order total is missing; registry amounts were not overwritten.')
           await updateUcInvoice(res.uc_id, {
             source: 'Online Shop',
             customer_id: header.customer_id || null,

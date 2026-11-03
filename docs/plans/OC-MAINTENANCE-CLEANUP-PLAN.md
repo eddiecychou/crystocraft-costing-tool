@@ -191,6 +191,12 @@ the full build and all fresh candidate/production role/reference/focus checks
 pass; the slice is released. A newly characterized saved WooCommerce total/HKD-payout gap is
 separate financial work in TECH-DEBT, not silently fixed in the extraction.
 
+The owner then authorized the bounded [Woo metadata repair/audit](V8.20-WOO-INVOICE-DATA-FIX.md):
+preserve recorded checkout/HKD settlement data and guard unknown totals, retaining
+allocator/backend/calculations. Historical discrepancies remain review-only;
+no backfill or guessed conversion. Its own release gates/evidence are separate.
+Schedule & Terms remains proposed.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second

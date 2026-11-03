@@ -6,6 +6,8 @@ import {execFileSync} from 'node:child_process'
 import assert from 'node:assert/strict'
 const base=new URL(process.argv[2]||''),phase=process.argv[3],out=process.argv[4]||'qa/out/shipment-display'
 assert.match(out,/^qa\/out\/[\w-]+$/)
+const savedWooPath=process.argv[5]
+if(savedWooPath)assert.match(savedWooPath,/^\/shipments\/woo-\d+$/,'Only an audited Woo order path may override the read-only saved-order sample')
 assert.equal(base.protocol,'https:')
 assert.ok(base.hostname==='portal.crystocraft.com'||/^[a-f0-9]{24}--ua-product-manager\.netlify\.app$/.test(base.hostname))
 assert.ok(['baseline','candidate','production'].includes(phase))
@@ -55,8 +57,11 @@ try{
     await refs.screenshot({path:`${out}/${phase}-admin-document-references.png`})
     result.blankReferences='PASS; original blanks, unsaved manual fields/revision and reload reset; no allocation clicks'
     await go('/shipping');await page.getByRole('heading',{name:'Production',exact:true}).waitFor()
-    const row=page.locator('tbody tr').filter({has:page.locator('button[title^="Duplicate this order"]')}).first()
-    await row.waitFor();await row.click({position:{x:10,y:10}});await page.waitForURL(u=>/^\/shipments\/(?!new$)[^/]+$/.test(u.pathname))
+    if(savedWooPath)await go(savedWooPath)
+    else{
+     const row=page.locator('tbody tr').filter({has:page.locator('button[title^="Duplicate this order"]')}).first()
+     await row.waitFor();await row.click({position:{x:10,y:10}});await page.waitForURL(u=>/^\/shipments\/(?!new$)[^/]+$/.test(u.pathname))
+    }
     await page.getByRole('button',{name:'Save Changes',exact:true}).waitFor()
     const badge=page.getByText(/^Stock: (not recorded|partly recorded|recorded)$/,{exact:true})
     await badge.waitFor()

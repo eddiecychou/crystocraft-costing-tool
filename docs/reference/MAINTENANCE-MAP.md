@@ -62,6 +62,12 @@ allocation, revision update, invoice ref/focus, lifecycle, validation and all
 saves remain in ShipmentForm. Nineteen additional real-page cases run through
 test:shipment-display. [Scope/release](../plans/V8.20-SHIPMENT-REFERENCES-CLEANUP.md).
 
+The separate [Woo metadata fix](../plans/V8.20-WOO-INVOICE-DATA-FIX.md) preserves
+total_amount in the header and woo_net_payout_hkd in canonical normalization;
+parent allocation/registry orchestration gains an unknown-total guard. Real
+mapper/model/page/save regressions run in the shipping command. Historical
+review is separate from runtime field preservation.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

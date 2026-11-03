@@ -1,3 +1,15 @@
+# V8.20 — Woo invoice metadata — implementation/read-only review, 3 November 2026
+
+Owner approved the focused checkout-total/HKD-payout fix and read-only audit.
+Seven added app lines preserve values and skip registry fill when the saved
+total is unknown; allocation, backend, rules and calculations remain. Frozen
+original fails 18 targeted assertions; fixed code passes all 38 reference/Woo
+cases, shipping 51, invoice 40, packing 30, config 11 and no-undef. Review of 12
+Woo orders found three invoiced registry discrepancies, six separate pending
+blank entries, one unmatched application invoice and absent structured historical
+HKD payouts. No historical correction. Detailed references stay in ignored QA
+output. Release gates pending. [Scope/audit/release](docs/plans/V8.20-WOO-INVOICE-DATA-FIX.md).
+
 # V8.20 — Document References cleanup — released, 3 November 2026
 
 Owner approved a careful, bounded extraction of the shipping/order Document

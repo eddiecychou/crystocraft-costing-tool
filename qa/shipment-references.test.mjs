@@ -17,7 +17,7 @@ const dom=new JSDOM('<!doctype html><body></body>',{url:'http://fictional.test'}
 for(const k of ['window','document','HTMLElement','Event','MouseEvent'])globalThis[k]=dom.window[k]
 globalThis.IS_REACT_ACT_ENVIRONMENT=true
 const {createRoot}=await import('react-dom/client'),{Simulate}=await import('react-dom/test-utils')
-let scratch,Page,host,root,f,errors,originalError,originalFetch
+let scratch,Page,normOrder,mapWooOrderToOrder,host,root,f,errors,originalError,originalFetch
 const fail=()=>{throw Error('Unexpected service/database action in shipment references fixture')}
 const order=()=>({customer_id:'qa-customer',customer_name:'Fictional 客戶 & Co',erp_so_no:'',erp_si_no:'',uc_no:'',erp_pi_no:'',customer_po:'PO-Original',currency:'USD',status:'draft',incoterm:'FOB',payment_terms:'30% deposit',notes:'Keep original notes',deposit_paid:155,discount_amount:0,pi_revision:2})
 const stubs={
@@ -43,14 +43,16 @@ const stubs={
 }
 before(async()=>{
  scratch=await mkdtemp(join(tmpdir(),'oc-shipment-references-'))
- await build({stdin:{contents:await readFile(process.env.SHIPMENT_REF_SOURCE||'src/pages/ShipmentForm.jsx','utf8'),resolveDir:resolve('src/pages'),loader:'jsx'},outfile:join(scratch,'page.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'fictional-shipment-io',setup(b){
+ const source=await readFile(process.env.SHIPMENT_REF_SOURCE||'src/pages/ShipmentForm.jsx','utf8')
+ await build({stdin:{contents:source+'\nexport {normOrder} from "../shipping";export {mapWooOrderToOrder} from "../wooImport";',resolveDir:resolve('src/pages'),loader:'jsx'},outfile:join(scratch,'page.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'fictional-shipment-io',setup(b){
   b.onResolve({filter:/^(react(?:\/.*)?|lucide-react)$/},a=>({path:require.resolve(a.path),external:true}))
   b.onResolve({filter:/^react-router-dom$/},()=>({path:'router',namespace:'fixture'}))
   b.onResolve({filter:/^firebase\/(firestore|storage)$/},a=>({path:a.path.split('/')[1],namespace:'fixture'}))
   b.onResolve({filter:/^\.\.?\//},a=>{const name=basename(a.path).replace(/\.jsx?$/,'');if(name in stubs)return{path:name,namespace:'fixture'}})
+  if(process.env.SHIPMENT_MODEL_SOURCE)b.onLoad({filter:/\/src\/shipping\.js$/},async()=>({contents:await readFile(process.env.SHIPMENT_MODEL_SOURCE,'utf8'),loader:'js',resolveDir:resolve('src')}))
   b.onLoad({filter:/.*/,namespace:'fixture'},a=>({contents:stubs[a.path],loader:'js',resolveDir:process.cwd()}))
  }}]})
- Page=(await import(pathToFileURL(join(scratch,'page.mjs')))).default
+ const module=await import(pathToFileURL(join(scratch,'page.mjs')));Page=module.default;normOrder=module.normOrder;mapWooOrderToOrder=module.mapWooOrderToOrder
  originalFetch=globalThis.fetch;globalThis.fetch=fail
 })
 beforeEach(()=>{
@@ -124,14 +126,13 @@ test('an order-write failure after invoice allocation keeps issued numbers and p
  f.allowWrite=true;f.writeError=Error('Fictional persist failure');await render();await click(allocation('Invoice No'))
  assert.equal(input('Invoice No').value,'SI-FICTIONAL');assert.equal(input('UC#').value,'UC-FICTIONAL');assert.equal(allocation('Invoice No'),null);assert.ok(panel().textContent.includes('Fictional persist failure'));assert.equal(f.calls.filter(c=>c.kind==='si').length,1);assert.equal(f.orderWrites.length,1)
 })
-// Characterize the existing saved-order payload, including the separately
-// documented missing total/HKD-payout fields. This extraction must not silently
-// introduce an accounting-data repair; such a repair needs its own tests/scope.
-for(const registryFails of [false,true])test(`WooCommerce allocation retains its existing saved-order payload/warning (${registryFails?'failure':'success'})`,async()=>{
+// The separately authorized Woo metadata repair intentionally updates the two
+// original bug-characterization expectations; all other reference cases remain.
+for(const registryFails of [false,true])test(`WooCommerce allocation preserves its checkout total and recorded payout (${registryFails?'failure':'success'})`,async()=>{
  f.allowWrite=true;Object.assign(f.order,{channel:'woocommerce',woo_order_no:'WOO-QA',total_amount:1222,woo_fee:10,woo_net_payout_hkd:9456,woo_payout_date:'2026-10-02'});f.actions.si=async()=>({si_no:'SI-WOO',uc_no:'UC-WOO',uc_id:'qa-registry'})
  if(registryFails)f.actions.registry=async()=>{throw Error('Fictional registry failure')}
  await render();await click(allocation('Invoice No'))
- assert.deepEqual(f.calls.find(c=>c.kind==='registry').args,['qa-registry',{source:'Online Shop',customer_id:'qa-customer',order_no:'WOO-QA',total:null,deposit:null,balance:0,bal_pay_date:'2026-10-02',remarks:'PO-Original — Gateway fee: USD 10.00 · Net payout: HKD amount — fill in manually · Payout 2026-10-02'}])
+ assert.deepEqual(f.calls.find(c=>c.kind==='registry').args,['qa-registry',{source:'Online Shop',customer_id:'qa-customer',order_no:'WOO-QA',total:1222,deposit:1222,balance:0,bal_pay_date:'2026-10-02',remarks:'PO-Original — Gateway fee: USD 10.00 · Net payout: HKD 9456.00 · Payout 2026-10-02'}])
  assert.equal(input('Invoice No').value,'SI-WOO');assert.equal(allocation('Invoice No'),null);assert.equal(f.orderWrites.length,1)
  if(registryFails)assert.ok(panel().textContent.includes('Invoice allocated, but the UC Registry details could not be auto-filled: Fictional registry failure'))
 })
@@ -153,4 +154,50 @@ test('manual references survive the actual save/reopen path with precision, note
  assert.equal(f.accountingWrites.length,1);assert.equal(f.accountingWrites[0].si_no,'SI-SAVED');assert.equal(f.accountingWrites[0].customer_po,'PO 保存 & 1');assert.equal(f.accountingWrites[0].total,1222)
  await act(async()=>root.unmount());root=createRoot(host);await render()
  assert.equal(input('Invoice No').value,'SI-SAVED');assert.equal(input('Revision').value,'4');assert.equal(input('Customer PO').value,'PO 保存 & 1')
+})
+
+for(const value of [1140.123456,0,null,undefined,'','invalid'])test(`canonical Woo HKD payout preserves numeric/null semantics (${String(value)})`,()=>{
+ const normalized=normOrder({channel:'woocommerce',currency:'EUR',total_amount:146.18123,woo_net_payout:144.96,woo_net_payout_hkd:value})
+ assert.equal(normalized.woo_net_payout_hkd,typeof value==='number'?value:null)
+ assert.equal(normalized.total_amount,146.18123);assert.equal(normalized.woo_net_payout,144.96);assert.equal(normalized.currency,'EUR')
+})
+for(const currency of ['HKD','USD','EUR','GBP'])test(`${currency}: actual Woo mapper/normalizer/form/save/reopen retains checkout and settlement data`,async()=>{
+ const mapped=mapWooOrderToOrder({id:999991,number:'999991',currency,customer_name:'Fictional Woo buyer',date_created:'2026-10-02T03:00:00',date_paid:'2026-10-02T04:00:00',subtotal:100,discount_total:3.82,shipping_total:50,tax_total:0,total:146.18,gateway_fee:1.22,net_payout:144.96,net_payout_hkd:1140.123456,payout_date:'2026-10-03',line_items:[{sku:'QA-WOO',name:'Fictional Woo item',quantity:1,subtotal:100}]})
+ f.order=normOrder({...order(),deposit_paid:null,...mapped.header});f.lines=mapped.lines.map((l,i)=>({...l,id:'woo-line-'+i,line_no:i+1}));f.allowWrite=true;f.allowAccounting=true
+ assert.equal(f.order.woo_net_payout_hkd,1140.123456);assert.equal(f.order.total_amount,146.18)
+ f.actions.si=async()=>({si_no:'SI-WOO',uc_no:'UC-WOO',uc_id:'qa-registry'});await render();await click(allocation('Invoice No'))
+ const patch=f.calls.find(c=>c.kind==='registry').args[1]
+ assert.equal(patch.currency,undefined,'Existing registry currency is not overwritten by metadata fill')
+ assert.equal(patch.total,146.18);assert.equal(patch.deposit,146.18);assert.equal(patch.balance,0);assert.equal(patch.customer_id,'online-crystocraft-o07');assert.equal(patch.order_no,'999991');assert.equal(patch.bal_pay_date,'2026-10-03')
+ assert.equal(f.calls.find(c=>c.kind==='si').args[0].currency,currency)
+ assert.equal(patch.remarks,currency==='HKD'?'Fictional Woo buyer':`Fictional Woo buyer — Gateway fee: ${currency} 1.22 · Net payout: HKD 1140.12 · Payout 2026-10-03`)
+ const originalNotes=f.order.notes
+ await click([...host.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save Changes'))
+ assert.equal(f.order.woo_net_payout_hkd,1140.123456);assert.equal(f.order.woo_net_payout,144.96);assert.equal(f.order.total_amount,146.18);assert.equal(f.order.notes,originalNotes);assert.equal(f.order.currency,currency);assert.equal(f.order.deposit_paid,null)
+ assert.equal(f.accountingWrites[0].total,146.18);assert.equal(f.accountingWrites[0].currency,currency);assert.equal(f.accountingWrites[0].remarks,originalNotes)
+ await act(async()=>root.unmount());root=createRoot(host);await render();assert.equal(input('Invoice No').value,'SI-WOO')
+ assert.equal(f.calls.filter(c=>c.kind==='si').length,1);assert.equal(f.calls.filter(c=>c.kind==='registry').length,1);assert.equal(normOrder(f.order).woo_net_payout_hkd,1140.123456)
+})
+for(const total of [undefined,null,'','invalid'])test(`missing Woo total never overwrites registry amounts with a guessed zero (${String(total)})`,async()=>{
+ f.allowWrite=true;Object.assign(f.order,{channel:'woocommerce',total_amount:total});f.actions.si=async()=>({si_no:'SI-ISSUED',uc_no:'UC-ISSUED',uc_id:'qa-registry'})
+ await render();await click(allocation('Invoice No'))
+ assert.equal(f.calls.filter(c=>c.kind==='registry').length,0);assert.equal(f.calls.filter(c=>c.kind==='si').length,1);assert.equal(f.orderWrites.length,1);assert.equal(input('Invoice No').value,'SI-ISSUED');assert.equal(allocation('Invoice No'),null)
+ assert.ok(panel().textContent.includes('WooCommerce order total is missing; registry amounts were not overwritten.'))
+})
+test('known zero Woo total/payout stay zero and three-decimal amounts are not rounded or recalculated',async()=>{
+ f.allowWrite=true;Object.assign(f.order,{channel:'woocommerce',total_amount:0,woo_fee:0,woo_net_payout:90,woo_net_payout_hkd:0});f.actions.si=async()=>({si_no:'SI-ZERO',uc_no:'UC-ZERO',uc_id:'qa-registry'});await render();await click(allocation('Invoice No'))
+ const p=f.calls.find(c=>c.kind==='registry').args[1];assert.equal(p.total,0);assert.equal(p.deposit,0);assert.equal(p.balance,0);assert.ok(p.remarks.includes('Net payout: HKD 0.00'))
+ // A fresh saved record verifies the exact stored checkout amount is used,
+ // rather than deriving a different paid amount from the editable line table.
+ await act(async()=>root.unmount());f.order=order();Object.assign(f.order,{channel:'woocommerce',total_amount:1.222,woo_net_payout_hkd:12.34567});f.calls=[];root=createRoot(host);await render();await click(allocation('Invoice No'))
+ assert.equal(f.calls.find(c=>c.kind==='registry').args[1].total,1.222);assert.equal(f.calls.find(c=>c.kind==='registry').args[1].deposit,1.222)
+})
+test('legacy Woo payout absence keeps the manual fallback without using a transaction-currency net',async()=>{
+ f.allowWrite=true;Object.assign(f.order,{channel:'woocommerce',total_amount:146.18,woo_fee:1.22,woo_net_payout:144.96,woo_payout_date:'2026-10-03'});f.actions.si=async()=>({si_no:'SI-LEGACY',uc_no:'UC-LEGACY',uc_id:'qa-registry'})
+ await render();await click(allocation('Invoice No'));const p=f.calls.find(c=>c.kind==='registry').args[1]
+ assert.equal(p.total,146.18);assert.ok(p.remarks.includes('Net payout: HKD amount — fill in manually'));assert.ok(!p.remarks.includes('HKD 144.96'));assert.equal(f.order.woo_net_payout_hkd,undefined)
+})
+for(const channel of ['wholesale','amazon',null])test(`${String(channel)} allocation retains its manual UC metadata policy`,async()=>{
+ f.allowWrite=true;Object.assign(f.order,{channel,total_amount:146.18,woo_net_payout_hkd:1140.12});f.actions.si=async()=>({si_no:'SI-MANUAL',uc_no:'UC-MANUAL',uc_id:'qa-registry'})
+ await render();await click(allocation('Invoice No'));assert.equal(f.calls.filter(c=>c.kind==='registry').length,0);assert.equal(f.calls.filter(c=>c.kind==='si').length,1);assert.equal(f.orderWrites.length,1)
 })

@@ -33,6 +33,13 @@ form. Further sections need separate bounded slices. See
 
 ## Saved WooCommerce invoice allocation loses total/HKD payout metadata
 
+3 November: owner authorized the separate runtime fix/read-only audit. Both
+whitelists preserve recorded values; an unknown-total guard prevents registry
+zeroing while keeping the issued SI/UC. Seven added app lines; all 38 cases pass,
+with 18 targeted failures against frozen original. Review flags three invoiced
+registry discrepancies and one unmatched app invoice; historical values remain
+untouched, with no inferred bank/HKD settlement. [Release/review status](docs/plans/V8.20-WOO-INVOICE-DATA-FIX.md).
+
 Found during Document References characterization, before extracting any app
 code. ShipmentForm's existing getOrder/header-load whitelist omits total_amount;
 doAllocateSi uses header.total_amount for the best-effort UC Registry total /
@@ -41,7 +48,7 @@ ShipmentForm reads it for non-HKD fee/payout remarks. A fictional raw saved orde
 with total 1222 and HKD payout 9456 produces null registry total/deposit and the
 manual HKD-payout fallback. The number allocation and zero-balance payload remain.
 
-These existing gaps are characterized, not corrected by the presentation slice.
+These existing gaps were characterized, not corrected by the presentation slice.
 A separate accounting repair should pin the intended totals/fee semantics and
 all affected load/save whitelists, then propose a read-only live audit before
 any historical-data correction. Actual affected records/counts are unknown;
