@@ -227,6 +227,10 @@ The [Line row editor](V8.20-LINE-ROW-EDITOR-CLEANUP.md) is released.
 ShipmentForm owns row identity, matching, image selection and persistence.
 Form fixtures cover save and reopen, picker targeting and charge behavior.
 
+The [read-only Order Totals rows](V8.20-ORDER-TOTALS-ROWS-CLEANUP.md) are
+released. ShipmentForm calculates and formats the values, and owns the
+editable discount, accounting and deposit controls.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second

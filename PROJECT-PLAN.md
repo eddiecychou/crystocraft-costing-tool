@@ -1,3 +1,12 @@
+# V8.20 — Read-only Order Totals cleanup — released, 3 November 2026
+
+The subtotal, PI comparison, charges and final total use display components.
+ShipmentForm owns calculation, formatting and edit controls. Source restoration,
+62 before/after form cases, ten visual pairs and the 780-test build pass.
+Both required GitHub jobs passed on 53a79502; fresh admin/customer
+checks passed on candidate and production. Production 6ae9c8ca390ffb9f923f82d6.
+[Release evidence](docs/plans/V8.20-ORDER-TOTALS-ROWS-CLEANUP.md).
+
 # V8.20 — Line row editor cleanup — released, 3 November 2026
 
 ShipmentLineRow renders the editable row. ShipmentForm owns row identity,
