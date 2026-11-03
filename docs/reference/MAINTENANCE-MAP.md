@@ -91,6 +91,10 @@ line state and row editor.
 ShipmentLineRow.jsx. ShipmentForm owns row identity, mutations, matching,
 the image picker, totals and persistence.
 
+[Order Totals rows](../plans/V8.20-ORDER-TOTALS-ROWS-CLEANUP.md) render
+formatted subtotal, PI comparison, charges and total. ShipmentForm owns
+calculation, formatting, validation and editable financial controls.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

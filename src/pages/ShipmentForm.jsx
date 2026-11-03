@@ -33,6 +33,7 @@ import ShipmentScheduleTerms from '../components/shipping/ShipmentScheduleTerms'
 import { ShipmentDestination, ShipmentRemarks } from '../components/shipping/ShipmentOrderDetails'
 import ShipmentLineItemsHeader from '../components/shipping/ShipmentLineItemsHeader'
 import ShipmentLineRow from '../components/shipping/ShipmentLineRow'
+import { ShipmentSubtotalRows, ShipmentTotalRow } from '../components/shipping/ShipmentOrderTotalRows'
 import { invoicePaymentTotals, invoiceDepositError } from '../invoicePayments'
 import { doc, onSnapshot, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -1018,32 +1019,13 @@ export default function ShipmentForm() {
             <div className="card p-4">
               <h2 className="text-xs text-ink-60 uppercase tracking-wide mb-3">Order Totals</h2>
               <div className="space-y-1.5 text-sm">
-                {/* Computed subtotal vs PI stated */}
-                <div className="flex justify-between items-center">
-                  <span className="text-ink-60">Computed subtotal</span>
-                  <span className="font-mono font-medium text-ink">{header.currency} {fmt(computedSubtotal)}</span>
-                </div>
-                {piSubtotal != null && (
-                  <div className="flex justify-between items-center">
-                    <span className="flex items-center gap-1.5 text-ink-60">
-                      PI stated subtotal
-                      {subtotalMatch
-                        ? <span className="text-green-600 text-xs">✓ match</span>
-                        : <span className="text-amber-600 text-xs">⚠ mismatch</span>}
-                    </span>
-                    <span className={`font-mono text-sm ${subtotalMatch ? 'text-ink-60' : 'text-amber-600 font-medium'}`}>
-                      {header.currency} {fmt(piSubtotal)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Charges — flat-amount lines (freight, insurance, etc.) with no qty */}
-                {chargesTotal > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-ink-60">Charges (freight, insurance, etc.)</span>
-                    <span className="font-mono text-ink">+ {header.currency} {fmt(chargesTotal)}</span>
-                  </div>
-                )}
+                <ShipmentSubtotalRows
+                  currency={header.currency}
+                  subtotalText={fmt(computedSubtotal)}
+                  statedSubtotalText={piSubtotal != null ? fmt(piSubtotal) : null}
+                  subtotalMatch={subtotalMatch}
+                  chargesText={chargesTotal > 0 ? fmt(chargesTotal) : null}
+                />
 
                 {/* Discount row — either field can drive it (Cuiling, 2026-08-01:
                     typing the exact discount PRICE is often easier than working
@@ -1088,16 +1070,11 @@ export default function ShipmentForm() {
                   </div>
                 </div>
 
-                {/* Total */}
-                <div className="flex justify-between items-center pt-1.5 border-t border-warm-grey mt-0.5">
-                  <span className="font-semibold text-ink">Total Amount</span>
-                  <div className="text-right">
-                    <span className="font-mono font-bold text-ink text-base">{header.currency} {fmt(computedTotal)}</span>
-                    {piTotal != null && Math.abs(computedTotal - piTotal) >= 0.02 && (
-                      <div className="text-xs text-amber-600">PI states {header.currency} {fmt(piTotal)}</div>
-                    )}
-                  </div>
-                </div>
+                <ShipmentTotalRow
+                  currency={header.currency}
+                  totalText={fmt(computedTotal)}
+                  statedTotalText={piTotal != null && Math.abs(computedTotal - piTotal) >= 0.02 ? fmt(piTotal) : null}
+                />
 
                 {/* Accounting total — what finance actually records against this
                     invoice, kept separate from Total Amount above (which stays

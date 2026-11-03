@@ -629,3 +629,60 @@ test('parent image picker targets the selected row and preserves charge packing 
   assert.equal(f.lineWrites[2].packable, false)
   assert.deepEqual(f.calls, [])
 })
+
+const totalsRows = () => [...host.querySelectorAll('h2')]
+  .find(heading => heading.textContent === 'Order Totals').nextElementSibling
+const totalRow = label => [...totalsRows().children]
+  .find(row => row.textContent.trim().startsWith(label))
+
+test('order total rows preserve PI comparison and charge placement as prices and discounts change', async () => {
+  Object.assign(f.order, { currency: 'CAD', pi_subtotal: 100.01, pi_total: 115.01, deposit_paid: null })
+  f.lines = [
+    { ...f.lines[0], qty_ordered: 4, unit_price: 25 },
+    { ...f.lines[0], id: 'freight', line_no: 2, qty_ordered: null, unit_price: 15, line_type: 'non_product' },
+  ]
+  await render()
+
+  const subtotal = totalRow('Computed subtotal')
+  const comparison = totalRow('PI stated subtotal')
+  const charges = totalRow('Charges')
+  const discount = totalRow('Discount')
+  const total = totalRow('Total Amount')
+  assert.equal(subtotal.nextElementSibling, comparison)
+  assert.equal(comparison.nextElementSibling, charges)
+  assert.equal(charges.nextElementSibling, discount)
+  assert.equal(discount.nextElementSibling, total)
+  assert.match(subtotal.textContent, /CAD 100\.00/)
+  assert.match(comparison.textContent, /✓ match/)
+  assert.match(comparison.textContent, /CAD 100\.01/)
+  assert.match(charges.textContent, /\+ CAD 15\.00/)
+  assert.match(total.textContent, /CAD 115\.00/)
+  assert.doesNotMatch(total.textContent, /PI states/)
+
+  await fill(lineCard(0).querySelector('[placeholder="Unit price"]'), '30')
+  await fill(discount.querySelector('[placeholder="0"]'), '10')
+  assert.equal(discount.querySelector('[placeholder="0.00"]').value, '10')
+  assert.match(totalRow('Computed subtotal').textContent, /CAD 120\.00/)
+  assert.match(totalRow('PI stated subtotal').textContent, /⚠ mismatch/)
+  assert.match(totalRow('Total Amount').textContent, /CAD 125\.00/)
+  assert.match(totalRow('Total Amount').textContent, /PI states CAD 115\.01/)
+  assert.deepEqual(f.orderWrites, [])
+  assert.deepEqual(f.lineWrites, [])
+  assert.deepEqual(f.calls, [])
+})
+
+test('order total rows omit unstated PI comparisons and nonpositive charges', async () => {
+  f.lines = [
+    { ...f.lines[0], qty_ordered: 2, unit_price: 10 },
+    { ...f.lines[0], id: 'credit', line_no: 2, qty_ordered: null, unit_price: -5, line_type: 'non_product' },
+  ]
+  await render()
+  assert.match(totalRow('Computed subtotal').textContent, /USD 20\.00/)
+  assert.equal(totalRow('PI stated subtotal'), undefined)
+  assert.equal(totalRow('Charges'), undefined)
+  assert.match(totalRow('Total Amount').textContent, /USD 15\.00/)
+  assert.doesNotMatch(totalRow('Total Amount').textContent, /PI states/)
+  assert.equal(totalRow('Computed subtotal').nextElementSibling, totalRow('Discount'))
+  assert.equal(totalRow('Discount').nextElementSibling, totalRow('Total Amount'))
+  assert.deepEqual(f.orderWrites, [])
+})

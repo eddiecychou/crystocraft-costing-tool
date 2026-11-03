@@ -84,6 +84,11 @@ try{
     const dates=schedule.locator('input[type=date]'), options=schedule.locator('select')
     await dates.nth(0).fill('2026-11-04');await dates.nth(1).fill('2026-11-16')
     await options.nth(0).selectOption('EUR');await options.nth(1).selectOption('DAP')
+    const orderTotals=page.getByRole('heading',{name:'Order Totals',exact:true}).locator('..')
+    for(const label of ['Computed subtotal','Total Amount']){
+      const row=orderTotals.getByText(label,{exact:true}).locator('..')
+      assert.match(await row.innerText(),/EUR 3\.67/)
+    }
     await schedule.locator('input[list=payment-terms]').fill('Fictional unsaved QA terms')
     assert.deepEqual((await scheduleFields()).map(field=>field.value),['2026-11-04','2026-11-16','EUR','DAP','Fictional unsaved QA terms'])
     const referenceInputs=['e.g. SO260017','e.g. UC4950/26','e.g. SI260094','e.g. 56909','Original']
@@ -106,6 +111,8 @@ try{
     assert.deepEqual(await orderDetails(),blankDetails)
     assert.equal(await lineCodes.count(),0)
     assert.equal(await unclassified.count(),0)
+    assert.equal(await orderTotals.count(),0)
+    result.orderTotalsRows='PASS; subtotal and total reflect edited row and currency, then reset on reload'
     result.lineItemsHeader='PASS; add and classify on a blank form, warning count and reload reset'
     result.lineRowEditor='PASS; item code, description, tier remarks, quantity, unit, price, image control and reload reset'
     result.blankOrderDetails='PASS; destination, remarks and quantity checkbox edit and reset'
