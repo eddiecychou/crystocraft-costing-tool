@@ -1,3 +1,11 @@
+# V8.20 — Shipping Customer card cleanup — released, 5 November 2026
+
+The Customer card now has a dedicated component. ShipmentForm owns selection,
+destination autofill, creation and persistence. All 69 form cases, ten visual pairs
+and 787 build tests passed. Both GitHub jobs passed on e01dc0c4;
+candidate and production passed fresh admin/customer verification.
+Production 6aeb55a99dea3a414a3ffd88. [Release evidence](docs/plans/V8.20-SHIPMENT-CUSTOMER-CARD-CLEANUP.md).
+
 # V8.20 — Shipping Deposit Paid cleanup — released, 4 November 2026
 
 Deposit Paid now has a dedicated component. ShipmentForm owns state,

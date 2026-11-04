@@ -243,6 +243,11 @@ ShipmentDepositPaid renders the amount, error and outstanding balance.
 ShipmentForm retains state and persistence. The payment helpers and existing
 PDF and Excel export behavior were verified with fictional invoices.
 
+The [Shipping Customer card](V8.20-SHIPMENT-CUSTOMER-CARD-CLEANUP.md) is
+released. ShipmentCustomerCard renders the existing customer and contact
+controls and the unlinked PI prompt. ShipmentForm owns customer loading,
+destination autofill, creation and order persistence.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second

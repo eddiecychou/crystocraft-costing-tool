@@ -107,6 +107,10 @@ visibility, adjustment calculations, reason validation and persistence.
 through ShipmentDepositPaid.jsx. ShipmentForm supplies controlled values,
 validation and formatted balance from the shared invoice payment helpers.
 
+The [Shipping Customer card](../plans/V8.20-SHIPMENT-CUSTOMER-CARD-CLEANUP.md)
+renders through ShipmentCustomerCard.jsx and the shared ContactPicker.
+ShipmentForm owns customer loading, destination autofill, creation and saves.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,
