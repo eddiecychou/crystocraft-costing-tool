@@ -1,3 +1,11 @@
+# V8.20 — Shipping Deposit Paid cleanup — released, 4 November 2026
+
+Deposit Paid now has a dedicated component. ShipmentForm owns state,
+validation and persistence. All 68 form cases, ten visual pairs
+and 786 build tests passed. Both GitHub jobs passed on 9f33eb9c;
+candidate and production passed fresh admin/customer verification.
+Production 6aea882fa16e96fd3e96b166. [Release evidence](docs/plans/V8.20-SHIPMENT-DEPOSIT-PAID-CLEANUP.md).
+
 # V8.20 — Shipping Accounting Total cleanup — released, 4 November 2026
 
 Accounting Total now has a dedicated component. ShipmentForm owns invoice

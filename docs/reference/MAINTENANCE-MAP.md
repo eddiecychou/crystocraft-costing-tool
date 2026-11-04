@@ -103,6 +103,10 @@ ShipmentForm owns conversion, rounding, totals and persistence.
 renders through ShipmentAccountingTotal.jsx. ShipmentForm owns invoice
 visibility, adjustment calculations, reason validation and persistence.
 
+[Deposit Paid](../plans/V8.20-SHIPMENT-DEPOSIT-PAID-CLEANUP.md) renders
+through ShipmentDepositPaid.jsx. ShipmentForm supplies controlled values,
+validation and formatted balance from the shared invoice payment helpers.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

@@ -238,7 +238,10 @@ subtotal selection, both conversions, rounding and persistence.
 [Accounting Total](V8.20-SHIPMENT-ACCOUNTING-TOTAL-CLEANUP.md) is released.
 ShipmentAccountingTotal renders the amount, signed adjustment and reason.
 ShipmentForm owns invoice visibility, calculations, validation and writes.
-Review Deposit Paid as a separate slice.
+[Deposit Paid](V8.20-SHIPMENT-DEPOSIT-PAID-CLEANUP.md) is released.
+ShipmentDepositPaid renders the amount, error and outstanding balance.
+ShipmentForm retains state and persistence. The payment helpers and existing
+PDF and Excel export behavior were verified with fictional invoices.
 
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
