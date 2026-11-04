@@ -27,6 +27,7 @@ import { allocateSoNo, soYear } from '../soNumber'
 import { allocateInvoice, upsertInvoice, updateUcInvoice, allocateOrderUc } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail } from '../orderStockStatus'
 import ShipmentPiUpload from '../components/shipping/ShipmentPiUpload'
+import { preparePiUploadFile } from '../piUploadFile'
 import ShipmentDocumentReferences from '../components/shipping/ShipmentDocumentReferences'
 import ShipmentScheduleTerms from '../components/shipping/ShipmentScheduleTerms'
 import { ShipmentDestination, ShipmentRemarks } from '../components/shipping/ShipmentOrderDetails'
@@ -468,12 +469,10 @@ export default function ShipmentForm() {
     setPendingFile(file)
     setExtracting(true); setExtractError('')
     try {
-      let base64, mimeType
-      if (file.type === 'application/pdf') { base64 = await toBase64(file); mimeType = 'application/pdf' }
-      else { base64 = await toBase64(await preprocessForGemini(file)); mimeType = 'image/png' }
+      const payload = await preparePiUploadFile(file)
       const res = await fetch('/api/extract-pi', {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-        body: JSON.stringify({ image: base64, mimeType }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error('Extraction failed')
       const data = await res.json()
@@ -1106,31 +1105,4 @@ export default function ShipmentForm() {
       )}
     </div>
   )
-}
-
-// ── Image utilities (mirror RangeQuoteForm) ──────────────────────────────────
-async function preprocessForGemini(file, maxPx = 2400) {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height))
-  const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale)
-  const canvas = new OffscreenCanvas(w, h)
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(bitmap, 0, 0, w, h)
-  const imageData = ctx.getImageData(0, 0, w, h)
-  const data = imageData.data
-  for (let i = 0; i < data.length; i += 4) {
-    const grey = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-    data[i] = data[i + 1] = data[i + 2] = grey
-  }
-  ctx.putImageData(imageData, 0, 0)
-  return canvas.convertToBlob({ type: 'image/png' })
-}
-
-async function toBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result.split(',')[1])
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
 }

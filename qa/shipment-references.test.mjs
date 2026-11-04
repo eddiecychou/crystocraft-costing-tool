@@ -969,8 +969,8 @@ test('PI PDF selection shows its filename and progress, then populates the form 
     return response.promise
   }
   await render()
-  const fileText = '%PDF-1.7 fictional'
-  const file = new dom.window.File([fileText], 'Fictional 訂單.pdf', { type: 'application/pdf' })
+  const fileBytes = Buffer.concat([Buffer.from('%PDF-1.7\n%'), Buffer.from([0xe2, 0xe3, 0xcf, 0xd3, 0x00])])
+  const file = new dom.window.File([fileBytes], 'Fictional 訂單.pdf', { type: 'application/pdf' })
   const picker = piUploadInput()
   Object.defineProperty(picker, 'files', { value: [file] })
   await act(async () => Simulate.change(picker))
@@ -980,7 +980,7 @@ test('PI PDF selection shows its filename and progress, then populates the form 
   assert.equal(options.method, 'POST')
   assert.equal(options.headers.Authorization, 'Bearer fictional-pi-test')
   assert.deepEqual(JSON.parse(options.body), {
-    image: Buffer.from(fileText).toString('base64'), mimeType: 'application/pdf',
+    image: fileBytes.toString('base64'), mimeType: 'application/pdf',
   })
 
   await act(async () => response.resolve({
@@ -1056,5 +1056,31 @@ test('PI drag and drop skips unsupported files, sends an image as PNG and displa
     else delete globalThis.createImageBitmap
     if (originalCanvas) globalThis.OffscreenCanvas = originalCanvas
     else delete globalThis.OffscreenCanvas
+  }
+})
+
+test('an image preparation failure stops PI progress before any extraction request', async () => {
+  f.id = undefined
+  const file = new dom.window.File(['unreadable image'], 'Unreadable PI.jpg', { type: 'image/jpeg' })
+  let requests = 0
+  f.extractPi = async () => {
+    requests++
+    return { ok: false }
+  }
+  const originalBitmap = globalThis.createImageBitmap
+  globalThis.createImageBitmap = async () => { throw new Error('Fictional image decode failure') }
+  try {
+    await render()
+    await act(async () => Simulate.drop(piDropzone(), { dataTransfer: { files: [file] } }))
+    assert.equal(requests, 0)
+    assert.equal(extractionProgress(), null)
+    assert.match(piUploadCard().textContent, /Unreadable PI\.jpg/)
+    assert.match(piUploadCard().textContent, /Could not read this PI/)
+    assert.equal(itemCodeInputs().length, 0)
+    assert.deepEqual(f.orderWrites, [])
+    assert.deepEqual(f.calls, [])
+  } finally {
+    if (originalBitmap) globalThis.createImageBitmap = originalBitmap
+    else delete globalThis.createImageBitmap
   }
 })
