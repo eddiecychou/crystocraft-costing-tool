@@ -111,6 +111,10 @@ The [Shipping Customer card](../plans/V8.20-SHIPMENT-CUSTOMER-CARD-CLEANUP.md)
 renders through ShipmentCustomerCard.jsx and the shared ContactPicker.
 ShipmentForm owns customer loading, destination autofill, creation and saves.
 
+The [PI Upload panel](../plans/V8.20-SHIPMENT-PI-UPLOAD-CLEANUP.md) renders
+through ShipmentPiUpload.jsx. ShipmentForm owns mode visibility, file
+processing, extraction, ERP adoption and saves.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

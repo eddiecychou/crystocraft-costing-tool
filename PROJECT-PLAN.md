@@ -1,3 +1,12 @@
+# V8.20 — Shipping PI Upload cleanup — released, 5 November 2026
+
+The PI Upload panel now has a dedicated component. ShipmentForm owns the
+import handlers, matching, ERP comparison logic and persistence. All 72 form
+cases, visual parity checks
+and 790 build tests passed. Both GitHub jobs passed on 96d51845;
+candidate and production passed fresh admin/customer verification.
+Production 6aeb5f2194bdfa2c2fdb0d43. [Release evidence](docs/plans/V8.20-SHIPMENT-PI-UPLOAD-CLEANUP.md).
+
 # V8.20 — Shipping Customer card cleanup — released, 5 November 2026
 
 The Customer card now has a dedicated component. ShipmentForm owns selection,

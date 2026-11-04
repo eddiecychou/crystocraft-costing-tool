@@ -248,6 +248,12 @@ released. ShipmentCustomerCard renders the existing customer and contact
 controls and the unlinked PI prompt. ShipmentForm owns customer loading,
 destination autofill, creation and order persistence.
 
+The [PI Upload panel](V8.20-SHIPMENT-PI-UPLOAD-CLEANUP.md) is released.
+ShipmentPiUpload renders the existing file controls, extraction feedback
+and ERP comparison. ShipmentForm owns processing, extraction, matching,
+ERP adoption and writes. Fictional PDF and PNG browser tests intercepted
+requests on the candidate and production.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second
