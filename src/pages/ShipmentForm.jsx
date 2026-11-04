@@ -13,7 +13,7 @@ import {
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
-import { FileInput, FolderOpen, FileText, Trash2, Receipt } from 'lucide-react'
+import { FileText, Trash2, Receipt } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LineImagePicker from '../components/LineImagePicker'
 import PackingListEditor from './PackingListEditor'
@@ -26,7 +26,7 @@ import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo, soYear } from '../soNumber'
 import { allocateInvoice, upsertInvoice, updateUcInvoice, allocateOrderUc } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail } from '../orderStockStatus'
-import { ErpCrossCheck } from '../components/shipping/ShipmentReconciliation'
+import ShipmentPiUpload from '../components/shipping/ShipmentPiUpload'
 import ShipmentDocumentReferences from '../components/shipping/ShipmentDocumentReferences'
 import ShipmentScheduleTerms from '../components/shipping/ShipmentScheduleTerms'
 import { ShipmentDestination, ShipmentRemarks } from '../components/shipping/ShipmentOrderDetails'
@@ -899,27 +899,18 @@ export default function ShipmentForm() {
             has no proforma to import, so offering the dropzone would suggest a
             step that does not exist. */}
         {!isEdit && !isDirect && !fromQuoteId && (
-          <div className="card p-4">
-            <label
-              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
- ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
-              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
-              <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
-              <span className="text-sm text-ink-70">{dragOver ? 'Drop to import' : 'Click to upload or drag & drop a PI (PDF or image)'}</span>
-              <span className="text-xs text-ink-60 mt-0.5">PDF, JPG, PNG</span>
-              <input type="file" accept="image/*,.pdf" className="hidden"
-                     onChange={e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = '' }} />
-            </label>
-            {pendingFile && (
-              <div className="flex items-center gap-2 mt-3 text-xs text-ink-70">
-                <FileText size={14} className="text-red-400" /> {pendingFile.name}
-              </div>
-            )}
-            {extracting && <div className="mt-2 h-1 bg-brand-100 rounded-none overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
-            {extractError && <p className="text-xs text-amber-600 mt-2">{extractError}</p>}
-            <ErpCrossCheck check={erpCheck} onUse={useErpLines} />
-          </div>
+          <ShipmentPiUpload
+            dragOver={dragOver}
+            fileName={pendingFile?.name}
+            extracting={extracting}
+            error={extractError}
+            erpCheck={erpCheck}
+            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onFileChange={e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = '' }}
+            onUseErpLines={useErpLines}
+          />
         )}
 
         {/* Header — split into four grouped cards (2026-08-26; was one long

@@ -14,14 +14,14 @@ import {ocDateOnly,ocYear} from '../src/ocTime.js'
 
 const require=createRequire(import.meta.url)
 const dom=new JSDOM('<!doctype html><body></body>',{url:'http://fictional.test'})
-for(const k of ['window','document','HTMLElement','Event','MouseEvent'])globalThis[k]=dom.window[k]
+for(const k of ['window','document','HTMLElement','Event','MouseEvent','FileReader'])globalThis[k]=dom.window[k]
 globalThis.IS_REACT_ACT_ENVIRONMENT=true
 const {createRoot}=await import('react-dom/client'),{Simulate}=await import('react-dom/test-utils')
 let scratch,Page,normOrder,validateOrder,mapWooOrderToOrder,host,root,f,errors,originalError,originalFetch
 const fail=()=>{throw Error('Unexpected service/database action in shipment references fixture')}
 const order=()=>({customer_id:'qa-customer',customer_name:'Fictional 客戶 & Co',erp_so_no:'',erp_si_no:'',uc_no:'',erp_pi_no:'',customer_po:'PO-Original',currency:'USD',status:'draft',incoterm:'FOB',payment_terms:'30% deposit',notes:'Keep original notes',deposit_paid:155,discount_amount:0,pi_revision:2})
 const stubs={
- firebase:'export const db={},storage={};export const authHeader=async()=>{throw Error("No network requests")}',
+ firebase:'export const db={},storage={};export const authHeader=async()=>{if(globalThis.__shipmentReferences?.extractPi)return {Authorization:"Bearer fictional-pi-test"};throw Error("No network requests")}',
  firestore:`const f=()=>globalThis.__shipmentReferences;
  export const doc=(...p)=>Object.assign(p,{id:typeof p.at(-1)==='string'?p.at(-1):'new-line'}),collection=(...p)=>p,query=(...p)=>p,orderBy=()=>{};
  export const getDoc=async p=>{if(p.includes('client_quotes')&&f().quote)return{id:p.at(-1),exists:()=>true,data:()=>f().quote};if(!p.includes('orders'))throw Error('Unexpected document read');return{id:p.at(-1),exists:()=>true,data:()=>f().order}};
@@ -75,7 +75,10 @@ before(async()=>{
   b.onLoad({filter:/.*/,namespace:'fixture'},a=>({contents:stubs[a.path],loader:'js',resolveDir:process.cwd()}))
  }}]})
  const module=await import(pathToFileURL(join(scratch,'page.mjs')));Page=module.default;normOrder=module.normOrder;validateOrder=module.validateOrder;mapWooOrderToOrder=module.mapWooOrderToOrder
- originalFetch=globalThis.fetch;globalThis.fetch=fail
+ originalFetch=globalThis.fetch
+ globalThis.fetch=(path,options)=>path==='/api/extract-pi'&&globalThis.__shipmentReferences?.extractPi
+   ? globalThis.__shipmentReferences.extractPi(options)
+   : fail()
 })
 beforeEach(()=>{
  f={id:'qa-order',search:'',order:order(),lines:[{id:'qa-line',line_no:1,item_code:'QA-ITEM',description:'Fictional item',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'}],calls:[],actions:{so:async()=> 'SO-FICTIONAL',uc:async()=>({full:'UC-FICTIONAL'}),si:async()=>({si_no:'SI-FICTIONAL',uc_no:'UC-FICTIONAL'}),registry:async()=>({})},orderWrites:[],lineWrites:[],accountingWrites:[],createAttempts:0,allowWrite:false,allowAccounting:false}
@@ -933,4 +936,125 @@ test('deposit validation and its accessible description follow a changed invoice
   assert.deepEqual(f.orderWrites, [])
   assert.deepEqual(f.lineWrites, [])
   assert.deepEqual(f.accountingWrites, [])
+})
+
+const piUploadInput = () => host.querySelector('input[type="file"][accept="image/*,.pdf"]')
+const piDropzone = () => piUploadInput().closest('label')
+const piUploadCard = () => piDropzone().parentElement
+const extractionProgress = () => piUploadCard().querySelector('.animate-pulse')
+
+test('PI upload is limited to import mode', async () => {
+  await render()
+  assert.equal(piUploadInput(), null)
+  f.id = undefined
+  f.search = 'direct=1'
+  await render()
+  assert.equal(piUploadInput(), null)
+  f.search = 'from_quote=qa-quote'
+  f.quote = { quote_type: 'built', customer_id: 'qa-customer', client_name: 'Fictional quote buyer', quote_currency: 'USD' }
+  await render()
+  assert.equal(piUploadInput(), null)
+  f.search = ''
+  await render()
+  assert.ok(piUploadInput())
+  assert.match(piDropzone().textContent, /PDF, JPG, PNG/)
+})
+
+test('PI PDF selection shows its filename and progress, then populates the form from the response', { timeout: 4000 }, async () => {
+  f.id = undefined
+  const request = deferred()
+  const response = deferred()
+  f.extractPi = options => {
+    request.resolve(options)
+    return response.promise
+  }
+  await render()
+  const fileText = '%PDF-1.7 fictional'
+  const file = new dom.window.File([fileText], 'Fictional 訂單.pdf', { type: 'application/pdf' })
+  const picker = piUploadInput()
+  Object.defineProperty(picker, 'files', { value: [file] })
+  await act(async () => Simulate.change(picker))
+  assert.match(piUploadCard().textContent, /Fictional 訂單\.pdf/)
+  assert.ok(extractionProgress())
+  const options = await request.promise
+  assert.equal(options.method, 'POST')
+  assert.equal(options.headers.Authorization, 'Bearer fictional-pi-test')
+  assert.deepEqual(JSON.parse(options.body), {
+    image: Buffer.from(fileText).toString('base64'), mimeType: 'application/pdf',
+  })
+
+  await act(async () => response.resolve({
+    ok: true,
+    json: async () => ({
+      customer_name: 'Fictional imported PI customer', pi_no: 'UC-QA-PI',
+      currency: 'EUR', lines: [{ item_code: 'PI-LINE', description: 'Fictional parsed line', qty_ordered: 2, unit_price: 15 }],
+    }),
+  }))
+  assert.equal(extractionProgress(), null)
+  assert.match(piUploadCard().textContent, /Fictional 訂單\.pdf/)
+  assert.equal(input('UC#').value, 'UC-QA-PI')
+  assert.equal(itemCodeInputs()[0].value, 'PI-LINE')
+  assert.match(customerCard().textContent, /Fictional imported PI customer/)
+  assert.deepEqual(f.orderWrites, [])
+  assert.deepEqual(f.calls, [])
+})
+
+test('PI drag and drop skips unsupported files, sends an image as PNG and displays extraction failure', { timeout: 4000 }, async () => {
+  f.id = undefined
+  const ignoredFile = new dom.window.File(['unsupported'], 'Ignored.csv', { type: 'text/csv' })
+  const imageFile = new dom.window.File(['fictional image'], 'Fictional PI.jpg', { type: 'image/jpeg' })
+  const request = deferred()
+  const response = deferred()
+  f.extractPi = options => {
+    request.resolve(options)
+    return response.promise
+  }
+  const originalBitmap = globalThis.createImageBitmap
+  const originalCanvas = globalThis.OffscreenCanvas
+  const pngText = 'fictional PNG'
+  let decoded
+  globalThis.createImageBitmap = async file => {
+    decoded = file
+    return { width: 1, height: 1 }
+  }
+  globalThis.OffscreenCanvas = class {
+    getContext() {
+      return {
+        drawImage() {},
+        getImageData: () => ({ data: new Uint8ClampedArray([0, 0, 0, 255]) }),
+        putImageData() {},
+      }
+    }
+    async convertToBlob({ type }) { return new dom.window.Blob([pngText], { type }) }
+  }
+  try {
+    await render()
+    await act(async () => Simulate.dragOver(piDropzone()))
+    assert.match(piDropzone().textContent, /Drop to import/)
+    await act(async () => Simulate.dragLeave(piDropzone()))
+    assert.match(piDropzone().textContent, /Click to upload/)
+    await act(async () => Simulate.drop(piDropzone(), { dataTransfer: { files: [ignoredFile] } }))
+    assert.equal(extractionProgress(), null)
+    assert.doesNotMatch(piUploadCard().textContent, /Ignored\.csv/)
+
+    await act(async () => Simulate.dragOver(piDropzone()))
+    await act(async () => Simulate.drop(piDropzone(), { dataTransfer: { files: [ignoredFile, imageFile] } }))
+    assert.match(piDropzone().textContent, /Click to upload/)
+    assert.match(piUploadCard().textContent, /Fictional PI\.jpg/)
+    assert.ok(extractionProgress())
+    const options = await request.promise
+    assert.equal(decoded, imageFile)
+    assert.deepEqual(JSON.parse(options.body), { image: Buffer.from(pngText).toString('base64'), mimeType: 'image/png' })
+    await act(async () => response.resolve({ ok: false }))
+    assert.equal(extractionProgress(), null)
+    assert.match(piUploadCard().textContent, /Could not read this PI/)
+    assert.equal(itemCodeInputs().length, 0)
+    assert.deepEqual(f.orderWrites, [])
+    assert.deepEqual(f.calls, [])
+  } finally {
+    if (originalBitmap) globalThis.createImageBitmap = originalBitmap
+    else delete globalThis.createImageBitmap
+    if (originalCanvas) globalThis.OffscreenCanvas = originalCanvas
+    else delete globalThis.OffscreenCanvas
+  }
 })
