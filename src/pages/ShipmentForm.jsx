@@ -33,6 +33,7 @@ import ShipmentScheduleTerms from '../components/shipping/ShipmentScheduleTerms'
 import { ShipmentDestination, ShipmentRemarks } from '../components/shipping/ShipmentOrderDetails'
 import ShipmentLineItemsHeader from '../components/shipping/ShipmentLineItemsHeader'
 import ShipmentLineRow from '../components/shipping/ShipmentLineRow'
+import ShipmentAccountingTotal from '../components/shipping/ShipmentAccountingTotal'
 import ShipmentDiscountRow from '../components/shipping/ShipmentDiscountRow'
 import { ShipmentSubtotalRows, ShipmentTotalRow } from '../components/shipping/ShipmentOrderTotalRows'
 import { invoicePaymentTotals, invoiceDepositError } from '../invoicePayments'
@@ -1061,30 +1062,16 @@ export default function ShipmentForm() {
                   const accTotal = header.accounting_total !== '' ? parseFloat(header.accounting_total) : computedTotal
                   const adj = Math.round((accTotal - computedTotal) * 100) / 100
                   return (
-                    <div className="pt-2 mt-1 border-t border-warm-grey space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-ink-60" title="What finance records for this invoice. Blank uses the Total Amount above.">Accounting Total</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-ink-60">{header.currency}</span>
-                          <input type="number" step="0.01" className="input py-0.5 text-xs w-24 text-right font-mono"
-                                 value={header.accounting_total} onChange={setH('accounting_total')}
-                                 placeholder={fmt(computedTotal)} />
-                        </div>
-                      </div>
-                      {Math.abs(adj) > 0.005 && (
-                        <>
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-amber-600">Adjustment</span>
-                            <span className="font-mono text-amber-600">{adj > 0 ? '+' : ''}{header.currency} {fmt(adj)}</span>
-                          </div>
-                          <div>
-                            <input className="input py-1 text-xs" value={header.adjustment_reason}
-                                   onChange={setH('adjustment_reason')}
-                                   placeholder="Reason for the adjustment (required)" />
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    <ShipmentAccountingTotal
+                      currency={header.currency}
+                      amount={header.accounting_total}
+                      computedTotalText={fmt(computedTotal)}
+                      adjustmentText={Math.abs(adj) > 0.005 ? fmt(adj) : null}
+                      positiveAdjustment={adj > 0}
+                      reason={header.adjustment_reason}
+                      onAmountChange={setH('accounting_total')}
+                      onReasonChange={setH('adjustment_reason')}
+                    />
                   )
                 })()}
 
