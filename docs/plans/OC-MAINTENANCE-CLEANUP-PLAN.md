@@ -254,6 +254,12 @@ and ERP comparison. ShipmentForm owns processing, extraction, matching,
 ERP adoption and writes. Fictional PDF and PNG browser tests intercepted
 requests on the candidate and production.
 
+[PI file preparation](V8.20-SHIPMENT-PI-FILE-PREPARATION-CLEANUP.md) is
+released. preparePiUploadFile owns PDF byte preservation and image resizing,
+grayscale conversion and encoding. ShipmentForm still owns extraction and
+applies parsed fields, matching and ERP checks. Browser fixtures matched
+outgoing bytes and decoded image pixels before and after extraction.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second

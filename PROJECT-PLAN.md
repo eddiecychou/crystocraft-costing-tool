@@ -1,3 +1,11 @@
+# V8.20 — Shipping PI file preparation cleanup — released, 5 November 2026
+
+PI upload file encoding now has a dedicated helper. ShipmentForm owns
+the request, matching, ERP comparison and persistence. All 73 form cases,
+seven Chrome file cases and 791 build tests passed. Both GitHub jobs passed on 13693b6a;
+candidate and production passed fresh admin/customer verification.
+Production 6aeb68cb73451dbe389b5a19. [Release evidence](docs/plans/V8.20-SHIPMENT-PI-FILE-PREPARATION-CLEANUP.md).
+
 # V8.20 — Shipping PI Upload cleanup — released, 5 November 2026
 
 The PI Upload panel now has a dedicated component. ShipmentForm owns the

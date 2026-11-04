@@ -113,7 +113,8 @@ ShipmentForm owns customer loading, destination autofill, creation and saves.
 
 The [PI Upload panel](../plans/V8.20-SHIPMENT-PI-UPLOAD-CLEANUP.md) renders
 through ShipmentPiUpload.jsx. ShipmentForm owns mode visibility, file
-processing, extraction, ERP adoption and saves.
+extraction, ERP adoption and saves. [PI file preparation](../plans/V8.20-SHIPMENT-PI-FILE-PREPARATION-CLEANUP.md)
+uses src/piUploadFile.js to preserve PDF bytes and prepare image PNG payloads.
 
 ## CRM component ownership — first cleanup batch
 
