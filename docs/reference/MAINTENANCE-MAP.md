@@ -99,6 +99,10 @@ calculation, formatting and validation.
 percentage and amount controls through ShipmentDiscountRow.jsx.
 ShipmentForm owns conversion, rounding, totals and persistence.
 
+[Accounting Total](../plans/V8.20-SHIPMENT-ACCOUNTING-TOTAL-CLEANUP.md)
+renders through ShipmentAccountingTotal.jsx. ShipmentForm owns invoice
+visibility, adjustment calculations, reason validation and persistence.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

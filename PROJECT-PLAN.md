@@ -1,3 +1,11 @@
+# V8.20 — Shipping Accounting Total cleanup — released, 4 November 2026
+
+Accounting Total now has a dedicated component. ShipmentForm owns invoice
+visibility, calculation, validation and persistence. All 67 form cases, 12 visual pairs
+and 785 build tests passed. Both GitHub jobs passed on f6f1d078;
+candidate and production passed fresh admin/customer verification.
+Production 6aea8261562bea3f869a5d24. [Release evidence](docs/plans/V8.20-SHIPMENT-ACCOUNTING-TOTAL-CLEANUP.md).
+
 # V8.20 — Shipping Discount cleanup — released, 4 November 2026
 
 The Discount row now has a dedicated component. ShipmentForm owns the

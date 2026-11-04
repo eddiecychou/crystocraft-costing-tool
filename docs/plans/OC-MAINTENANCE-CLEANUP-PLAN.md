@@ -233,8 +233,12 @@ editable financial controls.
 
 The [Discount row](V8.20-SHIPMENT-DISCOUNT-CLEANUP.md) is released.
 ShipmentDiscountRow renders the two controlled inputs. ShipmentForm retains
-subtotal selection, both conversions, rounding and persistence. Review
-Accounting Total and Deposit Paid as separate slices.
+subtotal selection, both conversions, rounding and persistence.
+
+[Accounting Total](V8.20-SHIPMENT-ACCOUNTING-TOTAL-CLEANUP.md) is released.
+ShipmentAccountingTotal renders the amount, signed adjustment and reason.
+ShipmentForm owns invoice visibility, calculations, validation and writes.
+Review Deposit Paid as a separate slice.
 
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
