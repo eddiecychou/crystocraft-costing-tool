@@ -38,8 +38,12 @@ const stubs={
  export const runTransaction=async()=>{if(f().createError){f().createAttempts++;throw f().createError}throw Error('No creates/transactions authorized')};
  const fail=()=>{throw Error('No creates/deletes authorized')};export{fail as addDoc,fail as deleteDoc,fail as setDoc,fail as increment};`,
  router:`import React from 'react';const f=()=>globalThis.__shipmentReferences;export const useParams=()=>({id:f().id}),useSearchParams=()=>[new URLSearchParams(f().search)],useNavigate=()=>to=>{f().destination=to};export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children)`,
- customer:'export const loadCustomers=async()=>globalThis.__shipmentReferences.customers||[];export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error("No customer writes")}',
- ContactPicker:'export default ()=>null',ConfirmDialog:'export default ()=>null',LineImagePicker:`import {createElement as h} from 'react';
+ customer:`const customers=()=>globalThis.__shipmentReferences.customers||[];
+ export const loadCustomers=async()=>customers();
+ export const getCustomer=async id=>customers().find(customer=>customer.id===id)||null;
+ export const primaryContact=contacts=>contacts?.find(contact=>contact.is_primary)||contacts?.[0]||null;
+ export const saveCustomer=async()=>{throw Error("No customer writes")};`,
+ ConfirmDialog:'export default ()=>null',LineImagePicker:`import {createElement as h} from 'react';
  export default function Picker({orderId,itemCode,matchedProductRef,selectedUrl,onSelect,onClear,onClose}) {
    const fixture=globalThis.__shipmentReferences;
    return h('div', {
@@ -401,30 +405,76 @@ const remarksInput = () => host.querySelector('textarea[placeholder^="Prints on 
 const hideQty = () => [...host.querySelectorAll('label')]
   .find(label => label.textContent.includes('Hide "Total Qty"')).querySelector('input')
 
-test('customer selection fills destination country and address while preserving city and port', async () => {
+const customerCard = () => [...host.querySelectorAll('h2')]
+  .find(heading => heading.textContent === 'Customer').parentElement
+const customerSelect = () => customerCard().querySelector('select')
+const addressedTo = () => [...customerCard().querySelectorAll('label')]
+  .find(label => label.textContent === 'Addressed to')?.parentElement.querySelector('select')
+
+test('switching customer resets the contact, fills destination and keeps the chosen contact after save and reopen', async () => {
   f.customers = [
-    { id: 'qa-customer', company_name: 'Original customer' },
+    { id: 'qa-customer', company_name: 'Original customer', contacts: [{ id: 'old-contact', name: 'Original contact' }] },
     { id: 'qa-new', company_name: 'New customer', country: 'Canada', address: 'New address' },
-    { id: 'qa-region', company_name: 'Region-only customer', region: 'Australia' },
+    {
+      id: 'qa-region', company_name: 'Region-only customer', region: 'Australia', erp_code: 'REGION',
+      contacts: [
+        { id: 'alternate-contact', name: 'Alternate contact' },
+        { id: 'primary-contact', name: 'Primary contact', is_primary: true },
+      ],
+    },
   ]
+  f.order.contact_id = 'old-contact'
   f.order.destination = { country: 'Germany', city: 'Hamburg', port: 'HH', address: 'Original address' }
   f.allowWrite = true
   await render()
-  const customerSelect = [...host.querySelectorAll('h2')]
-    .find(heading => heading.textContent === 'Customer').parentElement.querySelector('select')
-  await fill(customerSelect, 'qa-new')
+  assert.equal(addressedTo().value, 'old-contact')
+  await fill(customerSelect(), 'qa-new')
+  assert.equal(addressedTo().value, '')
+  assert.equal(addressedTo().querySelector('[value="old-contact"]'), null)
   assert.equal(destinationInput('Dest. Country').value, 'Canada')
   assert.equal(destinationInput('Dest. City').value, 'Hamburg')
   assert.equal(destinationInput('Port (optional)').value, 'HH')
-  await fill(customerSelect, 'qa-region')
+  await fill(customerSelect(), 'qa-region')
+  assert.equal(addressedTo().value, 'primary-contact')
   assert.equal(destinationInput('Dest. Country').value, 'Australia')
+  assert.equal(customerSelect().selectedOptions[0].textContent, '[REGION] Region-only customer')
+  await fill(addressedTo(), 'alternate-contact')
   assert.deepEqual(f.orderWrites, [])
   await click(submit())
   assert.equal(f.orderWrites.length, 1)
   assert.equal(f.orderWrites[0].data.customer_id, 'qa-region')
+  assert.equal(f.orderWrites[0].data.customer_name, 'Region-only customer')
+  assert.equal(f.orderWrites[0].data.contact_id, 'alternate-contact')
   assert.deepEqual(f.orderWrites[0].data.destination, {
     country: 'Australia', city: 'Hamburg', port: 'HH', address: 'New address',
   })
+
+  await act(async () => root.unmount())
+  root = createRoot(host)
+  await render()
+  assert.equal(customerSelect().value, 'qa-region')
+  assert.equal(addressedTo().value, 'alternate-contact')
+  assert.equal(destinationInput('Dest. Country').value, 'Australia')
+})
+
+test('unmatched PI customer keeps its displayed name and hides the add prompt after linking', async () => {
+  f.order.customer_id = ''
+  f.order.customer_name = 'Fictional imported 客戶'
+  f.customers = [{ id: 'qa-existing', company_name: 'Existing fictional customer' }]
+  await render()
+  assert.equal(customerSelect().value, '')
+  assert.equal(addressedTo(), undefined)
+  assert.match(customerCard().textContent, /From PI: "Fictional imported 客戶" — not linked to any customer/)
+  const addCustomerButton = customerCard().querySelector('button')
+  assert.equal(addCustomerButton.textContent, '+ Add as new customer')
+  assert.equal(addCustomerButton.type, 'button')
+  assert.equal(addCustomerButton.disabled, false)
+
+  await fill(customerSelect(), 'qa-existing')
+  assert.doesNotMatch(customerCard().textContent, /From PI:|Add as new customer/)
+  assert.ok(addressedTo())
+  assert.deepEqual(f.orderWrites, [])
+  assert.deepEqual(f.calls, [])
 })
 
 test('destination edits and multiline remarks save and reopen with the print quantity preference', async () => {

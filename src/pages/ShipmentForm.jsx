@@ -11,7 +11,6 @@ import {
   orderUc,
 } from '../shipping'
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
-import ContactPicker from '../components/ContactPicker'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
 import { FileInput, FolderOpen, FileText, Trash2, Receipt } from 'lucide-react'
@@ -33,6 +32,7 @@ import ShipmentScheduleTerms from '../components/shipping/ShipmentScheduleTerms'
 import { ShipmentDestination, ShipmentRemarks } from '../components/shipping/ShipmentOrderDetails'
 import ShipmentLineItemsHeader from '../components/shipping/ShipmentLineItemsHeader'
 import ShipmentLineRow from '../components/shipping/ShipmentLineRow'
+import ShipmentCustomerCard from '../components/shipping/ShipmentCustomerCard'
 import ShipmentAccountingTotal from '../components/shipping/ShipmentAccountingTotal'
 import ShipmentDepositPaid from '../components/shipping/ShipmentDepositPaid'
 import ShipmentDiscountRow from '../components/shipping/ShipmentDiscountRow'
@@ -929,30 +929,16 @@ export default function ShipmentForm() {
             No/Revision pair fighting SO/UC/Customer PO for space in a single
             3-column grid, which was truncating the Revision placeholder and
             wrapping "+ New Rev" onto two lines. */}
-        <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs text-ink-60 uppercase tracking-wide">Customer</h2>
-          <div>
-            <label className="label">Customer</label>
-            <select className="input" value={customers.find(c => c.id === header.customer_id) ? header.customer_id : ''} onChange={onCustomer}>
-              <option value="">— select customer —</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.erp_code ? `[${c.erp_code}] ` : ''}{c.company_name}</option>)}
-            </select>
-            {!header.customer_id && header.customer_name && (
-              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                <p className="text-xs text-amber-600">From PI: "{header.customer_name}" — not linked to any customer.</p>
-                <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
-                        className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline disabled:opacity-50">
-                  {addingCustomer ? 'Adding…' : '+ Add as new customer'}
-                </button>
-              </div>
-            )}
-            {header.customer_id && (
-              <ContactPicker customerId={header.customer_id} value={header.contact_id}
-                             onChange={cid => setHeader(h => ({ ...h, contact_id: cid || '' }))}
-                             label="Addressed to" className="mt-2" />
-            )}
-          </div>
-        </div>
+        <ShipmentCustomerCard
+          customers={customers}
+          customerId={header.customer_id}
+          customerName={header.customer_name}
+          contactId={header.contact_id}
+          addingCustomer={addingCustomer}
+          onCustomer={onCustomer}
+          onContactChange={cid => setHeader(h => ({ ...h, contact_id: cid || '' }))}
+          onAddCustomer={addNewCustomer}
+        />
 
         <ShipmentDocumentReferences
           header={header} setH={setH}
