@@ -7,8 +7,8 @@ import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
   isPackable, applyExtractedPiHeader, wooRegistryAutofillFields,
   getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderLines, deleteOrder,
-  loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals, orderSaveFields,
-  orderUc,
+  loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
+  orderSaveFields, invoiceRegistryFields, orderUc,
 } from '../shipping'
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
@@ -692,26 +692,7 @@ export default function ShipmentForm() {
       // successful save look failed. Drift that results is caught by the
       // reconciliation on the Sales Invoices page rather than hidden.
       if (header.erp_si_no) {
-        const total = computed.subtotal > 0 ? computed.total
-                    : (header.pi_total !== '' ? parseFloat(header.pi_total) : null)
-        upsertInvoice({
-          si_no: header.erp_si_no,
-          uc_no: header.uc_no || null,
-          order_id: id,
-          customer: header.customer_name,
-          currency: header.currency,
-          total,
-          invoiced_at: header.invoiced_at || null,
-          invoice_date: header.invoice_date || null,
-          customer_po: header.customer_po || '',
-          remarks: header.notes || '',
-          accounting_total: total != null ? accountingTotal : null,
-          adjustment_reason: header.adjustment_reason || '',
-          // WooCommerce B2C sync (spec Phase 3) — cross-reference only; blank
-          // for every order that isn't WooCommerce-sourced, same as before.
-          channel: header.channel || null,
-          external_order_no: header.woo_order_no || '',
-        })
+        upsertInvoice(invoiceRegistryFields(id, header, computed, accountingTotal))
       }
       navigate('/shipments')
     } catch (err) {

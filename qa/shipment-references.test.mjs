@@ -1245,8 +1245,31 @@ test('saved invoice payload preserves explicit financial zeros and applies every
     subtotal: 100, total_amount: 100, pi_subtotal: 0, pi_total: 0,
     discount_pct: 0, discount_amount: 0, deposit_paid: 0, updatedAt: 'FICTIONAL timestamp',
   })
-  assert.equal(f.accountingWrites.length, 1)
-  assert.equal(f.accountingWrites[0].total, 100)
-  assert.equal(f.accountingWrites[0].accounting_total, 0)
+  assert.deepEqual(f.accountingWrites, [{
+    si_no: 'SI-FULL-PAYLOAD', uc_no: 'UC-FULL-PAYLOAD', order_id: 'qa-order',
+    customer: 'Fictional payload customer', currency: 'USD', total: 100,
+    invoiced_at: null, invoice_date: null, customer_po: 'PO-EXACT',
+    remarks: 'Fictional remarks\n第二行', accounting_total: 0,
+    adjustment_reason: 'Agreed zero accounting value', channel: null, external_order_no: '',
+  }])
   assert.deepEqual(f.calls, [])
 })
+
+for (const piTotal of [null, 0, 55.5]) {
+  test('charge-only saved invoice retains its existing PI fallback in the financial index (' + String(piTotal) + ')', async () => {
+    savedInvoice({ source: 'manual', pi_total: piTotal, accounting_total: null })
+    f.lines = [{
+      id: 'flat-charge', line_no: 1, item_code: 'FREIGHT', description: 'Fictional freight',
+      qty_ordered: null, unit_price: 10, line_type: 'non_product',
+    }]
+    await render()
+    await click(submit())
+    assert.equal(f.orderWrites.length, 1)
+    assert.equal(f.orderWrites[0].data.subtotal, null)
+    assert.equal(f.orderWrites[0].data.total_amount, null)
+    assert.equal(f.accountingWrites.length, 1)
+    assert.equal(f.accountingWrites[0].total, piTotal)
+    assert.equal(f.accountingWrites[0].accounting_total, piTotal == null ? null : 10)
+    assert.deepEqual(f.calls, [])
+  })
+}
