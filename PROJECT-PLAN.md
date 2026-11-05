@@ -1,3 +1,11 @@
+# V8.20 — Shipping PI field mapping cleanup — released, 5 November 2026
+
+PI header mapping now uses a dedicated helper. ShipmentForm owns the
+request, line matching, ERP comparison and persistence. All 75 form cases,
+Chrome parity checks and 793 build tests passed. Both GitHub jobs passed on f1a316a7;
+candidate and production passed fresh admin/customer verification.
+Production 6aebe37b4a3c371c3da21646. [Release evidence](docs/plans/V8.20-SHIPMENT-PI-HEADER-MAPPING-CLEANUP.md).
+
 # V8.20 — Shipping PI file preparation cleanup — released, 5 November 2026
 
 PI upload file encoding now has a dedicated helper. ShipmentForm owns

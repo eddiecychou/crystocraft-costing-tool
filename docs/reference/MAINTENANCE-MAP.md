@@ -116,6 +116,10 @@ through ShipmentPiUpload.jsx. ShipmentForm owns mode visibility, file
 extraction, ERP adoption and saves. [PI file preparation](../plans/V8.20-SHIPMENT-PI-FILE-PREPARATION-CLEANUP.md)
 uses src/piUploadFile.js to preserve PDF bytes and prepare image PNG payloads.
 
+[PI field mapping](../plans/V8.20-SHIPMENT-PI-HEADER-MAPPING-CLEANUP.md)
+uses applyExtractedPiHeader in src/shipping.js. ShipmentForm supplies the latest
+draft header and owns extraction, line matching, ERP comparison and saves.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

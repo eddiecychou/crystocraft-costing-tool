@@ -260,6 +260,12 @@ grayscale conversion and encoding. ShipmentForm still owns extraction and
 applies parsed fields, matching and ERP checks. Browser fixtures matched
 outgoing bytes and decoded image pixels before and after extraction.
 
+[PI field mapping](V8.20-SHIPMENT-PI-HEADER-MAPPING-CLEANUP.md) is released.
+applyExtractedPiHeader owns the precedence rules for customers, references,
+schedule, terms and stated amounts. ShipmentForm applies it to the latest
+draft and owns the request, line matching, ERP comparison and writes.
+Fictional responses verified the original overwrite behavior.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second
