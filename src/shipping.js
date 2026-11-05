@@ -487,6 +487,42 @@ export async function loadRangeProductsLite() {
   }
 }
 
+// Merge parsed PI fields into the current shipment draft.
+export function applyExtractedPiHeader(header, data, customers) {
+  let customer_id = header.customer_id
+  let customer_name = header.customer_id ? header.customer_name : (data.customer_name || header.customer_name)
+  if (!customer_id && data.customer_name) {
+    const lower = data.customer_name.toLowerCase()
+    const match = customers.find(c => {
+      const cn = (c.company_name || '').toLowerCase()
+      return cn && (lower.includes(cn) || cn.includes(lower))
+    })
+    if (match) {
+      customer_id = match.id
+      customer_name = match.company_name
+    }
+  }
+  return {
+    ...header,
+    customer_id,
+    customer_name,
+    // The parser's "pi_no" is the UC reference on the document (the
+    // PDFs are named e.g. "… UC4920-26.pdf"), so it lands in uc_no now.
+    uc_no: data.pi_no || header.uc_no,
+    erp_so_no: data.so_no || header.erp_so_no,
+    order_date: data.order_date || header.order_date,
+    est_ship_date: data.est_ship_date || header.est_ship_date,
+    currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : header.currency,
+    incoterm: INCOTERMS.includes(data.incoterm) ? data.incoterm : header.incoterm,
+    payment_terms: data.payment_terms != null ? data.payment_terms : header.payment_terms,
+    // The parsed PI totals are the stated reference, not the order value.
+    pi_subtotal:     data.subtotal        != null ? data.subtotal        : header.pi_subtotal,
+    discount_pct:    data.discount_pct    != null ? data.discount_pct    : header.discount_pct,
+    discount_amount: data.discount_amount != null ? data.discount_amount : header.discount_amount,
+    pi_total:        data.total_amount    != null ? data.total_amount    : header.pi_total,
+  }
+}
+
 // Apply auto-match to freshly-extracted PI lines. Sets line_type=range +
 // matched_product_ref + match_status on hits; leaves the rest unmatched for the
 // user to classify (ad_hoc / non_product). "Promote to catalogue" is deferred.

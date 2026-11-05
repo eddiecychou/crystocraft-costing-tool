@@ -5,7 +5,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { storage, authHeader } from '../firebase'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
-  INCOTERMS, isPackable,
+  isPackable, applyExtractedPiHeader,
   getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
   orderUc,
@@ -477,40 +477,7 @@ export default function ShipmentForm() {
       if (!res.ok) throw new Error('Extraction failed')
       const data = await res.json()
 
-      setHeader(h => {
-        let customer_id = h.customer_id
-        let customer_name = h.customer_id ? h.customer_name : (data.customer_name || h.customer_name)
-        if (!customer_id && data.customer_name) {
-          const lower = data.customer_name.toLowerCase()
-          const match = customers.find(c => {
-            const cn = (c.company_name || '').toLowerCase()
-            return cn && (lower.includes(cn) || cn.includes(lower))
-          })
-          if (match) {
-            customer_id = match.id
-            customer_name = match.company_name
-          }
-        }
-        return {
-          ...h,
-          customer_id,
-          customer_name,
-          // The parser's "pi_no" is the UC reference on the document (the
-          // PDFs are named e.g. "… UC4920-26.pdf"), so it lands in uc_no now.
-          uc_no: data.pi_no || h.uc_no,
-          erp_so_no: data.so_no || h.erp_so_no,
-          order_date: data.order_date || h.order_date,
-          est_ship_date: data.est_ship_date || h.est_ship_date,
-          currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : h.currency,
-          incoterm: INCOTERMS.includes(data.incoterm) ? data.incoterm : h.incoterm,
-          payment_terms: data.payment_terms != null ? data.payment_terms : h.payment_terms,
-          // The parsed PI totals are the stated reference, not the order value.
-          pi_subtotal:     data.subtotal        != null ? data.subtotal        : h.pi_subtotal,
-          discount_pct:    data.discount_pct    != null ? data.discount_pct    : h.discount_pct,
-          discount_amount: data.discount_amount != null ? data.discount_amount : h.discount_amount,
-          pi_total:        data.total_amount    != null ? data.total_amount    : h.pi_total,
-        }
-      })
+      setHeader(h => applyExtractedPiHeader(h, data, customers))
       const matched = autoMatchLines(data.lines || [], rangeProducts)
       setLines(matched)
       if (!matched.length) setExtractError('No line items found — check the file or add lines manually.')

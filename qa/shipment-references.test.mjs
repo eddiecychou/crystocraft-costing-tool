@@ -58,7 +58,12 @@ const stubs={
  crystals:'export const crystalInventory={order:{reserved:"crystals_reserved",committed:"crystals_committed"}}',
  packaging:'export const packagingInventory={order:{reserved:"packaging_reserved",committed:"packaging_committed"}}',
  orderStock:'export const metalOrderConfig={order:{reserved:"metal_reserved",committed:"metal_committed"}}',
- erpSoImport:'export const fetchErpSoLines=async()=>{throw Error("No ERP extraction")};export const diffLines=()=>null',
+ erpSoImport:`export const fetchErpSoLines=async soNo=>{
+   const lookups=globalThis.__shipmentReferences.erpLookups;
+   if(!lookups)throw Error("No ERP extraction");
+   lookups.push(soNo);
+   return null;
+ };export const diffLines=()=>null;`,
  soNumber:'import{ocYear}from"./src/ocTime.js";export const soYear=()=>String(ocYear(new Date())%100).padStart(2,"0");export const allocateSoNo=(...a)=>globalThis.__shipmentReferences.invoke("so",a);export const JES_SEED_BY_YEAR={};export const formatSoNo=()=>{throw Error("No order creation authorized")}',
  ucRegistry:'export const allocateOrderUc=(...a)=>globalThis.__shipmentReferences.invoke("uc",a);export const allocateInvoice=(...a)=>globalThis.__shipmentReferences.invoke("si",a);export const updateUcInvoice=(...a)=>globalThis.__shipmentReferences.invoke("registry",a);export const upsertInvoice=async data=>{const f=globalThis.__shipmentReferences;if(!f.allowAccounting)throw Error("No accounting upsert authorized");f.accountingWrites.push(structuredClone(data))}',
  storage:'export const ref=()=>{throw Error("No storage requests")};export const uploadBytes=async()=>{throw Error("No uploads")};export const getDownloadURL=async()=>{throw Error("No downloads")}',
@@ -1083,4 +1088,99 @@ test('an image preparation failure stops PI progress before any extraction reque
     if (originalBitmap) globalThis.createImageBitmap = originalBitmap
     else delete globalThis.createImageBitmap
   }
+})
+
+async function startPiHeaderImport() {
+  const request = deferred()
+  const response = deferred()
+  f.extractPi = () => {
+    request.resolve()
+    return response.promise
+  }
+  const picker = piUploadInput()
+  const file = new dom.window.File(['%PDF-1.7 fictional'], 'Fictional PI.pdf', { type: 'application/pdf' })
+  Object.defineProperty(picker, 'files', { value: [file], configurable: true })
+  await act(async () => Simulate.change(picker))
+  await request.promise
+  return data => act(async () => response.resolve({ ok: true, json: async () => data }))
+}
+
+test('PI header matching applies supported values and separates stated amounts from calculated totals', { timeout: 4000 }, async () => {
+  f.id = undefined
+  f.customers = [{ id: 'pi-customer', company_name: 'Matching Fictional Customer' }]
+  f.erpLookups = []
+  const parsedLines = [{ item_code: 'FIC-PI-LINE', description: 'Fictional PI item', qty_ordered: 4, unit_price: 25 }]
+  await render()
+
+  const finish = await startPiHeaderImport()
+  await finish({
+    customer_name: 'MATCHING FICTIONAL CUSTOMER (on document)', pi_no: 'UC-FIC', so_no: 'SO-FIC',
+    order_date: '2026-10-18', est_ship_date: '2026-11-08',
+    currency: 'EUR', incoterm: 'DAP', payment_terms: 'Net 30 Days',
+    subtotal: 125, discount_pct: 8, discount_amount: 10, total_amount: 115, lines: parsedLines,
+  })
+  assert.equal(customerSelect().value, 'pi-customer')
+  assert.doesNotMatch(customerCard().textContent, /From PI:/)
+  assert.equal(input('UC#').value, 'UC-FIC')
+  assert.equal(input('SO / Doc No').value, 'SO-FIC')
+  assert.equal(scheduleField('Order Date').value, '2026-10-18')
+  assert.equal(scheduleField('Est. Ship Date').value, '2026-11-08')
+  assert.equal(scheduleField('Currency').value, 'EUR')
+  assert.equal(scheduleField('Incoterm').value, 'DAP')
+  assert.equal(scheduleField('Payment Terms').value, 'Net 30 Days')
+  assert.equal(discountPercentInput().value, '8')
+  assert.equal(discountAmountInput().value, '10')
+  assert.match(totalRow('Computed subtotal').textContent, /EUR 100\.00/)
+  assert.match(totalRow('PI stated subtotal').textContent, /EUR 125\.00/)
+  assert.match(totalRow('Total Amount').textContent, /EUR 90\.00/)
+  assert.match(totalRow('Total Amount').textContent, /PI states EUR 115\.00/)
+
+  const finishSecond = await startPiHeaderImport()
+  await finishSecond({
+    pi_no: '', order_date: '', currency: 'CAD', incoterm: 'UNSUPPORTED', payment_terms: null,
+    subtotal: 0, discount_pct: 0, discount_amount: 0, total_amount: 0, lines: parsedLines,
+  })
+  assert.equal(input('UC#').value, 'UC-FIC')
+  assert.equal(input('SO / Doc No').value, 'SO-FIC')
+  assert.equal(scheduleField('Order Date').value, '2026-10-18')
+  assert.equal(scheduleField('Est. Ship Date').value, '2026-11-08')
+  assert.equal(scheduleField('Currency').value, 'EUR')
+  assert.equal(scheduleField('Incoterm').value, 'DAP')
+  assert.equal(scheduleField('Payment Terms').value, 'Net 30 Days')
+  assert.equal(discountPercentInput().value, '0')
+  assert.equal(discountAmountInput().value, '0')
+  assert.equal(totalRow('PI stated subtotal'), undefined)
+  assert.match(totalRow('Total Amount').textContent, /EUR 100\.00/)
+  assert.doesNotMatch(totalRow('Total Amount').textContent, /PI states/)
+  assert.deepEqual(f.erpLookups, ['SO-FIC'])
+  assert.deepEqual(f.orderWrites, [])
+  assert.deepEqual(f.calls, [])
+})
+
+test('a late PI response retains the customer chosen while extraction is in flight', { timeout: 4000 }, async () => {
+  f.id = undefined
+  f.customers = [
+    { id: 'first-customer', company_name: 'First fictional customer' },
+    {
+      id: 'current-customer', company_name: 'Selected fictional customer', country: 'Canada',
+      contacts: [{ id: 'new-contact', name: 'Selected contact', is_primary: true }],
+    },
+  ]
+  await render()
+  await fill(customerSelect(), 'first-customer')
+  await fill(scheduleField('Payment Terms'), 'Existing terms')
+  const finish = await startPiHeaderImport()
+  await fill(customerSelect(), 'current-customer')
+  await finish({
+    customer_name: 'First fictional customer', payment_terms: '',
+    lines: [{ item_code: 'FIC-PI-LINE', qty_ordered: 1, unit_price: 10 }],
+  })
+  assert.equal(customerSelect().value, 'current-customer')
+  assert.equal(addressedTo().value, 'new-contact')
+  assert.equal(destinationInput('Dest. Country').value, 'Canada')
+  assert.equal(scheduleField('Payment Terms').value, '')
+  await fill(customerSelect(), '')
+  assert.match(customerCard().textContent, /From PI: "Selected fictional customer"/)
+  assert.deepEqual(f.orderWrites, [])
+  assert.deepEqual(f.calls, [])
 })
