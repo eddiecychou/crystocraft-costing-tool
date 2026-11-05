@@ -487,6 +487,32 @@ export async function loadRangeProductsLite() {
   }
 }
 
+// Fields filled after allocating a WooCommerce invoice in the UC Registry.
+export function wooRegistryAutofillFields(header) {
+  return {
+    source: 'Online Shop',
+    customer_id: header.customer_id || null,
+    order_no: header.woo_order_no || '',
+    total: header.total_amount ?? null,
+    deposit: header.total_amount ?? null,   // paid in full at checkout — see PROJECT-PLAN.md
+    balance: 0,
+    bal_pay_date: header.woo_payout_date || null,
+    // V8.10 — Cindy, 2026-08-24: fee/payout detail only when the
+    // transaction currency isn't HKD, and the payout must read in
+    // HKD (the currency that actually lands in the bank), not the
+    // transaction currency — same rule and same fields as
+    // wooImport.js's order-notes feeNote, just re-derived here since
+    // the UC Registry remarks are built independently at allocation
+    // time.
+    remarks: [
+      header.customer_po,
+      (header.woo_fee != null && header.currency !== 'HKD')
+        ? `Gateway fee: ${header.currency} ${Number(header.woo_fee).toFixed(2)} · Net payout: ${header.woo_net_payout_hkd != null ? `HKD ${Number(header.woo_net_payout_hkd).toFixed(2)}` : 'HKD amount — fill in manually'}${header.woo_payout_date ? ` · Payout ${header.woo_payout_date}` : ''}`
+        : null,
+    ].filter(Boolean).join(' — '),
+  }
+}
+
 // Merge parsed PI fields into the current shipment draft.
 export function applyExtractedPiHeader(header, data, customers) {
   let customer_id = header.customer_id

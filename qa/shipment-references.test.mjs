@@ -1184,3 +1184,37 @@ test('a late PI response retains the customer chosen while extraction is in flig
   assert.deepEqual(f.orderWrites, [])
   assert.deepEqual(f.calls, [])
 })
+
+test('Woo metadata keeps empty reference fields and omits payout remarks when the gateway fee is absent', async () => {
+  f.allowWrite = true
+  Object.assign(f.order, {
+    channel: 'woocommerce', customer_id: '', customer_po: '', woo_order_no: '',
+    total_amount: 123.456, woo_fee: null, woo_net_payout_hkd: 999.99, woo_payout_date: '',
+  })
+  f.actions.si = async () => ({ si_no: 'SI-WOO-EMPTY', uc_no: 'UC-WOO-EMPTY', uc_id: 'qa-registry' })
+  await render()
+  await click(allocation('Invoice No'))
+  assert.deepEqual(f.calls.find(call => call.kind === 'registry').args, [
+    'qa-registry',
+    {
+      source: 'Online Shop', customer_id: null, order_no: '',
+      total: 123.456, deposit: 123.456, balance: 0, bal_pay_date: null, remarks: '',
+    },
+  ])
+  assert.equal(f.orderWrites.length, 1)
+  assert.equal(input('Invoice No').value, 'SI-WOO-EMPTY')
+})
+
+test('Woo allocation without a registry id skips autofill and missing-total warnings', async () => {
+  f.allowWrite = true
+  Object.assign(f.order, { channel: 'woocommerce', total_amount: null })
+  f.actions.si = async () => ({ si_no: 'SI-WOO-NO-REGISTRY', uc_no: 'UC-WOO-NO-REGISTRY' })
+  await render()
+  await click(allocation('Invoice No'))
+  assert.equal(f.calls.filter(call => call.kind === 'registry').length, 0)
+  assert.equal(f.calls.filter(call => call.kind === 'si').length, 1)
+  assert.equal(f.orderWrites.length, 1)
+  assert.equal(input('Invoice No').value, 'SI-WOO-NO-REGISTRY')
+  assert.equal(allocation('Invoice No'), null)
+  assert.doesNotMatch(panel().textContent, /could not be auto-filled|total is missing/)
+})

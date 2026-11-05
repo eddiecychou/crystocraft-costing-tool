@@ -5,7 +5,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { storage, authHeader } from '../firebase'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
-  isPackable, applyExtractedPiHeader,
+  isPackable, applyExtractedPiHeader, wooRegistryAutofillFields,
   getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
   orderUc,
@@ -364,28 +364,7 @@ export default function ShipmentForm() {
           // The registry endpoint coerces missing numeric values to zero.
           // Keep an unknown checkout amount from overwriting existing accounts.
           if (header.total_amount == null) throw new Error('WooCommerce order total is missing; registry amounts were not overwritten.')
-          await updateUcInvoice(res.uc_id, {
-            source: 'Online Shop',
-            customer_id: header.customer_id || null,
-            order_no: header.woo_order_no || '',
-            total: header.total_amount ?? null,
-            deposit: header.total_amount ?? null,   // paid in full at checkout — see PROJECT-PLAN.md
-            balance: 0,
-            bal_pay_date: header.woo_payout_date || null,
-            // V8.10 — Cindy, 2026-08-24: fee/payout detail only when the
-            // transaction currency isn't HKD, and the payout must read in
-            // HKD (the currency that actually lands in the bank), not the
-            // transaction currency — same rule and same fields as
-            // wooImport.js's order-notes feeNote, just re-derived here since
-            // the UC Registry remarks are built independently at allocation
-            // time.
-            remarks: [
-              header.customer_po,
-              (header.woo_fee != null && header.currency !== 'HKD')
-                ? `Gateway fee: ${header.currency} ${Number(header.woo_fee).toFixed(2)} · Net payout: ${header.woo_net_payout_hkd != null ? `HKD ${Number(header.woo_net_payout_hkd).toFixed(2)}` : 'HKD amount — fill in manually'}${header.woo_payout_date ? ` · Payout ${header.woo_payout_date}` : ''}`
-                : null,
-            ].filter(Boolean).join(' — '),
-          })
+          await updateUcInvoice(res.uc_id, wooRegistryAutofillFields(header))
         } catch (e) {
           setSiError(`Invoice allocated, but the UC Registry details could not be auto-filled: ${e.message || e}. Fill them in manually on the UC Registry page.`)
         }
