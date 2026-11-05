@@ -41,7 +41,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
 | 2 — Daily Drafts presentation | Eight planned presentation slices released; workflow logic retained | Targeting, Sent/reply, rules, topic/master fields, attachments, master chat, cards and bulk controls extracted; parent retains state, generation and writes | All eight slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
 | 3 — repeated server authentication helpers | Both pilot endpoints released/verified; broader convergence proposed | Drafting and refinement use the existing marketing helper; other endpoints require separate caller/capability review | 38 contracts, auth-only source restoration, both exact-SHA jobs and fresh candidate/production role gates pass; QA audit repair retains every assertion/deadline |
-| 4 — shipping and finance page internals | First display slice released/verified; further panels proposed | ERP comparison and stock badge move to controlled presentation; page retains all workflows and calculations | Exact restoration, 13 before/after cases, invoice/packing regressions, eight pixel-identical pairs, both exact-SHA jobs and fresh role/shipping gates pass |
+| 4 — shipping and finance page internals | Presentation, import, creation/save mappings and classification released; lifecycle review proposed | Page retains workflow sequencing and state; focused helpers own field mapping and classification | Per-slice original/extracted form and Chrome checks, invoice/packing regressions, exact-SHA CI and fresh role/shipping gates pass |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
 | 6 — storage retention | Separate proposed business/data track | Read-only ownership/reference/duplicate review, with evidence and proposed actions | No file deletion, lifecycle policy, stock correction or record migration without specific review/authorization |
 
@@ -289,6 +289,18 @@ orderCreateFields prepares source, file identity and normalized draft values.
 ShipmentForm owns uploads, validation, the creation transaction, subsequent
 invoice allocation, quote linkage and navigation. Fictional manual, PI,
 direct and quote cases preserve payloads and failure behavior.
+
+[Line classification](V8.20-SHIPMENT-LINE-CLASSIFICATION-CLEANUP.md) is
+released. lineClassificationPatch prepares the field changes for a chosen
+type using the existing matcher and packable lookup. ShipmentForm owns
+state updates and persistence. Fictional matched/unmatched and type-switch
+cases preserve descriptions, product links, packing flags and re-matching.
+
+The next proposed Shipping task is a lifecycle characterization review.
+Test delayed navigation between saved orders, missing or rejected loads,
+and the existing six-second save timeout with late and partial failures.
+Use fictional boundaries to record current outcomes before choosing further
+implementation changes. The remaining page mainly coordinates these workflows.
 
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,

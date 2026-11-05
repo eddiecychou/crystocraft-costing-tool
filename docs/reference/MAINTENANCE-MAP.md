@@ -136,6 +136,11 @@ and invoice guard. The UC client owns its existing asynchronous failure behavior
 uses orderCreateFields in src/shipping.js. ShipmentForm owns upload, validation,
 the creation transaction, subsequent invoice allocation, quote linkage and navigation.
 
+[Line classification](../plans/V8.20-SHIPMENT-LINE-CLASSIFICATION-CLEANUP.md)
+uses lineClassificationPatch in src/shipping.js. ShipmentForm applies the patch
+to the chosen row and owns persistence. Loading and save timing are proposed
+for a separate lifecycle characterization review.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

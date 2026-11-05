@@ -1,3 +1,11 @@
+# V8.20 — Shipping line classification cleanup — released, 6 November 2026
+
+Shipping line classification uses a dedicated payload helper.
+ShipmentForm owns allocation, persistence and failure handling. All 77 form
+cases, fictional Chrome checks and 805 build tests passed. Both GitHub jobs passed on c6a7dc93;
+candidate and production passed fresh admin/customer verification.
+Production 6aec9dda3a8399cb30f36448. [Release evidence](docs/plans/V8.20-SHIPMENT-LINE-CLASSIFICATION-CLEANUP.md).
+
 # V8.20 — Shipping new-order mapping cleanup — released, 6 November 2026
 
 Shipping new-order mapping uses a dedicated payload helper.
