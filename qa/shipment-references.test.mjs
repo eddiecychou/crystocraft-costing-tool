@@ -1351,3 +1351,71 @@ for (const mode of ['manual', 'import', 'direct', 'quote']) {
     assert.deepEqual(f.calls, [])
   })
 }
+
+test('manual type switches preserve descriptions, update product references and packing flags through save and reopen', async () => {
+  f.rangeProducts = [{ id: 'range-target', design_code: 'D0001', format_code: '001', description: 'Matched catalogue description' }]
+  f.lines = [
+    { ...f.lines[0], item_code: 'D0001-001-C', description: 'Manual customer description' },
+    { ...f.lines[0], id: 'second-line', line_no: 2, item_code: 'D0001-001-C', description: '' },
+  ]
+  f.allowWrite = true
+  await render()
+  await click(reconciliationButton('Crystocraft Range', lineCard(0)))
+  await click(reconciliationButton('Crystocraft Range', lineCard(1)))
+  assert.equal(lineCard(0).querySelector('[placeholder="Description"]').value, 'Manual customer description')
+  assert.equal(lineCard(1).querySelector('[placeholder="Description"]').value, 'Matched catalogue description')
+  assert.match(lineCard(0).textContent, /Matched catalogue description/)
+  await click(reconciliationButton('Charge', lineCard(1)))
+  assert.match(lineCard(1).textContent, /excluded from packing/)
+  assert.equal(lineCard(1).querySelector('[placeholder="Description"]').value, 'Matched catalogue description')
+  assert.equal(lineCard(1).querySelector('span[title]'), null)
+  assert.deepEqual(f.lineWrites, [])
+  await click(submit())
+
+  assert.equal(f.lineWrites[0].line_type, 'range')
+  assert.equal(f.lineWrites[0].match_status, 'manual')
+  assert.equal(f.lineWrites[0].matched_product_ref.id, 'range-target')
+  assert.equal(f.lineWrites[0].packable, true)
+  assert.equal(f.lineWrites[0].description, 'Manual customer description')
+  assert.equal(f.lineWrites[1].line_type, 'non_product')
+  assert.equal(f.lineWrites[1].match_status, 'manual')
+  assert.equal(f.lineWrites[1].matched_product_ref, null)
+  assert.equal(f.lineWrites[1].packable, false)
+  assert.equal(f.lineWrites[1].description, 'Matched catalogue description')
+
+  f.lines = f.lineWrites.map((line, index) => ({ ...line, id: f.lines[index].id }))
+  await act(async () => root.unmount())
+  root = createRoot(host)
+  await render()
+  assert.match(lineCard(1).textContent, /excluded from packing/)
+  await click(reconciliationButton('Corp Gift', lineCard(1)))
+  assert.doesNotMatch(lineCard(1).textContent, /excluded from packing/)
+  await click(reconciliationButton('Ad-hoc', lineCard(1)))
+  assert.equal(lineCard(1).querySelector('[placeholder="Description"]').value, 'Matched catalogue description')
+  await click(submit())
+  assert.equal(f.lineWrites.at(-1).line_type, 'ad_hoc')
+  assert.equal(f.lineWrites.at(-1).match_status, 'manual')
+  assert.equal(f.lineWrites.at(-1).matched_product_ref, null)
+  assert.equal(f.lineWrites.at(-1).packable, true)
+  assert.deepEqual(f.calls, [])
+})
+
+test('classifying an unmatched code as Range clears an old reference and retains the manual description', async () => {
+  f.lines[0].item_code = 'NO-SUCH-PRODUCT'
+  f.lines[0].description = 'Keep this manual description'
+  f.lines[0].matched_product_ref = { collection: 'range_products', id: 'old-product', name: 'Old product label' }
+  f.allowWrite = true
+  await render()
+  assert.match(lineCard(0).textContent, /Old product label/)
+  await click(reconciliationButton('Crystocraft Range', lineCard(0)))
+  assert.doesNotMatch(lineCard(0).textContent, /Old product label/)
+  assert.equal(lineCard(0).querySelector('[placeholder="Description"]').value, 'Keep this manual description')
+  await click(submit())
+  assert.equal(f.lineWrites.length, 1)
+  assert.equal(f.lineWrites[0].line_type, 'range')
+  assert.equal(f.lineWrites[0].packable, true)
+  assert.equal(f.lineWrites[0].matched_product_ref, null)
+  assert.equal(f.lineWrites[0].match_status, 'unmatched')
+  assert.equal(f.lineWrites[0].description, 'Keep this manual description')
+  assert.deepEqual(f.calls, [])
+})

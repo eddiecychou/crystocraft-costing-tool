@@ -549,6 +549,23 @@ export function applyExtractedPiHeader(header, data, customers) {
   }
 }
 
+// Fields applied when a user classifies a shipment line.
+export function lineClassificationPatch(line, type, rangeProducts) {
+  // Switching to figurine re-runs the match; other types clear the product ref.
+  if (type === 'range') {
+    const product = line.item_code ? matchRangeProduct(line.item_code, rangeProducts) : null
+    return {
+      line_type: 'range', packable: true,
+      matched_product_ref: product ? { collection: 'range_products', id: product.id, name: product.name } : null,
+      match_status: product ? 'manual' : 'unmatched',
+      // Fill Description from the match, but only if it's still empty.
+      description: product ? (line.description || product.name || line.description) : line.description,
+    }
+  }
+
+  return { line_type: type, packable: isPackable(type), matched_product_ref: null, match_status: 'manual' }
+}
+
 // Apply auto-match to freshly-extracted PI lines. Sets line_type=range +
 // matched_product_ref + match_status on hits; leaves the rest unmatched for the
 // user to classify (ad_hoc / non_product). "Promote to catalogue" is deferred.

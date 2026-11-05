@@ -5,9 +5,9 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { storage, authHeader } from '../firebase'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
-  isPackable, applyExtractedPiHeader, wooRegistryAutofillFields,
+  applyExtractedPiHeader, wooRegistryAutofillFields,
   getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderLines, deleteOrder,
-  loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
+  loadRangeProductsLite, autoMatchLines, lineClassificationPatch, rematchLines, validateOrder, computeOrderTotals,
   orderCreateFields, orderSaveFields, invoiceRegistryFields, orderUc,
 } from '../shipping'
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
@@ -497,21 +497,7 @@ export default function ShipmentForm() {
   const setLine = (i, patch) => setLines(ls => ls.map((l, j) => j === i ? { ...l, ...patch } : l))
 
   function classify(i, type) {
-    const l = lines[i]
-    // Switching to figurine re-runs the match; other types clear the product ref.
-    if (type === 'range') {
-      const p = l.item_code ? matchRangeProduct(l.item_code, rangeProducts) : null
-      setLine(i, {
-        line_type: 'range', packable: true,
-        matched_product_ref: p ? { collection: 'range_products', id: p.id, name: p.name } : null,
-        match_status: p ? 'manual' : 'unmatched',
-        // Fill Description from the match, but only if it's still empty —
-        // see shipping.js autoMatchLines/rematchLines for why.
-        description: p ? (l.description || p.name || l.description) : l.description,
-      })
-    } else {
-      setLine(i, { line_type: type, packable: isPackable(type), matched_product_ref: null, match_status: 'manual' })
-    }
+    setLine(i, lineClassificationPatch(lines[i], type, rangeProducts))
   }
 
   function addBlankLine() {
