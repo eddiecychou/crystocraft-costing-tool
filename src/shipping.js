@@ -621,6 +621,33 @@ export function computeOrderTotals(header, lines) {
   return { subtotal: +subtotal.toFixed(2), chargesTotal: +chargesTotal.toFixed(2), discountAmount, total }
 }
 
+// Header fields for a new shipment order before its creation transaction.
+export function orderCreateFields(header, computed, sourceFile, isDirect) {
+  // Was hardcoded 'imported_pi' for every creation path (bug-fix pack
+  // B-02) — a manually-typed order or a Direct Invoice got the same
+  // source as a genuinely PI-parsed one, which matters because
+  // normOrder's pi_subtotal/pi_total fallback (see shipping.js) trusts
+  // 'imported_pi' orders to have a real stated-PI figure behind them.
+  // isDirect: the retail "Direct Invoice" flow (?direct=1). sourceFile: a PI was
+  // actually uploaded and parsed this session (pendingFile, set only by
+  // the drag-drop importer). Neither: typed by hand.
+  const source = isDirect ? 'direct_invoice' : sourceFile ? 'imported_pi' : 'manual'
+  return {
+    ...header,
+    source, source_file: sourceFile,
+    // Actual value = computed from the lines. PI figures kept only as the
+    // stated reference for the mismatch check.
+    subtotal:        computed.subtotal > 0 ? computed.subtotal : null,
+    total_amount:    computed.subtotal > 0 ? computed.total : null,
+    pi_subtotal:     header.pi_subtotal !== '' ? parseFloat(header.pi_subtotal) : null,
+    pi_total:        header.pi_total    !== '' ? parseFloat(header.pi_total)    : null,
+    discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
+    discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
+    deposit_paid: header.deposit_paid !== '' ? Number(header.deposit_paid) : null,
+    pi_revision: header.pi_revision !== '' ? parseInt(header.pi_revision, 10) || null : null,
+  }
+}
+
 // Persisted header fields for an existing shipment order.
 export function orderSaveFields(header, computed, accountingTotal, adjustment) {
   return {

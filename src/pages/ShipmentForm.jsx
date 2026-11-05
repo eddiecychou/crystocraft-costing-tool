@@ -8,7 +8,7 @@ import {
   isPackable, applyExtractedPiHeader, wooRegistryAutofillFields,
   getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
-  orderSaveFields, invoiceRegistryFields, orderUc,
+  orderCreateFields, orderSaveFields, invoiceRegistryFields, orderUc,
 } from '../shipping'
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
@@ -541,29 +541,7 @@ export default function ShipmentForm() {
       // captured a stated total — otherwise the order silently has no value
       // even though a correct one is computable (and was shown on this page).
       const computed = computeOrderTotals(header, lines)
-      // Was hardcoded 'imported_pi' for every creation path (bug-fix pack
-      // B-02) — a manually-typed order or a Direct Invoice got the same
-      // source as a genuinely PI-parsed one, which matters because
-      // normOrder's pi_subtotal/pi_total fallback (see shipping.js) trusts
-      // 'imported_pi' orders to have a real stated-PI figure behind them.
-      // isDirect: the retail "Direct Invoice" flow (?direct=1). sf: a PI was
-      // actually uploaded and parsed this session (pendingFile, set only by
-      // the drag-drop importer). Neither: typed by hand.
-      const source = isDirect ? 'direct_invoice' : sf ? 'imported_pi' : 'manual'
-      const orderData = {
-        ...header,
-        source, source_file: sf,
-        // Actual value = computed from the lines. PI figures kept only as the
-        // stated reference for the mismatch check.
-        subtotal:        computed.subtotal > 0 ? computed.subtotal : null,
-        total_amount:    computed.subtotal > 0 ? computed.total : null,
-        pi_subtotal:     header.pi_subtotal !== '' ? parseFloat(header.pi_subtotal) : null,
-        pi_total:        header.pi_total    !== '' ? parseFloat(header.pi_total)    : null,
-        discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
-        discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
-        deposit_paid: header.deposit_paid !== '' ? Number(header.deposit_paid) : null,
-        pi_revision: header.pi_revision !== '' ? parseInt(header.pi_revision, 10) || null : null,
-      }
+      const orderData = orderCreateFields(header, computed, sf, isDirect)
       const v = validateOrder(orderData, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); return }
 

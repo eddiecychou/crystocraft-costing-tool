@@ -33,9 +33,20 @@ const stubs={
    return {docs:[]};
  };
  export const onSnapshot=(path,next)=>{if(!path.includes("orders"))throw Error("Unexpected subscription");f().stockSnapshot=next;return()=>{delete f().stockSnapshot}},serverTimestamp=()=> 'FICTIONAL timestamp',where=()=>{},limit=()=>{};
- export const updateDoc=async(p,data)=>{if(!f().allowWrite)throw Error('Unexpected order write');f().orderWrites.push({path:[...p],data:structuredClone(data)});if(f().writeError)throw f().writeError;f().order={...f().order,...data}};
+ export const updateDoc=async(p,data)=>{
+   if(p.includes('client_quotes')&&f().allowCreate){f().quoteLinks.push({path:[...p],data:structuredClone(data)});return}
+   if(!f().allowWrite)throw Error('Unexpected order write');f().orderWrites.push({path:[...p],data:structuredClone(data)});if(f().writeError)throw f().writeError;f().order={...f().order,...data}
+ };
  export const writeBatch=()=>({set(p,data){if(!f().allowWrite)throw Error('Unexpected line write');f().lineWrites.push(structuredClone(data))},delete(){throw Error('No deletes authorized')},commit:async()=>{}});
- export const runTransaction=async()=>{if(f().createError){f().createAttempts++;throw f().createError}throw Error('No creates/transactions authorized')};
+ export const runTransaction=async(_db,callback)=>{
+   if(f().createError){f().createAttempts++;throw f().createError}
+   if(!f().allowCreate)throw Error('No creates/transactions authorized');
+   f().createAttempts++;
+   return callback({
+     get:async()=>{throw Error('Unexpected counter/document read in fictional create')},
+     set:(path,data)=>f().createdRecords.push({path:[...path],data:structuredClone(data)})
+   });
+ };
  const fail=()=>{throw Error('No creates/deletes authorized')};export{fail as addDoc,fail as deleteDoc,fail as setDoc,fail as increment};`,
  router:`import React from 'react';const f=()=>globalThis.__shipmentReferences;export const useParams=()=>({id:f().id}),useSearchParams=()=>[new URLSearchParams(f().search)],useNavigate=()=>to=>{f().destination=to};export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children)`,
  customer:`const customers=()=>globalThis.__shipmentReferences.customers||[];
@@ -66,7 +77,11 @@ const stubs={
  };export const diffLines=()=>null;`,
  soNumber:'import{ocYear}from"./src/ocTime.js";export const soYear=()=>String(ocYear(new Date())%100).padStart(2,"0");export const allocateSoNo=(...a)=>globalThis.__shipmentReferences.invoke("so",a);export const JES_SEED_BY_YEAR={};export const formatSoNo=()=>{throw Error("No order creation authorized")}',
  ucRegistry:'export const allocateOrderUc=(...a)=>globalThis.__shipmentReferences.invoke("uc",a);export const allocateInvoice=(...a)=>globalThis.__shipmentReferences.invoke("si",a);export const updateUcInvoice=(...a)=>globalThis.__shipmentReferences.invoke("registry",a);export const upsertInvoice=async data=>{const f=globalThis.__shipmentReferences;if(!f.allowAccounting)throw Error("No accounting upsert authorized");f.accountingWrites.push(structuredClone(data))}',
- storage:'export const ref=()=>{throw Error("No storage requests")};export const uploadBytes=async()=>{throw Error("No uploads")};export const getDownloadURL=async()=>{throw Error("No downloads")}',
+ storage:`const f=()=>globalThis.__shipmentReferences;
+ export const ref=(_storage,path)=>{if(!f().allowCreate)throw Error('No storage requests');return{path}};
+ export const uploadBytes=async(ref,file,metadata)=>{if(!f().allowCreate)throw Error('No uploads');f().uploads.push({path:ref.path,name:file.name,metadata})};
+ export const getDownloadURL=async ref=>{if(!f().allowCreate)throw Error('No downloads');return 'https://fictional.invalid/uploaded-pi.pdf'};
+ `,
 }
 before(async()=>{
  scratch=await mkdtemp(join(tmpdir(),'oc-shipment-references-'))
@@ -86,7 +101,7 @@ before(async()=>{
    : fail()
 })
 beforeEach(()=>{
- f={id:'qa-order',search:'',order:order(),lines:[{id:'qa-line',line_no:1,item_code:'QA-ITEM',description:'Fictional item',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'}],calls:[],actions:{so:async()=> 'SO-FICTIONAL',uc:async()=>({full:'UC-FICTIONAL'}),si:async()=>({si_no:'SI-FICTIONAL',uc_no:'UC-FICTIONAL'}),registry:async()=>({})},orderWrites:[],lineWrites:[],accountingWrites:[],createAttempts:0,allowWrite:false,allowAccounting:false}
+ f={id:'qa-order',search:'',order:order(),lines:[{id:'qa-line',line_no:1,item_code:'QA-ITEM',description:'Fictional item',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'}],calls:[],actions:{so:async()=> 'SO-FICTIONAL',uc:async()=>({full:'UC-FICTIONAL'}),si:async()=>({si_no:'SI-FICTIONAL',uc_no:'UC-FICTIONAL'}),registry:async()=>({})},orderWrites:[],lineWrites:[],accountingWrites:[],createAttempts:0,allowWrite:false,allowAccounting:false,createdRecords:[],quoteLinks:[],uploads:[]}
  f.invoke=(kind,args)=>{f.calls.push({kind,args:structuredClone(args)});return f.actions[kind](...args)}
  globalThis.__shipmentReferences=f
  errors=[];originalError=console.error;console.error=(...a)=>errors.push(a.map(String).join(' '))
@@ -1270,6 +1285,69 @@ for (const piTotal of [null, 0, 55.5]) {
     assert.equal(f.accountingWrites.length, 1)
     assert.equal(f.accountingWrites[0].total, piTotal)
     assert.equal(f.accountingWrites[0].accounting_total, piTotal == null ? null : 10)
+    assert.deepEqual(f.calls, [])
+  })
+}
+
+for (const mode of ['manual', 'import', 'direct', 'quote']) {
+  test(mode + ' creation preserves source, source file and exact normalized financial fields', { timeout: 4000 }, async () => {
+    if (mode === 'import') {
+      f.id = undefined
+      await render()
+      const finish = await startPiHeaderImport()
+      await finish({
+        customer_name: 'Fictional PI customer', subtotal: 1400, total_amount: 1300,
+        discount_pct: 0, discount_amount: 0,
+        lines: [{ item_code: 'IMPORT-PRECISION', description: 'Fictional precise item', qty_ordered: 1000, unit_price: 1.222 }],
+      })
+      await fill(host.querySelector('#deposit-paid'), '0')
+      await fill(input('Revision'), '0')
+    } else {
+      await prepareNew(mode === 'manual' ? 'import' : mode)
+      await fill(host.querySelector('[placeholder="Qty"]'), '1000')
+      await fill(host.querySelector('[placeholder="Unit price"]'), '1.222')
+    }
+    // Explicit fictional document refs keep these mapping tests within the
+    // create transaction, with no identifier/counter operation.
+    if (mode !== 'direct') await fill(input('SO / Doc No'), 'SO-FICTIONAL-EXISTING')
+    await fill(input('Invoice No'), 'SI-FICTIONAL-EXISTING')
+    f.allowCreate = true
+    await click(submit())
+
+    assert.equal(f.createAttempts, 1)
+    const created = f.createdRecords.find(record => record.path.flat(Infinity).at(-1) === 'orders').data
+    const createdLines = f.createdRecords.filter(record => record.path.flat(Infinity).at(-1) === 'lines')
+    assert.equal(created.source, mode === 'import' ? 'imported_pi' : mode === 'direct' ? 'direct_invoice' : 'manual')
+    assert.equal(created.subtotal, 1222)
+    assert.equal(created.total_amount, 1222)
+    assert.equal(created.erp_si_no, 'SI-FICTIONAL-EXISTING')
+    assert.equal(created.pi_revision, null)
+    assert.equal(createdLines.length, 1)
+    assert.equal(createdLines[0].data.qty_ordered, 1000)
+    assert.equal(createdLines[0].data.unit_price, 1.222)
+    if (mode === 'import') {
+      assert.deepEqual(created.source_file, { url: 'https://fictional.invalid/uploaded-pi.pdf', name: 'Fictional PI.pdf' })
+      assert.equal(created.pi_subtotal, 1400)
+      assert.equal(created.pi_total, 1300)
+      assert.equal(created.discount_pct, 0)
+      assert.equal(created.discount_amount, 0)
+      assert.equal(created.deposit_paid, 0)
+      assert.equal(f.uploads.length, 1)
+      assert.match(f.uploads[0].path, /^orders\/imports\/\d+_Fictional PI\.pdf$/)
+      assert.deepEqual(f.uploads[0].metadata, { contentType: 'application/pdf' })
+    } else {
+      assert.equal(created.source_file, null)
+      assert.equal(created.pi_subtotal, null)
+      assert.equal(created.pi_total, null)
+      assert.equal(created.discount_pct, null)
+      assert.equal(created.discount_amount, null)
+      assert.equal(created.deposit_paid, null)
+      assert.equal(f.uploads.length, 0)
+    }
+    assert.equal(f.quoteLinks.length, mode === 'quote' ? 1 : 0)
+    if (mode === 'quote') assert.deepEqual(f.quoteLinks[0].data, { converted_order_id: 'new-line' })
+    assert.equal(f.destination, '/shipments/new-line')
+    assert.deepEqual(f.orderWrites, [])
     assert.deepEqual(f.calls, [])
   })
 }
