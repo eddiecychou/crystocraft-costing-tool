@@ -128,6 +128,10 @@ number persistence, scope checks, missing-total guard and registry error handlin
 use orderSaveFields in src/shipping.js. ShipmentForm owns validation,
 calculations, write sequencing, invoice upsert and navigation.
 
+[Invoice registry mapping](../plans/V8.20-INVOICE-REGISTRY-MAPPING-CLEANUP.md)
+uses invoiceRegistryFields in src/shipping.js. ShipmentForm owns the save
+and invoice guard. The UC client owns its existing asynchronous failure behavior.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

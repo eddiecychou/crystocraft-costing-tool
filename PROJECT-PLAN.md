@@ -1,3 +1,11 @@
+# V8.20 — Shipping invoice registry mapping cleanup — released, 5 November 2026
+
+Shipping invoice registry mapping uses a dedicated payload helper.
+ShipmentForm owns allocation, persistence and failure handling. All 77 form
+cases, fictional Chrome checks and 799 build tests passed. Both GitHub jobs passed on a3cacc55;
+candidate and production passed fresh admin/customer verification.
+Production 6aec66088e27e1d8a201310b. [Release evidence](docs/plans/V8.20-INVOICE-REGISTRY-MAPPING-CLEANUP.md).
+
 # V8.20 — Shipping saved-order fields cleanup — released, 5 November 2026
 
 Shipping saved-order fields uses a dedicated payload helper.

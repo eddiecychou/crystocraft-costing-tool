@@ -278,6 +278,12 @@ ShipmentForm owns validation, calculations, parallel header/line saves,
 timeout handling, invoice upsert and navigation. Fictional save/reopen
 fixtures verify complete payloads, retries and persisted field behavior.
 
+[Invoice registry mapping](V8.20-INVOICE-REGISTRY-MAPPING-CLEANUP.md)
+is released. invoiceRegistryFields prepares the financial-index payload
+after a saved order. ShipmentForm owns the invoice guard, sequencing and
+navigation. Fictional real-form and Chrome cases preserve computed and PI
+fallback totals, metadata and the UC client's asynchronous failure behavior.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second
