@@ -7,7 +7,7 @@ import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
   isPackable, applyExtractedPiHeader, wooRegistryAutofillFields,
   getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderLines, deleteOrder,
-  loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
+  loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals, orderSaveFields,
   orderUc,
 } from '../shipping'
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
@@ -681,30 +681,7 @@ export default function ShipmentForm() {
         return
       }
       const write = Promise.all([
-        updateOrder(id, {
-          customer_id: header.customer_id, contact_id: header.contact_id || null, customer_name: header.customer_name,
-          erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no, erp_si_no: header.erp_si_no,
-          customer_po: header.customer_po,
-          invoiced_at: header.invoiced_at || null, uc_no: header.uc_no,
-          invoice_date: header.invoice_date || null,
-          accounting_total: header.erp_si_no ? accountingTotal : null,
-          adjustment: header.erp_si_no && Math.abs(adjustment) > 0.005 ? adjustment : null,
-          adjustment_reason: header.erp_si_no ? header.adjustment_reason.trim() : '',
-          order_date: header.order_date || null,
-          est_ship_date: header.est_ship_date || null,
-          currency: header.currency, incoterm: header.incoterm, payment_terms: header.payment_terms, status: header.status,
-          destination: header.destination, notes: header.notes,
-          hide_total_qty: !!header.hide_total_qty,
-          pi_revision: header.pi_revision !== '' ? parseInt(header.pi_revision, 10) || null : null,
-          // Actual value follows the lines; PI figures stay as the reference.
-          subtotal:        computed.subtotal > 0 ? computed.subtotal : null,
-          total_amount:    computed.subtotal > 0 ? computed.total : null,
-          pi_subtotal:     header.pi_subtotal !== '' ? parseFloat(header.pi_subtotal) : null,
-          pi_total:        header.pi_total    !== '' ? parseFloat(header.pi_total)    : null,
-          discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
-          discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
-          deposit_paid: header.deposit_paid !== '' ? Number(header.deposit_paid) : null,
-        }),
+        updateOrder(id, orderSaveFields(header, computed, accountingTotal, adjustment)),
         saveOrderLines(id, lines),
       ])
       await raceWrite(write)   // throws only on a fast rejection; otherwise proceeds

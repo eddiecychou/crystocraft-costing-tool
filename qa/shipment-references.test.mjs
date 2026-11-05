@@ -1218,3 +1218,35 @@ test('Woo allocation without a registry id skips autofill and missing-total warn
   assert.equal(allocation('Invoice No'), null)
   assert.doesNotMatch(panel().textContent, /could not be auto-filled|total is missing/)
 })
+
+test('saved invoice payload preserves explicit financial zeros and applies every blank-field fallback', async () => {
+  savedInvoice({
+    customer_id: 'qa-customer', contact_id: '', customer_name: 'Fictional payload customer',
+    erp_pi_no: '', erp_so_no: '', erp_si_no: 'SI-FULL-PAYLOAD', uc_no: 'UC-FULL-PAYLOAD',
+    customer_po: 'PO-EXACT', invoiced_at: '', invoice_date: '', order_date: '', est_ship_date: '',
+    accounting_total: 0, adjustment_reason: '  Agreed zero accounting value  ',
+    currency: 'USD', incoterm: 'FOB', payment_terms: 'Negotiated exact terms',
+    destination: { country: '日本', city: '東京', address: 'Fictional address', port: '' },
+    notes: 'Fictional remarks\n第二行', hide_total_qty: false, pi_revision: 0,
+    pi_subtotal: 0, pi_total: 0, discount_pct: 0, discount_amount: 0, deposit_paid: 0,
+  })
+  await render()
+  await click(submit())
+  assert.equal(f.orderWrites.length, 1)
+  assert.deepEqual(f.orderWrites[0].data, {
+    customer_id: 'qa-customer', contact_id: null, customer_name: 'Fictional payload customer',
+    erp_pi_no: '', erp_so_no: '', erp_si_no: 'SI-FULL-PAYLOAD', uc_no: 'UC-FULL-PAYLOAD',
+    customer_po: 'PO-EXACT', invoiced_at: null, invoice_date: null,
+    accounting_total: 0, adjustment: -100, adjustment_reason: 'Agreed zero accounting value',
+    order_date: null, est_ship_date: null, currency: 'USD', incoterm: 'FOB',
+    payment_terms: 'Negotiated exact terms', status: 'draft',
+    destination: { country: '日本', city: '東京', address: 'Fictional address', port: '' },
+    notes: 'Fictional remarks\n第二行', hide_total_qty: false, pi_revision: null,
+    subtotal: 100, total_amount: 100, pi_subtotal: 0, pi_total: 0,
+    discount_pct: 0, discount_amount: 0, deposit_paid: 0, updatedAt: 'FICTIONAL timestamp',
+  })
+  assert.equal(f.accountingWrites.length, 1)
+  assert.equal(f.accountingWrites[0].total, 100)
+  assert.equal(f.accountingWrites[0].accounting_total, 0)
+  assert.deepEqual(f.calls, [])
+})
