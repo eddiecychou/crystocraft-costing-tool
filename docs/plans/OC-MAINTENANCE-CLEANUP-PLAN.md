@@ -272,6 +272,12 @@ ShipmentForm owns allocation, immediate number persistence, channel and
 registry-id gates, missing-total guard and failure handling. Fictional
 allocation flows preserved payload values, issued numbers and error feedback.
 
+[Existing-order saved fields](V8.20-SHIPMENT-SAVE-PAYLOAD-CLEANUP.md)
+are released. orderSaveFields prepares the updateOrder header patch.
+ShipmentForm owns validation, calculations, parallel header/line saves,
+timeout handling, invoice upsert and navigation. Fictional save/reopen
+fixtures verify complete payloads, retries and persisted field behavior.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second

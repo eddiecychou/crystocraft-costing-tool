@@ -124,6 +124,10 @@ draft header and owns extraction, line matching, ERP comparison and saves.
 uses wooRegistryAutofillFields in src/shipping.js. ShipmentForm owns allocation,
 number persistence, scope checks, missing-total guard and registry error handling.
 
+[Existing-order saved fields](../plans/V8.20-SHIPMENT-SAVE-PAYLOAD-CLEANUP.md)
+use orderSaveFields in src/shipping.js. ShipmentForm owns validation,
+calculations, write sequencing, invoice upsert and navigation.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

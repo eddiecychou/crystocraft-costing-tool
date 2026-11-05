@@ -1,3 +1,11 @@
+# V8.20 — Shipping saved-order fields cleanup — released, 5 November 2026
+
+Shipping saved-order fields uses a dedicated payload helper.
+ShipmentForm owns allocation, persistence and failure handling. All 77 form
+cases, fictional Chrome checks and 796 build tests passed. Both GitHub jobs passed on 6b36fa4b;
+candidate and production passed fresh admin/customer verification.
+Production 6aec44cca5d8b1b026a78fd2. [Release evidence](docs/plans/V8.20-SHIPMENT-SAVE-PAYLOAD-CLEANUP.md).
+
 # V8.20 — WooCommerce UC Registry autofill cleanup — released, 5 November 2026
 
 WooCommerce UC Registry autofill uses a dedicated payload helper.
