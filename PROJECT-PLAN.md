@@ -1,3 +1,11 @@
+# V8.20 — Shipping new-order mapping cleanup — released, 6 November 2026
+
+Shipping new-order mapping uses a dedicated payload helper.
+ShipmentForm owns allocation, persistence and failure handling. All 77 form
+cases, fictional Chrome checks and 803 build tests passed. Both GitHub jobs passed on d1c0a435;
+candidate and production passed fresh admin/customer verification.
+Production 6aec987306e868ea5269745c. [Release evidence](docs/plans/V8.20-SHIPMENT-CREATE-PAYLOAD-CLEANUP.md).
+
 # V8.20 — Shipping invoice registry mapping cleanup — released, 5 November 2026
 
 Shipping invoice registry mapping uses a dedicated payload helper.

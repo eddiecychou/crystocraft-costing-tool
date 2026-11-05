@@ -284,6 +284,12 @@ after a saved order. ShipmentForm owns the invoice guard, sequencing and
 navigation. Fictional real-form and Chrome cases preserve computed and PI
 fallback totals, metadata and the UC client's asynchronous failure behavior.
 
+[New-order mapping](V8.20-SHIPMENT-CREATE-PAYLOAD-CLEANUP.md) is released.
+orderCreateFields prepares source, file identity and normalized draft values.
+ShipmentForm owns uploads, validation, the creation transaction, subsequent
+invoice allocation, quote linkage and navigation. Fictional manual, PI,
+direct and quote cases preserve payloads and failure behavior.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second
