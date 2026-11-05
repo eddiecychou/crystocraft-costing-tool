@@ -1,3 +1,11 @@
+# V8.20 — WooCommerce UC Registry autofill cleanup — released, 5 November 2026
+
+WooCommerce UC Registry autofill uses a dedicated payload helper.
+ShipmentForm owns allocation, persistence and failure handling. All 77 form
+cases, fictional Chrome checks and 795 build tests passed. Both GitHub jobs passed on 23debc73;
+candidate and production passed fresh admin/customer verification.
+Production 6aec3b10782eca949f64f77c. [Release evidence](docs/plans/V8.20-WOO-REGISTRY-PAYLOAD-CLEANUP.md).
+
 # V8.20 — Shipping PI field mapping cleanup — released, 5 November 2026
 
 PI header mapping now uses a dedicated helper. ShipmentForm owns the

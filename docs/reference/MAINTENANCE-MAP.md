@@ -120,6 +120,10 @@ uses src/piUploadFile.js to preserve PDF bytes and prepare image PNG payloads.
 uses applyExtractedPiHeader in src/shipping.js. ShipmentForm supplies the latest
 draft header and owns extraction, line matching, ERP comparison and saves.
 
+[WooCommerce UC Registry autofill](../plans/V8.20-WOO-REGISTRY-PAYLOAD-CLEANUP.md)
+uses wooRegistryAutofillFields in src/shipping.js. ShipmentForm owns allocation,
+number persistence, scope checks, missing-total guard and registry error handling.
+
 ## CRM component ownership — first cleanup batch
 
 All paths below are under src/components/crm. During the original first batch,

@@ -266,6 +266,12 @@ schedule, terms and stated amounts. ShipmentForm applies it to the latest
 draft and owns the request, line matching, ERP comparison and writes.
 Fictional responses verified the original overwrite behavior.
 
+[WooCommerce UC Registry autofill](V8.20-WOO-REGISTRY-PAYLOAD-CLEANUP.md)
+is released. wooRegistryAutofillFields prepares the metadata payload.
+ShipmentForm owns allocation, immediate number persistence, channel and
+registry-id gates, missing-total guard and failure handling. Fictional
+allocation flows preserved payload values, issued numbers and error feedback.
+
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
 src/invoicePayments.js and src/invoiceExcel.js instead of inventing a second
