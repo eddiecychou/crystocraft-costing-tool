@@ -77,6 +77,7 @@ before(async () => {
     b.onResolve({ filter: /^firebase\/firestore$/ }, () => ({ path: 'firestore', namespace: 'fixture' }))
     b.onResolve({ filter: /^\.\.?\// }, a => { const name = basename(a.path).replace(/\.jsx?$/, ''); if (name in stubs) return { path: name, namespace: 'fixture' } })
     if (process.env.INVOICE_RECONCILIATION_CLIENT_SOURCE) b.onLoad({ filter: /\/src\/ucRegistry\.js$/ }, async () => ({ contents: await readFile(process.env.INVOICE_RECONCILIATION_CLIENT_SOURCE, 'utf8'), loader: 'js', resolveDir: resolve('src') }))
+    if (process.env.INVOICE_RECONCILIATION_MODEL_SOURCE) b.onLoad({ filter: /\/src\/invoiceReconciliation\.js$/ }, async () => ({ contents: await readFile(process.env.INVOICE_RECONCILIATION_MODEL_SOURCE, 'utf8'), loader: 'js', resolveDir: resolve('src') }))
     b.onLoad({ filter: /.*/, namespace: 'fixture' }, a => ({ contents: stubs[a.path], loader: 'js', resolveDir: process.cwd() }))
   } }] })
   Page = (await import(pathToFileURL(join(scratch, 'page.mjs')))).default
@@ -254,6 +255,15 @@ for (const accounting of [null, '']) test('absent source accounting cannot erase
   const copy = structuredClone(f.ledger.get('SI269999'))
   await render(); await settledRead(); assert.match(host.textContent, /review required/i)
   assert.ok(!resync() || resync().disabled); assert.deepEqual(f.upsertAttempts, []); assert.deepEqual(f.ledger.get('SI269999'), copy)
+})
+
+for (const accounting of [1200, 0]) test('ledger accounting with unknown ledger base requires review when source accounting is absent: ' + accounting, async () => {
+  Object.assign(f.orders[0], { accounting_total: null, adjustment: null, adjustment_reason: '' })
+  Object.assign(f.ledger.get('SI269999'), { total: null, accounting_total: accounting, adjustment: null, remarks: 'Stale financial metadata' })
+  const before = snapshotOrders(), copy = structuredClone(f.ledger.get('SI269999'))
+  await render(); await settledRead(); assert.match(host.textContent, /review required/i)
+  assert.ok(!resync() || resync().disabled); assert.deepEqual(f.upsertAttempts, [])
+  assert.deepEqual(f.orders, before); assert.deepEqual(f.ledger.get('SI269999'), copy)
 })
 
 test('a conflicting nonblank order owner is review-only and is never rebound', async () => {

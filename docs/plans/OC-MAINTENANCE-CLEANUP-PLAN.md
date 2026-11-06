@@ -465,8 +465,8 @@ guards for unknown/ambiguous amounts and ownership; visible partial failure,
 retry and readback. Existing display/export normalization, allocation and ordinary
 best-effort save semantics remain unchanged. No historical writes are a test action.
 
-The current local evidence is 38 real-page/client/edge cases, two actual SDK/rules
-emulator cases, 34 Chrome cases and 914 prebuild tests/build. Exact-SHA CI and fresh
+The current local evidence is 40 real-page/client/edge cases, two actual SDK/rules
+emulator cases, 38 Chrome cases and 916 prebuild tests/build. Exact-SHA CI and fresh
 candidate/production role/feature gates remain mandatory. SH-03 customer payable
 exports without deposits are the next separate proposed correction; no broader
 concurrency/outbox or SI-allocation redesign is part of SH-04.

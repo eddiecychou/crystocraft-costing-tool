@@ -1690,6 +1690,9 @@ reads avoid calling older rows missing just because a capped list omitted them.
 Reject ambiguous source accounting corrections, unknown actual totals and a
 financial row owned by another order. An existing cash/status/allocation field
 does not become reconciliation-owned because it appears in a returned record.
+If the ledger has a known accounting amount but its own base total is unknown,
+that also needs review when source accounting is blank. A missing ledger base
+must not hide the authority conflict, including when the recorded amount is zero.
 
 Keep ordinary save best-effort behavior separate from strict explicit recovery.
 Show read/write/readback failures, report partial results, and verify readback

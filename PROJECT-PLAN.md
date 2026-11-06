@@ -7,11 +7,15 @@ records, and exposes read/write/readback failures and partial retry outcomes.
 No historical repair, allocation, source-order write or customer export change
 is included. Normal list display/exports and best-effort save clients remain.
 
-All 38 actual UI/client/edge integration cases, two real-SDK/current-rules
-fictional emulator cases and 34 desktop/mobile Chrome cases pass. Build and 914
+All 40 actual UI/client/edge integration cases, two real-SDK/current-rules
+fictional emulator cases and 38 desktop/mobile Chrome cases pass. Build and 916
 prebuild tests, lint and 11 configuration tests pass. The exact-SHA two-job and
 candidate/production gates are recorded in the
 [implementation/release record](docs/plans/V8.20-INVOICE-RECONCILIATION-FIX.md).
+The final authority guard also requires review when the ledger has a known
+Accounting Total (including zero) but no base total and the source accounting
+field is blank. Its final release supersedes the initial verified 04a713e build;
+all financial writes in verification remain fictional.
 Next separately proposed correction is customer no-deposit accounting-payable
 print/Excel parity (SH-03).
 

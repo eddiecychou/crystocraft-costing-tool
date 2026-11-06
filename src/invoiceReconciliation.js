@@ -55,7 +55,7 @@ function reviewProblems(order, row, payload) {
   if (row && row.si_no !== order.erp_si_no) problems.push('financial invoice number needs review')
   if (blank(order.accounting_total)) {
     const ledgerAdjusted = numeric(row?.adjustment) && Math.abs(Number(row.adjustment)) > 0.005
-      || numeric(row?.total) && numeric(row?.accounting_total) && Math.abs(Number(row.accounting_total) - Number(row.total)) > 0.005
+      || numeric(row?.accounting_total) && (!numeric(row?.total) || Math.abs(Number(row.accounting_total) - Number(row.total)) > 0.005)
     if (ledgerAdjusted || numeric(order.adjustment) && Math.abs(Number(order.adjustment)) > 0.005) {
       problems.push('confirm the approved Accounting Total on the order')
     }
