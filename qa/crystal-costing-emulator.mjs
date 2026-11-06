@@ -1,5 +1,7 @@
 // Actual linking/quote/code-claim engine, SDK and current Firestore/Storage rules.
-// Demo-only loopback fixture. Run under both emulators with node (bounded worker).
+// Fixture-only loopback test. Run under both emulators with node (bounded worker).
+// Storage cross-service reads use the emulator launch project, so Firestore
+// fixture identities must use that same project (including in the full CI chain).
 import assert from 'node:assert/strict'
 import { readFile, mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
@@ -15,7 +17,9 @@ for(const key of ['FIRESTORE_EMULATOR_HOST','FIREBASE_STORAGE_EMULATOR_HOST'])if
 if(process.env.OC_CRYSTAL_COSTING_EMULATOR_CHILD!=='1')runNodeTest(['--test',fileURLToPath(import.meta.url)],{label:'Crystal supplier costing emulator checks',timeoutMs:120000,env:{...process.env,OC_CRYSTAL_COSTING_EMULATOR_CHILD:'1'}})
 else{
  const {before,beforeEach,afterEach,after,test}=await import('node:test')
- const projectId='demo-crystal-costing-regression',P='cp_costing_fixture',V='v_rose_fixture',C='rc_costing_fixture',Q='quote_costing_fixture',S='supplier_costing_fixture'
+ const projectId=process.env.GCLOUD_PROJECT
+ assert.ok(['crystocraft-rbac-test','demo-crystal-costing-regression'].includes(projectId),'Use an approved fixture project via firebase emulators:exec; live fixture access forbidden.')
+ const P='cp_costing_fixture',V='v_rose_fixture',C='rc_costing_fixture',Q='quote_costing_fixture',S='supplier_costing_fixture'
  const cp='crystal_products/'+P,vp=cp+'/variants/'+V,cc='range_components/'+C,qp=cc+'/supplier_quotes/'+Q,pdfPath=cc+'/quotes/fictional-private.pdf'
  const product={id:P,code:'CC-FIXTURE',name:'Fictional Pear Crystal'},variant={id:V,code:'CC-FIXTURE-ROSE',label:'Fictional Rose',unit:'pcs'}
  const attachment={file_url:'/fictional-private.pdf',file_name:'Fictional source 中文.pdf',file_type:'pdf',storage_path:pdfPath,sha256:'b'.repeat(64)}
