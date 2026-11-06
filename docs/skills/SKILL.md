@@ -623,3 +623,11 @@ confirmation and writes. Twelve fictional cases pin async edit preservation,
 partial failures, progress expiry and Clear outcomes. Live QA is read-only;
 both exact-SHA jobs and fresh candidate/production role gates pass. Follow the
 linked record for release evidence and empty-queue limits.
+
+Shipping lifecycle correction (6 November 2026): ShipmentForm keys saved/new
+editors by their entry identity, ignores abandoned reads, applies matching
+header/line pairs and exposes load failures with Retry. Existing-order Save uses
+shipping.saveOrderWithLines (one header/lines batch after a successful line read).
+Pending is not success: await acknowledgement before registry follow-up/navigation;
+a late failure must remain visible. Existing lines-only and creation APIs remain.
+[Behavior, fictional/SDK tests and release limits](../plans/V8.20-SHIPPING-LIFECYCLE-FIX.md).

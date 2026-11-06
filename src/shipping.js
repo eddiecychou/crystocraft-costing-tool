@@ -418,8 +418,27 @@ export async function updateOrder(id, patch) {
 // up matching the form, whatever state it was in before.
 export async function saveOrderLines(orderId, lines) {
   const existing = await getDocs(LINES(orderId))
-  const keep = new Set()
   const batch = writeBatch(db)
+  reconcileOrderLines(batch, orderId, lines, existing)
+  await batch.commit()
+}
+
+// Save an existing order's commercial header and complete line set together.
+// The read must succeed before ANY mutation is staged. One rejected batch leaves
+// both unchanged; update (rather than set) also refuses to recreate a deleted
+// order. The returned promise means server acknowledgement, including when the
+// SDK has queued the batch locally while offline. Callers must keep pending
+// feedback until it settles and update the financial index only after success.
+export async function saveOrderWithLines(orderId, patch, lines) {
+  const existing = await getDocs(LINES(orderId))
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'orders', orderId), { ...patch, updatedAt: serverTimestamp() })
+  reconcileOrderLines(batch, orderId, lines, existing)
+  await batch.commit()
+}
+
+function reconcileOrderLines(batch, orderId, lines, existing) {
+  const keep = new Set()
   for (const l of (lines || [])) {
     const ref = l.id ? doc(db, 'orders', orderId, 'lines', l.id)
                      : doc(collection(db, 'orders', orderId, 'lines'))
@@ -429,7 +448,6 @@ export async function saveOrderLines(orderId, lines) {
   for (const d of existing.docs) {
     if (!keep.has(d.id)) batch.delete(d.ref)
   }
-  await batch.commit()
 }
 
 export async function deleteOrder(id) {

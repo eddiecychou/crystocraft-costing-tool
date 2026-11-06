@@ -1591,3 +1591,27 @@ test the real two-second behavior with a controlled unit-test clock. Apply and
 Clear success/failure/cancel ran through fictional services. Both live queues
 were empty, so populated action proof stayed fictional with no live writes/mail.
 [Verified bulk-toolbar release](../plans/V8.20-DAILY-DRAFTS-BULK-CLEANUP.md).
+
+### Route reuse and write timeouts need outcome tests
+
+6 November 2026: a lifecycle review reproduced stale order A data under B's URL,
+including a fictional Save that overwrote B's header/lines. Normal navigation
+controls alone missed it. Key independent editors by record identity, guard
+abandoned async responses, and block editing until a matching header/line pair
+loads. Missing/read-error screens need Retry and no Save action.
+
+A six-second Promise.race also hid late save failures and could invoke financial
+updates before the existing-line query had even constructed a line batch. An
+offline-capable SDK does not make every unfinished async operation a durable
+write. Submit header and line reconciliation in one batch after the read; display
+pending until acknowledged, preserve late rejection feedback, and guard repeated
+submits and completion navigation after leaving the editor. Verify actual SDK
+queue/reconnect behavior separately from mocked timing. Do not describe atomic
+save as multi-user locking or durable synchronization with a second database.
+[Correction evidence and limits](../plans/V8.20-SHIPPING-LIFECYCLE-FIX.md).
+
+The real-SDK fixture initially passed assertions but retained a gRPC connection
+when one cached client spanned emulator clear/reset sequences. Fresh per-case
+clients and explicit termination removed that hang; test and cleanup deadlines
+remain failures, with no forced successful exit. Keep the persistent browser
+queue proof separate from a Node client's memory-cache fixture.

@@ -1,6 +1,6 @@
 # OC maintenance and code cleanup plan
 
-Updated 3 November 2026 (Sydney). Goal: make changes easier to understand and
+Updated 6 November 2026 (Sydney). Goal: make changes easier to understand and
 verify while preserving existing functions, screens and commercial behaviour.
 This is a staged maintenance plan, not a rewrite or permission to execute every
 future batch. The first CRM batch and separately requested fixes are released;
@@ -41,7 +41,7 @@ line count alone does not justify a rewrite, deletion or changed data model.
 | 1 — CRM viewers, cards and dialogs | Released | Independent components in src/components/crm; pages retain subscriptions, saves and workflow composition | Original extraction parity, real component tests, workspace/emulator checks and two-role release gates passed |
 | 2 — Daily Drafts presentation | Eight planned presentation slices released; workflow logic retained | Targeting, Sent/reply, rules, topic/master fields, attachments, master chat, cards and bulk controls extracted; parent retains state, generation and writes | All eight slices pass source/visual checks, real-page tests, exact-SHA CI and fresh candidate/production admin/customer gates |
 | 3 — repeated server authentication helpers | Both pilot endpoints released/verified; broader convergence proposed | Drafting and refinement use the existing marketing helper; other endpoints require separate caller/capability review | 38 contracts, auth-only source restoration, both exact-SHA jobs and fresh candidate/production role gates pass; QA audit repair retains every assertion/deadline |
-| 4 — shipping and finance page internals | Presentation, import, creation/save mappings and classification released; lifecycle review proposed | Page retains workflow sequencing and state; focused helpers own field mapping and classification | Per-slice original/extracted form and Chrome checks, invoice/packing regressions, exact-SHA CI and fresh role/shipping gates pass |
+| 4 — shipping and finance page internals | Presentation, import, creation/save mappings and classification released; lifecycle repairs implemented, release pending | Page retains workflow sequencing and state; focused helpers own field mapping and classification | Per-slice original/extracted form and Chrome checks, invoice/packing regressions, exact-SHA CI and fresh role/shipping gates pass |
 | 5 — prototypes, imports and obsolete paths | Proposed audit first | Map routes/imports/external callers, identify active/paused/archive candidates | No removal from file size or old comments alone; reversible archival only after usage review |
 | 6 — storage retention | Separate proposed business/data track | Read-only ownership/reference/duplicate review, with evidence and proposed actions | No file deletion, lifecycle policy, stock correction or record migration without specific review/authorization |
 
@@ -296,11 +296,18 @@ type using the existing matcher and packable lookup. ShipmentForm owns
 state updates and persistence. Fictional matched/unmatched and type-switch
 cases preserve descriptions, product links, packing flags and re-matching.
 
-The next proposed Shipping task is a lifecycle characterization review.
-Test delayed navigation between saved orders, missing or rejected loads,
-and the existing six-second save timeout with late and partial failures.
-Use fictional boundaries to record current outcomes before choosing further
-implementation changes. The remaining page mainly coordinates these workflows.
+The [Shipping lifecycle review](V8.20-SHIPPING-LIFECYCLE-REVIEW-2026-11-06.md)
+is complete on 4d675ce. Six faulty loading scenarios and two normal controls
+were reproduced with actual Chrome/React Router. A fictional Save after a
+stale response wrote A's data to B's mocked record. Eight controlled save
+cases characterized partial completion, the six-second timeout and late
+failures, including a line read that has not constructed any writes.
+
+The owner authorized both corrections after that review. Route-scoped loading,
+abandoned-response guards, missing/error Retry, atomic saves and acknowledged
+pending/committed/error feedback are implemented in the
+[correction record](V8.20-SHIPPING-LIFECYCLE-FIX.md), with release gates tracked
+there. The relevant defective orchestration predates the cleanup.
 
 Begin with an independent ShipmentForm display section or read-only summary.
 Use existing helpers such as src/shipping.js, src/packing.js,
@@ -358,3 +365,9 @@ functions with evidence. A lower total line count, fewer files or a single
 universal helper is not an acceptance criterion. If a pre-existing bug is found,
 record/reproduce it against the baseline and handle it as a separately scoped
 fix; do not mislabel a changed workflow as extraction parity.
+
+The owner subsequently authorized both lifecycle repairs and their release.
+Route-isolated loading/error/Retry and atomic header/line saves are implemented;
+slow saves stay pending until acknowledged. Financial follow-up occurs afterward.
+[Correction tests, offline/concurrency limits and release state](V8.20-SHIPPING-LIFECYCLE-FIX.md).
+Further cleanup resumes only after these release gates and readback checks pass.

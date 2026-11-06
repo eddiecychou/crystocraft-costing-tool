@@ -33,7 +33,11 @@ const stubs={
  const fail=()=>{throw Error('Forbidden database write')};export {fail as addDoc,fail as deleteDoc,fail as runTransaction};
  export const onSnapshot=()=>()=>{};export const serverTimestamp=()=> 'QA timestamp';
  export const updateDoc=async(p,data)=>{if(!f().allowSave)fail();f().writes.push(structuredClone(data));f().order={...f().order,...data}};
- export const writeBatch=()=>({set(){if(!f().allowSave)fail()},delete:fail,commit:async()=>{}});`,
+ export const writeBatch=()=>{const headers=[];return{
+   update(p,data){if(!f().allowSave)fail();headers.push(structuredClone(data))},
+   set(){if(!f().allowSave)fail()},delete:fail,
+   commit:async()=>{for(const data of headers){f().writes.push(data);f().order={...f().order,...data}}}
+ }};`,
  customer:'export const loadCustomers=async()=>[];export const primaryContact=()=>null;export const contactAddress=()=>"";export const saveCustomer=async()=>{throw Error("No customer creation")}',
  bankAccounts:'export const listBankAccounts=async()=>[];export const accountForCurrency=()=>null;export const formatBankDetails=()=>""',
  criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',

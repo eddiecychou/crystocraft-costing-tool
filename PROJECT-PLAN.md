@@ -1,3 +1,22 @@
+# V8.20 — Shipping loading and atomic save correction — 6 November 2026
+
+Owner-authorized repair is implemented; release verification is in progress.
+Editors are scoped to order identity, incomplete/failed reads block editing with
+Retry, and existing-order header/lines commit as one batch. Slow saves remain
+pending until acknowledged; failures retain edits, and financial follow-up is
+ordered after the commit. No historical order/stock data repair is included.
+[Behavior, tests, limits and release evidence](docs/plans/V8.20-SHIPPING-LIFECYCLE-FIX.md).
+
+# V8.20 — Shipping lifecycle review completed — 6 November 2026
+
+Review on 4d675ce reproduced six faulty loading states with two normal controls.
+One fictional Save confirmed stale A data can target B's order and lines.
+Eight save diagnostics characterized partial completion, timeout navigation
+and financial invocation, including delayed line queries. The relevant loader
+and save primitives match pre-extraction source. Proposed repairs begin with
+order-loading isolation, followed by a separate save-consistency review.
+[Evidence and repair sequence](docs/plans/V8.20-SHIPPING-LIFECYCLE-REVIEW-2026-11-06.md). Review documentation is included with the subsequent authorized correction.
+
 # V8.20 — Shipping line classification cleanup — released, 6 November 2026
 
 Shipping line classification uses a dedicated payload helper.

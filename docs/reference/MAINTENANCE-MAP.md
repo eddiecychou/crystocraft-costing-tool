@@ -138,8 +138,11 @@ the creation transaction, subsequent invoice allocation, quote linkage and navig
 
 [Line classification](../plans/V8.20-SHIPMENT-LINE-CLASSIFICATION-CLEANUP.md)
 uses lineClassificationPatch in src/shipping.js. ShipmentForm applies the patch
-to the chosen row and owns persistence. Loading and save timing are proposed
-for a separate lifecycle characterization review.
+to the chosen row and owns persistence. The [lifecycle review](../plans/V8.20-SHIPPING-LIFECYCLE-REVIEW-2026-11-06.md)
+records confirmed stale/mixed loading states and save timing outcomes.
+Both owner-authorized corrections are implemented: isolated loading and atomic
+header/line saves with pending feedback. See the correction section below for
+ownership, tests and current release state.
 
 ## CRM component ownership — first cleanup batch
 
@@ -285,3 +288,13 @@ the triggering intermittent stall still open:
 [QA safeguards and limits](../plans/V8.20-WORKSPACE-CI-RELIABILITY.md).
 Each has its own scope, invariants and acceptance checks. A file's size or an
 old comment is not evidence that a feature, stored file or import is unused.
+
+## Shipping lifecycle correction
+
+ShipmentForm scopes each order to its own editor, guards abandoned reads, and
+blocks editing on missing/failed reads with Retry. The page owns pending/error
+feedback and financial follow-up. shipping.saveOrderWithLines owns existing-line
+read plus atomic header/line batch reconciliation; saveOrderLines retains its
+lines-only contract. Fictional lifecycle/domain tests run in test:shipment-display;
+actual SDK/current-rules tests run in customer-merge-emulator.
+[Correction, retained limits and release evidence](../plans/V8.20-SHIPPING-LIFECYCLE-FIX.md).

@@ -37,7 +37,12 @@ const stubs={
    if(p.includes('client_quotes')&&f().allowCreate){f().quoteLinks.push({path:[...p],data:structuredClone(data)});return}
    if(!f().allowWrite)throw Error('Unexpected order write');f().orderWrites.push({path:[...p],data:structuredClone(data)});if(f().writeError)throw f().writeError;f().order={...f().order,...data}
  };
- export const writeBatch=()=>({set(p,data){if(!f().allowWrite)throw Error('Unexpected line write');f().lineWrites.push(structuredClone(data))},delete(){throw Error('No deletes authorized')},commit:async()=>{}});
+ export const writeBatch=()=>({
+   update(p,data){if(!f().allowWrite)throw Error('Unexpected order write');f().orderWrites.push({path:[...p],data:structuredClone(data)})},
+   set(p,data){if(!f().allowWrite)throw Error('Unexpected line write');f().lineWrites.push(structuredClone(data))},
+   delete(){throw Error('No deletes authorized')},
+   commit:async()=>{if(f().writeError)throw f().writeError;for(const write of f().orderWrites)f().order={...f().order,...write.data}}
+ });
  export const runTransaction=async(_db,callback)=>{
    if(f().createError){f().createAttempts++;throw f().createError}
    if(!f().allowCreate)throw Error('No creates/transactions authorized');

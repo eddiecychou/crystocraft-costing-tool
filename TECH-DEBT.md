@@ -12,6 +12,27 @@ proposed behaviour-preserving work; it does not override accepted owner decision
 or authorize fixing unrelated entries as part of another change. Resolved entries
 retain historical evidence and link their later release records.
 
+## Shipping order loading and save outcomes — correction implemented, release pending
+
+6 November 2026. Fictional tests on 4d675ce reproduced six stale/mixed loading
+states and characterized eight save outcomes. An actual Chrome/React Router
+test captured A's data saved to B's mocked order/lines after a late A response.
+Missing or rejected reads also leave previous data editable. Prioritize
+route-scoped loading with abandoned-response guards and visible load failures.
+
+Separate save diagnostics show independent header/line completion, navigation
+and financial-upsert invocation at the six-second timeout, and no inline error
+after late rejection. A delayed line query can reach that timeout before any
+line batch exists. Review write consistency and pending/committed/error states
+with the real SDK persistence requirements before redesigning that path.
+
+The affected loader sequencing and save primitives match pre-extraction
+a38465b5. Both runtime corrections are now implemented under subsequent owner
+authorization: route isolation and blocked load failures, one-batch header/line
+persistence and acknowledged-save feedback. Release gates remain pending.
+Concurrent-editor protection and durable cross-system financial synchronization
+remain separate work. [Correction and limits](docs/plans/V8.20-SHIPPING-LIFECYCLE-FIX.md). [Evidence and proposed repairs](docs/plans/V8.20-SHIPPING-LIFECYCLE-REVIEW-2026-11-06.md).
+
 ## ShipmentForm mixes presentation with workflow orchestration — display/reference slices extracted
 
 Save validation/visible-error corrections are released as 37ea5b2a after both

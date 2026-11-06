@@ -671,3 +671,27 @@ sign-ins. It reviews the actual dashboard, customer task/note editors (cancelled
 protected internal routing, catalogue/detail and refresh. No Save, Done, Archive,
 AI regeneration, emails or live fixtures. Follow RELEASE-WORKFLOW.md on candidate
 and production; the served-Firebase probe remains a separate configuration check.
+
+### Shipping loading and save reliability
+
+`npm run test:shipment-display` includes real-form Router lifecycle tests and
+atomic save boundary tests (`shipment-lifecycle.test.mjs`, `shipping-save.test.mjs`).
+They use fictional reads/writes only and check abandoned responses, missing/read
+failures and Retry, matching header/lines, pending/late failures, repeat submits
+and navigation while saving. Keep financial follow-up after acknowledged commit.
+
+`node --test qa/shipping-save-emulator.mjs` requires an explicit loopback
+FIRESTORE_EMULATOR_HOST and tests current rules with fictional records: combined
+header/line persistence, missing-parent and permission rejection, and cached
+offline pending/reconnect. It runs in the required customer-merge-emulator job.
+Mocked timer success is not evidence of SDK persistence; actual Chrome
+persistent-cache evidence and remaining concurrency/financial-index limits are
+recorded in [the correction](../docs/plans/V8.20-SHIPPING-LIFECYCLE-FIX.md).
+
+For persistent browser-cache verification, run `node qa/shipping-save-persistence.mjs`
+with that same explicit loopback emulator. It needs the existing local
+`.qa-playwright` Playwright installation and Chrome. It uses only a demo project,
+a temporary browser profile and fictional data, and records offline/reopen/
+reconnect/late-rejection evidence. The CI SDK fixture uses a new terminated
+client per case; sharing a cached client across emulator clears retained an SDK
+connection in the initial diagnostic. Never force a successful test-process exit.

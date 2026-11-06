@@ -6,7 +6,7 @@ import { storage, authHeader } from '../firebase'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
   applyExtractedPiHeader, wooRegistryAutofillFields,
-  getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderLines, deleteOrder,
+  getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderWithLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, lineClassificationPatch, rematchLines, validateOrder, computeOrderTotals,
   orderCreateFields, orderSaveFields, invoiceRegistryFields, orderUc,
 } from '../shipping'
@@ -85,20 +85,16 @@ const blankHeader = {
   pi_revision: '',
 }
 
-// Firestore writes with persistentLocalCache resolve only when the SERVER acks —
-// but the write is already durable in the local cache and syncs on its own. So we
-// don't block the UI forever on the round-trip: proceed after a short grace period
-// while still surfacing an error if the write rejects quickly (e.g. permissions).
-// A late rejection after we've moved on is swallowed (the .catch below).
-function raceWrite(promise, ms = 6000) {
-  promise.catch(() => {})   // prevent an unhandled rejection if it settles late
-  return Promise.race([
-    promise.then(() => false),                               // committed: not pending
-    new Promise(resolve => setTimeout(() => resolve(true), ms)), // timed out: assume cached
-  ])
+export default function ShipmentForm() {
+  const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  // A route change must never reuse another order's editable state, pending
+  // reads, stock subscription or async allocation/import state.
+  const newContext = ['customer_id', 'from_quote', 'direct'].map(k => searchParams.get(k) || '')
+  return <ShipmentEditor key={id ? `order:${id}` : `new:${JSON.stringify(newContext)}`} />
 }
 
-export default function ShipmentForm() {
+function ShipmentEditor() {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
@@ -133,20 +129,24 @@ export default function ShipmentForm() {
   const [erpCheck, setErpCheck] = useState(null)
   const [dragOver, setDragOver] = useState(false)
   const [fetching, setFetching] = useState(isEdit)
+  const [loadError, setLoadError] = useState('')
+  const [loadRevision, setLoadRevision] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [savePending, setSavePending] = useState(false)
+  const saveInFlight = useRef(false)
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [tab, setTab] = useState('order')
 
   useEffect(() => {
+    let alive = true
     const preCustomerId = searchParams.get('customer_id')
-    // React Router renders the SAME <ShipmentForm/> element for /shipments/new
-    // and /shipments/:id, so the component instance is REUSED across those
-    // navigations rather than remounted. Without resetting here, opening a new
-    // form (New Order / Direct Invoice / Import PI) straight after viewing an
-    // order left that order's header + lines in state — and Save then created a
-    // DUPLICATE of it, with a fresh SO number (reported 2026-07-29: SO260032
-    // duplicating QU260709, same UC/customer/lines). Reset every piece of order
-    // state on each id change; the isEdit branch below refills it from the doc.
+    setFetching(isEdit)
+    setLoadError('')
     setPendingFile(null); setErpCheck(null); setExtractError(''); setSiError('')
     if (!isEdit) {
       setHeader(preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader)
@@ -154,6 +154,7 @@ export default function ShipmentForm() {
     }
     const loads = [
       loadCustomers().then(list => {
+        if (!alive) return
         setCustomers(list)
         // Resolve customer name when pre-filled from URL
         if (preCustomerId && !isEdit) {
@@ -161,11 +162,17 @@ export default function ShipmentForm() {
           if (c) setHeader(h => ({ ...h, customer_name: c.company_name }))
         }
       }),
-      loadRangeProductsLite().then(setRangeProducts),
+      loadRangeProductsLite().then(list => { if (alive) setRangeProducts(list) }),
     ]
     if (isEdit) {
       loads.push((async () => {
         const o = await getOrder(id)
+        if (!alive) return
+        if (!o) throw new Error('This order could not be found.')
+        // Apply only a complete matching pair. A failed line read must never
+        // expose a partially loaded form that can overwrite existing lines.
+        const orderLines = await getOrderLines(id)
+        if (!alive) return
         if (o) {
           setHeader({
             customer_id: o.customer_id, contact_id: o.contact_id || '', customer_name: o.customer_name,
@@ -213,12 +220,15 @@ export default function ShipmentForm() {
             woo_payout_date: o.woo_payout_date || null,
           })
           setSourceFile(o.source_file || null)
-          setLines(await getOrderLines(id))
+          setLines(orderLines)
         }
       })())
     }
-    Promise.all(loads).finally(() => setFetching(false))
-  }, [id, isEdit])
+    Promise.all(loads)
+      .catch(err => { if (alive) setLoadError(err.message || 'Could not load this order. Please retry.') })
+      .finally(() => { if (alive) setFetching(false) })
+    return () => { alive = false }
+  }, [id, isEdit, loadRevision])
 
   // Convert to PI (2026-08-26) — prefill header + lines from a client_quotes
   // doc instead of starting blank. Only for the built-from-products quote
@@ -280,6 +290,7 @@ export default function ShipmentForm() {
   const [allocatingSo, setAllocatingSo] = useState(false)
   const [soError, setSoError] = useState('')
   async function doAllocateSo() {
+    if (saveInFlight.current) return
     setAllocatingSo(true); setSoError('')
     try {
       const no = await allocateSoNo()
@@ -299,6 +310,7 @@ export default function ShipmentForm() {
   const [allocatingUc, setAllocatingUc] = useState(false)
   const [ucError, setUcError] = useState('')
   async function doAllocateUc() {
+    if (saveInFlight.current) return
     setAllocatingUc(true); setUcError('')
     try {
       const uc = await allocateOrderUc({ customer_name: header.customer_name, currency: header.currency })
@@ -329,6 +341,7 @@ export default function ShipmentForm() {
   // shows JES issued, so JES_SI_SEED_BY_YEAR can no longer go stale and
   // silently reuse a number CuiLing already used. (It did, on 2026-07-21.)
   async function doAllocateSi() {
+    if (saveInFlight.current) return
     setAllocatingSi(true); setSiError('')
     try {
       const res = await allocateInvoice({
@@ -613,18 +626,22 @@ export default function ShipmentForm() {
     } catch (err) {
       setExtractError(err.message || 'Could not create order.')
     } finally {
-      // Always clear — navigating /shipments/new → /shipments/:id reuses this
-      // component instance (same element, no key), so it does NOT unmount and
-      // `saving` would otherwise stay stuck on "Saving…" even though the order
-      // was created. This is the real cause of the hung Save button.
+      // Clear busy state on validation/upload/create failures too, so the
+      // current form remains usable when creation does not navigate away.
       setSaving(false)
     }
   }
 
   async function handleSave(e) {
     e.preventDefault()
+    if (saveInFlight.current || fetching || loadError || allocatingSo || allocatingUc || allocatingSi || extracting) return
+    saveInFlight.current = true
     setSaving(true)
+    setSavePending(false)
     setExtractError('')
+    const pendingTimer = setTimeout(() => {
+      if (mounted.current) setSavePending(true)
+    }, 6000)
     try {
       // Same fallback as create — persist the line-computed total when no PI-
       // stated total was ever captured, so the order isn't left valueless.
@@ -644,11 +661,9 @@ export default function ShipmentForm() {
         setSaving(false)
         return
       }
-      const write = Promise.all([
-        updateOrder(id, orderSaveFields(header, computed, accountingTotal, adjustment)),
-        saveOrderLines(id, lines),
-      ])
-      await raceWrite(write)   // throws only on a fast rejection; otherwise proceeds
+      // Header and line reconciliation commit together. A slow read or an
+      // offline queued batch remains pending, never a successful timeout.
+      await saveOrderWithLines(id, orderSaveFields(header, computed, accountingTotal, adjustment), lines)
 
       // Keep the Postgres financial record in step. Deliberately AFTER the
       // Firestore write and deliberately not awaited into the failure path:
@@ -658,15 +673,26 @@ export default function ShipmentForm() {
       if (header.erp_si_no) {
         upsertInvoice(invoiceRegistryFields(id, header, computed, accountingTotal))
       }
-      navigate('/shipments')
+      if (mounted.current) navigate('/shipments')
     } catch (err) {
-      setExtractError(err.message || 'Could not save order.')
+      if (mounted.current) setExtractError(err.message || 'Could not save order.')
     } finally {
-      setSaving(false)
+      clearTimeout(pendingTimer)
+      saveInFlight.current = false
+      if (mounted.current) { setSaving(false); setSavePending(false) }
     }
   }
 
   if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
+  if (loadError) return (
+    <div className="p-4 md:p-6 max-w-4xl">
+      <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Order Listing</Link>
+      <div className="card p-4 mt-4 space-y-3">
+        <p role="alert" className="text-sm text-brand-600 break-words">{loadError}</p>
+        <button type="button" className="btn-secondary" onClick={() => { setFetching(true); setLoadRevision(n => n + 1) }}>Retry</button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
@@ -696,7 +722,7 @@ export default function ShipmentForm() {
                     <Receipt size={14} /> Invoice {header.erp_si_no}
                   </a>
                 ) : (
-                  <button type="button" onClick={doAllocateSi} disabled={allocatingSi}
+                  <button type="button" onClick={doAllocateSi} disabled={allocatingSi || saving}
                     className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
                     title="Allocate this order's invoice number (SI) and UC — turns the proforma into a sales invoice.">
                     <Receipt size={14} /> {allocatingSi ? 'Raising…' : 'Raise Invoice'}
@@ -728,6 +754,7 @@ export default function ShipmentForm() {
               key={t.v}
               type="button"
               onClick={() => setTab(t.v)}
+              disabled={saving}
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
  tab === t.v
                   ? 'border-brand-600 text-brand-600'
@@ -753,6 +780,7 @@ export default function ShipmentForm() {
       {/* Order tab (or new shipment form) */}
       {(!isEdit || tab === 'order') && (
       <form onSubmit={isEdit ? handleSave : handleCreate} className="space-y-5">
+      <fieldset disabled={saving} className="space-y-5 min-w-0">
         {fromQuoteId && (
           fromQuoteError ? (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">{fromQuoteError}</p>
@@ -952,8 +980,9 @@ export default function ShipmentForm() {
         {isEdit && <OrderInventoryIssue orderId={id} orderLabel={header.uc_no || header.erp_so_no || id} inv={packagingInventory} />}
 
         {extractError && <p id="shipment-form-error" role="alert" className="text-sm text-brand-600 break-words">{extractError}</p>}
+        {savePending && <p role="status" className="text-sm text-ink-60 break-words">Save is still pending confirmation. Keep this page open; if you are offline, reconnect to finish. Please do not submit again.</p>}
         <div className="flex items-center gap-3 pt-1">
-          <button type="submit" className="btn-primary" disabled={saving || (!isEdit && lines.length === 0)}>
+          <button type="submit" className="btn-primary" disabled={saving || allocatingSo || allocatingUc || allocatingSi || extracting || (!isEdit && lines.length === 0)}>
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Order'}
           </button>
           <button type="button" className="btn-secondary" onClick={() => navigate('/shipments')}>Cancel</button>
@@ -969,6 +998,7 @@ export default function ShipmentForm() {
           onConfirm={async () => { await deleteOrder(id); navigate('/shipments') }}
           onCancel={() => setConfirmDelete(false)} />
       )}
+      </fieldset>
       </form>
       )}
     </div>
