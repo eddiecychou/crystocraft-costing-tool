@@ -1,4 +1,4 @@
-# V8.20 — Crystal supplier costing and image management — local, 6 November 2026
+# V8.20 — Crystal supplier costing and image management — released, 6 November 2026
 
 Owner authorized internal per-variant supplier quotes/costing, exact Zfour reuse
 and easier images, plus a study of further improvements. The
@@ -6,16 +6,21 @@ and easier images, plus a study of further improvements. The
 private ownership, migration before application, verification and proposed next
 improvements. Existing supplier/quote/attachment workflows are reused; customer
 catalogue/API/export fields stay public-only. Image upload/retry, description,
-preview/download, cover and non-destructive crop copies are implemented locally.
+preview/download, cover and non-destructive crop copies are released.
 
 The reviewed in-app migration linked the existing Zfour component to the exact
 Rosaline variant. Server readback preserves RMB 14.20, RMB 1,400, unknown MOQ/
 lead times, notes, preference, PDF and the public draft product/variant/photos.
 No duplicate records or stock changes. Local build/tests and admin/customer
 read/access verification pass; the linked feature record retains evidence limits.
-**Owner has now authorized commit, push and deployment after both GitHub checks,
-with candidate/production Zfour, image-download and customer-access verification.
-Release is in progress; see the feature record for its final evidence.**
+**Released source `65f55fcf296810544f1d30ced492e8ee96ae4227` after both required GitHub jobs passed
+in [run 42215073157](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/42215073157).**
+Production deploy `6aedc4abae369969d7e55c7e` is verified on the canonical site:
+fresh admin/customer access, exact Zfour quote and PDF preservation, ordinary
+Chrome original-image download with byte/hash readback, and customer access
+restrictions all pass. Build includes 998 passing prebuild tests. The initial
+emulator-fixture project mismatch was reproduced and corrected before any
+deployment; application rules were unchanged. Full evidence is in the feature record.
 
 # V8.20 — Cleanup handoff and Crystal Components focus — 6 November 2026
 

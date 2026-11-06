@@ -590,8 +590,8 @@ private associations/costs/source files never belong on `crystal_products`.
 `src/crystalCosting.js` remains the separate legacy stone-price library, not
 this new supplier-link module. CrystalProductImages preserves immutable files
 and protected reads. Consult the feature record for actual verification,
-migration and release state; the owner has authorized release subject to the
-exact-commit CI and candidate/production verification gates.
+migration and verified release state (6 November: exact-commit CI, fresh
+admin/customer candidate/production checks, Zfour preservation and Chrome download).
 
 ### V8.19 Crystal Fabric catalogue consolidation
 
