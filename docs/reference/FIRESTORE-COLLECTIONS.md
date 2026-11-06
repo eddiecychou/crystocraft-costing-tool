@@ -224,7 +224,7 @@ Private Product Design project register and `/updates/{eventId}` immutable revis
   and revision; swatch manages, approved customers read published only. Child variants
   hold only explicit combinations; child images hold immutable verified Firebase media.
   Publishing requires a real cover and confirmed primary variant. Product/variant deletion
-  remains denied. The local Delete-image follow-up allows swatch staff/admin to remove
+  remains denied. The released Delete-image follow-up allows swatch staff/admin to remove
   a non-cover image only; see ../plans/V8.20-CRYSTAL-IMAGE-DELETE.md for release state.
 - crystal_product_private/{productId}/variants/{variantId}: Supply-only canonical crystals
   ID, explicit stock pieces per catalogue unit, review and private provenance notes.
@@ -234,7 +234,7 @@ Private Product Design project register and `/updates/{eventId}` immutable revis
 - Storage crystal-products/{productId}/{imageId}/{hash}/: immutable original/display/thumb;
   customer bytes go through /api/crystal-product-media, which checks the live profile,
   published parent and current published image path. Direct customer Storage reads denied.
-  Local Delete-image rules allow only swatch staff/admin cleanup of exact raster paths
+  Released Delete-image rules allow only swatch staff/admin cleanup of exact raster paths
   after that image document is removed; uploads remain immutable and listing denied.
 - Storage enquiry-files/{uid}/{enquiryId}/{fileId}.{ext}: immutable private PDF/image drawing,
   approved submitting user or admin reads; approved submitting user creates. No token URLs.

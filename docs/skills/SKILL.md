@@ -598,8 +598,9 @@ The subsequent owner-requested Delete-only image follow-up is documented in
 Corporate confirmation, then revision-checked image removal and scoped Storage
 cleanup; protect saved/selected covers. Archive/Restore actions are removed,
 while historical archived records remain manageable. Consult that record for
-local/released state; the Firestore and Storage permission changes require a
-separate authorized rules release alongside the app.
+verified release state. The app and separate Firestore/Storage permission
+changes were published after both GitHub jobs passed; fictional-image deletion
+and fresh admin/customer candidate/production checks pass.
 
 ### V8.19 Crystal Fabric catalogue consolidation
 
