@@ -39,7 +39,8 @@ remain separate work. [Correction and limits](docs/plans/V8.20-SHIPPING-LIFECYCL
 6 November: the owner authorized saved-header field mapping extraction after
 the lifecycle repairs. The exact whitelist/defaults now live in orderEditFields;
 ShipmentForm retains requests, guards, source/line state, Retry and save/allocation
-sequencing. Verification/release status is tracked separately; this does not
+sequencing. Released as 6a232360 after source/browser parity, full build, both
+exact-SHA jobs and fresh candidate/production role/shipping gates. This does not
 resolve concurrent-edit or durable financial-index synchronization debt.
 [Saved-header mapping slice](docs/plans/V8.20-SHIPMENT-HEADER-MAPPING-CLEANUP.md).
 

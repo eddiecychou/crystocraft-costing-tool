@@ -386,3 +386,8 @@ sequencing. Full field/default and legacy/Woo contracts are verified with fictio
 records before the normal exact-SHA and two-role release gates. Release status is
 tracked in that record. Concurrent editing and durable cross-system financial
 synchronization remain separately scoped design tasks.
+
+Saved-header mapping is released as 6a232360 after byte-identical source
+restoration, eleven Chrome parity cases, twenty identical screenshot pairs,
+full build, both exact-SHA jobs and fresh candidate/production role/shipping gates.
+The next cleanup slice remains a separately reviewed scope.
