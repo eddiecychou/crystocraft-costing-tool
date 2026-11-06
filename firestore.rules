@@ -1028,7 +1028,10 @@ service cloud.firestore {
           && (request.resource.data.publication=='published'
             || getAfter(/databases/$(database)/documents/crystal_products/$(pid)).data.publication!='published'
             || getAfter(/databases/$(database)/documents/crystal_products/$(pid)).data.hero_id!=iid);
-        allow delete: if false;
+        // Same confirmed gallery removal as Corporate Gifts; protect every
+        // saved cover, including drafts, against stale or direct client writes.
+        allow delete: if can('swatch')
+          && getAfter(/databases/$(database)/documents/crystal_products/$(pid)).data.hero_id != iid;
       }
     }
     match /crystal_product_private/{pid}/variants/{vid} {

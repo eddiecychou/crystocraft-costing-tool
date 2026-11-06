@@ -1,15 +1,16 @@
 import {useEffect,useRef,useState} from 'react'
 import Cropper from 'react-easy-crop'
 import 'react-easy-crop/react-easy-crop.css'
-import {saveCrystalImage,downloadCrystalImage,crystalImageDownloadName} from '../crystalProducts'
+import {saveCrystalImage,deleteCrystalImage,cleanupCrystalImageFiles,downloadCrystalImage,crystalImageDownloadName} from '../crystalProducts'
 import {readSwatchPhoto} from '../crystalSwatches'
 import {getCroppedCanvas} from '../imageCrop'
 import SwatchPhoto from './SwatchPhoto'
+import ConfirmDialog from './ConfirmDialog'
 
-function PhotoCard({image,coverId,publishedCoverId,productPublished,disabled,onPreview,onSaveDescription,onChooseCover,onArchive}) {
+function PhotoCard({image,coverId,savedCoverId,disabled,onPreview,onSaveDescription,onChooseCover,onPublish,onDelete}) {
  const [description,setDescription]=useState(image.alt||'')
  useEffect(()=>setDescription(image.alt||''),[image.alt])
- const protectedCover=productPublished&&publishedCoverId===image.id
+ const protectedCover=coverId===image.id||savedCoverId===image.id
  return <article className="border border-ivory-dark p-3 space-y-3 min-w-0">
   <button type="button" className="block aspect-square bg-white w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600" disabled={disabled} onClick={()=>onPreview(image)} aria-label={'Preview '+(image.alt||'photograph')}><SwatchPhoto path={image.media.thumbnail} alt={image.alt}/></button>
   <div className="flex flex-wrap gap-2 items-center text-xs"><span className="bg-ivory px-2 py-1 capitalize">{image.publication}</span>{coverId===image.id&&<span className="text-brand-700">Selected cover</span>}</div>
@@ -17,9 +18,9 @@ function PhotoCard({image,coverId,publishedCoverId,productPublished,disabled,onP
   <button type="button" className="btn-ghost min-h-11 text-xs w-full" disabled={disabled||description===(image.alt||'')} onClick={()=>onSaveDescription(image,description)}>Save description</button>
   <div className="grid grid-cols-2 gap-2"><button type="button" className="btn-secondary min-h-11 text-xs px-2" disabled={disabled} onClick={()=>onPreview(image)}>View / download</button><button type="button" className="btn-secondary min-h-11 text-xs px-2" disabled={disabled} onClick={()=>onPreview(image,true)}>Crop / rotate</button></div>
   <button type="button" className="btn-secondary min-h-11 text-xs w-full" disabled={disabled||image.publication!=='published'||coverId===image.id} onClick={()=>onChooseCover(image.id)}>Use as cover</button>
-  {image.publication==='draft'&&<button type="button" className="btn-secondary min-h-11 text-xs w-full" disabled={disabled} onClick={()=>onArchive(image,'published')}>Publish photograph</button>}
-  <button type="button" className="btn-ghost min-h-11 text-xs w-full" disabled={disabled||protectedCover} onClick={()=>onArchive(image)}>{image.publication==='archived'?'Restore photograph':'Archive photograph'}</button>
-  {protectedCover&&<p className="text-xs text-ink-60">To archive this published cover, choose another cover and save the component first.</p>}
+  {image.publication!=='published'&&<button type="button" className="btn-secondary min-h-11 text-xs w-full" disabled={disabled} onClick={()=>onPublish(image)}>Publish photograph</button>}
+  <button type="button" className="btn-danger min-h-11 text-xs w-full" disabled={disabled||protectedCover} onClick={()=>onDelete(image)}>Delete image</button>
+  {protectedCover&&<p className="text-xs text-ink-60">Change the cover and save the component before deleting this image.</p>}
  </article>
 }
 
@@ -75,6 +76,7 @@ function PhotoDialog({image,name,edit,onClose,onSaved,onBusyChange}) {
 
 export default function CrystalProductImages({product,coverId,name,disabled,onChooseCover,onRefresh,onBusyChange}) {
  const [queue,setQueue]=useState([]),[processing,setProcessing]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[preview,setPreview]=useState(null),[dragging,setDragging]=useState(false),lock=useRef(false),input=useRef(null)
+ const [confirmDelete,setConfirmDelete]=useState(null),[cleanup,setCleanup]=useState([])
  const blocked=disabled||processing
  const update=(id,patch)=>setQueue(rows=>rows.map(row=>row.id===id?{...row,...patch}:row))
  function choose(files) {
@@ -85,10 +87,10 @@ export default function CrystalProductImages({product,coverId,name,disabled,onCh
  async function perform(action) {
   if(blocked||lock.current)return
   lock.current=true;setProcessing(true);onBusyChange(true);setError('');setMessage('')
-  try{await action()}catch(e){setError(e.message)}finally{lock.current=false;setProcessing(false);onBusyChange(false)}
+  try{await action()}catch(e){setError(e.message);setConfirmDelete(null)}finally{lock.current=false;setProcessing(false);onBusyChange(false)}
  }
- async function refresh() {
-  try{await onRefresh()}catch{setError('The photograph was saved, but the list could not refresh. Refresh photographs before continuing.');return false}
+ async function refresh(failure='The photograph was saved, but the list could not refresh. Refresh photographs before continuing.') {
+  try{await onRefresh()}catch{setError(failure);return false}
   return true
  }
  async function upload(ids) {
@@ -108,23 +110,40 @@ export default function CrystalProductImages({product,coverId,name,disabled,onCh
  async function saveDescription(image,alt) {
   await perform(async()=>{await saveCrystalImage({productId:product.id,id:image.id,alt,publication:image.publication,expectedRevision:image.revision});await refresh();setMessage('Photograph description saved.')})
  }
- async function archive(image,publication) {
-  if(product.publication==='published'&&product.hero_id===image.id)return
-  const next=publication||(image.publication==='archived'?'published':'archived')
-  await perform(async()=>{await saveCrystalImage({productId:product.id,id:image.id,alt:image.alt,publication:next,expectedRevision:image.revision});await refresh();setMessage(next==='published'?'Photograph published for approved customers.':'Photograph archived. The original file is preserved.')})
+ async function publish(image) {
+  await perform(async()=>{await saveCrystalImage({productId:product.id,id:image.id,alt:image.alt,publication:'published',expectedRevision:image.revision});await refresh();setMessage('Photograph published for approved customers.')})
+ }
+ async function remove(image) {
+  await perform(async()=>{
+   if(coverId===image.id||product.hero_id===image.id)throw Error('Change the cover and save the component before deleting this image.')
+   const {pendingFiles}=await deleteCrystalImage({productId:product.id,id:image.id,expectedRevision:image.revision})
+   setConfirmDelete(null);setQueue(rows=>rows.filter(row=>row.id!==image.id))
+   if(pendingFiles.length)setCleanup(rows=>[...rows.filter(row=>row.id!==image.id),{id:image.id,paths:pendingFiles}])
+   await refresh('The image was deleted, but the list could not refresh. Refresh photographs before continuing.')
+   setMessage(pendingFiles.length?'Image removed. Some stored files could not be deleted; retry file cleanup below.':'Image deleted.')
+  })
+ }
+ async function retryCleanup(row) {
+  await perform(async()=>{
+   const paths=await cleanupCrystalImageFiles({productId:product.id,...row})
+   setCleanup(rows=>paths.length?rows.map(r=>r.id===row.id?{...r,paths}:r):rows.filter(r=>r.id!==row.id))
+   setMessage(paths.length?'Some stored files could not be deleted. Please retry file cleanup.':'Image files deleted.')
+  })
  }
  const pending=queue.filter(row=>row.status==='pending'||row.status==='error').length
  return <section className="card p-4 space-y-4" aria-labelledby="crystal-images-title">
   <div className="flex flex-wrap gap-3 items-center justify-between"><h2 id="crystal-images-title" className="eyebrow">Product photographs</h2><button type="button" className="btn-ghost min-h-11 text-xs" disabled={blocked} onClick={()=>perform(onRefresh)}>Refresh photographs</button></div>
-  <p className="text-sm text-ink-60">Upload JPEG, PNG or WebP photographs up to 20 MB each. Original files are preserved in Firebase. Published photographs are available only to approved customers when the component is published.</p>
+  <p className="text-sm text-ink-60">Upload JPEG, PNG or WebP photographs up to 20 MB each. Original files are kept in Firebase until you delete the image. Published photographs are available only to approved customers when the component is published.</p>
   <div className={'border border-dashed p-4 space-y-3 '+(dragging?'border-brand-600 bg-ivory':'border-warm-grey')} onDragOver={e=>{e.preventDefault();if(!blocked)setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);choose(e.dataTransfer.files)}}>
    <label className="block"><span className="label block mb-2">Add photographs</span><input ref={input} className="input w-full min-w-0 text-sm" type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={blocked} onChange={e=>choose(e.target.files)}/></label><p className="text-xs text-ink-60">Select several files or drag them here. Review their descriptions, then upload. Failed files can be retried individually.</p>
   </div>
   {queue.length>0&&<div className="space-y-3"><ul className="divide-y divide-ivory-dark">{queue.map(row=><li key={row.id} className="py-3 space-y-2 min-w-0"><p className="text-sm break-words">{row.file.name}</p><div className="flex flex-wrap items-center gap-2"><span className={'text-xs '+(row.status==='error'?'text-brand-700':'text-ink-60')}>{({pending:'Ready to upload',uploading:'Uploading and verifying…',success:'Uploaded and verified',error:'Upload failed'})[row.status]}</span>{row.status==='error'&&<button type="button" className="btn-secondary min-h-11 text-xs" disabled={blocked} onClick={()=>upload([row.id])}>Retry this file</button>}{row.status!=='uploading'&&row.status!=='success'&&<button type="button" className="btn-ghost min-h-11 text-xs" disabled={blocked} onClick={()=>setQueue(rows=>rows.filter(r=>r.id!==row.id))}>Remove from queue</button>}</div>{row.status!=='success'&&<label className="block"><span className="label block mb-1">Upload description</span><input className="input" maxLength={200} value={row.alt} disabled={blocked} onChange={e=>update(row.id,{alt:e.target.value})}/></label>}{row.error&&<p className="text-xs text-brand-700 break-words">{row.error}</p>}</li>)}</ul><div className="flex flex-wrap gap-2"><button type="button" className="btn-primary min-h-11" disabled={blocked||!pending} onClick={()=>upload()}>{processing?'Uploading and verifying…':'Upload / retry '+pending+' photograph'+(pending===1?'':'s')}</button>{queue.some(row=>row.status==='success')&&<button type="button" className="btn-ghost min-h-11" disabled={blocked} onClick={()=>setQueue(rows=>rows.filter(row=>row.status!=='success'))}>Clear completed uploads</button>}</div></div>}
   {error&&<p role="alert" className="text-sm text-brand-700 break-words">{error}</p>}{message&&<p role="status" className="text-sm text-ink-70">{message}</p>}
+  {cleanup.map(row=><div key={row.id} className="flex flex-wrap items-center gap-2 text-sm"><span>Image removed · {row.paths.length} stored file{row.paths.length===1?'':'s'} awaiting cleanup.</span><button type="button" className="btn-secondary min-h-11 text-xs" disabled={blocked} onClick={()=>retryCleanup(row)}>Retry file cleanup</button></div>)}
   {!product.images.some(image=>image.media)&&<p className="text-sm text-ink-60">No photographs yet. Add the real product photographs above.</p>}
-  <div className="grid min-[560px]:grid-cols-2 lg:grid-cols-3 gap-4">{product.images.filter(image=>image.media).map(image=><PhotoCard key={image.id} image={image} coverId={coverId} publishedCoverId={product.hero_id} productPublished={product.publication==='published'} disabled={blocked} onPreview={(image,edit=false)=>setPreview({image:{...image,productId:product.id},edit})} onSaveDescription={saveDescription} onChooseCover={onChooseCover} onArchive={archive}/>)}</div>
-  <p className="text-xs text-ink-60">Choose “Use as cover”, then “Save component” above to publish that cover selection. Archive hides a photograph without deleting its original.</p>
+  <div className="grid min-[560px]:grid-cols-2 lg:grid-cols-3 gap-4">{product.images.filter(image=>image.media).map(image=><PhotoCard key={image.id} image={image} coverId={coverId} savedCoverId={product.hero_id} disabled={blocked||!!confirmDelete} onPreview={(image,edit=false)=>setPreview({image:{...image,productId:product.id},edit})} onSaveDescription={saveDescription} onChooseCover={onChooseCover} onPublish={publish} onDelete={setConfirmDelete}/>)}</div>
+  <p className="text-xs text-ink-60">Choose “Use as cover”, then “Save component” above to save that cover selection. Deleting an image removes it immediately and cannot be undone.</p>
+  {confirmDelete&&<ConfirmDialog message="Delete this image? This cannot be undone." busy={processing} onConfirm={()=>remove(confirmDelete)} onCancel={()=>{if(!lock.current)setConfirmDelete(null)}}/>}
   {preview&&<PhotoDialog image={preview.image} name={name} edit={preview.edit} onClose={()=>setPreview(null)} onBusyChange={onBusyChange} onSaved={async()=>{await refresh();setMessage('Edited copy saved. The existing photograph and original bytes are preserved.')}}/>}
  </section>
 }

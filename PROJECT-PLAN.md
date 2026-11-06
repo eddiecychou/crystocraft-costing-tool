@@ -1,3 +1,15 @@
+# V8.20 — Crystal image Delete action — release in progress, 7 November 2026
+
+Owner requested an actual Delete button, inspection of Corporate Gifts and
+Crystocraft Range first, and removal of Archive/Restore. The
+[implementation record](docs/plans/V8.20-CRYSTAL-IMAGE-DELETE.md) explains the
+existing methods and the Corporate confirmation/record-first cleanup approach.
+The saved/selected cover is protected, stale edits are refused and failed file
+cleanup can be retried. Existing archived records remain manageable; no real
+records or files were removed in development. Owner has authorized commit, push,
+app and Firebase rules deployment after both GitHub checks, then verification
+using fictional images. See the implementation record for final release evidence.
+
 # V8.20 — Crystal supplier costing and image management — released, 6 November 2026
 
 Owner authorized internal per-variant supplier quotes/costing, exact Zfour reuse

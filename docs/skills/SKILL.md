@@ -593,6 +593,14 @@ and protected reads. Consult the feature record for actual verification,
 migration and verified release state (6 November: exact-commit CI, fresh
 admin/customer candidate/production checks, Zfour preservation and Chrome download).
 
+The subsequent owner-requested Delete-only image follow-up is documented in
+[Crystal image deletion](../plans/V8.20-CRYSTAL-IMAGE-DELETE.md): reuse the shared
+Corporate confirmation, then revision-checked image removal and scoped Storage
+cleanup; protect saved/selected covers. Archive/Restore actions are removed,
+while historical archived records remain manageable. Consult that record for
+local/released state; the Firestore and Storage permission changes require a
+separate authorized rules release alongside the app.
+
 ### V8.19 Crystal Fabric catalogue consolidation
 
 Crystal Fabric is one sample-backed range in Crystal Components, not a second set

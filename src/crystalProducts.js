@@ -1,5 +1,6 @@
 import {collection,doc,getDoc,getDocs,query,where,runTransaction,serverTimestamp} from 'firebase/firestore'
-import {db} from './firebase'
+import {ref as storageRef,deleteObject} from 'firebase/storage'
+import {db,storage} from './firebase'
 import {photoAssets,readSwatchPhoto} from './crystalSwatches'
 import {cleanCrystalProduct,cleanCrystalVariant,draftFromCrystalStock,validCrystalId} from './domain/crystalProducts'
 const records=s=>s.docs.map(d=>({...d.data(),id:d.id}))
@@ -37,6 +38,31 @@ export async function saveCrystalImage({productId,id,file,croppedBlob,alt,public
  })
  const previous=await getDoc(ref)
  return saveRevision(ref,{alt:String(alt||'').slice(0,200),publication,media:media||previous.data()?.media||null},current)
+}
+// Follow the Corporate gallery: remove the record first, then its stored files.
+// A failed file cleanup is reported separately so the same files can be retried.
+export async function cleanupCrystalImageFiles({productId,id,paths}) {
+ if(!validCrystalId(productId)||!validCrystalId(id)||!Array.isArray(paths)||paths.length>3)throw Error('Invalid photograph selection.')
+ const owned=new RegExp('^crystal-products/'+productId+'/'+id+'/[a-f0-9]{64}/(original[.](jpg|png|webp)|display[.]jpg|thumbnail[.]jpg)$')
+ if(paths.some(path=>typeof path!=='string'||!owned.test(path)))throw Error('Invalid photograph file.')
+ const files=[...new Set(paths)],results=await Promise.allSettled(files.map(path=>deleteObject(storageRef(storage,path))))
+ return files.filter((_,i)=>results[i].status==='rejected'&&results[i].reason?.code!=='storage/object-not-found')
+}
+export async function deleteCrystalImage({productId,id,expectedRevision}) {
+ if(!validCrystalId(productId)||!validCrystalId(id)||!Number.isSafeInteger(expectedRevision)||expectedRevision<1)throw Error('Invalid photograph selection.')
+ const paths=await runTransaction(db,async tx=>{
+  const parent=await tx.get(doc(db,'crystal_products',productId)),image=await tx.get(doc(db,'crystal_products',productId,'images',id))
+  if(!parent.exists())throw Error('Component not found.')
+  if(parent.data().hero_id===id)throw Error('Change the cover and save the component before deleting this image.')
+  if(!image.exists())return []
+  if(image.data().revision!==expectedRevision)throw Error('This photograph changed. Refresh photographs before deleting it.')
+  const media=image.data().media,files=media?[media.original,media.display,media.thumbnail]:[]
+  const owned=new RegExp('^crystal-products/'+productId+'/'+id+'/[a-f0-9]{64}/(original[.](jpg|png|webp)|display[.]jpg|thumbnail[.]jpg)$')
+  if(files.some(path=>typeof path!=='string'||!owned.test(path)))throw Error('Invalid photograph file.')
+  tx.delete(doc(db,'crystal_products',productId,'images',id))
+  return files
+ })
+ return {pendingFiles:await cleanupCrystalImageFiles({productId,id,paths})}
 }
 export function crystalImageDownloadName(name,image) {
  const clean=value=>[...String(value||'').replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g,'-').trim().replace(/[. ]+$/,'')].slice(0,140).join('')

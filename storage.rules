@@ -39,7 +39,12 @@ service firebase.storage {
         && revision.matches('[a-f0-9]{64}') && filename.matches('(original[.](jpg|png|webp)|display[.]jpg|thumbnail[.]jpg)')
         && request.resource.size>0 && request.resource.size<=20971520
         && request.resource.contentType in ['image/jpeg','image/png','image/webp'];
-      allow list, update, delete: if false;
+      // Cleanup only after the gallery record is removed. Profile + image are
+      // the two Firestore lookups permitted by Storage cross-service rules.
+      allow delete: if can('swatch')
+        && !firestore.exists(/databases/(default)/documents/crystal_products/$(pid)/images/$(iid))
+        && revision.matches('[a-f0-9]{64}') && filename.matches('(original[.](jpg|png|webp)|display[.]jpg|thumbnail[.]jpg)');
+      allow list, update: if false;
     }
     // Drawings stay private to the submitting approved account and OC admin.
     match /enquiry-files/{uid}/{eid}/{file} {
