@@ -470,3 +470,9 @@ emulator cases, 38 Chrome cases and 916 prebuild tests/build. Exact-SHA CI and f
 candidate/production role/feature gates remain mandatory. SH-03 customer payable
 exports without deposits are the next separate proposed correction; no broader
 concurrency/outbox or SI-allocation redesign is part of SH-04.
+
+SH-04 is released as 3022bfe after both required jobs on that exact SHA, fresh
+candidate/production admin/customer gates, complete targeted financial-read/API
+checks and served-asset proof. Production 6aedaa36685b16f6596b98e9 supersedes the
+initial 04a713e publication with the final known-accounting/unknown-ledger-base
+guard. No historical financial upsert was performed during verification.

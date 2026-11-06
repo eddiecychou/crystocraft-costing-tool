@@ -1,4 +1,4 @@
-# V8.20 — Financial Re-sync ownership correction — release preparation, 6 November 2026
+# V8.20 — Financial Re-sync ownership correction — released, 6 November 2026
 
 Owner approved the next financial Re-sync batch. Normal saving/recovery now
 share the full financial projection; recovery compares raw saved facts, uses
@@ -16,6 +16,10 @@ The final authority guard also requires review when the ledger has a known
 Accounting Total (including zero) but no base total and the source accounting
 field is blank. Its final release supersedes the initial verified 04a713e build;
 all financial writes in verification remain fictional.
+Released as 3022bfe after both exact-SHA jobs in run 42200763068/attempt 1 and
+fresh candidate/production admin/customer plus complete financial-read/API gates.
+Production 6aedaa36685b16f6596b98e9 serves the unchanged verified candidate artifact;
+source/rules/schema and historical repair boundaries are in the release record.
 Next separately proposed correction is customer no-deposit accounting-payable
 print/Excel parity (SH-03).
 

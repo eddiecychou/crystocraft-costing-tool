@@ -25,10 +25,11 @@ intercepted fictional responses. Both exact-SHA jobs, build and fresh candidate/
 production admin/customer gates pass. [Correction/release evidence](docs/plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md).
 The owner next authorized SH-04 financial Re-sync. Its complete source projection,
 strict targeted reads, raw-source authority/review guards and visible recovery
-outcomes are implemented and locally verified (40 integration, 2 SDK, 38 Chrome,
+outcomes are released as 3022bfe (40 integration, 2 SDK, 38 Chrome,
 916 prebuild cases), including review-only known ledger accounting/unknown base
-when source accounting is blank. Follow the [correction record](docs/plans/V8.20-INVOICE-RECONCILIATION-FIX.md)
-for exact CI/deployment status. Customer no-deposit exports (SH-03) and the other
+when source accounting is blank. Both exact-SHA jobs and fresh candidate/production
+admin/customer financial-read/API gates pass. [Correction/release record](docs/plans/V8.20-INVOICE-RECONCILIATION-FIX.md).
+Customer no-deposit exports (SH-03) and the other
 findings below remain open.
 
 - **P1 PI source identity — corrected in SH-01/02:** original overlapping/failed replacement extraction can attach

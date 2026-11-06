@@ -384,3 +384,9 @@ orders or allocates invoice numbers as part of recovery.
 Permanent actual UI/client/edge fixtures run in test:invoice-reconciliation,
 prebuild and product-search; raw server/offline cases run in the required emulator
 job. All financial writes in QA are fictional. No historical repair is implied.
+
+Released as 3022bfe after both exact-SHA jobs and fresh candidate/production
+admin/customer complete financial-read/access gates. Final evidence includes
+40 integration, 2 SDK, 38 Chrome and 916 prebuild cases; a known ledger accounting
+amount with an unknown base also stays Review required when source accounting is
+blank. The remaining customer export and concurrency/outbox tasks stay separate.
