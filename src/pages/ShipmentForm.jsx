@@ -8,7 +8,7 @@ import {
   applyExtractedPiHeader, wooRegistryAutofillFields,
   getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderWithLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, lineClassificationPatch, rematchLines, validateOrder, computeOrderTotals,
-  orderCreateFields, orderSaveFields, invoiceRegistryFields, orderUc,
+  orderCreateFields, orderSaveFields, invoiceRegistryFields, orderEditFields,
 } from '../shipping'
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
@@ -174,51 +174,7 @@ function ShipmentEditor() {
         const orderLines = await getOrderLines(id)
         if (!alive) return
         if (o) {
-          setHeader({
-            customer_id: o.customer_id, contact_id: o.contact_id || '', customer_name: o.customer_name,
-            // uc_no is seeded through orderUc so an order whose UC lives in the
-            // legacy erp_pi_no shows it in the UC# field and does not look
-            // un-allocated to doAllocateSi. erp_pi_no is still carried so
-            // saving does not silently drop it.
-            erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '', erp_si_no: o.erp_si_no || '', uc_no: orderUc(o),
-            customer_po: o.customer_po || '',
-            invoiced_at: o.invoiced_at || '',
-            invoice_date: o.invoice_date || '',
-            accounting_total: o.accounting_total ?? '',
-            adjustment_reason: o.adjustment_reason || '',
-            order_date: o.order_date || '',
-            est_ship_date: o.est_ship_date || '',
-            currency: o.currency, incoterm: o.incoterm, payment_terms: o.payment_terms || '', status: o.status,
-            destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
-            discount_pct:    o.discount_pct    ?? '',
-            discount_amount: o.discount_amount ?? '',
-            deposit_paid: o.deposit_paid ?? '',
-            total_amount: o.total_amount ?? null,
-            hide_total_qty: !!o.hide_total_qty,
-            pi_revision: o.pi_revision ? String(o.pi_revision) : '',
-            // Reference figures for the mismatch check. New orders carry their
-            // own pi_* fields; older imported orders predate them and still
-            // hold the PI value in subtotal/total_amount, so fall back to those.
-            pi_subtotal: o.pi_subtotal ?? (o.source === 'imported_pi' ? o.subtotal : null) ?? '',
-            pi_total:    o.pi_total    ?? (o.source === 'imported_pi' ? o.total_amount : null) ?? '',
-            // WooCommerce B2C sync (spec Phase 3) — carried through so the
-            // save path (handleSave) can pass it on to upsert_invoice.
-            // Missing from this whitelist would silently drop it on every
-            // load, same trap contact_id hit before it was added here.
-            channel: o.channel || null,
-            woo_order_no: o.woo_order_no || '',
-            // V8.10 — these three were the SAME trap: doAllocateSi()'s UC
-            // Registry fee-note auto-fill (below) reads header.woo_fee /
-            // woo_net_payout / woo_payout_date, but none of them were ever
-            // added to this load whitelist, so it silently produced a
-            // fee-less remarks note for every WooCommerce order opened by ID
-            // (the normal path — not just right after import). Fixed here,
-            // not by chasing the symptom in doAllocateSi.
-            woo_fee: o.woo_fee ?? null,
-            woo_net_payout: o.woo_net_payout ?? null,
-            woo_net_payout_hkd: o.woo_net_payout_hkd ?? null,
-            woo_payout_date: o.woo_payout_date || null,
-          })
+          setHeader(orderEditFields(o, blankHeader.destination))
           setSourceFile(o.source_file || null)
           setLines(orderLines)
         }

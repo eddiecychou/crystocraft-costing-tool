@@ -695,3 +695,9 @@ a temporary browser profile and fictional data, and records offline/reopen/
 reconnect/late-rejection evidence. The CI SDK fixture uses a new terminated
 client per case; sharing a cached client across emulator clears retained an SDK
 connection in the initial diagnostic. Never force a successful test-process exit.
+
+Saved-order header mapping: `qa/shipment-header-fields.test.mjs` runs in
+`test:shipment-display`, prebuild and the required product-search job. It pins
+the full editor whitelist, absent/null/zero/blank and legacy/PI/Woo defaults,
+financial precision and immutable destination merging. Preserve the page's
+guarded read/Retry and save sequencing when adjusting that pure mapping.

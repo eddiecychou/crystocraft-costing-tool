@@ -298,3 +298,14 @@ read plus atomic header/line batch reconciliation; saveOrderLines retains its
 lines-only contract. Fictional lifecycle/domain tests run in test:shipment-display;
 actual SDK/current-rules tests run in customer-merge-emulator.
 [Correction, retained limits and release evidence](../plans/V8.20-SHIPPING-LIFECYCLE-FIX.md).
+
+## Saved-order editable header mapping
+
+shipping.orderEditFields(order, blankDestination) owns the existing saved-record
+whitelist and its blank/null/zero, UC/imported-PI and Woo metadata fallbacks.
+ShipmentForm supplies its destination defaults and retains all requests, guarded
+application, source-file/line state, Retry, allocation and save sequencing.
+The form is 44 lines shorter; this is a field-mapping boundary, not an async
+lifecycle or data-policy change. Eleven contract cases join the existing real-form
+lifecycle/save regressions in test:shipment-display.
+[Scope and current release evidence](../plans/V8.20-SHIPMENT-HEADER-MAPPING-CLEANUP.md).

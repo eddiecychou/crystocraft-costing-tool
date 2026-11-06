@@ -1,3 +1,11 @@
+# V8.20 — Shipping saved-header mapping cleanup — 6 November 2026
+
+Owner-authorized extraction is implemented; verification and release are in
+progress. orderEditFields owns the exact saved-header whitelist and fallbacks;
+ShipmentForm retains guarded loading, state, allocation and atomic-save workflow.
+All 128 original/extracted shipping cases and 11 new mapping cases pass.
+[Scope, parity, tests and release state](docs/plans/V8.20-SHIPMENT-HEADER-MAPPING-CLEANUP.md).
+
 # V8.20 — Shipping loading and atomic save correction — released, 6 November 2026
 
 Owner-authorized repair is released as 0fec1ff9. Both exact-SHA GitHub jobs,

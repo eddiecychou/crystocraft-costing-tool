@@ -1615,3 +1615,14 @@ when one cached client spanned emulator clear/reset sequences. Fresh per-case
 clients and explicit termination removed that hang; test and cleanup deadlines
 remain failures, with no forced successful exit. Keep the persistent browser
 queue proof separate from a Node client's memory-cache fixture.
+
+### Preserve editor mapping separately from stored-record normalization
+
+6 November 2026: saved-header mapping extraction retains the exact editable
+whitelist. Empty strings, null, zero, legacy UC precedence, imported-PI references
+and Woo payout metadata have distinct existing meanings. Move the expression
+intact and supply the form's destination defaults; do not replace it with
+normOrder or a raw record spread. Pair focused full-field/no-mutation cases with
+original/extracted real-form loading, save/reopen and delayed-response regressions.
+The mapping helper has no I/O or authority to change lifecycle sequencing.
+[Scope, verification and release](../plans/V8.20-SHIPMENT-HEADER-MAPPING-CLEANUP.md).

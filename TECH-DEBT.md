@@ -36,6 +36,13 @@ remain separate work. [Correction and limits](docs/plans/V8.20-SHIPPING-LIFECYCL
 
 ## ShipmentForm mixes presentation with workflow orchestration — display/reference slices extracted
 
+6 November: the owner authorized saved-header field mapping extraction after
+the lifecycle repairs. The exact whitelist/defaults now live in orderEditFields;
+ShipmentForm retains requests, guards, source/line state, Retry and save/allocation
+sequencing. Verification/release status is tracked separately; this does not
+resolve concurrent-edit or durable financial-index synchronization debt.
+[Saved-header mapping slice](docs/plans/V8.20-SHIPMENT-HEADER-MAPPING-CLEANUP.md).
+
 Save validation/visible-error corrections are released as 37ea5b2a after both
 exact-SHA jobs, full build and fresh candidate/production role/feature gates.
 [Correction evidence](docs/plans/V8.20-SAVE-AND-CUSTOMER-NAVIGATION-FIXES.md).

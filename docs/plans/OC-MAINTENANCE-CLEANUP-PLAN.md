@@ -274,8 +274,10 @@ allocation flows preserved payload values, issued numbers and error feedback.
 
 [Existing-order saved fields](V8.20-SHIPMENT-SAVE-PAYLOAD-CLEANUP.md)
 are released. orderSaveFields prepares the updateOrder header patch.
-ShipmentForm owns validation, calculations, parallel header/line saves,
-timeout handling, invoice upsert and navigation. Fictional save/reopen
+The original mapping release retained validation/calculations and save
+sequencing in ShipmentForm. The subsequent lifecycle repair replaced parallel
+writes/timeout success with acknowledged atomic header/line saves; invoice
+follow-up and navigation remain page-owned. Fictional save/reopen
 fixtures verify complete payloads, retries and persisted field behavior.
 
 [Invoice registry mapping](V8.20-INVOICE-REGISTRY-MAPPING-CLEANUP.md)
@@ -373,3 +375,14 @@ slow saves stay pending until acknowledged. Financial follow-up occurs afterward
 These repairs are released as 0fec1ff9 after both exact-SHA jobs, full build,
 SDK/offline evidence and fresh candidate/production roles/readback. Further
 cleanup remains a separately scoped slice, with concurrency/outbox work open.
+
+## Saved-order header mapping follow-up
+
+Following the released Shipping lifecycle repairs, the owner authorized the
+[saved-header mapping slice](V8.20-SHIPMENT-HEADER-MAPPING-CLEANUP.md). The exact
+editable-field whitelist now belongs to orderEditFields in shipping.js; the page
+retains record isolation, guarded reads, Retry and acknowledged atomic-save
+sequencing. Full field/default and legacy/Woo contracts are verified with fictional
+records before the normal exact-SHA and two-role release gates. Release status is
+tracked in that record. Concurrent editing and durable cross-system financial
+synchronization remain separately scoped design tasks.
