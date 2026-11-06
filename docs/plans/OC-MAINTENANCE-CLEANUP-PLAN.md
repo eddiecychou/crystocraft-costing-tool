@@ -404,3 +404,8 @@ After its release, pause routine Shipping presentation extraction for a bounded
 health/ownership review. Select broader roadmap work by measured maintenance
 burden. Quote conversion/creation orchestration, totals composition, concurrent
 editing and durable financial synchronization require separately reviewed scopes.
+
+Header/navigation is released as af53c1b3 after exact source restoration,
+17 Chrome cases, 44 identical screenshot pairs, full build, both GitHub jobs and
+fresh candidate/production admin/customer plus real-tab/readback checks. The next
+step is the separately proposed bounded Shipping health/ownership review.

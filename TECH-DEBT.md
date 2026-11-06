@@ -38,8 +38,9 @@ remain separate work. [Correction and limits](docs/plans/V8.20-SHIPPING-LIFECYCL
 
 6 November: page header/navigation presentation now has a controlled component;
 ShipmentForm retains state, allocation/save/read sequencing and actual tab content.
-The owner-authorized slice preserves markup and behavior; release gates and
-evidence are tracked in its record. Pause further routine Shipping extraction
+The owner-authorized slice is released as af53c1b3 after source/browser
+parity, full build, both exact-SHA jobs and fresh candidate/production roles
+and view-only real-tab/readback checks. Pause further routine Shipping extraction
 for a bounded health/ownership review after release.
 [Header/navigation slice](docs/plans/V8.20-SHIPMENT-NAVIGATION-CLEANUP.md).
 
