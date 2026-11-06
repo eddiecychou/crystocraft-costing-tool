@@ -13,7 +13,7 @@ import LoadingBar from '../components/LoadingBar'
 export default function CrystalComponents() {
  const [rows,setRows]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[search,setSearch]=useState(''),[params,setParams]=useSearchParams()
  const [stocks,setStocks]=useState(null),[stockSearch,setStockSearch]=useState('Strass'),[selected,setSelected]=useState(''),[origin,setOrigin]=useState('swarovski_strass'),[reviewed,setReviewed]=useState(false),[busy,setBusy]=useState(false)
- const supply=useCan('supply'),navigate=useNavigate(),view=params.get('view')||'all'
+ const can=useCan(),supply=can('supply'),navigate=useNavigate(),view=params.get('view')||'all'
  const load=()=>{setLoading(true);setError('');Promise.all([listCrystalProducts({includeDrafts:true}),listCrystalSwatches()]).then(([products,samples])=>{const fabric=fabricCatalogueEntry(samples);setRows([...products,...(fabric?[fabric]:[])])}).catch(()=>setError('Catalogue could not be loaded. Please retry.')).finally(()=>setLoading(false))}
  useEffect(load,[])
  async function openStock(){setError('');try{setStocks((await getDocs(collection(db,'crystals'))).docs.map(d=>({...d.data(),id:d.id})))}catch{setError('Stock records could not be loaded. Please retry.')}}

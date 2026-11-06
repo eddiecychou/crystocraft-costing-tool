@@ -30,7 +30,7 @@ before(async () => {
   await build({entryPoints:['src/pages/SupplierQuoteForm.jsx'],outfile:join(scratch,'form.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{
     name:'isolated-quote-boundaries',setup(b) {
       b.onResolve({filter:/^(react(?:\/.*)?|lucide-react)$/},a=>({path:require.resolve(a.path),external:true}))
-      b.onResolve({filter:/^(react-router-dom|firebase\/firestore|firebase\/storage)$|(^|\/)firebase$/},a=>({path:a.path,namespace:'fixture'}))
+      b.onResolve({filter:/^(react-router-dom|firebase\/firestore|firebase\/storage)$|(^|\/)(firebase|criticalComponents)$/},a=>({path:a.path,namespace:'fixture'}))
       b.onLoad({filter:/.*/,namespace:'fixture'},a=>({loader:'js',contents:
         a.path==='react-router-dom' ? `import React from 'react';export const useParams=()=>({productId:'p',componentId:'c',quoteId:'q'});export const useNavigate=()=>to=>globalThis.__quoteSave.destination=to;export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children);` :
         a.path==='firebase/firestore' ? `
@@ -45,6 +45,7 @@ before(async () => {
             for(const [p,d] of pending)await updateDoc(p,d);
           }
           export const addDoc=async()=>{throw Error('No duplicate quotes')},deleteDoc=async()=>{throw Error('No deletions')};` :
+        /(^|\/)criticalComponents$/.test(a.path) ? `const fail=async()=>{throw Error('Corporate quotes must not use the Range writer')};export{fail as saveComponentQuote,fail as deleteComponentQuote};` :
         a.path==='firebase/storage' ? `export const ref=()=>{},uploadBytes=async()=>{throw Error('No upload expected')},getDownloadURL=async()=>{throw Error('No upload expected')};` :
         `export const db={},storage={},authHeader=async()=>{throw Error('No extraction expected')};`
       }))

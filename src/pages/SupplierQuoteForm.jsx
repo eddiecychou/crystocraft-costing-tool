@@ -7,14 +7,37 @@ import { CURRENCIES } from '../constants'
 import { FolderOpen, Paperclip, FileText, X, Copy, ChevronUp, ChevronDown } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { sameFirestoreValue } from '../firestoreValue'
+import { saveComponentQuote, deleteComponentQuote } from '../criticalComponents'
 
-export default function SupplierQuoteForm() {
-  const { productId, componentId, quoteId } = useParams()
+export default function SupplierQuoteForm({ mode = 'corp' }) {
+  const params = useParams()
+  // Quote state and pending work belong to this exact route, including when
+  // Router reuses the page for another catalogue variant or a new quote.
+  return <SupplierQuoteEditor key={JSON.stringify([mode, params.productId, params.variantId, params.componentId || params.id, params.quoteId])} mode={mode} />
+}
+
+function SupplierQuoteEditor({ mode }) {
+  const { productId, variantId, componentId: routeComponentId, id, quoteId } = useParams()
+  const isRange = mode === 'range'
+  const componentId = routeComponentId || (isRange ? id : '')
+  const isCrystal = isRange && Boolean(productId)
+  const context = isCrystal ? { crystal_product_id: productId, crystal_variant_id: variantId } : undefined
+  const backUrl = isCrystal ? `/crystal-components/${productId}`
+    : isRange ? `/components/critical/${componentId}` : `/products/${productId}/components/${componentId}`
+  const quoteRef = () => isRange
+    ? doc(db, 'range_components', componentId, 'supplier_quotes', quoteId)
+    : doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', quoteId)
   const navigate = useNavigate()
   const isEdit = Boolean(quoteId)
   const fileIdRef = useRef(0)
   const originalQuoteRef = useRef(null)
   const saveErrorRef = useRef(null)
+  const busy = useRef(false)
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
 
   const [suppliers, setSuppliers] = useState([])
   const [showCopyPicker, setShowCopyPicker] = useState(false)
@@ -48,6 +71,8 @@ export default function SupplierQuoteForm() {
   const [componentName, setComponentName] = useState('')
   const [extractError, setExtractError]   = useState('')
   const [saveError, setSaveError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [loadRevision, setLoadRevision] = useState(0)
   const [supplierFiles, setSupplierFiles] = useState(null)
   const [supplierFilesLoading, setSupplierFilesLoading] = useState(false)
   const [supplierFilesError, setSupplierFilesError] = useState('')
@@ -56,50 +81,74 @@ export default function SupplierQuoteForm() {
     if (saveError) saveErrorRef.current?.focus()
   }, [saveError])
 
-  useEffect(() => {
-    const loads = [
-      getDocs(query(collection(db, 'suppliers'), orderBy('name'))).then(snap =>
-        setSuppliers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      ),
-      getDoc(doc(db, 'products', productId)).then(s => setProductName(s.data()?.name || '')),
-      getDoc(doc(db, 'products', productId, 'components', componentId)).then(s => setComponentName(s.data()?.name || '')),
-    ]
-
-    if (isEdit) {
-      loads.push(
-        getDoc(doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', quoteId)).then(snap => {
-          if (snap.exists()) {
-            const d = snap.data()
-            const loaded = {
-              supplier_id: d.supplier_id || '',
-              supplier_name: d.supplier_name || '',
-              unit_cost: d.unit_cost ?? '',
-              unit_cost_currency: d.unit_cost_currency || 'RMB',
-              moq: d.moq ?? '',
-              tooling_sample_cost: d.tooling_sample_cost ?? '',
-              tooling_sample_cost_currency: d.tooling_sample_cost_currency || 'RMB',
-              tooling_lead_time_days: d.tooling_lead_time_days ?? '',
-              sampling_lead_time_days: d.sampling_lead_time_days ?? '',
-              production_lead_time_days: d.production_lead_time_days ?? '',
-              is_preferred: d.is_preferred || false,
-              notes: d.notes || '',
-            }
-            setForm(loaded)
-            originalQuoteRef.current = { form: loaded, tiers: d.volume_tiers || [], attachments: d.attachments || [] }
-            setExistingAttachments(d.attachments || [])
-            setVolumeTiers(d.volume_tiers || [])
-          }
-        })
-      )
+  async function readRangeContext(reader = getDoc) {
+    if (!componentId || isCrystal && !variantId) throw new Error('This quote link is incomplete. Return to the component and reopen its supplier quote.')
+    const component = await reader(doc(db, 'range_components', componentId))
+    if (!component.exists()) throw new Error('The private cost component could not be found.')
+    if (!isCrystal) return { component: component.data() }
+    const [product, variant] = await Promise.all([
+      reader(doc(db, 'crystal_products', productId)),
+      reader(doc(db, 'crystal_products', productId, 'variants', variantId)),
+    ])
+    if (!product.exists() || !variant.exists()) throw new Error('The Crystal Component or its variant could not be found.')
+    const c = component.data(), v = variant.data()
+    if (c.crystal_product_id !== productId || c.crystal_variant_id !== variantId || typeof v.unit !== 'string' || !v.unit.trim() || c.crystal_catalogue_unit !== v.unit) {
+      throw new Error('The private cost component no longer matches this Crystal Component variant. Return to the product and reopen its supplier quote.')
     }
+    return { component: c, product: product.data(), variant: v }
+  }
 
-    Promise.all(loads).then(() => setFetching(false))
-  }, [productId, componentId, quoteId, isEdit])
+  useEffect(() => {
+    let alive = true
+    setFetching(true); setLoadError('')
+    const load = async () => {
+      const [supplierSnap, details, quote] = await Promise.all([
+        getDocs(query(collection(db, 'suppliers'), orderBy('name'))),
+        isRange ? readRangeContext() : Promise.all([
+          getDoc(doc(db, 'products', productId)),
+          getDoc(doc(db, 'products', productId, 'components', componentId)),
+        ]).then(([product, component]) => ({ product: product.data(), component: component.data() })),
+        isEdit ? getDoc(quoteRef()) : Promise.resolve(null),
+      ])
+      if (!alive) return
+      if (isRange && isEdit && !quote.exists()) throw new Error('This supplier quote could not be found. Return to the component before adding a new quote.')
+      setSuppliers(supplierSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setProductName(details.product?.name || (isRange ? 'Components' : ''))
+      setComponentName(isCrystal
+        ? [details.variant.code, details.variant.label || details.component.name].filter(Boolean).join(' · ')
+        : details.component?.name || details.component?.code || '')
+      if (quote?.exists()) {
+        const d = quote.data()
+        const loaded = {
+          supplier_id: d.supplier_id || '',
+          supplier_name: d.supplier_name || '',
+          unit_cost: d.unit_cost ?? '',
+          unit_cost_currency: d.unit_cost_currency || 'RMB',
+          moq: d.moq ?? '',
+          tooling_sample_cost: d.tooling_sample_cost ?? '',
+          tooling_sample_cost_currency: d.tooling_sample_cost_currency || 'RMB',
+          tooling_lead_time_days: d.tooling_lead_time_days ?? '',
+          sampling_lead_time_days: d.sampling_lead_time_days ?? '',
+          production_lead_time_days: d.production_lead_time_days ?? '',
+          is_preferred: d.is_preferred || false,
+          notes: d.notes || '',
+        }
+        setForm(loaded)
+        originalQuoteRef.current = { form: loaded, tiers: d.volume_tiers || [], attachments: d.attachments || [] }
+        setExistingAttachments(d.attachments || [])
+        setVolumeTiers(d.volume_tiers || [])
+      }
+    }
+    load().catch(error => { if (alive) setLoadError(error.message || 'This quote could not be loaded. Please retry.') })
+      .finally(() => { if (alive) setFetching(false) })
+    return () => { alive = false }
+  }, [productId, variantId, componentId, quoteId, isEdit, isRange, isCrystal, loadRevision])
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
   function setCheck(field) { return e => setForm(f => ({ ...f, [field]: e.target.checked })) }
 
   function addFiles(rawFiles) {
+    if (busy.current) return
     const newFiles = rawFiles.map(file => ({
       _id: ++fileIdRef.current,
       file,
@@ -117,6 +166,7 @@ export default function SupplierQuoteForm() {
 
   function handleDrop(e) {
     e.preventDefault()
+    if (busy.current) return
     setDragOver(false)
     const raw = Array.from(e.dataTransfer.files).filter(
       f => f.type.startsWith('image/') || f.type === 'application/pdf'
@@ -129,7 +179,7 @@ export default function SupplierQuoteForm() {
   }
 
   async function extractFromFile(file) {
-    if (isEdit) return
+    if (isEdit || busy.current || !mounted.current) return
     setExtracting(true)
     setExtractError('')
     try {
@@ -143,14 +193,17 @@ export default function SupplierQuoteForm() {
         mimeType = 'image/png'
       }
 
+      const auth = await authHeader()
+      if (!mounted.current) return
       const res = await fetch('/api/process-quote', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+        headers: { 'Content-Type': 'application/json', ...auth },
         body: JSON.stringify({ image: base64, mimeType }),
       })
 
       if (!res.ok) throw new Error('Extraction failed')
       const data = await res.json()
+      if (!mounted.current) return
 
       setForm(f => ({
         ...f,
@@ -164,23 +217,26 @@ export default function SupplierQuoteForm() {
         production_lead_time_days: data.production_lead_time_days ?? f.production_lead_time_days,
       }))
     } catch {
-      setExtractError('Could not extract data from image — please fill in manually.')
+      if (mounted.current) setExtractError('Could not extract data from image — please fill in manually.')
     } finally {
-      setExtracting(false)
+      if (mounted.current) setExtracting(false)
     }
   }
 
   // Reuse an existing supplier PDF/image; linking does not run extraction or upload.
   async function loadSupplierFiles() {
+    if (busy.current || !form.supplier_id) return
     setSupplierFilesLoading(true); setSupplierFilesError('')
     const supplierId = form.supplier_id
     try {
       const snap = await getDocs(collection(db, 'suppliers', supplierId, 'catalogs'))
+      if (!mounted.current) return
       setSupplierFiles({supplierId, rows:snap.docs.map(d => ({id:d.id, ...d.data()})).filter(f => f.file_url && (f.file_type === 'application/pdf' || f.file_type?.startsWith('image/')))})
-    } catch { setSupplierFilesError('Supplier files could not be loaded. Please retry.') }
-    finally { setSupplierFilesLoading(false) }
+    } catch { if (mounted.current) setSupplierFilesError('Supplier files could not be loaded. Please retry.') }
+    finally { if (mounted.current) setSupplierFilesLoading(false) }
   }
   function attachSupplierFile(file) {
+    if (busy.current) return
     setExistingAttachments(prev => prev.some(a => a.file_url === file.file_url) ? prev : [...prev, {
       file_url:file.file_url, file_name:file.file_name, file_type:file.file_type === 'application/pdf' ? 'pdf' : 'image',
       storage_path:file.storage_path || '', supplier_file_id:file.id, ai_extracted:false,
@@ -241,12 +297,16 @@ export default function SupplierQuoteForm() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (busy.current || fetching || loadError || extracting) return
+    busy.current = true
     setLoading(true)
     setUploading(true)
     setSaveError('')
 
     try {
-      const path = `products/${productId}/components/${componentId}/quotes`
+      if (isRange) await readRangeContext()
+      if (!mounted.current) return
+      const path = isRange ? `range_components/${componentId}/quotes` : `products/${productId}/components/${componentId}/quotes`
       const uploadedAttachments = await Promise.all(
         files.map(async ({ file }) => {
           const isPdf = file.type === 'application/pdf'
@@ -261,6 +321,7 @@ export default function SupplierQuoteForm() {
           return { file_url: url, file_name: file.name, file_type: isPdf ? 'pdf' : 'image', ai_extracted: extracting, uploaded_at: new Date().toISOString() }
         })
       )
+      if (!mounted.current) return
       setUploading(false)
 
       const original = originalQuoteRef.current
@@ -268,16 +329,18 @@ export default function SupplierQuoteForm() {
         sameFirestoreValue(form, original.form) &&
         sameFirestoreValue(volumeTiers, original.tiers)
       if (attachmentsOnly) {
-        const quoteRef = doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', quoteId)
+        const existingQuoteRef = quoteRef()
         await runTransaction(db, async tx => {
-          const latest = await tx.get(quoteRef)
+          if (isRange) await readRangeContext(ref => tx.get(ref))
+          const latest = await tx.get(existingQuoteRef)
+          if (!mounted.current) throw new Error('This quote editor is no longer open. Reopen the quote before saving.')
           if (!latest.exists() || !sameFirestoreValue(latest.data().attachments || [], original.attachments)) {
             throw new Error('Attachments changed in another session. Reopen this quote before saving.')
           }
           // Never rewrite approved prices, notes or supplier preference from an open form.
-          tx.update(quoteRef, {attachments:[...existingAttachments, ...uploadedAttachments]})
+          tx.update(existingQuoteRef, {attachments:[...existingAttachments, ...uploadedAttachments]})
         })
-        navigate(`/products/${productId}/components/${componentId}`)
+        if (mounted.current) navigate(backUrl)
         return
       }
 
@@ -300,50 +363,77 @@ export default function SupplierQuoteForm() {
           .sort((a, b) => a.min_qty - b.min_qty),
       }
 
-      const basePath = collection(db, 'products', productId, 'components', componentId, 'supplier_quotes')
-
-      // If marking as preferred, clear is_preferred on all other quotes for this component first
-      if (payload.is_preferred) {
-        const existing = await getDocs(basePath)
-        await Promise.all(
-          existing.docs
-            .filter(d => d.id !== quoteId)
-            .map(d => updateDoc(d.ref, { is_preferred: false }))
-        )
-      }
-
-      if (isEdit) {
-        await updateDoc(doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', quoteId), payload)
+      if (isRange) {
+        // Crystal context is checked again atomically by the domain writer.
+        // Ordinary Range callers keep the existing save/preference semantics.
+        await saveComponentQuote(componentId, isEdit ? quoteId : null, payload, context)
       } else {
-        await addDoc(basePath, { ...payload, createdAt: serverTimestamp() })
+        const basePath = collection(db, 'products', productId, 'components', componentId, 'supplier_quotes')
+        // If marking as preferred, clear is_preferred on all other quotes for this component first
+        if (payload.is_preferred) {
+          const existing = await getDocs(basePath)
+          if (!mounted.current) return
+          await Promise.all(
+            existing.docs
+              .filter(d => d.id !== quoteId)
+              .map(d => updateDoc(d.ref, { is_preferred: false }))
+          )
+        }
+        if (!mounted.current) return
+        if (isEdit) await updateDoc(quoteRef(), payload)
+        else await addDoc(basePath, { ...payload, createdAt: serverTimestamp() })
       }
 
-      navigate(`/products/${productId}/components/${componentId}`)
+      if (mounted.current) navigate(backUrl)
     } catch (err) {
-      setSaveError(err.message || 'Could not save this quote. Your changes are still here.')
+      if (mounted.current) setSaveError(err.message || 'Could not save this quote. Your changes are still here.')
     } finally {
-      setLoading(false)
-      setUploading(false)
+      busy.current = false
+      if (mounted.current) { setLoading(false); setUploading(false) }
+    }
+  }
+
+  async function handleDelete() {
+    if (busy.current || fetching || loadError) return
+    busy.current = true; setLoading(true); setSaveError('')
+    try {
+      if (isRange) await readRangeContext()
+      if (!mounted.current) return
+      if (isRange) await deleteComponentQuote(componentId, quoteId, context)
+      else await deleteDoc(quoteRef())
+      if (mounted.current) navigate(backUrl)
+    } catch (error) {
+      if (mounted.current) { setConfirmDelete(false); setSaveError(error.message || 'Could not delete this quote.') }
+    } finally {
+      busy.current = false
+      if (mounted.current) setLoading(false)
     }
   }
 
   if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
+  if (loadError) return (
+    <div className="p-4 md:p-6 max-w-2xl space-y-4">
+      <Link to={backUrl} className="text-sm text-brand-600">← {isCrystal ? 'Crystal Component' : isRange ? 'Component' : 'Product'}</Link>
+      <p role="alert" className="card p-4 text-sm text-brand-600 break-words">{loadError}</p>
+      <button type="button" className="btn-secondary" onClick={() => { setFetching(true); setLoadRevision(value => value + 1) }}>Retry</button>
+    </div>
+  )
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <div className="text-sm text-ink-60 mb-1">
-          <Link to={`/products/${productId}`} className="hover:text-brand-600">{productName}</Link>
+          <Link to={isCrystal ? backUrl : isRange ? '/components' : `/products/${productId}`} className="hover:text-brand-600">{productName}</Link>
           {' / '}
-          <Link to={`/products/${productId}/components/${componentId}`} className="hover:text-brand-600">{componentName}</Link>
+          <Link to={backUrl} className="hover:text-brand-600">{componentName}</Link>
         </div>
         <h1 className="text-2xl text-ink">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
       </div>
 
       {/* Copy from previous quote */}
-      {!isEdit && (
+      {!isEdit && !isRange && (
         <div className="flex justify-end mb-3">
-          <button type="button" onClick={openCopyPicker} className="btn-secondary text-sm inline-flex items-center gap-1.5">
+          <button type="button" disabled={loading} onClick={openCopyPicker} className="btn-secondary text-sm inline-flex items-center gap-1.5">
             <Copy size={14} />Copy from Previous Quote
           </button>
         </div>
@@ -364,16 +454,16 @@ export default function SupplierQuoteForm() {
           <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <Paperclip size={22} />}</span>
           <span className="text-sm text-ink-70">{dragOver ? 'Drop to upload' : 'Click to upload or drag & drop'}</span>
           <span className="text-xs text-ink-60 mt-0.5">JPG, PNG, WebP, HEIC, PDF</span>
-          <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={handleFileChange} />
+          <input type="file" accept="image/*,.pdf" multiple className="hidden" disabled={loading} onChange={handleFileChange} />
         </label>
 
         {form.supplier_id && <div className="mt-3 space-y-2">
-          <button type="button" disabled={supplierFilesLoading} className="btn-secondary text-xs min-h-11" onClick={loadSupplierFiles}>{supplierFilesLoading ? 'Loading supplier files…' : 'Choose supplier file'}</button>
+          <button type="button" disabled={supplierFilesLoading || loading} className="btn-secondary text-xs min-h-11" onClick={loadSupplierFiles}>{supplierFilesLoading ? 'Loading supplier files…' : 'Choose supplier file'}</button>
           {supplierFilesError && <p role="alert" className="text-sm text-brand-600">{supplierFilesError}</p>}
           {supplierFiles?.supplierId === form.supplier_id && <ul className="divide-y divide-warm-grey">
             {supplierFiles.rows.map(file => <li key={file.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span className="text-sm break-words min-w-0">{file.file_name}</span>
-              <button type="button" disabled={existingAttachments.some(a => a.file_url === file.file_url)} className="btn-secondary text-xs min-h-11" onClick={() => attachSupplierFile(file)}>{existingAttachments.some(a => a.file_url === file.file_url) ? 'Attached' : 'Attach file'}</button>
+              <button type="button" disabled={loading || existingAttachments.some(a => a.file_url === file.file_url)} className="btn-secondary text-xs min-h-11" onClick={() => attachSupplierFile(file)}>{existingAttachments.some(a => a.file_url === file.file_url) ? 'Attached' : 'Attach file'}</button>
             </li>)}
             {!supplierFiles.rows.length && <li className="text-sm text-ink-60 py-2">No PDF or image files saved for this supplier.</li>}
           </ul>}
@@ -387,11 +477,11 @@ export default function SupplierQuoteForm() {
                   ? <div className="w-12 h-12 rounded-none bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><FileText size={20} className="text-red-400" /></div>
                   : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded-none shrink-0" />}
                 <span className="text-xs text-ink-70 flex-1 truncate">{f.file.name}</span>
-                <button type="button" onClick={() => removeFile(f._id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                <button type="button" disabled={loading} onClick={() => removeFile(f._id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
               </div>
             ))}
             {!isEdit && files.length > 1 && (
-              <button type="button" className="btn-secondary w-full justify-center text-xs" onClick={handleExtractAll} disabled={extracting}>
+              <button type="button" className="btn-secondary w-full justify-center text-xs" onClick={handleExtractAll} disabled={extracting || loading}>
                 {extracting ? 'Extracting…' : `Extract Data from First Image`}
               </button>
             )}
@@ -421,6 +511,7 @@ export default function SupplierQuoteForm() {
                   }
                   <button
                     type="button"
+                    disabled={loading}
                     onClick={() => setExistingAttachments(prev => prev.filter((_, idx) => idx !== i))}
                     className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full leading-none flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity"
                     title="Remove attachment"
@@ -434,6 +525,7 @@ export default function SupplierQuoteForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
+      <fieldset disabled={loading} className="space-y-5 min-w-0">
         {/* Supplier — searchable combobox */}
         <div>
           <label className="label">Supplier *</label>
@@ -540,10 +632,10 @@ export default function SupplierQuoteForm() {
         {saveError && <p ref={saveErrorRef} role="alert" tabIndex={-1} className="text-sm text-brand-600">{saveError}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div className="flex gap-3">
-            <button type="submit" className="btn-primary" disabled={loading}>
+            <button type="submit" className="btn-primary" disabled={loading || extracting}>
               {uploading ? 'Uploading images…' : loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Quote'}
             </button>
-            <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
+            <button type="button" className="btn-secondary" onClick={() => navigate(isRange ? backUrl : -1)}>Cancel</button>
           </div>
           {isEdit && (
             <button
@@ -555,16 +647,14 @@ export default function SupplierQuoteForm() {
             </button>
           )}
         </div>
+      </fieldset>
       </form>
 
       {confirmDelete && (
         <ConfirmDialog
           title="Delete Quote"
           message="Delete this supplier quote? This cannot be undone."
-          onConfirm={async () => {
-            await deleteDoc(doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', quoteId))
-            navigate(`/products/${productId}/components/${componentId}`)
-          }}
+          onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)}
         />
       )}

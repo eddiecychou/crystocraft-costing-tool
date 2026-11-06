@@ -1,6 +1,6 @@
 import {collection,doc,getDoc,getDocs,query,where,runTransaction,serverTimestamp} from 'firebase/firestore'
 import {db} from './firebase'
-import {photoAssets} from './crystalSwatches'
+import {photoAssets,readSwatchPhoto} from './crystalSwatches'
 import {cleanCrystalProduct,cleanCrystalVariant,draftFromCrystalStock,validCrystalId} from './domain/crystalProducts'
 const records=s=>s.docs.map(d=>({...d.data(),id:d.id}))
 export async function listCrystalProducts({includeDrafts=false}={}) {
@@ -26,16 +26,32 @@ async function saveRevision(ref,values,expectedRevision) {
 }
 export const saveCrystalProduct=({id,values,expectedRevision=0})=>saveRevision(doc(db,'crystal_products',id),cleanCrystalProduct({...values,publication:expectedRevision?values.publication:'draft'}),expectedRevision)
 export const saveCrystalVariant=({productId,id,values,expectedRevision=0})=>saveRevision(doc(db,'crystal_products',productId,'variants',id),cleanCrystalVariant(values),expectedRevision)
-export async function saveCrystalImage({productId,id,file,alt,publication='published',expectedRevision=0,onPrepared}) {
+export async function saveCrystalImage({productId,id,file,croppedBlob,alt,publication='published',expectedRevision=0,onPrepared}) {
+ if(croppedBlob&&!file)throw Error('The original photograph is required for an edited copy.')
  const ref=doc(db,'crystal_products',productId,'images',id)
  let current=expectedRevision,media
  if(!current){current=await saveRevision(ref,{alt:String(alt||'').slice(0,200),publication:'draft',media:null},0);onPrepared?.(current)}
- if(file)media=await photoAssets(productId,file,null,(_,hash,mime)=>{
+ if(file)media=await photoAssets(productId,file,croppedBlob,(_,hash,mime)=>{
   const base='crystal-products/'+productId+'/'+id+'/'+hash
   return {original:base+'/original.'+(mime==='image/png'?'png':mime==='image/webp'?'webp':'jpg'),display:base+'/display.jpg',thumbnail:base+'/thumbnail.jpg'}
  })
  const previous=await getDoc(ref)
  return saveRevision(ref,{alt:String(alt||'').slice(0,200),publication,media:media||previous.data()?.media||null},current)
+}
+export function crystalImageDownloadName(name,image) {
+ const clean=value=>[...String(value||'').replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g,'-').trim().replace(/[. ]+$/,'')].slice(0,140).join('')
+ const extension=image?.media?.mime==='image/png'?'png':image?.media?.mime==='image/webp'?'webp':'jpg'
+ return (clean(name)||'Crystal component')+' - '+(clean(image?.id)||'photo')+'.'+extension
+}
+export async function downloadCrystalImage(image,name) {
+ if(!image?.media?.original)throw Error('The original photograph is unavailable.')
+ const blob=await readSwatchPhoto(image.media.original),url=URL.createObjectURL(blob),a=document.createElement('a')
+ a.href=url;a.download=crystalImageDownloadName(name,image)
+ try{document.body.appendChild(a);a.click()}finally{
+  a.remove()
+  // Keep the authenticated bytes alive long enough for the native download to start.
+  setTimeout(()=>URL.revokeObjectURL(url),60000)
+ }
 }
 export async function loadCrystalMapping(productId,variantId) {
  const snap=await getDoc(doc(db,'crystal_product_private',productId,'variants',variantId));return snap.exists()?snap.data():null

@@ -255,6 +255,8 @@ function AdminApp({ user, profile, role }) {
                 <Route path="/uc-registry" element={<Gate module="uc"><UcRegistry /></Gate>} />
                 <Route path="/crystal-components" element={<Gate module="swatch"><CrystalComponents /></Gate>} />
                 <Route path="/crystal-components/:id" element={<Gate module="swatch"><CrystalComponentForm /></Gate>} />
+                <Route path="/crystal-components/:productId/variants/:variantId/costing/:componentId/quotes/new" element={<Gate module="swatch"><Gate module="supply"><SupplierQuoteForm mode="range" /></Gate></Gate>} />
+                <Route path="/crystal-components/:productId/variants/:variantId/costing/:componentId/quotes/:quoteId" element={<Gate module="swatch"><Gate module="supply"><SupplierQuoteForm mode="range" /></Gate></Gate>} />
                 <Route path="/swatch-library" element={<Gate module="swatch"><SwatchLibrary /></Gate>} />
                 <Route path="/components/critical/new" element={<Gate module="supply"><RangeComponentForm /></Gate>} />
                 <Route path="/components/critical/:id/quotes/new" element={<Gate module="supply"><RangeQuoteForm /></Gate>} />

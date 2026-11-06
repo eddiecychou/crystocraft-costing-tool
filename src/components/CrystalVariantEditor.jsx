@@ -17,7 +17,7 @@ export default function CrystalVariantEditor({product,variant,samples,onSaved,on
  {error&&<p role="alert" className="text-sm text-brand-700">{error}</p>}<div className="flex gap-2"><button disabled={busy} className="btn-secondary min-h-11" onClick={save}>{busy?'Saving…':'Save variant'}</button><button disabled={busy} className="btn-ghost min-h-11" onClick={onClose}>Cancel variant</button></div></section>
 }
 export function CrystalStockLink({product,variant}) {
- const canSupply=useCan('supply'),[mapping,setMapping]=useState(null),[stocks,setStocks]=useState([]),[open,setOpen]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false),[search,setSearch]=useState('')
+ const can=useCan(),canSupply=can('supply'),[mapping,setMapping]=useState(null),[stocks,setStocks]=useState([]),[open,setOpen]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false),[search,setSearch]=useState('')
  useEffect(()=>{setOpen(false);setMapping(null);setError('')},[variant.id,product.id])
  async function load(){setBusy(true);setError('');try{const [m,s]=await Promise.all([loadCrystalMapping(product.id,variant.id),getDocs(collection(db,'crystals'))]);setMapping(m||{inventory_id:'',stock_per_unit:1,reviewed:false,notes:''});setStocks(s.docs.map(d=>({...d.data(),id:d.id})));setOpen(true)}catch{setError('Stock link could not be loaded.')}finally{setBusy(false)}}
  async function save(){setBusy(true);setError('');try{await saveCrystalMapping(product.id,variant.id,{...mapping,catalogue_unit:variant.unit});setOpen(false)}catch(e){setError(e.message)}finally{setBusy(false)}}

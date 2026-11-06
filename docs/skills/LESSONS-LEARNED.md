@@ -1,5 +1,28 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## Crystal costing must reuse private records and the actual permission API
+
+6 November 2026: `useCan()` returns a predicate; `useCan('supply')` still returns
+that function and is truthy for every role. Call `const can = useCan()` then
+`can('supply')`. Use the actual AccessContext in privacy tests; a fixture that
+substitutes a boolean can hide this error. Supply-only Firestore/Storage rules
+remain the boundary, but unauthorized controls must neither mount nor fetch.
+
+Crystal catalogue variants are customer-readable. Put supplier linkage only on
+the existing private internal component, keep its original quote/PDF and use
+the actual variant document ID, not its human code. Linking is not permission
+to replace stock mappings, approved costs or preferred suppliers. The existing
+`crystalCosting.js` is a different stone-price library; the new supplier link
+module is `crystalSupplierCosting.js`.
+
+Reuse workflows by contract, not visual resemblance: Corporate quote editing
+protects attachment-only updates, while legacy Range editing auto-extracts files.
+Likewise Crystal image files are immutable/protected; the Corporate gallery's
+replacement/token-URL model is unsuitable. Photo refresh must retain unsaved
+catalogue text and its original revision, and route changes must isolate editors.
+Supplier-page reads must not delete unresolved historical quotations.
+[Scope, migration and verification](../plans/V8.20-CRYSTAL-SUPPLIER-COSTING.md).
+
 ## Saved values and customer identities need distinct editing lifecycles
 
 3 November 2026: loading a recorded Woo checkout total into a general form header

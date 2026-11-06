@@ -90,6 +90,7 @@ wins on *facts*; skill wins on *rules and lessons*.
 | `../reference/MAINTENANCE-MAP.md` | Ownership boundaries, extracted CRM viewers/cards/dialogs and maintenance verification |
 | `../reference/ACCESS-CONTROL-MATRIX.md` | Bounded Daily Drafts client/helper/endpoint/rules contract matrix, test commands and migration limits; no policy change |
 | `../plans/OC-MAINTENANCE-CLEANUP-PLAN.md` | Ordered behaviour-preserving cleanup batches, completed/proposed status and acceptance gates |
+| `../plans/V8.20-CLEANUP-HANDOFF-2026-11-06.md` | Current cleanup stopping point through final financial Re-sync; open Shipping priorities, lessons and Crystal Components handoff |
 | `../plans/V8.20-SESSION-HANDOFF-2026-11-01.md` | Latest dated handoff for portal follow-up, size review, CRM cleanup and subsequent fixes; earlier business work links back to the 31 October handoff |
 | `../reference/OC-SIZE-SNAPSHOT-2026-11-01.md` | Historical per-module code/functions and Firebase size/count baseline with portable aggregate CSVs and measurement caveats |
 | `../../TECH-DEBT.md` | Known footguns / deliberate tradeoffs |
@@ -375,7 +376,8 @@ Existing swatch routes and capability remain.
 `crystal_migration_runs` is admin-only; existing `crystal_swatch_notes` is retained.
 `swatch-library` now forwards authenticated Firebase image reads, with no Fly
 password, token URL or bucket CORS change. Fly renderer/template calls stay parked.
-The third Crystal Components catalogue is still planned. Crystal fabric quotes
+The third Crystal Components catalogue and consolidated Fabric range are released;
+see the V8.19 sections below. Crystal fabric quotes
 use drawings/application, with area/adhesive/effects as internal estimates and no
 customer calculator. [Implementation plan](../plans/V8.19-CRYSTAL-COMPONENTS-PLAN.md).
 
@@ -578,6 +580,18 @@ photo, confirmed primary variant and reviewed stock mapping. No opening balances
 movements, stock reservations, prices or automatic quote/order adapter are added.
 Customer cart/enquiry/favourites and protected drawing/PDF exports have explicit third-source
 handling. See ../plans/V8.19-CRYSTAL-CATALOGUE-RELEASE.md for staged/live evidence.
+
+The owner-authorized V8.20 internal supplier-costing extension is tracked in
+[its implementation/migration record](../plans/V8.20-CRYSTAL-SUPPLIER-COSTING.md).
+`src/crystalSupplierCosting.js` and `CrystalSupplierCosting.jsx` link actual
+variants to existing supply-only `range_components` and their original supplier
+quotes. The shared Corporate quote editor supports a guarded range adapter;
+private associations/costs/source files never belong on `crystal_products`.
+`src/crystalCosting.js` remains the separate legacy stone-price library, not
+this new supplier-link module. CrystalProductImages preserves immutable files
+and protected reads. Consult the feature record for actual verification,
+migration and release state; the owner has authorized release subject to the
+exact-commit CI and candidate/production verification gates.
 
 ### V8.19 Crystal Fabric catalogue consolidation
 

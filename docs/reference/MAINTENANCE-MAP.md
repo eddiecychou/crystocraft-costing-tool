@@ -7,7 +7,9 @@ does not identify a deployment. The feature-area router in
 map of pages, business logic, endpoints and collections; this page explains
 ownership and the checks to use before changing those areas.
 The [staged cleanup plan](../plans/OC-MAINTENANCE-CLEANUP-PLAN.md) is the ordered
-backlog; [1 November handoff](../plans/V8.20-SESSION-HANDOFF-2026-11-01.md) links
+backlog; [6 November cleanup handoff](../plans/V8.20-CLEANUP-HANDOFF-2026-11-06.md)
+records the current stopping point, open debt and Crystal Components focus.
+The earlier [1 November handoff](../plans/V8.20-SESSION-HANDOFF-2026-11-01.md) links
 completed work and [size baseline](OC-SIZE-SNAPSHOT-2026-11-01.md). Plans and
 historical measurements do not authorize subsequent implementation or deletion.
 
@@ -30,7 +32,7 @@ candidate/production release verification. No client/rules change is included.
 | App shell, routes, access | src/App.jsx, src/access.js, src/components/Layout.jsx | Admin/staff/customer routing, capability keys, refresh and lazy loading; Firebase rules remain the data boundary |
 | Corporate Gifts and costing | Products/ProductDetail/ProductForm, domain/customer.js, pricing.js, pricingCore.js | Structured component quotes, stored precision, customer-price snapshots, product search and supplier-quote regressions |
 | Crystocraft Range | Range/RangeForm/RangeCosting, rangePersistence.js, rangeBomScope.js | Explicit variants, shared/per-colour BOM, code identity, visibility and costing; range/search/image checks |
-| Crystal Components and Fabric | CrystalComponents/CrystalComponentForm/SwatchLibrary, domain/crystalProducts.js, domain/crystalFabric.js | Separate own/clearance provenance, enquiry-first Fabric, immutable media, publication and private stock links; crystal product/swatch checks |
+| Crystal Components and Fabric | CrystalComponents/CrystalComponentForm/SwatchLibrary, domain/crystalProducts.js, domain/crystalFabric.js, CrystalSupplierCosting/crystalSupplierCosting.js, CrystalProductImages | Separate own/clearance provenance, enquiry-first Fabric, immutable media and private stock/cost links; existing quotes/PDFs and exact variants; crystal product/swatch/access checks. New feature release state: V8.20-CRYSTAL-SUPPLIER-COSTING.md |
 | CRM and dashboard | CustomerDetail, MarketingContacts, MarketingContactDetail, CustomerWorkspace, domain/customerWorkItems.js | Customer/lead separation, linked histories, task-first order and summary update state across navigation; customer-workspace and emulator checks |
 | Daily Drafts and marketing | marketing/DailyDrafts, domain/outreachDrafts.js, MARKETING-WORKFLOW.md | Human review before sending, cooldowns, lead/customer linking and sender identities; this cleanup does not move sending logic |
 | Suppliers, purchasing and stock | SupplierQuoteForm, purchaseOrders.js, poReceiptModel.js, poReceive.js, orderStock.js | Attachment-only saves, exact stock identity, append-only movements and transaction/idempotency boundaries; supplier quote, PO and reservation checks |

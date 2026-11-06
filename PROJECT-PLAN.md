@@ -1,3 +1,39 @@
+# V8.20 — Crystal supplier costing and image management — local, 6 November 2026
+
+Owner authorized internal per-variant supplier quotes/costing, exact Zfour reuse
+and easier images, plus a study of further improvements. The
+[feature record](docs/plans/V8.20-CRYSTAL-SUPPLIER-COSTING.md) documents scope,
+private ownership, migration before application, verification and proposed next
+improvements. Existing supplier/quote/attachment workflows are reused; customer
+catalogue/API/export fields stay public-only. Image upload/retry, description,
+preview/download, cover and non-destructive crop copies are implemented locally.
+
+The reviewed in-app migration linked the existing Zfour component to the exact
+Rosaline variant. Server readback preserves RMB 14.20, RMB 1,400, unknown MOQ/
+lead times, notes, preference, PDF and the public draft product/variant/photos.
+No duplicate records or stock changes. Local build/tests and admin/customer
+read/access verification pass; the linked feature record retains evidence limits.
+**Owner has now authorized commit, push and deployment after both GitHub checks,
+with candidate/production Zfour, image-download and customer-access verification.
+Release is in progress; see the feature record for its final evidence.**
+
+# V8.20 — Cleanup handoff and Crystal Components focus — 6 November 2026
+
+Owner requested documentation before switching modules. The
+[cleanup handoff](docs/plans/V8.20-CLEANUP-HANDOFF-2026-11-06.md) consolidates
+completed CRM/Daily Drafts/auth/Shipping work, the final 3022bfe release, evidence
+limits, lessons and open priorities. SH-03 customer no-deposit payable exports,
+SI recovery and subsequent lifecycle/design work remain open; no further
+Shipping correction is bundled with the focus change.
+
+The owner then authorized internal Crystal Components supplier quotes/costing
+per actual variant and easier image management, reusing existing workflows and
+the specified Zfour records/PDF. Document linking before applying it; keep costs
+and supplier attachments private. **Do not deploy this feature without approval.**
+The handoff records business decisions and entrypoints;
+[feature scope, study and pre-application migration](docs/plans/V8.20-CRYSTAL-SUPPLIER-COSTING.md)
+track implementation separately. This documentation does not deploy.
+
 # V8.20 — Financial Re-sync ownership correction — released, 6 November 2026
 
 Owner approved the next financial Re-sync batch. Normal saving/recovery now

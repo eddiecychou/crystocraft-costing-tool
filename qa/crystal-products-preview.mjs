@@ -41,6 +41,8 @@ export const loadCrystalProduct=async(id)=>{const p=window.__records['crystal_pr
 export const saveCrystalProduct=async({id,values,expectedRevision})=>{const v={...values,id,revision:expectedRevision+1};window.__writes.push({path:'crystal_products/'+id,value:v});window.__records['crystal_products/'+id]=v;return v.revision};
 export const saveCrystalVariant=async({productId,id,values})=>{window.__records['crystal_products/'+productId+'/variants/'+id]={...values,id,revision:1}};
 export const saveCrystalImage=async()=>{};
+export const crystalImageDownloadName=(name,image)=>(name||'Crystal component')+' - '+image.id+'.jpg';
+export const downloadCrystalImage=async()=>{};
 export const loadCrystalMapping=async(pid,vid)=>window.__records['crystal_product_private/'+pid+'/variants/'+vid]||null;
 export const saveCrystalMapping=async(pid,vid,values)=>{window.__lastMapping=values;window.__records['crystal_product_private/'+pid+'/variants/'+vid]=values};
 export const createCrystalStockDraft=async(stock,origin)=>{const id='cp_stock_'+stock.id;window.__writes.push({path:'crystal_products/'+id,origin,stock_id:stock.id});return id};
@@ -59,7 +61,8 @@ await build({entryPoints:['qa/crystal-products-preview.jsx'],outfile:out+'/app.j
  b.onResolve({filter:/(^|\/)(crystalSwatches|swatchLibraryApi)$/},()=>({path:'swatches',namespace:'fixture'}))
  b.onResolve({filter:/(^|\/)notify$/},()=>({path:'notify',namespace:'fixture'}))
  b.onResolve({filter:/(^|\/)crystalEnquiries$/},()=>({path:'enquiry',namespace:'fixture'}))
- b.onLoad({filter:/.*/,namespace:'fixture'},args=>({contents:{firestore:fsStub,firebase:firebaseStub,products:productStub,swatches:swatchStub,notify:'export const notifyEmail=(...v)=>window.__notifications.push(v)',enquiry:"export const validateCrystalEnquirySelections=async()=>{};export const uploadEnquiryDrawing=async(e,file,id)=>({path:'enquiry-files/qa_owner/'+e+'/'+id+'.pdf',name:file.name,sha256:'example'});export const downloadEnquiryAttachment=async()=>{}"}[args.path],resolveDir:process.cwd()}))
+ b.onResolve({filter:/(^|\/)CrystalSupplierCosting$/},()=>({path:'costing',namespace:'fixture'}))
+ b.onLoad({filter:/.*/,namespace:'fixture'},args=>({contents:{firestore:fsStub,firebase:firebaseStub,products:productStub,swatches:swatchStub,notify:'export const notifyEmail=(...v)=>window.__notifications.push(v)',costing:'export default function FictionalCostingBoundary(){return null}',enquiry:"export const validateCrystalEnquirySelections=async()=>{};export const uploadEnquiryDrawing=async(e,file,id)=>({path:'enquiry-files/qa_owner/'+e+'/'+id+'.pdf',name:file.name,sha256:'example'});export const downloadEnquiryAttachment=async()=>{}"}[args.path],resolveDir:process.cwd()}))
 }}]})
 execFileSync(process.execPath,['node_modules/tailwindcss/lib/cli.js','-i','src/index.css','-o',out+'/style.css'],{stdio:'pipe'})
 const files=await readdir('migration/crystal-swatches-v819.local/data/colors'),photo=files.find(f=>f.endsWith('.jpg'));await writeFile(out+'/photo.jpg',await readFile('migration/crystal-swatches-v819.local/data/colors/'+photo))

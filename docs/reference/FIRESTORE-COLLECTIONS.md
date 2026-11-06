@@ -106,6 +106,13 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 
 - `catalogues/{id}` (+ `items/{itemId}`) — Auth: **admin** only. Owned by `Catalogues.jsx`, `CatalogueForm.jsx`, `CataloguePreview.jsx`.
 - `range_components/{id}` — component costing for ranges. Auth: **staff** (V8.12).
+  - V8.20 Crystal supplier costing optionally adds supply-only `crystal_product_id`,
+    `crystal_variant_id`, `crystal_catalogue_unit`, code snapshots and
+    `crystal_linked_at`. One exact catalogue variant reuses this existing component
+    and its original nested quotes; these fields never belong on public Crystal
+    documents. A reviewed transaction writes only the six link fields, preserving
+    costing/stock. Existing descriptor merge saves retain them. See
+    [implementation and exact migration](../plans/V8.20-CRYSTAL-SUPPLIER-COSTING.md).
   - Proposed B0016 MCP exception (**not deployed**): only two narrowly shaped component creates with matching nested preferred `supplier_quotes`; Feihong RMB 11.30/MOQ 500 and RMB 2,912 one-time metal fee, Ryan RMB 8.10 source versus RMB 9.00 working/MOQ 100 per colour. No MCP update/delete or customer read. The preferred quote amounts are denormalized onto the component for `rangeCosting.js` and not counted twice.
   - `.../supplier_quotes/{quoteId}` — covered by the collection-group rule above. Auth: staff.
   - `.../movements/{movementId}` — append-only stock ledger (V7.13a) — see the inventory pattern below. Auth: staff.
@@ -220,6 +227,8 @@ Private Product Design project register and `/updates/{eventId}` immutable revis
 - crystal_product_private/{productId}/variants/{variantId}: Supply-only canonical crystals
   ID, explicit stock pieces per catalogue unit, review and private provenance notes.
   No editable balances. Original-stock publication requires this reviewed primary mapping.
+  This is stock availability only; supplier costing uses the private range component
+  link above and does not extend or replace this strict stock mapping.
 - Storage crystal-products/{productId}/{imageId}/{hash}/: immutable original/display/thumb;
   customer bytes go through /api/crystal-product-media, which checks the live profile,
   published parent and current published image path. Direct customer Storage reads denied.

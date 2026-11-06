@@ -1,7 +1,7 @@
 import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, deleteDoc, collection, collectionGroup, query, where, orderBy, onSnapshot, getDocs, writeBatch } from 'firebase/firestore'
+import { doc, getDoc, deleteDoc, collection, collectionGroup, query, where, orderBy, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -17,6 +17,7 @@ import { previewSupplierMerge, mergeSuppliers } from '../domain/supplierMerge'
 import { useT } from '../i18n'
 import { useCan } from '../access'
 import { listProductsBySupplier } from '../lib/firestore/products'
+import { crystalQuoteUrl } from '../crystalSupplierCosting'
 
 // Supplier Workstation Phase 1 — quick-access sourcing links. Order matters:
 // website first, then each marketplace's shop before its product/catalogue
@@ -329,15 +330,8 @@ export default function SupplierDetail() {
         _componentName: compNames[`${r.productId}::${r.componentId}`] || '',
       }))
 
-      // Auto-delete orphaned corp-gift quotes (parent product deleted)
-      const orphans = enrichedCorp.filter(r => !productNames[r.productId])
-      if (orphans.length) {
-        const batch = writeBatch(db)
-        orphans.forEach(r => {
-          batch.delete(doc(db, 'products', r.productId, 'components', r.componentId, 'supplier_quotes', r.id))
-        })
-        await batch.commit()
-      }
+      // Opening a supplier is read-only. Keep unresolved historical quotations
+      // intact; a missing parent is not authorization to delete source records.
 
       setQuotes(
         enrichedCorp
@@ -348,12 +342,17 @@ export default function SupplierDetail() {
       // ── Range components: resolve component names ──────────────────────
       const rcIds = [...new Set(rangeRaw.map(r => r.componentId))]
       const rcNames = {}
+      const rcLinks = {}
       await Promise.all(rcIds.map(cid =>
-        getDoc(doc(db, 'range_components', cid)).then(s => { rcNames[cid] = s.data()?.name || s.data()?.code || cid })
+        getDoc(doc(db, 'range_components', cid)).then(s => {
+          const c = s.data() || {}
+          rcNames[cid] = c.name || c.code || cid
+          rcLinks[cid] = { _crystalProductId:c.crystal_product_id || '', _crystalVariantId:c.crystal_variant_id || '', _crystalVariantCode:c.crystal_variant_code || '' }
+        })
       ))
       setRangeQuotes(
         rangeRaw
-          .map(r => ({ ...r, _componentName: rcNames[r.componentId] || r.componentId }))
+          .map(r => ({ ...r, _componentName: rcNames[r.componentId] || r.componentId, ...rcLinks[r.componentId] }))
           .sort((a, b) => a._componentName.localeCompare(b._componentName))
       )
     } catch (err) {
@@ -717,7 +716,7 @@ export default function SupplierDetail() {
         <div className="card mb-6">
           <div className="px-5 py-4 border-b border-warm-grey">
             <h2 className="text-sm text-ink-80">
-              {t('Crystocraft Range Component Quotes')} <span className="text-ink-60 font-normal">({rangeQuotes.length})</span>
+              {t('Crystocraft Range & Crystal Component Quotes')} <span className="text-ink-60 font-normal">({rangeQuotes.length})</span>
             </h2>
           </div>
 
@@ -734,11 +733,12 @@ export default function SupplierDetail() {
             <>
               <div className="divide-y divide-warm-grey">
                 {visibleRangeQuotes.map(q => (
-                  <Link key={q.id} to={`/components/critical/${q.componentId}/quotes/${q.id}`}
+                  <Link key={q.id} to={q._crystalProductId && q._crystalVariantId && can('swatch') ? crystalQuoteUrl(q._crystalProductId,q._crystalVariantId,q.componentId,q.id) : `/components/critical/${q.componentId}/quotes/${q.id}`}
                         className="flex items-start justify-between px-5 py-3.5 gap-3 hover:bg-ivory transition-colors">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium text-ink truncate">{q._componentName}</p>
+                        {q._crystalProductId && <span className="tag text-xs">Crystal · {q._crystalVariantCode || 'Variant linked'}</span>}
                         {q.is_preferred && (
                           <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">
                             <Star size={11} className="fill-current" />{t('Preferred')}

@@ -1,5 +1,12 @@
 # OC maintenance and code cleanup plan
 
+**6 November stopping point:** the owner requested a documented handoff before
+switching to Crystal Components. [Current cleanup handoff](V8.20-CLEANUP-HANDOFF-2026-11-06.md)
+consolidates released work through final financial Re-sync `3022bfe`, remaining
+SH-03/05/06/07/08 findings and lessons. Customer export correction is deferred;
+the separately authorized Crystal Components feature does not close Shipping
+debt or authorize deployment. Earlier entries below retain their dated sequence.
+
 Updated 6 November 2026 (Sydney). Goal: make changes easier to understand and
 verify while preserving existing functions, screens and commercial behaviour.
 This is a staged maintenance plan, not a rewrite or permission to execute every

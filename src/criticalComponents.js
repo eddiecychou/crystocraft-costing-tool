@@ -2,7 +2,7 @@ import { ocDateOnly } from './ocTime.js'
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc,
-  onSnapshot, query, orderBy, serverTimestamp, writeBatch, increment,
+  onSnapshot, query, orderBy, serverTimestamp, writeBatch, increment, runTransaction,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { persistRangeComponent } from './rangePersistence'
@@ -180,7 +180,58 @@ async function recomputeDenorm(componentId, preferId) {
   return chosen
 }
 
-export async function saveComponentQuote(componentId, quoteId, data) {
+// Crystal catalogue callers retain the existing private quote tree, but bind a
+// write to the current exact variant. The parent read serializes competing
+// catalogue quote/preference changes with the denormalised cost update.
+async function crystalQuoteChange(componentId, quoteId, data, context, operation) {
+  const componentRef = doc(db, 'range_components', componentId)
+  const quoteRef = quoteId ? doc(QUOTES(componentId), quoteId) : doc(QUOTES(componentId))
+  return runTransaction(db, async tx => {
+    const component = await tx.get(componentRef)
+    const product = await tx.get(doc(db, 'crystal_products', context.crystal_product_id))
+    const variant = await tx.get(doc(db, 'crystal_products', context.crystal_product_id, 'variants', context.crystal_variant_id))
+    if (!component.exists() || !product.exists() || !variant.exists() ||
+      typeof variant.data().unit !== 'string' || !variant.data().unit.trim() ||
+      component.data().crystal_product_id !== context.crystal_product_id ||
+      component.data().crystal_variant_id !== context.crystal_variant_id ||
+      component.data().crystal_catalogue_unit !== variant.data().unit) {
+      throw new Error('The crystal variant costing link changed. Reopen the component before saving.')
+    }
+    const listed = await getDocs(QUOTES(componentId))
+    const refs = new Map(listed.docs.map(d => [d.id, d.ref]))
+    refs.set(quoteRef.id, quoteRef)
+    const snapshots = await Promise.all([...refs.values()].map(r => tx.get(r)))
+    const quotes = snapshots.filter(s => s.exists()).map(s => ({ ...s.data(), id: s.id, ref: s.ref }))
+    const current = quotes.find(q => q.id === quoteRef.id)
+    if (quoteId && !current) throw new Error('This quote no longer exists. Reload before saving.')
+    if (operation === 'prefer' && (!current?.supplier_id || !(await tx.get(doc(db, 'suppliers', current.supplier_id))).exists())) {
+      throw new Error('The selected quote needs an existing supplier before it can be preferred.')
+    }
+    let updated = quotes.filter(q => operation !== 'delete' || q.id !== quoteRef.id)
+    if (operation === 'save') {
+      const payload = { ...normQuote(data), updatedAt: serverTimestamp() }
+      if (payload.supplier_id) {
+        const supplier = await tx.get(doc(db, 'suppliers', payload.supplier_id))
+        if (!supplier.exists()) throw new Error('The selected supplier no longer exists.')
+      } else throw new Error('Choose an existing supplier.')
+      updated = updated.filter(q => q.id !== quoteRef.id)
+      updated.push({ ...payload, id: quoteRef.id, ref: quoteRef })
+      if (quoteId) tx.update(quoteRef, payload)
+      else tx.set(quoteRef, { ...payload, createdAt: serverTimestamp() })
+    } else if (operation === 'delete') tx.delete(quoteRef)
+    const preferId = operation === 'prefer' || (operation === 'save' && data.is_preferred) ? quoteRef.id : null
+    const chosen = preferId ? updated.find(q => q.id === preferId) : updated.find(q => q.is_preferred)
+    for (const q of updated) {
+      const preferred = q.id === chosen?.id
+      if (q.is_preferred !== preferred) tx.update(q.ref, { is_preferred: preferred })
+    }
+    tx.update(componentRef, { ...denormFrom(chosen), updatedAt: serverTimestamp() })
+    return quoteRef.id
+  })
+}
+
+export async function saveComponentQuote(componentId, quoteId, data, context) {
+  if (context) return crystalQuoteChange(componentId, quoteId, data, context, 'save')
   const payload = { ...normQuote(data), updatedAt: serverTimestamp() }
   let id = quoteId
   if (quoteId) {
@@ -195,11 +246,13 @@ export async function saveComponentQuote(componentId, quoteId, data) {
   return id
 }
 
-export async function setPreferredQuote(componentId, quoteId) {
+export async function setPreferredQuote(componentId, quoteId, context) {
+  if (context) return crystalQuoteChange(componentId, quoteId, null, context, 'prefer')
   await recomputeDenorm(componentId, quoteId)
 }
 
-export async function deleteComponentQuote(componentId, quoteId) {
+export async function deleteComponentQuote(componentId, quoteId, context) {
+  if (context) return crystalQuoteChange(componentId, quoteId, null, context, 'delete')
   await deleteDoc(doc(db, 'range_components', componentId, 'supplier_quotes', quoteId))
   await recomputeDenorm(componentId, null)
 }
