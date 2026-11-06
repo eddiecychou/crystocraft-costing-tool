@@ -1,6 +1,8 @@
-# V8.20 — Shipping loading and atomic save correction — 6 November 2026
+# V8.20 — Shipping loading and atomic save correction — released, 6 November 2026
 
-Owner-authorized repair is implemented; release verification is in progress.
+Owner-authorized repair is released as 0fec1ff9. Both exact-SHA GitHub jobs,
+833 prebuild tests, actual SDK/offline/browser cases and fresh candidate/production
+admin/customer gates pass. Production 6aed3f2ad3f91761546b936e.
 Editors are scoped to order identity, incomplete/failed reads block editing with
 Retry, and existing-order header/lines commit as one batch. Slow saves remain
 pending until acknowledged; failures retain edits, and financial follow-up is
