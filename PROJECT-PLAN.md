@@ -1,4 +1,4 @@
-# V8.20 — Shipping PI source/ERP ownership correction — release in progress, 6 November 2026
+# V8.20 — Shipping PI source/ERP ownership correction — released, 6 November 2026
 
 Owner authorized the review's SH-01/02 fixes, fictional tests, push/deployment
 after both required GitHub jobs and verification. Each import now owns its
@@ -8,9 +8,17 @@ All 149 existing plus 22 new Shipping regressions, 22 fictional Chrome cases and
 876 prebuild tests/build pass; lint and 11 configuration cases pass. Release
 checks are tracked in the
 [correction record](docs/plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md).
+Released as 6f3ec3e after both exact-SHA GitHub jobs and fresh candidate/production
+admin/customer checks pass. Production 6aed66d05bac0556f9ab58e0 serves the frozen
+artifact. Six additional actual production PI stages pass with intercepted
+fictional extraction/ERP responses and zero mutation attempts. First-attempt
+production browser timeouts are retained; unchanged sequential checks pass.
 The financial, SI recovery and quote/Create review findings remain separately
 scoped. No live PDF upload, order/invoice creation, stock write or email is a QA
 action. The preceding review documentation is preserved with this release work.
+Next proposed work is the financial Re-sync projection/comparison/recovery
+correction, followed by customer accounting-payable export parity. No financial
+code change or historical repair is included in this PI release.
 
 # V8.20 — Shipping health/ownership review — completed, fixes proposed, 6 November 2026
 

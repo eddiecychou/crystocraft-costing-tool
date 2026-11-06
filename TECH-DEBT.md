@@ -18,12 +18,14 @@ retain historical evidence and link their later release records.
 33 additional fictional characterizations cover previously untested combinations.
 Pause routine presentation extractions for separately authorized correctness work:
 
-The owner subsequently authorized **SH-01/02 only**. PI committed-file/result and
-current-import/SO ERP guards are implemented; 149 existing Shipping tests and
-22 fictional Chrome cases pass. Follow the [correction/release record](docs/plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md)
-for final CI/deployment state. Other findings below remain open.
+The owner subsequently authorized **SH-01/02 only**, now released as 6f3ec3e.
+PI committed-file/result and current-import/SO ERP guards pass 171 Shipping cases,
+22 fictional Chrome cases and six additional actual production stages with
+intercepted fictional responses. Both exact-SHA jobs, build and fresh candidate/
+production admin/customer gates pass. [Correction/release evidence](docs/plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md).
+Other findings below remain open; prioritize faithful financial Re-sync next.
 
-- **P1 PI source identity:** overlapping/failed replacement extraction can attach
+- **P1 PI source identity — corrected in SH-01/02:** original overlapping/failed replacement extraction can attach
   B's PDF to A's SO/UC/lines; a late ERP comparison can offer/adopt A's lines for B.
   Bind committed file/result/comparison identity, including replacement failure.
 - **P1 financial contract:** customer print/Excel omit approved accounting payable

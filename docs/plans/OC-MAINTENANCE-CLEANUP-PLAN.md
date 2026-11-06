@@ -446,3 +446,12 @@ committed source association, and guards ERP comparison/adoption against stale
 imports/SOs. Its permanent fictional regressions join the normal prebuild/CI
 suite. Release status is in that record; the remaining financial, SI recovery,
 quote/Create, concurrency and durable-sync scopes are not authorized by this slice.
+
+SH-01/02 is released as 6f3ec3e after 171 Shipping/876 prebuild cases, 22 fictional
+Chrome cases, both exact-SHA jobs and fresh candidate/production admin/customer
+gates. Actual production PI interactions also pass with fictional intercepted
+responses and no write attempts. The next proposed bounded batch is financial
+Re-sync: share complete source-field projection, detect all owned drift and expose
+failed recovery. Customer no-deposit accounting-payable exports follow separately.
+Keep original totals/approved amounts/null/zero and historical records intact;
+no migration or live repair is authorized by the proposal.

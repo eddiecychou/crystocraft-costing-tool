@@ -356,3 +356,10 @@ ShipmentPiUpload remains controlled feedback/display. Permanent fictional
 real-form tests run in test:shipment-display (prebuild and GitHub); Chrome checks
 cover desktop/mobile. No saved/direct/quote upload UI, domain data policy, stock,
 number-allocation or financial synchronization change is included.
+
+Released as 6f3ec3e after 171 Shipping/876 prebuild tests, both exact-SHA jobs and
+fresh candidate/production roles. Twenty-two fictional Chrome cases and six
+deployed PI stages with intercepted fictional responses verify the source/ERP
+boundary without business writes. The next proposed ownership correction aligns
+SalesInvoices recovery with the complete financial field contract; it is not
+part of this release.
