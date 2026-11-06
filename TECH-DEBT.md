@@ -23,15 +23,22 @@ PI committed-file/result and current-import/SO ERP guards pass 171 Shipping case
 22 fictional Chrome cases and six additional actual production stages with
 intercepted fictional responses. Both exact-SHA jobs, build and fresh candidate/
 production admin/customer gates pass. [Correction/release evidence](docs/plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md).
-Other findings below remain open; prioritize faithful financial Re-sync next.
+The owner next authorized SH-04 financial Re-sync. Its complete source projection,
+strict targeted reads, raw-source authority/review guards and visible recovery
+outcomes are implemented and locally verified (38 integration, 2 SDK, 34 Chrome,
+914 prebuild cases). Follow the [correction record](docs/plans/V8.20-INVOICE-RECONCILIATION-FIX.md)
+for exact CI/deployment status. Customer no-deposit exports (SH-03) and the other
+findings below remain open.
 
 - **P1 PI source identity — corrected in SH-01/02:** original overlapping/failed replacement extraction can attach
   B's PDF to A's SO/UC/lines; a late ERP comparison can offer/adopt A's lines for B.
   Bind committed file/result/comparison identity, including replacement failure.
-- **P1 financial contract:** customer print/Excel omit approved accounting payable
+- **P1 financial contract:** customer print/Excel still omit approved accounting payable
   without a positive deposit. Sales Invoices Re-sync omits accounting/date/reference
   fields and can reset the financial copy while its warning clears; metadata-only
   drift is not detected. The saved Firestore order remains intact in the fixture.
+  The Re-sync portion is corrected under the subsequent SH-04 authorization above;
+  the customer export portion is separate.
 - **P1 allocation recovery:** direct SI allocation followed by a failed reference
   patch loses the acknowledged result/warning. Ordinary Raise sends a second
   allocation request for the same order. Live duplicate issuance is not proven;

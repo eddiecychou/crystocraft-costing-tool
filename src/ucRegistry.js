@@ -71,6 +71,31 @@ export function upsertInvoice(fields) {
 export const listAppInvoices = (limit = 500) =>
   ucApi('list_invoices', { limit }).then((d) => d.rows || []).catch(() => [])
 
+// Explicit recovery must distinguish unavailable/partial reads from absence.
+// Small targeted batches avoid the legacy list cap and require complete results.
+export async function listAppInvoicesForReconciliation(invoiceNos) {
+  const numbers = [...new Set(invoiceNos)]
+  if (numbers.some(no => typeof no !== 'string' || !/^SI\d{6,}$/.test(no) || no.length > 64)) throw new Error('Invalid invoice number in financial check.')
+  const rows = []
+  for (let i = 0; i < numbers.length; i += 100) {
+    const batch = numbers.slice(i, i + 100)
+    const data = await ucApi('list_invoices', { si_nos: batch, limit: batch.length })
+    if (data.complete !== true || !Array.isArray(data.rows)
+        || data.rows.some(row => !row || !batch.includes(row.si_no))
+        || new Set(data.rows.map(row => row.si_no)).size !== data.rows.length) {
+      throw new Error('The financial check returned incomplete or invalid records. Please retry.')
+    }
+    rows.push(...data.rows)
+  }
+  return rows
+}
+
+export async function upsertInvoiceStrict(fields) {
+  const data = await ucApi('upsert_invoice', fields)
+  if (!data.row || data.row.si_no !== fields.si_no) throw new Error('The financial record did not confirm the sync. Reload the check before retrying.')
+  return data.row
+}
+
 // Allocate a FRESH UC# for an app-originated order (used by "Duplicate order").
 // Deliberately never copies the source order's UC — a carried-over UC is the
 // exact, repeatable slip CuiLing's JES workflow produces (duplicate an order to

@@ -765,6 +765,21 @@ export function orderSaveFields(header, computed, accountingTotal, adjustment) {
 export function invoiceRegistryFields(orderId, header, computed, accountingTotal) {
   const total = computed.subtotal > 0 ? computed.total
               : (header.pi_total !== '' ? parseFloat(header.pi_total) : null)
+  return invoiceRegistryProjection(orderId, header, total, total != null ? accountingTotal : null)
+}
+
+// Recovery uses persisted invoice facts, never a list subtotal or PI estimate.
+// Validation/authority checks belong to invoiceReconciliation before any write.
+export function savedInvoiceRegistryFields(order) {
+  const total = order.total_amount ?? null
+  const accounting = order.accounting_total == null
+    || typeof order.accounting_total === 'string' && order.accounting_total.trim() === ''
+    ? total : order.accounting_total
+  return invoiceRegistryProjection(order.id, { ...order, uc_no: orderUc(order) }, total, accounting)
+}
+
+// One complete field contract for ordinary saving and explicit recovery.
+function invoiceRegistryProjection(orderId, header, total, accountingTotal) {
   return {
     si_no: header.erp_si_no,
     uc_no: header.uc_no || null,
@@ -776,7 +791,7 @@ export function invoiceRegistryFields(orderId, header, computed, accountingTotal
     invoice_date: header.invoice_date || null,
     customer_po: header.customer_po || '',
     remarks: header.notes || '',
-    accounting_total: total != null ? accountingTotal : null,
+    accounting_total: accountingTotal,
     adjustment_reason: header.adjustment_reason || '',
     // WooCommerce B2C sync (spec Phase 3) — cross-reference only; blank
     // for every order that isn't WooCommerce-sourced, same as before.

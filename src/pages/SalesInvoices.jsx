@@ -1,11 +1,12 @@
 import { asOcDate, ocDateOnly, formatOcDate } from '../ocTime.js'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import ExportFilterBar from '../components/ExportFilterBar'
 import { downloadCsv, exportStem, inDateRange } from '../exportCsv'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { useOrders, updateOrder, NO_INVOICE_REASONS, noInvoiceReasonOf } from '../shipping'
-import { listAppInvoices, upsertInvoice } from '../ucRegistry'
+import { listAppInvoicesForReconciliation, upsertInvoiceStrict } from '../ucRegistry'
+import { getOrderForInvoiceSync, invoiceReconciliation, isFinancialInvoiceNo, financialOrderSource } from '../invoiceReconciliation'
 import { useCustomers } from '../domain/customer'
 import { erpLookup } from '../erpApi'
 import { Receipt, AlertTriangle, FileText, Database } from 'lucide-react'
@@ -80,8 +81,23 @@ export default function SalesInvoices() {
   const [to, setTo] = useState('')
   const [srcFilter, setSrcFilter] = useState('')   // '' | 'app' | 'jes'
   const [ledger, setLedger] = useState(null)      // Postgres rows, or null while loading
+  const [ledgerKey, setLedgerKey] = useState('')
+  const [ledgerLoading, setLedgerLoading] = useState(true)
+  const [ledgerError, setLedgerError] = useState('')
+  const [syncError, setSyncError] = useState('')
+  const [syncNotice, setSyncNotice] = useState('')
   const [fixing, setFixing] = useState(false)
   const [showDrift, setShowDrift] = useState(false)
+  const mounted = useRef(false)
+  const ledgerRequest = useRef(0)
+  const syncInFlight = useRef(false)
+  const invoiceKey = useMemo(() => JSON.stringify([...new Set(orders.map(o => financialOrderSource(o).erp_si_no).filter(isFinancialInvoiceNo))].sort()), [orders])
+  const latestInvoiceKey = useRef(invoiceKey)
+  useEffect(() => { latestInvoiceKey.current = invoiceKey }, [invoiceKey])
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false; ledgerRequest.current++ }
+  }, [])
 
   const erp = useErpInvoices(search)
 
@@ -142,10 +158,26 @@ export default function SalesInvoices() {
   // truth; this is a copy, and a copy nobody checks is worse than no copy —
   // it invites trust it has not earned.
   useEffect(() => {
-    let alive = true
-    listAppInvoices(1000).then(r => { if (alive) setLedger(r) })
-    return () => { alive = false }
-  }, [])
+    if (!loading) readFinancialRecord()
+    return () => { ledgerRequest.current++ }
+  }, [invoiceKey, loading])
+
+  async function readFinancialRecord(key = invoiceKey) {
+    if (syncInFlight.current) return
+    const request = ++ledgerRequest.current
+    setLedgerLoading(true); setLedgerError(''); setSyncError(''); setSyncNotice('')
+    setLedger(null)
+    try {
+      const rows = await listAppInvoicesForReconciliation(JSON.parse(key))
+      if (mounted.current && request === ledgerRequest.current) {
+        setLedger(rows); setLedgerKey(key)
+      }
+    } catch (error) {
+      if (mounted.current && request === ledgerRequest.current) setLedgerError(`Could not check the financial record. ${error.message || 'Please retry.'}`)
+    } finally {
+      if (mounted.current && request === ledgerRequest.current) setLedgerLoading(false)
+    }
+  }
 
   // One list, two sources. Which system an invoice lives in is an implementation
   // detail to the person looking for it, so they are merged and sorted by date —
@@ -182,46 +214,62 @@ export default function SalesInvoices() {
     return [...app, ...jes].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
   }, [invoiced, erp.rows, erpCodeByCustomerId])
 
-  // Reconcile Firestore against Postgres. Compares only the fields the ledger
-  // claims to hold — comparing anything else would report drift that does not
-  // matter. Money is compared to 2dp because a float round-trip is not a
-  // disagreement about the invoice.
+  // Compare the complete source-owned financial projection. A failed/partial
+  // read is unknown, never an empty ledger that licenses recovery writes.
   const drift = useMemo(() => {
-    if (!ledger) return null
-    const byNo = new Map(ledger.map((r) => [String(r.si_no || '').trim().toUpperCase(), r]))
-    const money = (v) => (v == null || v === '' ? null : Math.round(Number(v) * 100) / 100)
-    const out = []
-    for (const o of invoiced) {
-      const no = String(o.erp_si_no || '').trim().toUpperCase()
-      if (!no) continue
-      const row = byNo.get(no)
-      if (!row) { out.push({ order: o, no, why: 'not in the financial record' }); continue }
-      const diffs = []
-      if (money(row.total) !== money(o.total_amount ?? o.subtotal)) diffs.push('total')
-      if ((row.currency || '') !== (o.currency || '')) diffs.push('currency')
-      if ((row.uc_no || '') !== (o.uc_no || '')) diffs.push('UC')
-      if ((row.customer || '') !== (o.customer_name || '')) diffs.push('customer')
-      if (diffs.length) out.push({ order: o, no, why: `${diffs.join(', ')} differ${diffs.length === 1 ? 's' : ''}` })
-    }
-    return out
-  }, [ledger, invoiced])
+    if (!ledger || ledgerLoading || ledgerError || ledgerKey !== invoiceKey) return null
+    return invoiceReconciliation(invoiced.map(financialOrderSource), ledger)
+  }, [ledger, ledgerLoading, ledgerError, ledgerKey, invoiceKey, invoiced])
+  const recoverable = drift?.filter(d => d.repairable) || []
 
-  // Re-send every drifting order. Safe to re-run: the upsert keys on si_no.
+  // Freeze the requested targets, reread source/ownership before each write,
+  // and verify readback before reporting success. Ordinary saves stay best-effort.
   async function resync() {
-    setFixing(true)
+    if (syncInFlight.current || ledgerLoading || ledgerError || !recoverable.length) return
+    syncInFlight.current = true
+    const request = ++ledgerRequest.current, targets = [...recoverable], checked = []
+    const failures = []
+    setFixing(true); setSyncError(''); setSyncNotice('')
     try {
-      for (const d of drift || []) {
-        await upsertInvoice({
-          si_no: d.order.erp_si_no, uc_no: d.order.uc_no || null, order_id: d.order.id,
-          customer: d.order.customer_name, currency: d.order.currency,
-          total: d.order.total_amount ?? d.order.subtotal ?? null,
-          invoiced_at: d.order.invoiced_at || null,
-          channel: d.order.channel || null,
-          external_order_no: d.order.woo_order_no || '',
-        })
+      for (const target of targets) {
+        if (!mounted.current) return
+        try {
+          const source = await getOrderForInvoiceSync(target.order.id)
+          if (!mounted.current) return
+          if (!source || source.erp_si_no !== target.no) throw new Error('The order or invoice number changed. Reload the check and review the order.')
+          const rows = await listAppInvoicesForReconciliation([target.no])
+          if (!mounted.current) return
+          const entry = invoiceReconciliation([source], rows)[0]
+          if (entry && !entry.repairable) throw new Error(entry.why)
+          checked.push(source)
+          if (entry) await upsertInvoiceStrict(entry.payload)
+        } catch (error) {
+          failures.push(`${target.no}: ${error.message || 'Sync failed.'}`)
+        }
       }
-      setLedger(await listAppInvoices(1000))
-    } finally { setFixing(false) }
+      if (!mounted.current) return
+      const rows = await listAppInvoicesForReconciliation(JSON.parse(invoiceKey))
+      if (!mounted.current || request !== ledgerRequest.current) return
+      setLedger(rows); setLedgerKey(invoiceKey)
+      const remaining = invoiceReconciliation(checked, rows)
+      for (const entry of remaining) {
+        if (!failures.some(message => message.startsWith(entry.no + ':'))) failures.push(`${entry.no}: financial readback still differs. Review and retry.`)
+      }
+      const confirmed = checked.length - remaining.length
+      if (failures.length) setSyncError(failures.join(' · '))
+      setSyncNotice(`${confirmed} invoice${confirmed === 1 ? '' : 's'} confirmed by financial readback.${failures.length ? ' Some records still need attention.' : ''}`)
+    } catch (error) {
+      if (mounted.current && request === ledgerRequest.current) {
+        setLedger(null)
+        setLedgerError(`Could not verify the financial record. Some records may have synced. Reload the check before retrying. ${error.message || ''}`)
+      }
+    } finally {
+      syncInFlight.current = false
+      if (mounted.current) {
+        setFixing(false)
+        if (request !== ledgerRequest.current) readFinancialRecord(latestInvoiceKey.current)
+      }
+    }
   }
 
   // The export set. Filtering here rather than inside `merged` keeps the
@@ -318,8 +366,23 @@ export default function SalesInvoices() {
         {loading && <LoadingBar />}
         {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
-        {/* Reconciliation. Silence here means the two records agree — which is
-            the only way a copy earns any trust. */}
+        {/* A failed check stays visible and cannot license a recovery write. */}
+        {ledgerError && (
+          <div role="alert" className="card p-4 mb-4 space-y-2">
+            <p className="text-sm text-brand-600 break-words">{ledgerError}</p>
+            <button type="button" disabled={fixing || ledgerLoading} onClick={() => readFinancialRecord()}
+              className="btn-secondary text-xs">Retry</button>
+          </div>
+        )}
+        {!ledgerError && (ledgerLoading || ledgerKey !== invoiceKey) && (
+          <p role="status" className="text-xs text-ink-60 mb-4">Checking the financial record…</p>
+        )}
+        {syncError && <p role="alert" className="text-sm text-brand-600 mb-3 break-words">{syncError}</p>}
+        {syncNotice && <p role="status" className="text-xs text-ink-60 mb-3">{syncNotice}</p>}
+        {!ledgerLoading && !ledgerError && (
+          <button type="button" disabled={fixing} onClick={() => readFinancialRecord()}
+            className="text-xs text-brand-600 hover:underline mb-3 disabled:opacity-50">Refresh financial check</button>
+        )}
         {drift && drift.length > 0 && (
           <div className="mb-4 rounded-none border border-amber-200 bg-amber-50 px-4 py-2.5">
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -332,15 +395,15 @@ export default function SalesInvoices() {
                   className="text-xs text-amber-800 hover:text-amber-900 underline underline-offset-2">
                   {showDrift ? 'Hide' : 'Show'}
                 </button>
-                <button type="button" onClick={resync} disabled={fixing}
+                <button type="button" onClick={resync} disabled={fixing || !recoverable.length}
                   className="text-xs font-medium px-2.5 py-1 rounded-none border border-amber-300 bg-white text-amber-900 hover:bg-amber-100 disabled:opacity-50">
                   {fixing ? 'Re-syncing…' : 'Re-sync all'}
                 </button>
               </div>
             </div>
             <p className="text-xs text-amber-700/80 mt-0.5">
-              The order in the app is the source of truth; this is its copy in Supabase, used for exports and the books.
-              Re-syncing rewrites the copy from the order.
+              The saved order is the source of truth. Re-sync checks the latest saved values before updating its financial copy.
+              Items marked Review required are skipped.
             </p>
             {showDrift && (
               <ul className="mt-2 space-y-0.5">
@@ -348,6 +411,7 @@ export default function SalesInvoices() {
                   <li key={d.no} className="text-xs text-amber-900">
                     <span className="font-mono">{d.no}</span> — {d.why}
                     <span className="text-amber-700/70"> · {d.order.customer_name || 'Unnamed'}</span>
+                    {!d.repairable && <Link className="ml-2 underline" to={`/shipments/${d.order.id}`}>Review order</Link>}
                   </li>
                 ))}
                 {drift.length > 30 && <li className="text-xs text-amber-700/70">…and {drift.length - 30} more</li>}

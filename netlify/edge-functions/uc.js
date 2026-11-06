@@ -218,14 +218,30 @@ export default async function handler(req) {
   // sync instead of the full table every time. Existing callers (the
   // Firestore-reconciliation UI) that never pass `since` are unaffected.
   if (body.op === 'list_invoices') {
+    const targeted = body.si_nos !== undefined
+    if (targeted && (!Array.isArray(body.si_nos) || !body.si_nos.length || body.si_nos.length > 100
+        || body.si_nos.some(no => typeof no !== 'string' || !/^SI\d{6,}$/.test(no) || no.length > 64))) {
+      return json({ error: 'Bad invoice numbers' }, 400)
+    }
     const p = new URLSearchParams()
-    p.set('select', 'si_no,uc_no,order_id,customer,currency,total,invoiced_at,invoice_date,customer_po,remarks,accounting_total,adjustment,adjustment_reason,status,updated_at')
+    p.set('select', 'si_no,uc_no,order_id,customer,currency,total,invoiced_at,invoice_date,customer_po,remarks,accounting_total,adjustment,adjustment_reason,status,updated_at,channel,external_order_no')
     p.set('order', 'si_no.desc')
     p.set('limit', String(Math.min(Math.max(parseInt(body.limit, 10) || 500, 1), 2000)))
+    if (targeted) {
+      p.set('si_no', `in.(${[...new Set(body.si_nos)].join(',')})`)
+      p.set('limit', String(body.si_nos.length))
+    }
     if (/^\d{4}-\d{2}-\d{2}T/.test(String(body.since || ''))) p.set('updated_at', `gt.${body.since}`)
-    const r = await rest(`app_sales_invoice?${p.toString()}`)
+    const r = await rest(`app_sales_invoice?${p.toString()}`, targeted ? { headers: { Prefer: 'count=exact' } } : undefined)
     if (!r.ok) return json({ error: 'List failed', detail: (await r.text()).slice(0, 300) }, 502)
-    return json({ rows: await r.json() })
+    const rows = await r.json()
+    if (targeted) {
+      const count = r.headers.get('Content-Range')?.match(/\/(\d+)$/)
+      if (!Array.isArray(rows) || !count || Number(count[1]) !== rows.length) {
+        return json({ error: 'Financial check incomplete', detail: 'The requested invoice records were not returned completely. Please retry.' }, 502)
+      }
+    }
+    return json({ rows, ...(targeted ? { complete: true } : {}) })
   }
 
   // ── create (allocates UC# via the uc_no column default) ─────────────────────

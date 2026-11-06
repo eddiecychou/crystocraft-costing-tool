@@ -1675,3 +1675,26 @@ text (failure messages legitimately name the rejected file). Keep optional-unit
 fixtures separate from the real parsed-pcs→ERP adoption control: a baseline-proven
 unit warning is existing debt, not permission to suppress unexpected React errors.
 [Behavior, regression evidence and release state](../plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md).
+
+### Recovery needs complete source facts and observable outcomes
+
+6 November 2026: SH-04 corrects the financial copy's separate partial Re-sync
+writer. Share all owned fields with ordinary saving, then compare the same raw
+saved representation used for recovery. A normalized list can trim notes or
+coerce whitespace Accounting Total to zero; mixing it with raw server writes
+creates perpetual drift or destructive coercion. Preserve trusted document ID
+after spreading `_raw`. Keep display normalization unchanged.
+
+Treat unavailable/partial reads as unknown, not empty. SI-targeted exact-count
+reads avoid calling older rows missing just because a capped list omitted them.
+Reject ambiguous source accounting corrections, unknown actual totals and a
+financial row owned by another order. An existing cash/status/allocation field
+does not become reconciliation-owned because it appears in a returned record.
+
+Keep ordinary save best-effort behavior separate from strict explicit recovery.
+Show read/write/readback failures, report partial results, and verify readback
+before success; a failed acknowledgement can still have committed, so first
+refresh the financial check before retrying a write. Actual SDK tests must prove
+cached data cannot satisfy a fresh-server requirement. A temporary Java path
+from an earlier session is not proof the runtime still exists.
+[Verified scope, tests and release state](../plans/V8.20-INVOICE-RECONCILIATION-FIX.md).

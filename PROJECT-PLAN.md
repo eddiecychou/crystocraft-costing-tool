@@ -1,3 +1,20 @@
+# V8.20 — Financial Re-sync ownership correction — release preparation, 6 November 2026
+
+Owner approved the next financial Re-sync batch. Normal saving/recovery now
+share the full financial projection; recovery compares raw saved facts, uses
+fresh server sources and complete targeted ledger reads, skips review-required
+records, and exposes read/write/readback failures and partial retry outcomes.
+No historical repair, allocation, source-order write or customer export change
+is included. Normal list display/exports and best-effort save clients remain.
+
+All 38 actual UI/client/edge integration cases, two real-SDK/current-rules
+fictional emulator cases and 34 desktop/mobile Chrome cases pass. Build and 914
+prebuild tests, lint and 11 configuration tests pass. The exact-SHA two-job and
+candidate/production gates are recorded in the
+[implementation/release record](docs/plans/V8.20-INVOICE-RECONCILIATION-FIX.md).
+Next separately proposed correction is customer no-deposit accounting-payable
+print/Excel parity (SH-03).
+
 # V8.20 — Shipping PI source/ERP ownership correction — released, 6 November 2026
 
 Owner authorized the review's SH-01/02 fixes, fictional tests, push/deployment

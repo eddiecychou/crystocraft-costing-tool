@@ -243,6 +243,23 @@ The same command runs in prebuild and the required GitHub product-search job.
 See the [PI ownership correction](../docs/plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md)
 for source provenance, browser verification and release state.
 
+# Financial reconciliation
+
+Financial Re-sync regression coverage: `npm run test:invoice-reconciliation`
+runs the actual SalesInvoices/Shipping/client/edge pipeline with fictional REST
+and Firestore boundaries. It pins approved totals/reasons/dates/PO/notes/channel,
+raw whitespace and zero/null semantics, strict completeness, ownership review,
+partial failure, retry/readback and repeated/unmounted actions. No live upsert,
+source write, allocation or email. It is required by prebuild and product-search.
+
+`node qa/invoice-reconciliation-source-emulator.mjs` requires an explicit loopback
+Firestore emulator and current rules. Two actual-SDK cases prove exact raw server
+data/trusted ID and rejection of cached offline data before fresh reconnect.
+Fresh per-case clients and a 75-second process deadline include cleanup; the
+required customer-merge-emulator job runs it. Temporary Java paths can expire:
+check the runtime exists before reusing an old local command. See the
+[financial recovery record](../docs/plans/V8.20-INVOICE-RECONCILIATION-FIX.md).
+
 # Portal applicant information requests
 
 `npm run test:portal-followup` renders the real `PortalAccountFollowup` with only

@@ -363,3 +363,24 @@ deployed PI stages with intercepted fictional responses verify the source/ERP
 boundary without business writes. The next proposed ownership correction aligns
 SalesInvoices recovery with the complete financial field contract; it is not
 part of this release.
+
+## Financial Re-sync ownership
+
+The owner authorized [SH-04 correction](../plans/V8.20-INVOICE-RECONCILIATION-FIX.md).
+`shipping.invoiceRegistryFields` retains its ordinary editor/total contract and
+shares its complete projection with `savedInvoiceRegistryFields`; the latter uses
+persisted actual totals and legacy UC fallback. `invoiceReconciliation.js` owns
+raw snapshot identity, fresh server source reads, projection comparison and
+review-required authority/validation decisions. Display normalization is separate.
+
+`ucRegistry.listAppInvoicesForReconciliation` reads complete SI-targeted batches
+and `upsertInvoiceStrict` requires acknowledgement; default best-effort clients
+stay unchanged. The existing UC edge list op validates/filter/count-checks those
+reads and exposes existing channel/external fields; allocation/auth/upsert policy
+does not move. SalesInvoices owns target snapshots, busy/abandoned-response guards,
+partial errors, explicit retry and verified readback feedback. It never writes
+orders or allocates invoice numbers as part of recovery.
+
+Permanent actual UI/client/edge fixtures run in test:invoice-reconciliation,
+prebuild and product-search; raw server/offline cases run in the required emulator
+job. All financial writes in QA are fictional. No historical repair is implied.
