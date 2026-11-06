@@ -1,3 +1,12 @@
+# V8.20 — Shipping page header/navigation cleanup — 6 November 2026
+
+Owner-authorized presentation extraction is implemented; release gates are
+pending. ShipmentPageHeader owns title/actions/feedback/tabs; ShipmentForm retains
+all state, allocation, guarded loading, atomic saves and actual tab content.
+Original/extracted 149 shipping cases, independent source restoration, 17 Chrome
+cases/44 identical screenshot pairs and 854 prebuild tests/build pass.
+[Scope, ownership, verification and release state](docs/plans/V8.20-SHIPMENT-NAVIGATION-CLEANUP.md).
+
 # V8.20 — Shipping saved-header mapping cleanup — released, 6 November 2026
 
 Owner-authorized extraction is released as 6a232360. Both exact-SHA GitHub

@@ -1626,3 +1626,14 @@ normOrder or a raw record spread. Pair focused full-field/no-mutation cases with
 original/extracted real-form loading, save/reopen and delayed-response regressions.
 The mapping helper has no I/O or authority to change lifecycle sequencing.
 [Scope, verification and release](../plans/V8.20-SHIPMENT-HEADER-MAPPING-CLEANUP.md).
+
+### Keep navigation presentation separate from workflow ownership
+
+6 November 2026: Shipping page-header/tab extraction preserves ordinary print
+anchors, new-tab attrs, title precedence and parent-controlled disabled/error
+states. Keep actual Packing/Freight mounting, unsaved header/line state, route
+identity and number/save handlers in the page. Test tab return with edited fields,
+order-to-order/new resets and parent pending-save forwarding, alongside isolated
+component callbacks. Check complete header/tab screenshots at desktop/mobile;
+use instantaneous scroll for captures so smooth scrolling cannot omit the title.
+[Source restoration, parity and release](../plans/V8.20-SHIPMENT-NAVIGATION-CLEANUP.md).

@@ -391,3 +391,16 @@ Saved-header mapping is released as 6a232360 after byte-identical source
 restoration, eleven Chrome parity cases, twenty identical screenshot pairs,
 full build, both exact-SHA jobs and fresh candidate/production role/shipping gates.
 The next cleanup slice remains a separately reviewed scope.
+
+## Page header/navigation and Shipping checkpoint
+
+The owner authorized [page header/navigation cleanup](V8.20-SHIPMENT-NAVIGATION-CLEANUP.md).
+One controlled component owns title/actions/feedback/tabs, while ShipmentForm
+retains state, allocation, saves, route isolation and actual tab content. Existing
+callbacks/disabled states and ordinary print links remain unchanged. Source,
+real-form/Router and desktop/mobile parity precede the exact-SHA and role gates.
+
+After its release, pause routine Shipping presentation extraction for a bounded
+health/ownership review. Select broader roadmap work by measured maintenance
+burden. Quote conversion/creation orchestration, totals composition, concurrent
+editing and durable financial synchronization require separately reviewed scopes.

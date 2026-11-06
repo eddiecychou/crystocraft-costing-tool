@@ -13,7 +13,7 @@ import {
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
-import { FileText, Trash2, Receipt } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LineImagePicker from '../components/LineImagePicker'
 import PackingListEditor from './PackingListEditor'
@@ -26,6 +26,7 @@ import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo, soYear } from '../soNumber'
 import { allocateInvoice, upsertInvoice, updateUcInvoice, allocateOrderUc } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail } from '../orderStockStatus'
+import ShipmentPageHeader from '../components/shipping/ShipmentPageHeader'
 import ShipmentPiUpload from '../components/shipping/ShipmentPiUpload'
 import { preparePiUploadFile } from '../piUploadFile'
 import ShipmentDocumentReferences from '../components/shipping/ShipmentDocumentReferences'
@@ -652,76 +653,12 @@ function ShipmentEditor() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
-      <div className="mb-4">
-        <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Order Listing</Link>
-        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 mt-1">
-          <h1 className="text-2xl text-ink">
-            {isEdit
-              ? (header.erp_si_no || header.uc_no || 'Order Detail')
-              : (isDirect ? 'Direct Invoice' : 'New Order')}
-          </h1>
-          {isEdit && (
-            <div className="shrink-0 w-full sm:w-auto text-right">
-              <div className="flex flex-wrap items-center gap-2 justify-end">
-                <a href={`/shipments/${id}/pi`} target="_blank" rel="noreferrer"
-                   className="btn-secondary text-sm inline-flex items-center gap-1.5">
-                  <FileText size={14} /> Proforma Invoice
-                </a>
-                {/* Convert the order/PI into a sales invoice in one click: allocate
-                    its SI number (and a UC if it has none). Previously this was
-                    only reachable via a subtle "Allocate" link far down the form,
-                    so "generate an invoice from an SO" looked impossible. Once
-                    invoiced, this becomes a link to the printed invoice. */}
-                {header.erp_si_no ? (
-                  <a href={`/shipments/${id}/invoice`} target="_blank" rel="noreferrer"
-                     className="btn-primary text-sm inline-flex items-center gap-1.5">
-                    <Receipt size={14} /> Invoice {header.erp_si_no}
-                  </a>
-                ) : (
-                  <button type="button" onClick={doAllocateSi} disabled={allocatingSi || saving}
-                    className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
-                    title="Allocate this order's invoice number (SI) and UC — turns the proforma into a sales invoice.">
-                    <Receipt size={14} /> {allocatingSi ? 'Raising…' : 'Raise Invoice'}
-                  </button>
-                )}
-              </div>
-              {siError && <p className="text-xs text-red-600 mt-1">{siError}</p>}
-            </div>
-          )}
-        </div>
-        {!isEdit && (
-          <p className="text-sm text-ink-60 mt-1">
-            {isDirect
-              ? 'A retail sale invoiced directly — no sales order needed. Add the lines, then allocate an invoice number.'
-              : 'Enter the order directly, or drop a PI below to have AI read the header and line items.'}
-          </p>
-        )}
-      </div>
-
-      {/* Tabs — only shown on edit (saved order) */}
-      {isEdit && (
-        <div className="flex gap-0 border-b border-warm-grey mb-5">
-          {[
-            { v: 'order',   label: 'Order & Lines' },
-            { v: 'packing', label: 'Packing List' },
-            { v: 'freight', label: 'Freight' },
-          ].map(t => (
-            <button
-              key={t.v}
-              type="button"
-              onClick={() => setTab(t.v)}
-              disabled={saving}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
- tab === t.v
-                  ? 'border-brand-600 text-brand-600'
-                  : 'border-transparent text-ink-60 hover:text-ink-80'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <ShipmentPageHeader
+        id={id} isEdit={isEdit} isDirect={isDirect}
+        invoiceNo={header.erp_si_no} ucNo={header.uc_no}
+        allocatingSi={allocatingSi} saving={saving} siError={siError}
+        onRaiseInvoice={doAllocateSi} tab={tab} onTabChange={setTab}
+      />
 
       {/* Packing list tab */}
       {isEdit && tab === 'packing' && (

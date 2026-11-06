@@ -309,3 +309,14 @@ The form is 44 lines shorter; this is a field-mapping boundary, not an async
 lifecycle or data-policy change. Eleven contract cases join the existing real-form
 lifecycle/save regressions in test:shipment-display.
 [Scope and current release evidence](../plans/V8.20-SHIPMENT-HEADER-MAPPING-CLEANUP.md).
+
+## Shipping page header and navigation
+
+ShipmentPageHeader.jsx owns controlled title/help/back-link, document links,
+Raise Invoice/feedback and section tabs. ShipmentForm retains state, all handlers,
+guarded loading, Retry, atomic saves and actual packing/freight component mounting.
+The Fragment keeps the same DOM structure. The parent is 63 lines shorter.
+Ten new real-component/Router cases join the existing lifecycle/financial suite
+in test:shipment-display. Source restoration and desktop/mobile parity verify
+unchanged markup, callbacks and pending/error behavior.
+[Scope and release evidence](../plans/V8.20-SHIPMENT-NAVIGATION-CLEANUP.md).

@@ -701,3 +701,11 @@ Saved-order header mapping: `qa/shipment-header-fields.test.mjs` runs in
 the full editor whitelist, absent/null/zero/blank and legacy/PI/Woo defaults,
 financial precision and immutable destination merging. Preserve the page's
 guarded read/Retry and save sequencing when adjusting that pure mapping.
+
+Shipping page header/navigation: qa/shipment-navigation.test.mjs runs in
+test:shipment-display/prebuild/product-search CI. It tests the controlled Header
+and real parent/Router with fictional I/O: title/help/print attrs, one explicit
+Raise callback, busy/error/tab states, unsaved PO/line retention, route resets,
+legacy UC and actual parent pending-save forwarding. Live QA uses view-only
+Packing/Freight tab navigation; never click Raise, scenario/quote Save or stock
+actions on production records to verify presentation.
