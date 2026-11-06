@@ -320,3 +320,39 @@ Ten new real-component/Router cases join the existing lifecycle/financial suite
 in test:shipment-display. Source restoration and desktop/mobile parity verify
 unchanged markup, callbacks and pending/error behavior.
 [Scope and release evidence](../plans/V8.20-SHIPMENT-NAVIGATION-CLEANUP.md).
+
+## Shipping health and workflow ownership checkpoint
+
+The [6 November health/ownership review](../plans/V8.20-SHIPPING-HEALTH-OWNERSHIP-REVIEW-2026-11-06.md)
+records the complete ownership table, fictional reproductions and proposed repair
+sequence. All 149 existing Shipping tests pass; 33 new local characterizations
+expose gaps outside their assertions. No runtime correction is included.
+
+- ShipmentForm owns import/result/file/ERP-check association, quote initialization,
+  Create completion and SI recovery. Route-keyed saved reads and acknowledged atomic
+  saves remain protected; those guards do not certify every other async handler.
+- shipping.invoiceRegistryFields owns the normal saved-order financial projection.
+  SalesInvoices currently builds a different Re-sync projection/comparison; this
+  can reset approved accounting/date/reference fields in the financial copy.
+- invoicePayments derives accounting-first payable correctly. Admin/customer print
+  and Excel have separate summary owners; customer no-deposit output diverges.
+- PackingListEditor/packing and FreightComparison/logistics own their local reads,
+  scenarios/quotes and explicit writes. Full async/error/save outcomes need separate
+  fictional tests; prior tab-render parity is not that proof.
+- Allocation crosses Firestore and the UC/SI backend. Recovery identity, durable
+  financial synchronization and concurrent-editor semantics require explicit design,
+  not moving the handlers into a presentation component.
+
+Correct PI matching and financial contracts, then SI recovery and quote/Create
+lifecycle before more extraction. Keep stock domains, access policy, historical
+data repairs and Storage retention outside that scope. Promoting local diagnostic
+cases into permanent regressions belongs to a later authorized repair.
+
+The owner subsequently authorized [SH-01/02 PI ownership correction](../plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md).
+ShipmentForm retains the workflow and adds per-attempt identity, a committed
+attachment distinct from the attempted filename, and current-import/SO checks
+for ERP completion/adoption. Failed replacement retains current draft/source.
+ShipmentPiUpload remains controlled feedback/display. Permanent fictional
+real-form tests run in test:shipment-display (prebuild and GitHub); Chrome checks
+cover desktop/mobile. No saved/direct/quote upload UI, domain data policy, stock,
+number-allocation or financial synchronization change is included.

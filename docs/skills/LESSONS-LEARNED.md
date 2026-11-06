@@ -1637,3 +1637,41 @@ order-to-order/new resets and parent pending-save forwarding, alongside isolated
 component callbacks. Check complete header/tab screenshots at desktop/mobile;
 use instantaneous scroll for captures so smooth scrolling cannot omit the title.
 [Source restoration, parity and release](../plans/V8.20-SHIPMENT-NAVIGATION-CLEANUP.md).
+
+### Parity is not a combined-workflow health certificate
+
+6 November 2026: the Shipping health/ownership checkpoint passes all 149 existing
+regressions but reproduces additional source-association and financial-recovery
+defects with fictional records. The affected mechanisms predate recent extractions.
+Exact restoration and visual parity can faithfully preserve a pre-existing bug;
+passing characterization assertions may be asserting that bug, not correct output.
+
+Test an operation's identity through replacement, failure, completion and user
+navigation. A newest-request token alone cannot fix a failed replacement whose
+selected file differs from the retained parsed data. Match ERP adoption to that
+same source. Test every financial writer/recovery path through the real handler,
+and compare customer/admin print, words and actual Excel values with and without
+deposit. A partial Re-sync can erase fields its warning does not compare.
+
+Preserve the distinction between a repeated client allocation request and proven
+live duplicate issuance; mocked I/O does not establish backend idempotency. Keep
+native saved-PDF/layout proof separate from actual print-component assertions.
+These are review findings with proposed fixes, **not implemented corrections**.
+[Evidence, ownership and repair sequence](../plans/V8.20-SHIPPING-HEALTH-OWNERSHIP-REVIEW-2026-11-06.md).
+
+### Commit the PI source with its parsed result; scope ERP adoption to both
+
+6 November 2026: the authorized SH-01/02 correction keeps attempted filename and
+committed attachment separate. A failed replacement preserves the current draft
+and the previous successful file; a stale completion cannot clear the current
+busy state. Clearing the old ERP result on selection is insufficient by itself:
+both its response and the adoption callback must verify import identity and SO.
+SO edits invalidate synchronously; fast ERP completion must not depend on React
+already rendering the new header. A replacement without an SO must not revive
+an older comparison merely because header fallbacks retain that old SO.
+
+Test attachment/header/line payloads through fictional Create, not just filename
+text (failure messages legitimately name the rejected file). Keep optional-unit
+fixtures separate from the real parsed-pcs→ERP adoption control: a baseline-proven
+unit warning is existing debt, not permission to suppress unexpected React errors.
+[Behavior, regression evidence and release state](../plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md).

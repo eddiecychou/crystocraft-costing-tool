@@ -19,12 +19,13 @@ export default function ShipmentPiUpload({
                onChange={onFileChange} />
       </label>
       {fileName != null && (
-        <div className="flex items-center gap-2 mt-3 text-xs text-ink-70">
-          <FileText size={14} className="text-red-400" /> {fileName}
+        <div className="flex items-start gap-2 mt-3 text-xs text-ink-70 break-words min-w-0">
+          <FileText size={14} className="text-red-400 shrink-0" /> <span className="min-w-0 break-all">{fileName}</span>
         </div>
       )}
+      {extracting && <p role="status" className="mt-2 text-xs text-ink-60">Reading PI — waiting for the selected file.</p>}
       {extracting && <div className="mt-2 h-1 bg-brand-100 rounded-none overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
-      {error && <p className="text-xs text-amber-600 mt-2">{error}</p>}
+      {error && <p className="text-xs text-amber-600 mt-2 break-words">{error}</p>}
       <ErpCrossCheck check={erpCheck} onUse={onUseErpLines} />
     </div>
   )

@@ -12,6 +12,47 @@ proposed behaviour-preserving work; it does not override accepted owner decision
 or authorize fixing unrelated entries as part of another change. Resolved entries
 retain historical evidence and link their later release records.
 
+## Shipping health/ownership checkpoint — open, review only
+
+6 November 2026, clean dbd107ae. All 149 existing Shipping regressions pass;
+33 additional fictional characterizations cover previously untested combinations.
+Pause routine presentation extractions for separately authorized correctness work:
+
+The owner subsequently authorized **SH-01/02 only**. PI committed-file/result and
+current-import/SO ERP guards are implemented; 149 existing Shipping tests and
+22 fictional Chrome cases pass. Follow the [correction/release record](docs/plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md)
+for final CI/deployment state. Other findings below remain open.
+
+- **P1 PI source identity:** overlapping/failed replacement extraction can attach
+  B's PDF to A's SO/UC/lines; a late ERP comparison can offer/adopt A's lines for B.
+  Bind committed file/result/comparison identity, including replacement failure.
+- **P1 financial contract:** customer print/Excel omit approved accounting payable
+  without a positive deposit. Sales Invoices Re-sync omits accounting/date/reference
+  fields and can reset the financial copy while its warning clears; metadata-only
+  drift is not detected. The saved Firestore order remains intact in the fixture.
+- **P1 allocation recovery:** direct SI allocation followed by a failed reference
+  patch loses the acknowledged result/warning. Ordinary Raise sends a second
+  allocation request for the same order. Live duplicate issuance is not proven;
+  inspect deployed semantics before a separately reviewed identity/recovery design.
+- **P2 initialization/completion:** quote read failures have no catch/Retry; delayed
+  prefill overwrites edits. Abandoned Create completion still navigates. Conversion
+  Back/re-entry can create another order and replace the backlink; define intentional
+  multiple-order policy before imposing uniqueness. Native repeated clicks are
+  already blocked; a synchronous handler guard is an additional robustness gap.
+
+These mechanisms predate the recent extraction work. Known concurrent-editor and
+browser-close synchronization limits remain separate design debt. Packing/Freight
+async failure/selection risks are source-reviewed coverage gaps, not reproduced
+cross-scenario corruption. No historical repair, app changes or deployment here.
+[Ownership, exact fictional reproductions, limits and prioritized plan](docs/plans/V8.20-SHIPPING-HEALTH-OWNERSHIP-REVIEW-2026-11-06.md).
+
+Follow-up identity tests also reproduce a pre-existing ERP adoption unit warning:
+erpSoImport.lineFromErp omits unit, while ShipmentLineRow's controlled input reads
+line.unit. After a parsed pcs line it can become uncontrolled, retaining its old
+visible unit until normalization. Frozen pre-fix source reproduces the same
+warning. Record the unit display/projection contract before a separately scoped
+repair; the SH-01/02 identity fix does not change ERP units.
+
 ## Shipping order loading and save outcomes — corrected and released
 
 6 November 2026. Fictional tests on 4d675ce reproduced six stale/mixed loading

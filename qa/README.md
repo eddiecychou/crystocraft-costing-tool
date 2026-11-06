@@ -233,6 +233,16 @@ node .qa-eslint/node_modules/eslint/bin/eslint.js --no-inline-config -c qa/eslin
 This runs the no-undef configuration; unrelated inline suppressions for plugins
 not installed in that lint environment are ignored.
 
+`test:shipment-display` also runs `qa/shipment-pi-ownership.test.mjs`. It mounts
+the actual ShipmentForm/Router, PI file preparation, shipping and ERP mapping
+with fail-closed fictional I/O. Tests cover overlapping imports, replacement
+failure/retained source, busy Create protection, stale ERP response/adoption,
+SO edits, normal imports and abandoned routes. Mocked Create captures the file,
+header and line association; it is not real Storage/Firestore delivery proof.
+The same command runs in prebuild and the required GitHub product-search job.
+See the [PI ownership correction](../docs/plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md)
+for source provenance, browser verification and release state.
+
 # Portal applicant information requests
 
 `npm run test:portal-followup` renders the real `PortalAccountFollowup` with only

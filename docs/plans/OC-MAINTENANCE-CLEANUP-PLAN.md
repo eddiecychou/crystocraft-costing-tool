@@ -409,3 +409,40 @@ Header/navigation is released as af53c1b3 after exact source restoration,
 17 Chrome cases, 44 identical screenshot pairs, full build, both GitHub jobs and
 fresh candidate/production admin/customer plus real-tab/readback checks. The next
 step is the separately proposed bounded Shipping health/ownership review.
+
+## Shipping health/ownership checkpoint — reviewed, 6 November 2026
+
+The owner authorized review/documentation with fictional records and a plan
+before code changes. [Completed assessment](V8.20-SHIPPING-HEALTH-OWNERSHIP-REVIEW-2026-11-06.md):
+149 existing Shipping cases pass; 33 additional characterizations reproduce
+normal controls and uncovered correctness/recovery gaps. The affected mechanisms
+predate recent cleanup. This is review-only; no runtime/test/config correction,
+commit, push or deployment is included.
+
+Prioritize bounded correctness work over more presentation extractions:
+
+1. P1 PI file/result ownership and ERP response/adoption identity, including failed
+   replacement; P1 complete financial Re-sync and customer payable/words/Excel
+   parity independent of deposit. These can be separate small repair releases.
+2. P1 direct-invoice allocation recovery, with read-only deployed-contract discovery
+   and an explicit operation identity before any backend migration.
+3. P2 quote initialization pending/error/Retry, Create completion/submit guards,
+   conversion re-entry/backlink recovery with intentional split-order policy.
+4. Separate concurrency/offline conflict and durable financial-follow-up designs.
+   Re-sync must first be faithful before relying on it as complete recovery.
+5. Reproduce Packing/Freight async risks, then select a workflow extraction by
+   maintenance benefit; proceed to the read-only active/paused/obsolete inventory
+   when the higher-value correctness work is closed. No deletion is authorized.
+
+The review supplies ownership, concrete reproductions and acceptance gates for
+each proposed slice. It does not authorize executing the plan. Future authorized
+releases still require both exact-SHA GitHub jobs before deploying, then fresh
+candidate/production admin/customer and feature verification. Fictional tests
+must not issue real invoice numbers, stock writes or customer emails.
+
+The next owner-authorized repair is now [SH-01/02 PI source/ERP ownership](V8.20-SHIPPING-PI-OWNERSHIP-FIX.md).
+It retains the existing page/domain boundary, uses an attempt identity and
+committed source association, and guards ERP comparison/adoption against stale
+imports/SOs. Its permanent fictional regressions join the normal prebuild/CI
+suite. Release status is in that record; the remaining financial, SI recovery,
+quote/Create, concurrency and durable-sync scopes are not authorized by this slice.

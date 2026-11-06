@@ -1,3 +1,36 @@
+# V8.20 — Shipping PI source/ERP ownership correction — release in progress, 6 November 2026
+
+Owner authorized the review's SH-01/02 fixes, fictional tests, push/deployment
+after both required GitHub jobs and verification. Each import now owns its
+file/result/busy state and ERP comparison. Failed replacement keeps the prior
+attachment and draft, and stale comparisons/adoption cannot cross imports or SOs.
+All 149 existing plus 22 new Shipping regressions, 22 fictional Chrome cases and
+876 prebuild tests/build pass; lint and 11 configuration cases pass. Release
+checks are tracked in the
+[correction record](docs/plans/V8.20-SHIPPING-PI-OWNERSHIP-FIX.md).
+The financial, SI recovery and quote/Create review findings remain separately
+scoped. No live PDF upload, order/invoice creation, stock write or email is a QA
+action. The preceding review documentation is preserved with this release work.
+
+# V8.20 — Shipping health/ownership review — completed, fixes proposed, 6 November 2026
+
+Owner requested fictional records, documented gaps and a prioritized plan before
+code changes. Clean review baseline dbd107ae; all 149 existing Shipping tests pass.
+Thirty-three additional current-behavior characterizations reproduce normal controls
+and uncovered intersections: PI file/result and ERP-check identity, customer
+accounting-total exports without deposit, incomplete financial Re-sync, direct-SI
+recovery, quote initialization and Create/conversion re-entry ownership.
+
+The affected mechanisms predate recent extractions; this is not evidence that the
+presentation cleanup introduced them. Keep the saved-order isolation/atomic-save
+protections. Pause further markup extraction; proposed order is PI matching and
+financial contract corrections, SI recovery, then quote/Create lifecycle, followed
+by separately designed concurrency/durable synchronization and broader maintenance.
+No application/test/config edits, live business data changes, commit, push or
+deployment are included in this review. New diagnostics remain ignored/local;
+the ownership, reproduction steps, evidence limits and proposed acceptance gates
+are [documented here](docs/plans/V8.20-SHIPPING-HEALTH-OWNERSHIP-REVIEW-2026-11-06.md).
+
 # V8.20 — Shipping page header/navigation cleanup — released, 6 November 2026
 
 Owner-authorized presentation extraction is released as af53c1b3. Both
