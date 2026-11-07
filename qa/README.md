@@ -758,3 +758,12 @@ Raise callback, busy/error/tab states, unsaved PO/line retention, route resets,
 legacy UC and actual parent pending-save forwarding. Live QA uses view-only
 Packing/Freight tab navigation; never click Raise, scenario/quote Save or stock
 actions on production records to verify presentation.
+
+## Invoice allocator permission regression (SH-05A)
+
+`npm run test:invoice-allocator` uses test-only PGlite 0.3.15 (PostgreSQL 17.5)
+in memory: real function ACLs/roles, rollback, unchanged rows/sequences/definitions,
+canonical setup and the actual UC client/gateway with fictional JWT/REST transport.
+It has no production connection, credentials or external network. It also runs
+inside `test:invoice-reconciliation` in prebuild and required product-search CI.
+Migration/release safeguards: [SH-05A plan](../docs/plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md).

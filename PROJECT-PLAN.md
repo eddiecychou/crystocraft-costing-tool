@@ -1,3 +1,20 @@
+# V8.20 — Invoice allocator permissions (SH-05A) — prepared, 8 November 2026
+
+Owner approved the first bounded Shipping safety batch. The live catalog still
+has one seven-argument SECURITY DEFINER allocator with unwanted PUBLIC EXECUTE
+and an explicit service_role grant. Prepared a narrow, guarded ACL transaction
+and corrected both canonical setup definitions with atomic private grants.
+No allocator body, number sequence, invoice/UC/order record, role membership or
+browser/API behavior changes. [Migration and verification record](docs/plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md).
+
+All 18 real PostgreSQL 17 permission/rollback/behavior/client/gateway cases pass
+with fictional data; all 58 combined reconciliation/allocator tests and source
+lint pass. The new suite runs in required product-search CI and prebuild through
+`test:invoice-reconciliation`. Commit/push and both exact-SHA CI jobs precede
+production SQL application. This is SQL-only: retain the existing Netlify app
+and Firebase rules, with fresh candidate/production roles and safe gateway probes.
+Durable allocation recovery (SH-05B) remains separate; no live grants changed yet.
+
 # V8.20 — Internal Business Cards & Customer Files — released, 8 November 2026
 
 Released the dedicated Customer Details section with multiple image/PDF uploads,

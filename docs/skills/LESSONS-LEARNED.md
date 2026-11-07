@@ -1,5 +1,18 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## Remove inherited execution as well as named function grants
+
+8 November 2026, SH-05A: revoking anon/authenticated from a PostgreSQL function
+does not remove EXECUTE inherited from PUBLIC. Check effective privileges and
+role inheritance, retain the existing server grant and apply the narrow ACL
+change transactionally. Publish a new function definition and its private grants
+in one transaction in canonical setup too. Guard overload/owner/search-path drift,
+verify the unchanged function definition and roll back on unexpected inherited
+access. Never test a financial permission gap by allocating a production number.
+Real disposable PostgreSQL role/transaction tests provide evidence that a mocked
+REST response cannot; still distinguish fictional JWT/transport from live role
+and catalog verification. [Migration and checks](../plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md).
+
 ## Business-card files need protected bytes and actual saved contact identities
 
 7 November 2026: reuse supplier upload ergonomics, not shareable download-token

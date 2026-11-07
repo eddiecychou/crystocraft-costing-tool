@@ -128,6 +128,8 @@ notify pgrst, 'reload schema';
 -- the only way to collide is for JES to issue one after the last sync. That is
 -- a real remaining risk, and it is why new invoices must be raised in the app
 -- only — but it can no longer happen through simple staleness.
+-- Publish each allocator definition and its private grants atomically.
+begin;
 create or replace function public.allocate_sales_invoice(
   p_year       text,
   p_customer   text default '',
@@ -186,10 +188,13 @@ end $$;
 revoke all on public.app_sales_invoice from anon, authenticated;
 grant select, insert, update on public.app_sales_invoice to service_role;
 grant usage, select on sequence public.app_sales_invoice_id_seq to service_role;
-revoke all on function public.allocate_sales_invoice(text,text,text,text,bigint,text) from anon, authenticated;
+-- Named-role revokes alone leave PostgreSQL's default PUBLIC EXECUTE intact.
+revoke all on function public.allocate_sales_invoice(text,text,text,text,bigint,text) from public, anon, authenticated;
 grant execute on function public.allocate_sales_invoice(text,text,text,text,bigint,text) to service_role;
+commit;
 
 notify pgrst, 'reload schema';
+begin;
 drop function if exists public.allocate_sales_invoice(text,text,text,text,bigint,text);
 
 create function public.allocate_sales_invoice(
@@ -263,6 +268,7 @@ begin
   return query select v_si, v_ucno, v_ucid, v_id;
 end $$;
 
-revoke all on function public.allocate_sales_invoice(text,text,text,text,bigint,text,text) from anon, authenticated;
+revoke all on function public.allocate_sales_invoice(text,text,text,text,bigint,text,text) from public, anon, authenticated;
 grant execute on function public.allocate_sales_invoice(text,text,text,text,bigint,text,text) to service_role;
 notify pgrst, 'reload schema';
+commit;

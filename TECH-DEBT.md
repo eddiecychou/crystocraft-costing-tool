@@ -59,6 +59,9 @@ The other findings below remain open.
   publish separately. No anonymous RPC allocation or production SQL write was
   performed. Other financial functions need a separately bounded grant review;
   this finding does not claim their current state.
+  The owner approved SH-05A on 8 November; the [narrow migration and real
+  PostgreSQL verification](docs/plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md) are
+  prepared. Production grant publication is gated separately from SH-05B recovery.
 - **P2 initialization/completion:** quote read failures have no catch/Retry; delayed
   prefill overwrites edits. Abandoned Create completion still navigates. Conversion
   Back/re-entry can create another order and replace the backlink; define intentional
