@@ -29,14 +29,16 @@ outcomes are released as 3022bfe (40 integration, 2 SDK, 38 Chrome,
 916 prebuild cases), including review-only known ledger accounting/unknown base
 when source accounting is blank. Both exact-SHA jobs and fresh candidate/production
 admin/customer financial-read/API gates pass. [Correction/release record](docs/plans/V8.20-INVOICE-RECONCILIATION-FIX.md).
-Customer no-deposit exports (SH-03) and the other
-findings below remain open.
+SH-03 customer no-deposit payable exports have an owner-authorized local
+correction, permanent parity tests and saved PDF/XLSX verification; deployment
+is pending. [Scope/evidence](docs/plans/V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md).
+The other findings below remain open.
 
 - **P1 PI source identity — corrected in SH-01/02:** original overlapping/failed replacement extraction can attach
   B's PDF to A's SO/UC/lines; a late ERP comparison can offer/adopt A's lines for B.
   Bind committed file/result/comparison identity, including replacement failure.
-- **P1 financial contract:** customer print/Excel still omit approved accounting payable
-  without a positive deposit. Sales Invoices Re-sync omits accounting/date/reference
+- **P1 financial contract:** the production baseline omits approved customer accounting payable
+  without a positive deposit; the local SH-03 correction above addresses it. Sales Invoices Re-sync omits accounting/date/reference
   fields and can reset the financial copy while its warning clears; metadata-only
   drift is not detected. The saved Firestore order remains intact in the fixture.
   The Re-sync portion is corrected under the subsequent SH-04 authorization above;

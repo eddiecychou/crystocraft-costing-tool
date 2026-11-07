@@ -1,5 +1,11 @@
 # OC maintenance and code cleanup plan
 
+**7 November follow-up:** the owner authorized SH-03 customer accounting-payable
+PDF/Excel correction. [Implemented and verified locally](V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md):
+68 invoice cases, 1,027 prebuild cases and 26 PDF/XLSX export pairs pass. Release
+is pending; no live records or rules changed. After release, SH-05 allocation
+recovery needs a deployed-contract review before any new allocation policy.
+
 **6 November stopping point:** the owner requested a documented handoff before
 switching to Crystal Components. [Current cleanup handoff](V8.20-CLEANUP-HANDOFF-2026-11-06.md)
 consolidates released work through final financial Re-sync `3022bfe`, remaining

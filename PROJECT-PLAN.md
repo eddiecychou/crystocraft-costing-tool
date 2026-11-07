@@ -1,3 +1,18 @@
+# V8.20 — Customer invoice payable exports (SH-03) — release in progress, 7 November 2026
+
+Owner authorized the next documented Shipping correction. Customer PDF/Excel
+now disclose approved Accounting Total independently of deposit visibility;
+PDF words use approved payable without a deposit and outstanding with a deposit.
+Absent/zero deposits still hide deposit/outstanding rows. The existing payment
+helper, internal adjustment privacy and numeric precision are preserved.
+[Implementation and export evidence](docs/plans/V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md):
+five customer failures reproduced before the fix; all 68 invoice cases pass,
+including 26 new parity cases. All 1,027 prebuild tests/build/lint pass. Twenty-six
+fictional Chrome PDFs and 26 actual Excel downloads have correct totals, words,
+privacy and layout. No live financial records, numbers, rules or schema changed.
+Owner has now authorized release after both GitHub checks, followed by read-only
+SH-05 deployed-allocation contract review and a documented recovery plan.
+
 # V8.20 — Crystal image Delete action — released, 7 November 2026
 
 Owner requested an actual Delete button, inspection of Corporate Gifts and

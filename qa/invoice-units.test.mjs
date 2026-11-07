@@ -305,3 +305,43 @@ test('USD invoice editor shows the requested total and balance; invalid deposit 
   }
  })}finally{fixture.order=original;fixture.lines=originalLines;delete fixture.allowSave;delete fixture.writes}
 })
+
+// SH-03: approved payable is independent of deposit visibility in customer exports.
+const payableCases=[
+ {name:'adjusted-absent',accounting:1200},
+ {name:'adjusted-null',accounting:1200,deposit:null},
+ {name:'adjusted-blank',accounting:1200,deposit:''},
+ {name:'adjusted-zero',accounting:1200,deposit:0},
+ {name:'adjusted-partial',accounting:1200,deposit:200},
+ {name:'adjusted-full',accounting:1200,deposit:1200},
+ {name:'unadjusted-zero',accounting:1222,deposit:0},
+ {name:'unadjusted-partial',accounting:1222,deposit:200},
+ {name:'unadjusted-full',accounting:1222,deposit:1222},
+ {name:'accounting-zero',accounting:0,deposit:0},
+ {name:'accounting-absent',deposit:null},
+ {name:'accounting-null',accounting:null,deposit:0},
+ {name:'accounting-blank',accounting:'',deposit:0},
+]
+const expectedWords={0:'ZERO',1000:'ONE THOUSAND',1022:'ONE THOUSAND TWENTY TWO',1200:'ONE THOUSAND TWO HUNDRED',1222:'ONE THOUSAND TWO HUNDRED TWENTY TWO'}
+for(const kind of ['sales','customer'])for(const c of payableCases)test(`${kind}: approved payable PDF/words/Excel parity for ${c.name}`,async()=>{
+ const original=fixture.order,originalLines=fixture.lines
+ const invoice=c.accounting==null||c.accounting===''?1222:c.accounting,hasDeposit=Number(c.deposit)>0,outstanding=invoice-(Number(c.deposit)||0)
+ fixture.order={customer_id:'qa-customer',customer_name:'Fictional accounting export',erp_so_no:'SO-SH03-QA',erp_si_no:'SI-SH03-QA',uc_no:'UC-SH03-QA',currency:'USD',order_date:'2026-11-07',total_amount:1222,accounting_total:c.accounting,adjustment:invoice-1222,adjustment_reason:'PRIVATE-ADJUSTMENT-REASON',deposit_paid:c.deposit}
+ fixture.lines=[{id:'qa-line',line_no:1,item_code:'SH03-QA',description:'Fictional product',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc',supplier_name:'PRIVATE-SUPPLIER',unit_cost_hkd:999}]
+ const before=structuredClone(fixture)
+ try{await withPage(kind,async host=>{
+  const rows=Object.fromEntries(summaryRows(host)),{ws,bytes}=await workbook(host),summary=excelSummary(ws),fmt=n=>'USD '+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})
+  assert.equal(rows[kind==='sales'?'Total Due':'Total']??rows['Total Amount'],fmt(1222))
+  assert.equal(rows['Amount Payable'],invoice===1222?undefined:fmt(invoice))
+  assert.equal(summary.Total,1222);assert.equal(summary['Amount Payable'],invoice===1222?undefined:invoice)
+  assert.equal(rows['Deposit paid'],hasDeposit?'− '+fmt(Number(c.deposit)):undefined)
+  assert.equal(rows['Total outstanding'],hasDeposit?fmt(outstanding):undefined)
+  assert.equal(summary['Deposit paid'],hasDeposit?-Number(c.deposit):undefined)
+  assert.equal(summary['Total outstanding'],hasDeposit?outstanding:undefined)
+  assert.equal(host.querySelector('.si-words').textContent,'SAY US DOLLARS '+expectedWords[hasDeposit?outstanding:invoice]+' ONLY')
+  assert.equal(ws.getCell('E7').value,1.222);assert.equal(ws.getCell('C7').value,1000)
+  if(kind==='customer'){assert.doesNotMatch(host.textContent,/PRIVATE-ADJUSTMENT-REASON|PRIVATE-SUPPLIER|unit_cost_hkd/);assert.doesNotMatch(JSON.stringify(ws.model),/PRIVATE-ADJUSTMENT-REASON|PRIVATE-SUPPLIER|unit_cost_hkd/)}
+  assert.deepEqual(fixture.order,before.order);assert.deepEqual(fixture.lines,before.lines)
+  if(process.env.INVOICE_EVIDENCE_DIR){const stem=join(process.env.INVOICE_EVIDENCE_DIR,`${kind}-payable-${c.name}`);await writeFile(stem+'.html','<!doctype html><meta charset="utf-8">'+host.innerHTML);await writeFile(stem+'.xlsx',bytes)}
+ })}finally{fixture.order=original;fixture.lines=originalLines}
+})

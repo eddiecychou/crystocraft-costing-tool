@@ -107,8 +107,8 @@ export default function CustomerInvoicePrint({ profile }) {
     if (discountAmount) summary.push(['Discount', -discountAmount])
     if (chargesTotal) summary.push(['Charges', chargesTotal])
     summary.push(['Total', total])
+    if (payment.invoiceTotal !== total) summary.push(['Amount Payable', payment.invoiceTotal])
     if (payment.depositPaid > 0) {
-      if (payment.invoiceTotal !== total) summary.push(['Amount Payable', payment.invoiceTotal])
       summary.push(['Deposit paid', -payment.depositPaid], ['Total outstanding', payment.outstanding])
     }
     return downloadInvoiceExcel({number:header.no, uc:header.uc, date:fmtDate(header.date), currency:cur, lines, summary})
@@ -249,9 +249,9 @@ export default function CustomerInvoicePrint({ profile }) {
             {discountAmount > 0 && <tr><td className="k">Discount</td><td className="v">− {money(discountAmount)}</td></tr>}
             {chargesTotal > 0 && <tr><td className="k">Charges</td><td className="v">{money(chargesTotal)}</td></tr>}
             <tr className="grand"><td className="k">Total</td><td className="v">{money(total)}</td></tr>
+            {payment.invoiceTotal !== total && <tr><td className="k">Amount Payable</td><td className="v">{money(payment.invoiceTotal)}</td></tr>}
             {payment.depositPaid > 0 && (
               <>
-                {payment.invoiceTotal !== total && <tr><td className="k">Amount Payable</td><td className="v">{money(payment.invoiceTotal)}</td></tr>}
                 <tr><td className="k">Deposit paid</td><td className="v">− {money(payment.depositPaid)}</td></tr>
                 <tr className="grand"><td className="k">Total outstanding</td><td className="v">{money(payment.outstanding)}</td></tr>
               </>
@@ -260,7 +260,7 @@ export default function CustomerInvoicePrint({ profile }) {
         </table>
       </div>
 
-      <div className="si-words">{amountInWords(payment.depositPaid > 0 ? payment.outstanding : total, cur)}</div>
+      <div className="si-words">{amountInWords(payment.depositPaid > 0 ? payment.outstanding : payment.invoiceTotal, cur)}</div>
 
       <div className="si-sign">
         <div>
