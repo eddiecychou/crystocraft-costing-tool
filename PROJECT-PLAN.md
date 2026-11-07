@@ -1,27 +1,36 @@
-# V8.20 — Internal Business Cards & Customer Files — locally verified, 7 November 2026
+# V8.20 — Internal Business Cards & Customer Files — released, 8 November 2026
 
-Owner authorized the dedicated Customer Details section, supplier-style multiple
-image/PDF uploads, original names/bytes, categories/front-back metadata, optional
-saved-contact links, local previews/downloads and internal-only access. The
-[implementation/verification record](docs/plans/V8.20-CUSTOMER-FILES.md) documents
-the additive storage/data contract, migration limits, tests and pending release.
-No OCR/contact mutation, marketing enrollment or outreach is added.
+Released the dedicated Customer Details section with multiple image/PDF uploads,
+original filenames/bytes, categories, optional saved-contact links, grouped card
+sides, notes/source/referrer/date, local previews and original downloads. Files
+stay separate from Brand Assets/Product Gallery. No automatic OCR/contact changes,
+marketing enrolment or outreach. [Implementation and release evidence](docs/plans/V8.20-CUSTOMER-FILES.md).
 
-Twenty-six feature/UI cases, 13 real-SDK feature emulator cases, 112 RBAC checks,
-the seven existing merge cases and 1,053 prebuild tests/build/lint pass. Actual
-Chrome verifies multiple uploads/reload, interruption/retry, two-page PDF/image
-previews, exact original filenames/bytes/hashes, metadata editing and 375px layout.
-The existing Cindy / Tony Referral cohort is 11 companies / 14 contact IDs;
-local-copy associations pass and live full-field/contact/notes hashes and update
-times remain unchanged. Existing Brand Assets count is zero; no card migration.
-The owner subsequently supplied Desktop **Corp Prospect**. All eight originals
-match the existing cohort; the [source integrity and proposed attachment plan](docs/plans/V8.20-CORP-PROSPECT-ATTACHMENT-PLAN.md)
-preserves bilingual sides and identifies the combined multi-company source PDF.
-The plan is documented before application; no originals or live records changed.
-**No commit/push, app/rules deployment, live attachment or account change.**
-Both exact-SHA GitHub jobs and fresh candidate/production role/file checks remain
-required for a subsequently approved release. Shipping allocator hardening/recovery
-remains a separate open plan.
+Source `b719c7f016dafe2823a921c23951f21d2ca54c68` was committed/pushed with
+`[skip netlify]`; both required jobs passed in [run 42387274799 / attempt 1](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/42387274799)
+before candidate/rules/production uploads. All 1,053 prebuild tests, build and lint
+pass, alongside 26 focused/UI, 13 feature emulator, 112 RBAC, seven merge and eight
+local Chrome workflow checks. Candidate `6aef46cb78bedada76b0aa14` and production
+`6aef4852a8483858c119204f` pass fresh admin/approved-customer configuration,
+routing/data/access/refresh/runtime checks and fictional original-file checks.
+The same frozen artifact is served; additive Firestore/Storage rules were
+published separately and their source hashes read back exactly. QA checks confirm
+real Node/Storage permissions, binary transport, tokenless objects and direct GCS
+privacy. No IAM/account-permission change.
+
+The approved [Corp Prospect attachment plan](docs/plans/V8.20-CORP-PROSPECT-ATTACHMENT-PLAN.md)
+is complete: **14 file records from eight originals in 11 existing companies**,
+linked to 14 saved contact IDs. All 14 reloads/previews/thumbnails and ordinary
+Chrome downloads pass original name/byte/SHA256 checks. There are no missing or
+duplicate file records; the seven shared original PDFs are deliberate, labelled
+company associations. All original Desktop files and complete parent/contact/
+notes hashes/update times are unchanged. Each file refuses customer/anonymous
+API, Firestore, Storage and direct GCS access. One read-only network timeout was
+recovered by reusing the saved hash record, without another upload. No real
+customer/contact edits, enrolment or emails. Release/attachment documentation is
+pushed separately with `[skip netlify]`; it does not redeploy the app.
+
+Shipping allocator hardening/recovery remains a separate open plan.
 
 # V8.20 — Customer invoice payable exports (SH-03) — released, 7 November 2026
 

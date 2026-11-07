@@ -19,7 +19,21 @@ PDF.js 6 destroys the loading task rather than the document proxy. Encapsulate
 that lifecycle, verify real first-page thumbnails and multi-page previews, and
 retain originals after preview failure. Type binary requests explicitly and use
 bounded chunks for Netlify; read saved originals back with exact filenames/hash.
-[Implementation, worked case and local verification](../plans/V8.20-CUSTOMER-FILES.md).
+[Implementation, worked case and release verification](../plans/V8.20-CUSTOMER-FILES.md).
+
+8 November production verification: also test anonymous direct GCS object URLs,
+not only Firebase media endpoints, and inspect saved object metadata for absence
+of download tokens. A rules denial alone does not establish bucket/object IAM
+privacy. Keep internal objects private/no-store and never broaden IAM to make a
+QA upload pass.
+
+One anonymous verification request timed out after an original was already saved
+and downloaded. The app was not changed for this network failure: bounded
+read-only retries and Node's longer address-family connection fallback completed
+the check. Resume by inspecting the existing company/hash record; do not blindly
+upload again. For PDF preview QA, wait for completed canvas rendering/pixel change
+as well as the page label before saving a screenshot. This is verification
+timing, not evidence that a label alone proves the next page rendered.
 
 ## Financial retry safety and effective function grants need live contract evidence
 
