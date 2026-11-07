@@ -2,6 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Internal file model: customers/{customerId}/files/{fileId} records the
+    // original filename/MIME/size/SHA256, immutable storage customer, status,
+    // category/front-back/set, saved contact IDs, title/notes/source/referrer,
+    // revision and server timestamps/actors. Admin/CRM staff may read; all
+    // client creates/updates/deletes are denied. The validated Node API is the
+    // only writer. Customer-visible Brand Assets remain a separate collection.
+
     function signedIn() {
       return request.auth != null && request.auth.uid != 'mcp-range-upload-service';
     }
@@ -786,6 +793,12 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['customer_merge_lock'])
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['sales_pipeline']) || validPipeline(customerId));
       allow delete: if can('customers') && resource.data.get('customer_merge_lock', '') == '';
+      // Internal company files, separate from customer-visible brand assets.
+      // Backend-only writes validate metadata, saved contact IDs and revisions.
+      match /files/{fileId} {
+        allow read: if can('customers');
+        allow create, update, delete: if false;
+      }
       match /pipeline_history/{eventId} {
         allow read: if can('customers');
         allow create: if can('customers') && customerWorkspaceWritable(customerId)

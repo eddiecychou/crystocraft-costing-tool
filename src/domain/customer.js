@@ -568,7 +568,7 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
   const duplicate = { id: duplicateId, ...normalizeCustomer(dupSnap.data()) }
   const survivor  = { id: survivorId, ...normalizeCustomer(survSnap.data()) }
   const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
-  const [assetsSnap, interactionsSnap, emailThreadsSnap, workItemsSnap, whatsappSnap, alibabaSnap, brandedImages] = await Promise.all([
+  const [assetsSnap, interactionsSnap, emailThreadsSnap, workItemsSnap, whatsappSnap, alibabaSnap, brandedImages, filesSnap] = await Promise.all([
     getDocs(collection(db, 'customers', duplicateId, 'assets')),
     getDocs(collection(db, 'customers', duplicateId, 'enquiries')),
     getDocs(collection(db, 'customers', duplicateId, 'email_threads')),
@@ -576,6 +576,7 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
     getDocs(collection(db, 'customers', duplicateId, 'whatsapp_threads')),
     getDocs(collection(db, 'customers', duplicateId, 'alibaba_threads')),
     brandedImageDocs(duplicateId),
+    getDocs(collection(db, 'customers', duplicateId, 'files')),
   ])
   return {
     duplicate, survivor,
@@ -584,6 +585,7 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
     quotesCount: quotesSnap.size,
     accountsCount: usersSnap.size,
     assetsCount: assetsSnap.size,
+    filesCount: filesSnap.size,
     interactionsCount: interactionsSnap.size,
     emailThreadsCount: emailThreadsSnap.size,
     tasksCount: workItemsSnap.docs.filter(d=>d.data().kind === 'task').length,

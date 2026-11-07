@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { Timestamp, FieldValue } from 'firebase-admin/firestore'
 import { customerMergeFields, customerMergeContactMap } from '../../../src/customerMergeFields.js'
-export const MERGE_COLLECTIONS = ['work_items','pipeline_history','enquiries','email_threads','whatsapp_threads','alibaba_threads','assets']
+export const MERGE_COLLECTIONS = ['work_items','pipeline_history','enquiries','email_threads','whatsapp_threads','alibaba_threads','assets','files']
 const hash = s => createHash('sha256').update(s).digest('hex')
 export class MergeError extends Error { constructor(message, status=409) { super(message); this.status=status } }
 const canonical = value => value && typeof value === 'object' ? Array.isArray(value) ? value.map(canonical) : Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])) : value
@@ -40,7 +40,11 @@ export async function mergeCustomerRecords(db, sourceId, targetId, uid, { budget
     const snapshots=await job.collection('snapshots').get()
     const originals=Object.fromEntries(snapshots.docs.map(d=>[d.id,d.data()]))
     const contactIds=customerMergeContactMap(originals.survivor,originals.source)
-    const carriedData=s => {const data=s.data();return data.contact_id && contactIds[data.contact_id] ? {...data,contact_id:contactIds[data.contact_id]} : data}
+    const carriedData=s => {
+      const data=s.data()
+      if(s.ref.parent.id==='files')return {...data,customer_id:targetId,contact_ids:[...new Set((data.contact_ids||[]).map(id=>contactIds[id]||id))]}
+      return data.contact_id && contactIds[data.contact_id] ? {...data,contact_id:contactIds[data.contact_id]} : data
+    }
     const known = new Map((await job.collection('entries').get()).docs.map(d=>[d.data().source,d.data()]))
     async function copy(sourceDoc, targetCollection, removeSource=true) {
       const sourceRef=sourceDoc.ref

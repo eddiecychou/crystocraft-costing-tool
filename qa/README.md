@@ -1,5 +1,27 @@
 # Automated regressions and release checks
 
+## Internal customer files
+
+`npm run test:customer-files` runs actual UI privacy/labels/route and backend/model
+tests. The existing customer-workspace command includes them in prebuild and
+product-search. `node --test qa/customer-files-emulator.mjs` requires loopback
+Firestore and Storage and tests actual repositories, object bytes/metadata,
+direct client denial, current-profile gates and merge provenance. The required
+customer-merge-emulator job runs it separately from existing merge cases.
+
+`python3 qa/customer-files-generate-fixtures.py` creates fictional PNG/PDF inputs
+(Pillow/reportlab; use the bundled Python runtime if needed). Existing generated
+files are retained so a verification rerun does not replace its original evidence.
+`qa/customer-files-browser.mjs` exercises actual UI/client/backend/SDKs on local
+emulators with a fictional token-verification boundary. It uses clearly fictional
+inputs in `qa/out/customer-files/fixtures/`, blocks external browser requests and
+checks exact original downloads, previews, metadata, failures and mobile layout.
+Use `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080`,
+`FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199` and
+`GCLOUD_PROJECT=crystocraft-rbac-test`. Keep real case snapshots outside the web
+workspace. No production writes/deployment are part of this command.
+[Scope, evidence and release limits](../docs/plans/V8.20-CUSTOMER-FILES.md).
+
 Invoice save/customer navigation corrections: `npm run test:shipment-display`
 includes current edited accounting totals, real adjustment/deposit guards and
 visible failure/retry in all create/edit modes. `npm run test:customer-workspace`

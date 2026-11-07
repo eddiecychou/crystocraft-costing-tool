@@ -91,7 +91,7 @@ export default function MergeCustomerModal({ customer, onClose, onMerged }) {
                 <strong>{preview.accountsCount}</strong> portal account{preview.accountsCount === 1 ? '' : 's'} will move to{' '}
                 <strong>{preview.survivor.company_name}</strong>.
               </p>
-              {(preview.tasksCount > 0 || preview.notesCount > 0 || preview.whatsappThreadsCount > 0 || preview.alibabaThreadsCount > 0 || preview.assetsCount > 0 || preview.interactionsCount > 0 || preview.brandedImagesCount > 0 || preview.emailThreadsCount > 0) && (
+              {(preview.tasksCount > 0 || preview.notesCount > 0 || preview.whatsappThreadsCount > 0 || preview.alibabaThreadsCount > 0 || preview.assetsCount > 0 || preview.filesCount > 0 || preview.interactionsCount > 0 || preview.brandedImagesCount > 0 || preview.emailThreadsCount > 0) && (
                 <p>
                   {[
                     preview.tasksCount > 0 && `${preview.tasksCount} task(s), including completed tasks`,
@@ -100,6 +100,7 @@ export default function MergeCustomerModal({ customer, onClose, onMerged }) {
                     preview.alibabaThreadsCount > 0 && `${preview.alibabaThreadsCount} Alibaba thread(s)`,
                     preview.interactionsCount > 0 && `${preview.interactionsCount} interaction log entr${preview.interactionsCount === 1 ? 'y' : 'ies'}`,
                     preview.assetsCount > 0 && `${preview.assetsCount} Brand Gallery asset${preview.assetsCount === 1 ? '' : 's'}`,
+                    preview.filesCount > 0 && `${preview.filesCount} internal customer file${preview.filesCount === 1 ? '' : 's'}`,
                     preview.emailThreadsCount > 0 && `${preview.emailThreadsCount} email thread${preview.emailThreadsCount === 1 ? '' : 's'}`,
                     preview.brandedImagesCount > 0 && `${preview.brandedImagesCount} "branded for" product photo tag${preview.brandedImagesCount === 1 ? '' : 's'}`,
                   ].filter(Boolean).join(', ')} will also move to <strong>{preview.survivor.company_name}</strong>.

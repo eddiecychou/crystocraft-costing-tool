@@ -29,6 +29,13 @@ service firebase.storage {
       return isAdmin() || (pExists() && (m in moduleList()));
     }
 
+    // Business cards/customer documents have no direct client access, including
+    // token-URL upload creation. /api/customer-files checks current CRM access
+    // on every byte request; Admin SDK objects have no Firebase download tokens.
+    match /customer-files/{allPaths=**} {
+      allow read, write: if false;
+    }
+
     // Product photographs: immutable objects, current published revisions only.
     match /crystal-products/{pid}/{iid}/{revision}/{filename} {
       // Customer bytes pass /api/crystal-product-media's three-document gate.

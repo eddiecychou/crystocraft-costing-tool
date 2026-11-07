@@ -36,6 +36,10 @@
   node_bundler = "esbuild"
   external_node_modules = ["firebase-admin"]
 
+[functions."customer-files"]
+  node_bundler = "esbuild"
+  external_node_modules = ["firebase-admin"]
+
 [functions."mcp-range"]
   node_bundler = "esbuild"
   external_node_modules = ["firebase-admin"]

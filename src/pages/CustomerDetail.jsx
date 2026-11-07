@@ -1,4 +1,5 @@
 import Collapsible from '../components/crm/CustomerCollapsible'
+import CustomerFiles from '../components/crm/CustomerFiles'
 import BrandProposalCard from '../components/crm/BrandProposalCard'
 import ProductDesignConceptsCard from '../components/crm/ProductDesignConceptsCard'
 import MergeCustomerModal from '../components/crm/MergeCustomerModal'
@@ -1153,6 +1154,10 @@ function CustomerDetailPage({ id }) {
       )}
 
       {/* Company details */}
+      <Collapsible storageKey={`${id}:files`} title="Business Cards & Customer Files">
+        <CustomerFiles customerId={id}/>
+      </Collapsible>
+
       <Collapsible storageKey={`${id}:company`} title="Company Details">
         <dl className="space-y-2">
           {customer.website && (

@@ -1,3 +1,28 @@
+# V8.20 — Internal Business Cards & Customer Files — locally verified, 7 November 2026
+
+Owner authorized the dedicated Customer Details section, supplier-style multiple
+image/PDF uploads, original names/bytes, categories/front-back metadata, optional
+saved-contact links, local previews/downloads and internal-only access. The
+[implementation/verification record](docs/plans/V8.20-CUSTOMER-FILES.md) documents
+the additive storage/data contract, migration limits, tests and pending release.
+No OCR/contact mutation, marketing enrollment or outreach is added.
+
+Twenty-six feature/UI cases, 13 real-SDK feature emulator cases, 112 RBAC checks,
+the seven existing merge cases and 1,053 prebuild tests/build/lint pass. Actual
+Chrome verifies multiple uploads/reload, interruption/retry, two-page PDF/image
+previews, exact original filenames/bytes/hashes, metadata editing and 375px layout.
+The existing Cindy / Tony Referral cohort is 11 companies / 14 contact IDs;
+local-copy associations pass and live full-field/contact/notes hashes and update
+times remain unchanged. Existing Brand Assets count is zero; no card migration.
+The owner subsequently supplied Desktop **Corp Prospect**. All eight originals
+match the existing cohort; the [source integrity and proposed attachment plan](docs/plans/V8.20-CORP-PROSPECT-ATTACHMENT-PLAN.md)
+preserves bilingual sides and identifies the combined multi-company source PDF.
+The plan is documented before application; no originals or live records changed.
+**No commit/push, app/rules deployment, live attachment or account change.**
+Both exact-SHA GitHub jobs and fresh candidate/production role/file checks remain
+required for a subsequently approved release. Shipping allocator hardening/recovery
+remains a separate open plan.
+
 # V8.20 — Customer invoice payable exports (SH-03) — released, 7 November 2026
 
 Owner authorized the next documented Shipping correction. Customer PDF/Excel

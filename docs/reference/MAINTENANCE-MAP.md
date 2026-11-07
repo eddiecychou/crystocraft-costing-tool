@@ -148,6 +148,15 @@ ownership, tests and current release state.
 
 ## CRM component ownership — first cleanup batch
 
+The separately requested [Business Cards & Customer Files](../plans/V8.20-CUSTOMER-FILES.md)
+feature is implemented/verified locally, awaiting release approval. CustomerDetail
+only mounts the dedicated internal section. CustomerFiles owns its file workflow;
+the model/API/preview helpers and Node repository/object adapter own validation,
+original bytes, descriptors and access. Existing contacts/notes are never upload
+targets, and Brand Assets/Product Gallery stay separate. Customer merge carries
+the new subcollection using its existing reviewed transfer protocol. The feature
+does not close the separately open Shipping/allocator debt.
+
 All paths below are under src/components/crm. During the original first batch,
 component bodies and existing props, markup, state and side effects moved intact.
 Later requested spacing/history corrections are recorded separately in the

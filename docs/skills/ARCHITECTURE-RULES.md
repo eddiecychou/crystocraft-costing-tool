@@ -44,6 +44,14 @@ photos. Isolation is enforced at three layers:
   must deliberately raise visibility to `customer_private` / `public_reference`.
   Marketing reuse additionally requires `can_use_in_marketing === true`
   (`src/customerAssets.js`; `../specs/Customer_Brand_Gallery_Spec.md`).
+- **Business cards/customer files.** `customers/{id}/files` and Storage
+  `customer-files/` are a distinct internal-only feature. The linked customer
+  is always denied. Current admin/CRM-module staff may read through the backend;
+  all direct Storage access and client metadata writes are denied. Never store
+  token/public read URLs, expose these in brand/product/marketing galleries,
+  overwrite contacts on upload or turn a card into outreach consent. Preserve
+  original bytes/names and actual saved contact IDs. [Implementation and pending
+  release state](../plans/V8.20-CUSTOMER-FILES.md).
 
 **MUST NOT** add a cross-customer query (e.g. a `collectionGroup` over customer
 subcollections) without re-checking these rules — an equality filter that looks

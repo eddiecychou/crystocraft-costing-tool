@@ -1,5 +1,26 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## Business-card files need protected bytes and actual saved contact identities
+
+7 November 2026: reuse supplier upload ergonomics, not shareable download-token
+URLs or the public Office viewer. Customer cards/documents are a separate private
+subcollection/prefix, with original bytes/names preserved and independent viewing
+thumbnails. Backend role checks and client rules must both enforce CRM-only access
+for every preview/download; a linked customer's own company is still refused.
+
+Contact normalizers can generate transient IDs or repair duplicates on read.
+File links must use actual uniquely saved IDs, without writing normalized contacts
+back as an upload side effect. Card OCR is not permission to create/merge contacts
+or enroll/send marketing. Duplicate/retried originals preserve existing metadata;
+explicit descriptor edits need revisions. Customer merge must carry file metadata,
+remap links, preserve original storage provenance/collisions and remain resumable.
+
+PDF.js 6 destroys the loading task rather than the document proxy. Encapsulate
+that lifecycle, verify real first-page thumbnails and multi-page previews, and
+retain originals after preview failure. Type binary requests explicitly and use
+bounded chunks for Netlify; read saved originals back with exact filenames/hash.
+[Implementation, worked case and local verification](../plans/V8.20-CUSTOMER-FILES.md).
+
 ## Financial retry safety and effective function grants need live contract evidence
 
 7 November 2026: a metadata-only review confirms the deployed SI allocator creates
