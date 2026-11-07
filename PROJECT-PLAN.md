@@ -1,4 +1,4 @@
-# V8.20 — Customer invoice payable exports (SH-03) — release in progress, 7 November 2026
+# V8.20 — Customer invoice payable exports (SH-03) — released, 7 November 2026
 
 Owner authorized the next documented Shipping correction. Customer PDF/Excel
 now disclose approved Accounting Total independently of deposit visibility;
@@ -10,8 +10,21 @@ five customer failures reproduced before the fix; all 68 invoice cases pass,
 including 26 new parity cases. All 1,027 prebuild tests/build/lint pass. Twenty-six
 fictional Chrome PDFs and 26 actual Excel downloads have correct totals, words,
 privacy and layout. No live financial records, numbers, rules or schema changed.
-Owner has now authorized release after both GitHub checks, followed by read-only
-SH-05 deployed-allocation contract review and a documented recovery plan.
+Released source `96ba538ad074b16f305bc8ac351c04eadd61159e` after both jobs passed
+in [run 42349909136, attempt 1](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/42349909136).
+Candidate `6aeecf97c752b76b040baf23` and canonical production
+`6aeed0f424153a45fea9bb45` pass fresh admin/customer configuration, role, data,
+access and refresh/runtime gates. Ten further served-renderer fictional PDF/Excel
+pairs pass saved-file readback, totals/words/privacy and layout checks. The linked
+release record distinguishes real sign-ins from fictional order-read overrides;
+no real financial records/numbers or rules/schema changed.
+
+The authorized [SH-05 read-only allocator review and recovery plan](docs/plans/V8.20-INVOICE-ALLOCATION-RECOVERY-REVIEW.md)
+is complete. Metadata confirms a fresh SI on every call, no retry identity, and
+effective PUBLIC execution despite named-role revokes. No RPC allocation or SQL
+write was performed. Next: separately review/test narrow service-only privilege
+hardening, then durable per-intent recovery without prohibiting split/reissued
+invoices. No SH-05 implementation is included in the export release.
 
 # V8.20 — Crystal image Delete action — released, 7 November 2026
 

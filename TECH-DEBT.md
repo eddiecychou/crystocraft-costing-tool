@@ -29,24 +29,36 @@ outcomes are released as 3022bfe (40 integration, 2 SDK, 38 Chrome,
 916 prebuild cases), including review-only known ledger accounting/unknown base
 when source accounting is blank. Both exact-SHA jobs and fresh candidate/production
 admin/customer financial-read/API gates pass. [Correction/release record](docs/plans/V8.20-INVOICE-RECONCILIATION-FIX.md).
-SH-03 customer no-deposit payable exports have an owner-authorized local
-correction, permanent parity tests and saved PDF/XLSX verification; deployment
-is pending. [Scope/evidence](docs/plans/V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md).
+SH-03 customer no-deposit payable exports are corrected and released as 96ba538
+after both exact-SHA jobs, 1,027 prebuild tests, fresh candidate/production roles
+and saved PDF/XLSX verification. [Scope/evidence](docs/plans/V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md).
 The other findings below remain open.
 
 - **P1 PI source identity — corrected in SH-01/02:** original overlapping/failed replacement extraction can attach
   B's PDF to A's SO/UC/lines; a late ERP comparison can offer/adopt A's lines for B.
   Bind committed file/result/comparison identity, including replacement failure.
-- **P1 financial contract:** the production baseline omits approved customer accounting payable
-  without a positive deposit; the local SH-03 correction above addresses it. Sales Invoices Re-sync omits accounting/date/reference
-  fields and can reset the financial copy while its warning clears; metadata-only
-  drift is not detected. The saved Firestore order remains intact in the fixture.
+- **P1 financial contract — corrected:** the reviewed baseline omitted approved customer accounting payable
+  without a positive deposit; released SH-03 above addresses it. Sales Invoices Re-sync omitted accounting/date/reference
+  fields and could reset the financial copy while its warning cleared; metadata-only
+  drift was not detected. The saved Firestore order remained intact in the fixture.
   The Re-sync portion is corrected under the subsequent SH-04 authorization above;
-  the customer export portion is separate.
+  the customer export portion is released separately under SH-03 above.
 - **P1 allocation recovery:** direct SI allocation followed by a failed reference
   patch loses the acknowledged result/warning. Ordinary Raise sends a second
-  allocation request for the same order. Live duplicate issuance is not proven;
-  inspect deployed semantics before a separately reviewed identity/recovery design.
+  allocation request for the same order. The 7 November metadata-only deployed
+  review confirms each call allocates a new SI and there is no operation identity.
+  Historical duplicate issuance remains unproven. First address the separate
+  execution-grant gap below, then design persistent per-intent retry/relinking;
+  preserve intentional split/reissued invoices rather than imposing unique order_id.
+  [Live contract, limits and prioritized plan](docs/plans/V8.20-INVOICE-ALLOCATION-RECOVERY-REVIEW.md).
+- **P1 allocator privilege gap — confirmed, not changed:** the deployed SECURITY
+  DEFINER allocate_sales_invoice retains PUBLIC EXECUTE. Catalog checks show
+  effective anon/authenticated/service_role EXECUTE all true despite explicit
+  named-role revokes in the setup SQL. Prepare a narrow PUBLIC/anon/authenticated
+  revoke while retaining service_role and correct canonical SQL; review/test and
+  publish separately. No anonymous RPC allocation or production SQL write was
+  performed. Other financial functions need a separately bounded grant review;
+  this finding does not claim their current state.
 - **P2 initialization/completion:** quote read failures have no catch/Retry; delayed
   prefill overwrites edits. Abandoned Create completion still navigates. Conversion
   Back/re-entry can create another order and replace the backlink; define intentional

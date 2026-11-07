@@ -387,6 +387,21 @@ Permanent actual UI/client/edge fixtures run in test:invoice-reconciliation,
 prebuild and product-search; raw server/offline cases run in the required emulator
 job. All financial writes in QA are fictional. No historical repair is implied.
 
+The later [SH-03 customer export correction](../plans/V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md)
+keeps CustomerInvoicePrint's PDF/Excel summary and words aligned with the existing
+invoicePaymentTotals accounting-first result independently of deposit visibility.
+No pricing/save/registry owner moves. Released as 96ba538 with 68 invoice cases,
+saved local/served fictional exports and full exact-SHA/two-role release gates.
+
+The [SH-05 deployed-contract review](../plans/V8.20-INVOICE-ALLOCATION-RECOVERY-REVIEW.md)
+is metadata-only. ShipmentForm still owns allocation/reference sequencing,
+ucRegistry owns the authenticated client and uc.js owns the gateway; the SQL
+allocator owns the SI/UC transaction. It has no retry identity, and its effective
+PUBLIC execution grant needs separate hardening. Do not move these handlers as
+a presentation cleanup or introduce unique order_id. The review proposes a
+service-only grant repair followed by durable per-intent recovery; neither is
+implemented by that review or the SH-03 export release.
+
 Released as 3022bfe after both exact-SHA jobs and fresh candidate/production
 admin/customer complete financial-read/access gates. Final evidence includes
 40 integration, 2 SDK, 38 Chrome and 916 prebuild cases; a known ledger accounting

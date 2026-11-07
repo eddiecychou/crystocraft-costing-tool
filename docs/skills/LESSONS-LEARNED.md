@@ -1,5 +1,28 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## Financial retry safety and effective function grants need live contract evidence
+
+7 November 2026: a metadata-only review confirms the deployed SI allocator creates
+a new number on every successful call. Its database transaction covers SI/UC,
+while the later Firestore reference write is separate. A lost response or failed
+link requires persistent per-operation identity and staged recovery, not another
+ordinary allocation or a blanket one-invoice-per-order constraint. No live
+allocation or historical duplicate audit was performed.
+
+The function also retains PUBLIC EXECUTE: named anon/authenticated revokes did
+not remove inherited execution. Inspect effective privileges and overloads before
+claiming service-only access. Prepare a narrow reviewed grant change and preserve
+service access; do not prove an unsafe allocator path by issuing production
+numbers. The gap is documented, not repaired by the review.
+[Contract, proposed hardening and recovery plan](../plans/V8.20-INVOICE-ALLOCATION-RECOVERY-REVIEW.md).
+
+Customer invoice exports must choose approved accounting payable independently
+of positive-deposit row visibility, including approved zero. Keep the actual
+payment helper/renderer/exporter in fictional tests. Read saved PDF/XLSX artifacts
+back and distinguish local fixtures, served-renderer read overrides, fresh real
+role checks and native browser Save-dialog evidence.
+[SH-03 correction and release evidence](../plans/V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md).
+
 ## Crystal costing must reuse private records and the actual permission API
 
 6 November 2026: `useCan()` returns a predicate; `useCan('supply')` still returns

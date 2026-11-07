@@ -1,10 +1,14 @@
 # OC maintenance and code cleanup plan
 
-**7 November follow-up:** the owner authorized SH-03 customer accounting-payable
-PDF/Excel correction. [Implemented and verified locally](V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md):
-68 invoice cases, 1,027 prebuild cases and 26 PDF/XLSX export pairs pass. Release
-is pending; no live records or rules changed. After release, SH-05 allocation
-recovery needs a deployed-contract review before any new allocation policy.
+**7 November follow-up:** SH-03 customer accounting-payable PDF/Excel correction
+is [released as 96ba538 and verified](V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md): 68 invoice
+cases, 1,027 prebuild cases, 26 local PDF/XLSX pairs, both exact-SHA jobs and fresh
+candidate/production admin/customer gates pass. Ten further served-renderer
+fictional export pairs pass. No live financial records/numbers or rules changed.
+The [SH-05 read-only deployed review and recovery plan](V8.20-INVOICE-ALLOCATION-RECOVERY-REVIEW.md)
+is complete: first review/test service-only allocator execution hardening, then
+durable per-intent recovery. PUBLIC execution remains a confirmed open gap;
+no grants/schema changed and split/reissued invoices remain supported by design.
 
 **6 November stopping point:** the owner requested a documented handoff before
 switching to Crystal Components. [Current cleanup handoff](V8.20-CLEANUP-HANDOFF-2026-11-06.md)
