@@ -1,11 +1,13 @@
 # OC maintenance and code cleanup plan
 
-**8 November — SH-05A prepared:** the owner approved the permissions-only batch.
-[Migration and verification plan](V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md):
-canonical setup removes PUBLIC, a guarded transaction preserves the server grant,
-and 18 actual PostgreSQL cases pass with fictional records. Production application
-is pending both exact-SHA jobs and fresh role/gateway checks. Durable recovery is
-the separate SH-05B follow-up; no historical number or invoice repair is included.
+**8 November — SH-05A released:** the owner-approved permission-only transaction
+is applied and [verified](V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md). Effective public
+roles are refused; the server grant and function identity/body are preserved.
+Eighteen real PostgreSQL cases, 58 combined cases, 1,071 prebuild cases/build/lint,
+both exact-SHA jobs and fresh candidate/production role/gateway checks pass. No
+production number or financial-row write was used. Existing app/rules publication
+is unchanged. **Next: SH-05B durable per-intent retry/relink recovery**, preserving
+split/reissued invoices. The dated 7 November review below is historical.
 
 **7 November follow-up:** SH-03 customer accounting-payable PDF/Excel correction
 is [released as 96ba538 and verified](V8.20-CUSTOMER-INVOICE-PAYABLE-FIX.md): 68 invoice

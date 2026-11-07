@@ -1,19 +1,27 @@
-# V8.20 — Invoice allocator permissions (SH-05A) — prepared, 8 November 2026
+# V8.20 — Invoice allocator permissions (SH-05A) — released, 8 November 2026
 
-Owner approved the first bounded Shipping safety batch. The live catalog still
-has one seven-argument SECURITY DEFINER allocator with unwanted PUBLIC EXECUTE
-and an explicit service_role grant. Prepared a narrow, guarded ACL transaction
-and corrected both canonical setup definitions with atomic private grants.
-No allocator body, number sequence, invoice/UC/order record, role membership or
-browser/API behavior changes. [Migration and verification record](docs/plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md).
+Owner approved the bounded permission-only cleanup. The reviewed DCL transaction
+is now live: PUBLIC/anon/authenticated cannot execute the SI allocator, while
+service_role retains execution. Readback confirms the same OID, definition MD5,
+owner, SECURITY DEFINER and pinned search path. Canonical setup now publishes
+both historical/final allocator definitions with atomic private grants.
+[Release and migration evidence](docs/plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md).
 
-All 18 real PostgreSQL 17 permission/rollback/behavior/client/gateway cases pass
-with fictional data; all 58 combined reconciliation/allocator tests and source
-lint pass. The new suite runs in required product-search CI and prebuild through
-`test:invoice-reconciliation`. Commit/push and both exact-SHA CI jobs precede
-production SQL application. This is SQL-only: retain the existing Netlify app
-and Firebase rules, with fresh candidate/production roles and safe gateway probes.
-Durable allocation recovery (SH-05B) remains separate; no live grants changed yet.
+Released SQL source `47d9809d1570707cf7ff6d27ac6a199d0427a5ff` after both exact-SHA
+jobs passed in [run 42400035795 / attempt 1](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/42400035795),
+with another immediate pre-application gate. All 18 actual PostgreSQL permission,
+rollback, behavior and client/gateway cases, 58 combined cases and 1,071 prebuild
+cases/build/lint pass. Fresh candidate and production admin/customer role,
+data/access/refresh/runtime and safe UC gateway probes pass. No production
+allocator call or invoice/UC number, financial-row write, role change or email.
+
+This is SQL-only: the existing app production `6aef4852a8483858c119204f`, runtime
+source `b719c7f016dafe2823a921c23951f21d2ca54c68`, and Firebase rules remain
+unchanged. Runtime source/dependency equivalence and served main/Shipping/UC
+hashes pass. Existing direct-SQL ERP workflow is preserved; no hosted migration
+ledger was introduced. Durable per-intent allocation recovery remains the next
+separate SH-05B task, preserving intentional split/reissued invoices. Historical
+duplicate issuance has not been established.
 
 # V8.20 — Internal Business Cards & Customer Files — released, 8 November 2026
 

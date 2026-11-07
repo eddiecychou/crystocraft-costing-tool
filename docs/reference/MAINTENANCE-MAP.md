@@ -405,11 +405,12 @@ saved local/served fictional exports and full exact-SHA/two-role release gates.
 The [SH-05 deployed-contract review](../plans/V8.20-INVOICE-ALLOCATION-RECOVERY-REVIEW.md)
 is metadata-only. ShipmentForm still owns allocation/reference sequencing,
 ucRegistry owns the authenticated client and uc.js owns the gateway; the SQL
-allocator owns the SI/UC transaction. It has no retry identity, and its effective
-PUBLIC execution grant needs separate hardening. Do not move these handlers as
+allocator owns the SI/UC transaction. [SH-05A](../plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md)
+now restricts execution to the existing server/owner grants, with unchanged
+function identity/body. It still has no retry identity (SH-05B). Do not move these handlers as
 a presentation cleanup or introduce unique order_id. The review proposes a
-service-only grant repair followed by durable per-intent recovery; neither is
-implemented by that review or the SH-03 export release.
+service-only grant repair followed by durable per-intent recovery; the repair
+was subsequently released under SH-05A, while recovery remains separate.
 
 Released as 3022bfe after both exact-SHA jobs and fresh candidate/production
 admin/customer complete financial-read/access gates. Final evidence includes

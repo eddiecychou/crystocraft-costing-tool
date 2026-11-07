@@ -47,21 +47,17 @@ The other findings below remain open.
   patch loses the acknowledged result/warning. Ordinary Raise sends a second
   allocation request for the same order. The 7 November metadata-only deployed
   review confirms each call allocates a new SI and there is no operation identity.
-  Historical duplicate issuance remains unproven. First address the separate
-  execution-grant gap below, then design persistent per-intent retry/relinking;
+  Historical duplicate issuance remains unproven. The separate execution-grant
+  gap is fixed under SH-05A below; next design persistent per-intent retry/relinking;
   preserve intentional split/reissued invoices rather than imposing unique order_id.
   [Live contract, limits and prioritized plan](docs/plans/V8.20-INVOICE-ALLOCATION-RECOVERY-REVIEW.md).
-- **P1 allocator privilege gap — confirmed, not changed:** the deployed SECURITY
-  DEFINER allocate_sales_invoice retains PUBLIC EXECUTE. Catalog checks show
-  effective anon/authenticated/service_role EXECUTE all true despite explicit
-  named-role revokes in the setup SQL. Prepare a narrow PUBLIC/anon/authenticated
-  revoke while retaining service_role and correct canonical SQL; review/test and
-  publish separately. No anonymous RPC allocation or production SQL write was
-  performed. Other financial functions need a separately bounded grant review;
-  this finding does not claim their current state.
-  The owner approved SH-05A on 8 November; the [narrow migration and real
-  PostgreSQL verification](docs/plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md) are
-  prepared. Production grant publication is gated separately from SH-05B recovery.
+- **Allocator privilege gap — fixed 8 November 2026 (SH-05A):** the exact reviewed
+  function now denies effective anon/authenticated execution and retains the
+  existing service_role grant; PUBLIC is absent. Definition/OID/owner/search path
+  are unchanged. Canonical setup and 18 actual PostgreSQL regression cases protect
+  the fix. [Migration, CI and fresh-role evidence](docs/plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md).
+  Durable per-intent recovery above is still open. Other financial functions need
+  a separately bounded grant review; this release does not claim their state.
 - **P2 initialization/completion:** quote read failures have no catch/Retry; delayed
   prefill overwrites edits. Abandoned Create completion still navigates. Conversion
   Back/re-entry can create another order and replace the backlink; define intentional
