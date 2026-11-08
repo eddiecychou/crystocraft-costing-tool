@@ -1,3 +1,5 @@
+import {invoiceWriteRow} from '../shared/invoiceFields.js'
+import {cleanUcFields as clean} from '../shared/ucFields.js'
 // UC# invoice registry API (read + write) backed by Supabase public.uc_registry.
 // Admin-only, same as /api/erp: verifies the caller's Firebase token and that
 // their app profile is role:'admin', then talks to Supabase with the secret key
@@ -15,27 +17,6 @@ const json = (b, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
 
 // Columns the client may set. uc_no is server-allocated (DB default), never client-set.
-const WRITABLE = new Set([
-  'doc_date', 'year', 'source', 'jes_si', 'order_no', 'customer', 'customer_id', 'currency', 'total', 'deposit',
-  // shipping_cost and delivery_date are deliberately absent: retired from the
-  // registry on 2026-07-21 (Cindy). The columns still hold their history, but
-  // nothing may write them again.
-  'balance', 'bal_pay_date', 'shipment', 'customs',
-  'confirmed', 'pic', 'remarks', 'status',
-])
-const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
-
-function clean(data) {
-  const out = {}
-  for (const k of Object.keys(data || {})) if (WRITABLE.has(k)) out[k] = data[k]
-  // Balance defaults to total − deposit when not given.
-  if (out.balance === '' || out.balance == null) out.balance = Math.round((num(out.total) - num(out.deposit)) * 100) / 100
-  for (const k of ['total', 'deposit', 'balance']) if (k in out) out[k] = num(out[k])
-  out.confirmed = !!out.confirmed
-  // open = outstanding/tracked, closed = paid/done, void = cancelled mistake.
-  if (!['open', 'closed', 'void'].includes(out.status)) out.status = 'open'
-  return out
-}
 
 async function isFrontOffice(uid, idToken, projectId, moduleKey) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
@@ -130,27 +111,7 @@ export default async function handler(req) {
   // the app has issued and what the mirror shows JES issued — no seed to go
   // stale, which is the bug that had to be hand-fixed on 2026-07-21.
   if (body.op === 'allocate_invoice') {
-    const yy = String(body.year ?? '').trim()
-    if (!/^\d{2}$/.test(yy)) return json({ error: 'Bad year' }, 400)
-    const r = await rest('rpc/allocate_sales_invoice', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        p_year: yy,
-        p_customer: String(body.customer ?? '').slice(0, 200),
-        p_currency: String(body.currency ?? 'HKD').slice(0, 8),
-        p_order_id: body.order_id ? String(body.order_id).slice(0, 64) : null,
-        p_uc_id: Number.isFinite(Number(body.uc_id)) && body.uc_id ? Number(body.uc_id) : null,
-        p_uc_no: body.uc_no ? String(body.uc_no).slice(0, 64) : null,
-        p_created_by: email,
-      }),
-    })
-    if (!r.ok) return json({ error: 'Allocation failed', detail: (await r.text()).slice(0, 300) }, 502)
-    const row = (await r.json())[0] || {}
-    return json({
-      si_no: row.o_si_no, uc_no: row.o_uc_no,
-      uc_id: row.o_uc_id, invoice_id: row.o_invoice_id,
-    })
+    return json({error:'Refresh OC and use Raise Invoice on the saved order to resume the protected invoice request.'},409)
   }
 
   // ── keep the financial record in step with the order ───────────────────────
@@ -161,48 +122,9 @@ export default async function handler(req) {
   // liability, which is why the reconcile op below exists rather than trusting
   // this to always succeed.
   if (body.op === 'upsert_invoice') {
-    const si = String(body.si_no ?? '').trim()
-    if (!/^SI\d{6,}$/.test(si)) return json({ error: 'Bad invoice number' }, 400)
-    // Phase A fields. accounting_total defaults to total when not given, so
-    // existing callers (that don't know about it yet) don't leave it null next
-    // to a real total. adjustment is derived here rather than trusted from the
-    // client — it must always equal accounting_total − total.
-    const total = Number.isFinite(Number(body.total)) ? Number(body.total) : null
-    const hasAccTotal = body.accounting_total !== undefined && body.accounting_total !== null && body.accounting_total !== ''
-    const accountingTotal = hasAccTotal && Number.isFinite(Number(body.accounting_total))
-      ? Number(body.accounting_total) : total
-    const adjustment = (accountingTotal != null && total != null)
-      ? Math.round((accountingTotal - total) * 100) / 100 : null
-    const adjustmentReason = String(body.adjustment_reason ?? '').trim().slice(0, 500)
-    // No silent overwrite (SR-05): a nonzero gap between the calculated and
-    // accounting totals must carry a reason, checked server-side too — the UI
-    // check in ShipmentForm is not the only gate on this rule.
-    if (adjustment && Math.abs(adjustment) > 0.005 && !adjustmentReason) {
-      return json({ error: 'Adjustment reason required', detail: 'accounting_total differs from total but no adjustment_reason was given' }, 400)
-    }
-    const row = {
-      si_no: si,
-      year: si.slice(2, 4),
-      uc_no: body.uc_no ? String(body.uc_no).slice(0, 64) : null,
-      order_id: body.order_id ? String(body.order_id).slice(0, 64) : null,
-      customer: String(body.customer ?? '').slice(0, 200),
-      currency: String(body.currency ?? '').slice(0, 8),
-      total,
-      invoiced_at: /^\d{4}-\d{2}-\d{2}$/.test(String(body.invoiced_at ?? '')) ? body.invoiced_at : null,
-      invoice_date: /^\d{4}-\d{2}-\d{2}$/.test(String(body.invoice_date ?? '')) ? body.invoice_date : null,
-      customer_po: String(body.customer_po ?? '').slice(0, 200),
-      remarks: String(body.remarks ?? '').slice(0, 4000),
-      accounting_total: accountingTotal,
-      adjustment,
-      adjustment_reason: adjustmentReason,
-      // WooCommerce B2C sync (docs/specs/WooCommerce_B2C_Sync_Spec.md Phase 3) — cross-
-      // reference only, never used as a key; si_no stays in the app's own
-      // series regardless of channel (see app_sales_invoice.sql's header).
-      channel: body.channel ? String(body.channel).slice(0, 40) : null,
-      external_order_no: body.external_order_no ? String(body.external_order_no).slice(0, 100) : null,
-      updated_at: new Date().toISOString(),
-      updated_by: email,
-    }
+    const built=invoiceWriteRow(body,email)
+    if(built.error){const{status,...error}=built;return json(error,status)}
+    const row=built.row
     const r = await rest('app_sales_invoice?on_conflict=si_no', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' },

@@ -417,3 +417,22 @@ admin/customer complete financial-read/access gates. Final evidence includes
 40 integration, 2 SDK, 38 Chrome and 916 prebuild cases; a known ledger accounting
 amount with an unknown base also stays Review required when source accounting is
 blank. The remaining customer export and concurrency/outbox tasks stay separate.
+
+
+### SH-05B invoice retry/recovery
+
+`netlify/functions/lib/invoiceRecoveryRepository.js` owns durable claims/linking
+and revision-safe state; `invoiceRecovery.js` owns fresh authorization and
+orchestration; `invoiceRecoverySql.js` owns receipt RPCs and guarded follow-ups.
+`src/invoiceRecoveryModel.js` is the pure shared contract. Existing pure financial
+and Woo projections live in `invoiceRegistryFields.js` / `invoiceFinancialModel.js`;
+shipping.js reexports the previous names. Node/edge share the existing write
+normalizers in netlify/shared. ShipmentForm owns editing and applies acknowledged
+reference state without replacing unsaved commercial fields. The controlled
+ShipmentInvoiceRecovery panel owns only disclosure/confirmation UI.
+
+[Migration, tests, lessons and current release state](../plans/V8.20-INVOICE-RETRY-RECOVERY.md).
+Do not reintroduce the old UC allocation op, unique order_id, client operation
+writes or zero-length recursive rules. Retry the same persisted request; split
+or reissue is explicit. Native PostgreSQL plus Firebase integration tests belong
+to both required CI jobs. General Create/conversion/outbox work remains separate.

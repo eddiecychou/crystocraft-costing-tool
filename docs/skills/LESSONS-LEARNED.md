@@ -1795,3 +1795,21 @@ refresh the financial check before retrying a write. Actual SDK tests must prove
 cached data cannot satisfy a fresh-server requirement. A temporary Java path
 from an earlier session is not proof the runtime still exists.
 [Verified scope, tests and release state](../plans/V8.20-INVOICE-RECONCILIATION-FIX.md).
+
+
+### An atomic allocator still needs durable cross-system recovery
+
+8 November 2026, SH-05B: an atomic SI/UC transaction does not make its later
+Firestore link atomic. Persist an operation before SQL; bind its UUID to the
+exact server-frozen request; recover the same receipt after lost responses.
+Separate allocation, linking and follow-up outcomes. Explicit split/reissue is
+a new reviewed intent, not order_id uniqueness or a guessed historical result.
+Keep legacy tabs/RPCs fail-closed across app rollback.
+
+Do not let recursive ** rules match the protected parent at zero segments, or
+let an own-customer grant expose private operation children. Use current loaded
+reference revisions to reject old saves atomically. Protect a manually edited
+financial row with a receipt-time full typed snapshot; an updated_at-only check
+or rereading the edited row as a new baseline can still overwrite approval.
+Native multi-connection PostgreSQL tests and actual Firebase SDK/rules tests
+must prove these boundaries. [Design, migration and evidence](../plans/V8.20-INVOICE-RETRY-RECOVERY.md).

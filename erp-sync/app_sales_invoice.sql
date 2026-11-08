@@ -1,4 +1,10 @@
 -- ── App-issued sales invoices ────────────────────────────────────────────────
+-- Historical base bootstrap only. Never replay after durable recovery exists.
+do $bootstrap_guard$ begin
+  if to_regnamespace('oc_invoice_private') is not null then
+    raise exception 'Invoice recovery is installed; do not replay historical invoice bootstrap';
+  end if;
+end $bootstrap_guard$;
 -- The first financial record the app writes to Postgres rather than Firestore.
 --
 -- WHY HERE AND NOT FIRESTORE. An invoice is two things at different times: a

@@ -1,3 +1,20 @@
+# V8.20 — Invoice retry/recovery (SH-05B) — implementation, 8 November 2026
+
+Owner approved the durable per-intent fix and deployment after both exact-SHA
+GitHub jobs. Implementation preserves deliberate split/reissued invoices and
+historical ledger records, with server-owned requests, SQL receipts, safe Resume,
+reference-conflict review and independent financial/Woo follow-ups. Manual edits
+and unknown/zero amounts are protected. No historical deduplication or number
+reset is proposed. [Migration, verification, lessons and release state](docs/plans/V8.20-INVOICE-RETRY-RECOVERY.md).
+
+Local verification includes native PostgreSQL 17.6 concurrency/rollback/receipt
+cases, actual Admin/client Firestore transactions and rules, real client/form/
+panel regression checks and desktop/mobile Chrome. Both CI jobs now require
+these fictional workflows. Release remains pending until exact-SHA CI, candidate
+role checks, separately verified SQL/rules publication and production checks.
+No real financial number or customer email is used in verification. General
+Create/conversion lifecycle policy remains a separate cleanup task.
+
 # V8.20 — Invoice allocator permissions (SH-05A) — released, 8 November 2026
 
 Owner approved the bounded permission-only cleanup. The reviewed DCL transaction

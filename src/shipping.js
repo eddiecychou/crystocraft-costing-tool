@@ -1,3 +1,4 @@
+export {wooRegistryAutofillFields,invoiceRegistryFields,savedInvoiceRegistryFields} from './invoiceRegistryFields.js'
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
@@ -8,6 +9,7 @@ import { numOrNull, str, trimUpper, result, addWarning, addInfo, addError, merge
 import { buildProductIndex, matchProductCode } from './criticalComponents'
 import { JES_SEED_BY_YEAR, soYear, formatSoNo } from './soNumber'
 import { invoiceDepositError } from './invoicePayments'
+import { invoiceReferenceRevision } from './invoiceRecoveryModel.js'
 
 // Shipping module — Phase 12.0. An `order` is the commercial anchor for a
 // shipment, sourced from an in-app won quote (Path A) or an imported ERP
@@ -127,6 +129,7 @@ const LINES  = orderId => collection(db, 'orders', orderId, 'lines')
 // existed, so old records keep reading exactly as they did.
 const ORDER_SOURCES = ['imported_pi', 'manual', 'direct_invoice', 'duplicated', 'in_app_quote', 'woocommerce']
 export const normOrder = o => ({
+  ...(o.invoice_allocation_id ? {invoice_allocation_id:o.invoice_allocation_id,invoice_reference_revision:invoiceReferenceRevision(o)} : {}),
   source: ORDER_SOURCES.includes(o.source) ? o.source : 'imported_pi',
   client_quote_id: o.client_quote_id || null,
   // LEGACY — do not write to this, read it through orderUc() below.
@@ -323,10 +326,16 @@ export async function getOrderLines(orderId) {
 // local cache immediately and syncs in the background, so callers can navigate
 // optimistically instead of blocking on the server ack (which can hang if the
 // network stalls — the doc is already "saved" locally either way).
+function newOrderFields(data) {
+  const clean={...data}
+  delete clean.invoice_allocation_id;delete clean.invoice_reference_revision
+  return normOrder(clean)
+}
+
 export function createOrderWithLines(orderData, lines) {
   const orderRef = doc(ORDERS())
   const batch = writeBatch(db)
-  batch.set(orderRef, { ...normOrder(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+  batch.set(orderRef, { ...newOrderFields(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
   ;(lines || []).forEach((l, i) => {
     const n = normLine(l)
     if (n.line_no == null) n.line_no = i + 1
@@ -351,7 +360,7 @@ export async function createOrderWithLinesAtId(id, orderData, lines) {
   return runTransaction(db, async (tx) => {
     const existing = await tx.get(orderRef)
     if (existing.exists()) return { id, created: false }
-    tx.set(orderRef, { ...normOrder(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    tx.set(orderRef, { ...newOrderFields(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
     ;(lines || []).forEach((l, i) => {
       const n = normLine(l)
       if (n.line_no == null) n.line_no = i + 1
@@ -388,7 +397,7 @@ export async function createOrderWithLinesAllocatingSo(orderData, lines, { alloc
       tx.set(counterRef, { last: next, year: yy, kind: 'so', updated_at: new Date().toISOString() }, { merge: true })
     }
     const orderRef = doc(ORDERS())
-    tx.set(orderRef, { ...normOrder({ ...orderData, erp_so_no: so }), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    tx.set(orderRef, { ...newOrderFields({ ...orderData, erp_so_no: so }), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
     ;(lines || []).forEach((l, i) => {
       const n = normLine(l)
       if (n.line_no == null) n.line_no = i + 1
@@ -506,31 +515,6 @@ export async function loadRangeProductsLite() {
 }
 
 // Fields filled after allocating a WooCommerce invoice in the UC Registry.
-export function wooRegistryAutofillFields(header) {
-  return {
-    source: 'Online Shop',
-    customer_id: header.customer_id || null,
-    order_no: header.woo_order_no || '',
-    total: header.total_amount ?? null,
-    deposit: header.total_amount ?? null,   // paid in full at checkout — see PROJECT-PLAN.md
-    balance: 0,
-    bal_pay_date: header.woo_payout_date || null,
-    // V8.10 — Cindy, 2026-08-24: fee/payout detail only when the
-    // transaction currency isn't HKD, and the payout must read in
-    // HKD (the currency that actually lands in the bank), not the
-    // transaction currency — same rule and same fields as
-    // wooImport.js's order-notes feeNote, just re-derived here since
-    // the UC Registry remarks are built independently at allocation
-    // time.
-    remarks: [
-      header.customer_po,
-      (header.woo_fee != null && header.currency !== 'HKD')
-        ? `Gateway fee: ${header.currency} ${Number(header.woo_fee).toFixed(2)} · Net payout: ${header.woo_net_payout_hkd != null ? `HKD ${Number(header.woo_net_payout_hkd).toFixed(2)}` : 'HKD amount — fill in manually'}${header.woo_payout_date ? ` · Payout ${header.woo_payout_date}` : ''}`
-        : null,
-    ].filter(Boolean).join(' — '),
-  }
-}
-
 // Merge parsed PI fields into the current shipment draft.
 export function applyExtractedPiHeader(header, data, customers) {
   let customer_id = header.customer_id
@@ -660,6 +644,8 @@ export function computeOrderTotals(header, lines) {
 // its destination defaults; the saved-record whitelist and fallbacks stay intact.
 export function orderEditFields(o, blankDestination) {
   return {
+    ...(o.source==='direct_invoice'?{source:o.source}:{}),
+    ...(o.invoice_allocation_id ? {invoice_allocation_id:o.invoice_allocation_id,invoice_reference_revision:invoiceReferenceRevision(o)} : {}),
     customer_id: o.customer_id, contact_id: o.contact_id || '', customer_name: o.customer_name,
     // uc_no is seeded through orderUc so an order whose UC lives in the
     // legacy erp_pi_no shows it in the UC# field and does not look
@@ -758,45 +744,6 @@ export function orderSaveFields(header, computed, accountingTotal, adjustment) {
     discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
     discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
     deposit_paid: header.deposit_paid !== '' ? Number(header.deposit_paid) : null,
-  }
-}
-
-// Invoice registry fields sent after an existing shipment order is saved.
-export function invoiceRegistryFields(orderId, header, computed, accountingTotal) {
-  const total = computed.subtotal > 0 ? computed.total
-              : (header.pi_total !== '' ? parseFloat(header.pi_total) : null)
-  return invoiceRegistryProjection(orderId, header, total, total != null ? accountingTotal : null)
-}
-
-// Recovery uses persisted invoice facts, never a list subtotal or PI estimate.
-// Validation/authority checks belong to invoiceReconciliation before any write.
-export function savedInvoiceRegistryFields(order) {
-  const total = order.total_amount ?? null
-  const accounting = order.accounting_total == null
-    || typeof order.accounting_total === 'string' && order.accounting_total.trim() === ''
-    ? total : order.accounting_total
-  return invoiceRegistryProjection(order.id, { ...order, uc_no: orderUc(order) }, total, accounting)
-}
-
-// One complete field contract for ordinary saving and explicit recovery.
-function invoiceRegistryProjection(orderId, header, total, accountingTotal) {
-  return {
-    si_no: header.erp_si_no,
-    uc_no: header.uc_no || null,
-    order_id: orderId,
-    customer: header.customer_name,
-    currency: header.currency,
-    total,
-    invoiced_at: header.invoiced_at || null,
-    invoice_date: header.invoice_date || null,
-    customer_po: header.customer_po || '',
-    remarks: header.notes || '',
-    accounting_total: accountingTotal,
-    adjustment_reason: header.adjustment_reason || '',
-    // WooCommerce B2C sync (spec Phase 3) — cross-reference only; blank
-    // for every order that isn't WooCommerce-sourced, same as before.
-    channel: header.channel || null,
-    external_order_no: header.woo_order_no || '',
   }
 }
 

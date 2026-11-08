@@ -11,6 +11,7 @@ import {build} from 'esbuild'
 import {JSDOM} from 'jsdom'
 import React,{act} from 'react'
 import {ocDateOnly,ocYear} from '../src/ocTime.js'
+import {referenceFixtureInvoiceAction} from './invoice-recovery-page-fixture.mjs'
 
 const require=createRequire(import.meta.url)
 const dom=new JSDOM('<!doctype html><body></body>',{url:'http://fictional.test'})
@@ -81,6 +82,7 @@ const stubs={
    return null;
  };export const diffLines=()=>null;`,
  soNumber:'import{ocYear}from"./src/ocTime.js";export const soYear=()=>String(ocYear(new Date())%100).padStart(2,"0");export const allocateSoNo=(...a)=>globalThis.__shipmentReferences.invoke("so",a);export const JES_SEED_BY_YEAR={};export const formatSoNo=()=>{throw Error("No order creation authorized")}',
+ invoiceRecovery:'export const invoiceAction=(...a)=>globalThis.__shipmentReferences.invoiceAction(...a)',
  ucRegistry:'export const allocateOrderUc=(...a)=>globalThis.__shipmentReferences.invoke("uc",a);export const allocateInvoice=(...a)=>globalThis.__shipmentReferences.invoke("si",a);export const updateUcInvoice=(...a)=>globalThis.__shipmentReferences.invoke("registry",a);export const upsertInvoice=async data=>{const f=globalThis.__shipmentReferences;if(!f.allowAccounting)throw Error("No accounting upsert authorized");f.accountingWrites.push(structuredClone(data))}',
  storage:`const f=()=>globalThis.__shipmentReferences;
  export const ref=(_storage,path)=>{if(!f().allowCreate)throw Error('No storage requests');return{path}};
@@ -108,6 +110,7 @@ before(async()=>{
 beforeEach(()=>{
  f={id:'qa-order',search:'',order:order(),lines:[{id:'qa-line',line_no:1,item_code:'QA-ITEM',description:'Fictional item',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'}],calls:[],actions:{so:async()=> 'SO-FICTIONAL',uc:async()=>({full:'UC-FICTIONAL'}),si:async()=>({si_no:'SI-FICTIONAL',uc_no:'UC-FICTIONAL'}),registry:async()=>({})},orderWrites:[],lineWrites:[],accountingWrites:[],createAttempts:0,allowWrite:false,allowAccounting:false,createdRecords:[],quoteLinks:[],uploads:[]}
  f.invoke=(kind,args)=>{f.calls.push({kind,args:structuredClone(args)});return f.actions[kind](...args)}
+ f.invoiceAction=(...args)=>referenceFixtureInvoiceAction(f,...args)
  globalThis.__shipmentReferences=f
  errors=[];originalError=console.error;console.error=(...a)=>errors.push(a.map(String).join(' '))
  host=document.createElement('div');document.body.append(host);root=createRoot(host)
@@ -156,7 +159,7 @@ for(const [kind,label]of [['so','SO / Doc No'],['uc','UC#'],['si','Invoice No']]
  })
  test(`${kind}: failed allocation keeps fields, displays the error and retries only on a new click`,async()=>{
   f.allowWrite=true;f.actions[kind]=async()=>{throw Error('Fictional '+kind+' failure')};await render();await click(allocation(label))
-  assert.ok(panel().textContent.includes('Fictional '+kind+' failure'));assert.equal(input(label).value,'');assert.equal(allocation(label).disabled,false);assert.equal(f.calls.length,1);assert.deepEqual(f.orderWrites,[])
+  assert.ok((kind==='si'?host:panel()).textContent.includes('Fictional '+kind+' failure'));assert.equal(input(label).value,'');assert.equal(allocation(label).disabled,false);assert.equal(f.calls.length,1);assert.deepEqual(f.orderWrites,[])
   f.actions[kind]=async()=>kind==='so'?'SO-RETRY':kind==='uc'?{full:'UC-RETRY'}:{si_no:'SI-RETRY',uc_no:'UC-RETRY'}
   await click(allocation(label));assert.equal(input(label).value,kind.toUpperCase()+'-RETRY');assert.equal(f.calls.filter(c=>c.kind===kind).length,2)
  })
@@ -169,12 +172,13 @@ test('invoice allocation sends the existing UC and immediately persists only its
  assert.deepEqual(f.calls,[{kind:'si',args:[{year:String(ocYear(new Date())%100).padStart(2,'0'),customer:f.order.customer_name,currency:'USD',order_id:'qa-order',uc_no:'UC-EXISTING'}]}])
  assert.deepEqual(f.orderWrites,[{path:[{},'orders','qa-order'],data:{uc_no:'UC-EXISTING',erp_si_no:'SI-NEW',invoiced_at:'2026-10-01',updatedAt:'FICTIONAL timestamp'}}]);assert.equal(input('Invoice No').value,'SI-NEW');assert.equal(f.order.customer_po,'PO-Original')
 })
-test('unsaved invoice allocation returns the bundled UC without an order write',async()=>{
- f.id=undefined;await render();await click(allocation('Invoice No'));assert.equal(f.calls[0].args[0].order_id,null);assert.equal(f.calls[0].args[0].uc_no,null);assert.equal(input('UC#').value,'UC-FICTIONAL');assert.deepEqual(f.orderWrites,[]);assert.equal(f.calls.filter(c=>c.kind==='uc').length,0)
+test('unsaved invoice controls require creating the order before any financial request',async()=>{
+ f.id=undefined;await render();await click(allocation('Invoice No'));assert.deepEqual(f.calls,[]);assert.deepEqual(f.orderWrites,[]);assert.match(host.textContent,/Create and save this order/)
 })
-test('an order-write failure after invoice allocation keeps issued numbers and prevents another allocation click',async()=>{
+test('an unconfirmed link leaves a recoverable saved request rather than issuing a second number',async()=>{
  f.allowWrite=true;f.writeError=Error('Fictional persist failure');await render();await click(allocation('Invoice No'))
- assert.equal(input('Invoice No').value,'SI-FICTIONAL');assert.equal(input('UC#').value,'UC-FICTIONAL');assert.equal(allocation('Invoice No'),null);assert.ok(panel().textContent.includes('Fictional persist failure'));assert.equal(f.calls.filter(c=>c.kind==='si').length,1);assert.equal(f.orderWrites.length,1)
+ assert.equal(input('Invoice No').value,'');assert.ok(host.textContent.includes('Fictional persist failure'));assert.equal(f.calls.filter(c=>c.kind==='si').length,1)
+ f.writeError=null;await click(allocation('Invoice No'));assert.equal(input('Invoice No').value,'SI-FICTIONAL');assert.equal(f.calls.filter(c=>c.kind==='si').length,1)
 })
 // The separately authorized Woo metadata repair intentionally updates the two
 // original bug-characterization expectations; all other reference cases remain.
@@ -184,7 +188,7 @@ for(const registryFails of [false,true])test(`WooCommerce allocation preserves i
  await render();await click(allocation('Invoice No'))
  assert.deepEqual(f.calls.find(c=>c.kind==='registry').args,['qa-registry',{source:'Online Shop',customer_id:'qa-customer',order_no:'WOO-QA',total:1222,deposit:1222,balance:0,bal_pay_date:'2026-10-02',remarks:'PO-Original — Gateway fee: USD 10.00 · Net payout: HKD 9456.00 · Payout 2026-10-02'}])
  assert.equal(input('Invoice No').value,'SI-WOO');assert.equal(allocation('Invoice No'),null);assert.equal(f.orderWrites.length,1)
- if(registryFails)assert.ok(panel().textContent.includes('Invoice allocated, but the UC Registry details could not be auto-filled: Fictional registry failure'))
+ if(registryFails)assert.ok(host.textContent.includes('Invoice allocated, but the UC Registry details could not be auto-filled: Fictional registry failure'))
 })
 test('Raise invoice arrival still scrolls/focuses the exact invoice input after saved-order loading',async()=>{
  f.search='invoice=1';const calls=[],original=HTMLElement.prototype.scrollIntoView
@@ -194,7 +198,7 @@ test('Raise invoice arrival still scrolls/focuses the exact invoice input after 
 test('route reuse clears saved references/source for a new order and keeps allocation callbacks current',async()=>{
  Object.assign(f.order,{erp_so_no:'SO-OLD',erp_si_no:'SI-OLD',uc_no:'UC-OLD',source_file:{url:'https://fictional.invalid/old.pdf',name:'Old PI'}});await render();assert.equal(input('Invoice No').value,'SI-OLD')
  f.id=undefined;await render();for(const label of ['SO / Doc No','UC#','Invoice No','Customer PO','Revision'])assert.equal(input(label).value,'');assert.equal(panel().querySelector('a'),null)
- await click(allocation('Invoice No'));assert.equal(f.calls[0].args[0].order_id,null);assert.equal(f.calls[0].args[0].uc_no,null);assert.deepEqual(f.orderWrites,[])
+ await click(allocation('Invoice No'));assert.deepEqual(f.calls,[]);assert.match(host.textContent,/Create and save this order/);assert.deepEqual(f.orderWrites,[])
 })
 test('manual references survive the actual save/reopen path with precision, notes and deposit retained',async()=>{
  f.allowWrite=true;f.allowAccounting=true;await render();for(const [label,value]of [['SO / Doc No','SO-SAVED'],['UC#','UC-SAVED'],['Invoice No','SI-SAVED'],['Customer PO','PO 保存 & 1'],['Revision','4']])await fill(input(label),value)
@@ -232,14 +236,14 @@ for(const total of [undefined,null,'','invalid'])test(`missing Woo total never o
  f.allowWrite=true;Object.assign(f.order,{channel:'woocommerce',total_amount:total});f.actions.si=async()=>({si_no:'SI-ISSUED',uc_no:'UC-ISSUED',uc_id:'qa-registry'})
  await render();await click(allocation('Invoice No'))
  assert.equal(f.calls.filter(c=>c.kind==='registry').length,0);assert.equal(f.calls.filter(c=>c.kind==='si').length,1);assert.equal(f.orderWrites.length,1);assert.equal(input('Invoice No').value,'SI-ISSUED');assert.equal(allocation('Invoice No'),null)
- assert.ok(panel().textContent.includes('WooCommerce order total is missing; registry amounts were not overwritten.'))
+ assert.ok(host.textContent.includes('WooCommerce order total is missing; registry amounts were not overwritten.'))
 })
 test('known zero Woo total/payout stay zero and three-decimal amounts are not rounded or recalculated',async()=>{
  f.allowWrite=true;Object.assign(f.order,{channel:'woocommerce',total_amount:0,woo_fee:0,woo_net_payout:90,woo_net_payout_hkd:0});f.actions.si=async()=>({si_no:'SI-ZERO',uc_no:'UC-ZERO',uc_id:'qa-registry'});await render();await click(allocation('Invoice No'))
  const p=f.calls.find(c=>c.kind==='registry').args[1];assert.equal(p.total,0);assert.equal(p.deposit,0);assert.equal(p.balance,0);assert.ok(p.remarks.includes('Net payout: HKD 0.00'))
  // A fresh saved record verifies the exact stored checkout amount is used,
  // rather than deriving a different paid amount from the editable line table.
- await act(async()=>root.unmount());f.order=order();Object.assign(f.order,{channel:'woocommerce',total_amount:1.222,woo_net_payout_hkd:12.34567});f.calls=[];root=createRoot(host);await render();await click(allocation('Invoice No'))
+ await act(async()=>root.unmount());f.order=order();f.operation=null;Object.assign(f.order,{channel:'woocommerce',total_amount:1.222,woo_net_payout_hkd:12.34567});f.calls=[];root=createRoot(host);await render();await click(allocation('Invoice No'))
  assert.equal(f.calls.find(c=>c.kind==='registry').args[1].total,1.222);assert.equal(f.calls.find(c=>c.kind==='registry').args[1].deposit,1.222)
 })
 test('legacy Woo payout absence keeps the manual fallback without using a transaction-currency net',async()=>{

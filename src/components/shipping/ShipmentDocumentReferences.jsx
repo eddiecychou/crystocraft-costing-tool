@@ -15,6 +15,7 @@ export default function ShipmentDocumentReferences({
   allocatingSi,
   siError,
   invoiceFieldRef,
+  referencesLocked = false,
   onNewRevision,
   sourceFile
 }) {
@@ -26,28 +27,28 @@ export default function ShipmentDocumentReferences({
               <label className="label flex items-center justify-between gap-2">
                 <span>SO / Doc No</span>
                 {!header.erp_so_no && (
-                  <button type="button" onClick={doAllocateSo} disabled={allocatingSo}
+                  <button type="button" onClick={doAllocateSo} disabled={allocatingSo || referencesLocked}
                           className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
                           title="Allocate the next SO number. New orders get one automatically on create; this is for an older order that has none.">
                     {allocatingSo ? 'Allocating…' : 'Allocate'}
                   </button>
                 )}
               </label>
-              <input className="input" value={header.erp_so_no} onChange={setH('erp_so_no')} placeholder="e.g. SO260017" />
+              <input className="input" disabled={referencesLocked} value={header.erp_so_no} onChange={setH('erp_so_no')} placeholder="e.g. SO260017" />
               {soError && <p className="text-xs text-red-600 mt-1">{soError}</p>}
             </div>
             <div>
               <label className="label flex items-center justify-between gap-2">
                 <span>UC#</span>
                 {!header.uc_no && (
-                  <button type="button" onClick={doAllocateUc} disabled={allocatingUc}
+                  <button type="button" onClick={doAllocateUc} disabled={allocatingUc || referencesLocked}
                           className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
                           title="Allocate a fresh UC# now, without waiting to raise an invoice. Never reuses an existing UC — a carried-over UC is exactly the slip this exists to prevent.">
                     {allocatingUc ? 'Allocating…' : 'Allocate'}
                   </button>
                 )}
               </label>
-              <input className="input" value={header.uc_no} onChange={setH('uc_no')} placeholder="e.g. UC4950/26" />
+              <input className="input" disabled={referencesLocked} value={header.uc_no} onChange={setH('uc_no')} placeholder="e.g. UC4950/26" />
               {ucError && <p className="text-xs text-red-600 mt-1">{ucError}</p>}
             </div>
             <div>
@@ -67,7 +68,7 @@ export default function ShipmentDocumentReferences({
                   </button>
                 )}
               </label>
-              <input ref={invoiceFieldRef} className="input" value={header.erp_si_no} onChange={setH('erp_si_no')} placeholder="e.g. SI260094" />
+              <input ref={invoiceFieldRef} className="input" disabled={referencesLocked} value={header.erp_si_no} onChange={setH('erp_si_no')} placeholder="e.g. SI260094" />
               {siError && <p className="text-xs text-red-600 mt-1">{siError}</p>}
             </div>
             <div>

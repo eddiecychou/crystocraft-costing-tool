@@ -129,7 +129,8 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 
 ## Shipping & logistics
 
-- `orders/{orderId}` (+ all subpaths) — a customer can read **only their own** order (matched via the order's `customer_id` against their profile's `customer_id`); admin has full read/write. Owned by `src/domain/customer.js`.
+- `orders/{orderId}` — owned by `src/shipping.js` / ShipmentForm. Internal Shipping reads/commercial writes; approved customers may read only their own order/ordinary children. Server-owned `invoice_allocation_id` and `invoice_reference_revision` protect durable allocation and stale reference saves. Pending allocation deletion is denied; tracked reference changes require a linked operation and next loaded revision.
+- `orders/{orderId}/invoice_allocations/{UUID}` — private SH-05B operation snapshot, result, linking/review audit and independent follow-up outcomes/plans. Internal Shipping reads, Node Admin-only writes; excluded from own-customer recursive access, portal APIs and exports. Durable UUID joins private SQL receipts, never one-per-order uniqueness. [Lifecycle and migration](../plans/V8.20-INVOICE-RETRY-RECOVERY.md).
 - `packing_lists/{plId}` (+ subpaths) — admin only. Owned by `PackingListPrint.jsx`.
 - `logistics_vendors/{id}` — admin only.
 - `freight_quotes/{id}`, `freight_rfqs/{id}` — admin only.

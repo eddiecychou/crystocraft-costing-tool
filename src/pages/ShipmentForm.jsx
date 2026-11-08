@@ -1,11 +1,10 @@
-import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage, authHeader } from '../firebase'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
-  applyExtractedPiHeader, wooRegistryAutofillFields,
+  applyExtractedPiHeader,
   getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderWithLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, lineClassificationPatch, rematchLines, validateOrder, computeOrderTotals,
   orderCreateFields, orderSaveFields, invoiceRegistryFields, orderEditFields,
@@ -23,8 +22,11 @@ import OrderInventoryIssue from '../components/OrderInventoryIssue'
 import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
 import { metalOrderConfig } from '../orderStock'
-import { allocateSoNo, soYear } from '../soNumber'
-import { allocateInvoice, upsertInvoice, updateUcInvoice, allocateOrderUc } from '../ucRegistry'
+import { allocateSoNo } from '../soNumber'
+import { upsertInvoice, allocateOrderUc } from '../ucRegistry'
+import {invoiceAction} from '../invoiceRecovery'
+import {invoiceExpected,invoiceReferenceValues,invoiceReferenceSavePatch,sameInvoiceValue} from '../invoiceRecoveryModel.js'
+import ShipmentInvoiceRecovery from '../components/shipping/ShipmentInvoiceRecovery'
 import { orderStockStatus, stockStatusDetail } from '../orderStockStatus'
 import ShipmentPageHeader from '../components/shipping/ShipmentPageHeader'
 import ShipmentPiUpload from '../components/shipping/ShipmentPiUpload'
@@ -139,6 +141,11 @@ function ShipmentEditor() {
   const [saving, setSaving] = useState(false)
   const [savePending, setSavePending] = useState(false)
   const saveInFlight = useRef(false)
+  const createInFlight = useRef(false)
+  const invoiceInFlight = useRef(false)
+  const invoiceReadSequence = useRef(0)
+  const referenceBase = useRef(null)
+  const [invoiceState,setInvoiceState]=useState(null)
   const mounted = useRef(false)
   useEffect(() => {
     mounted.current = true
@@ -182,7 +189,9 @@ function ShipmentEditor() {
         const orderLines = await getOrderLines(id)
         if (!alive) return
         if (o) {
-          setHeader(orderEditFields(o, blankHeader.destination))
+          const edit=orderEditFields(o, blankHeader.destination)
+          referenceBase.current=edit
+          setHeader(edit)
           setSourceFile(o.source_file || null)
           setLines(orderLines)
         }
@@ -254,7 +263,7 @@ function ShipmentEditor() {
   const [allocatingSo, setAllocatingSo] = useState(false)
   const [soError, setSoError] = useState('')
   async function doAllocateSo() {
-    if (saveInFlight.current) return
+    if (saveInFlight.current || invoiceLocked) return
     setAllocatingSo(true); setSoError('')
     try {
       const no = await allocateSoNo()
@@ -275,7 +284,7 @@ function ShipmentEditor() {
   const [allocatingUc, setAllocatingUc] = useState(false)
   const [ucError, setUcError] = useState('')
   async function doAllocateUc() {
-    if (saveInFlight.current) return
+    if (saveInFlight.current || invoiceLocked) return
     setAllocatingUc(true); setUcError('')
     try {
       const uc = await allocateOrderUc({ customer_name: header.customer_name, currency: header.currency })
@@ -293,65 +302,49 @@ function ShipmentEditor() {
   const [imgPickerLine, setImgPickerLine] = useState(null)   // index of the line whose image picker is open
   const [allocatingSi, setAllocatingSi] = useState(false)
   const [siError, setSiError] = useState('')
-  // An invoice must carry a UC — that is the required key, not the SO (see
-  // normOrder in shipping.js; 0 of 516 JES invoices since 2024 lack one). So
-  // allocating an invoice number allocates a UC too when the order has none,
-  // rather than letting an invoice exist that cannot be matched to the books.
-  //
-  // ONE Postgres transaction, as of 2026-07-21. This used to be two steps —
-  // a UC written to Postgres, then a number from a Firestore counter — with
-  // nothing making them agree: abandoning the form after allocating burned a
-  // UC with no invoice behind it. The number is now derived inside the
-  // database from the greater of what the app has issued and what the mirror
-  // shows JES issued, so JES_SI_SEED_BY_YEAR can no longer go stale and
-  // silently reuse a number CuiLing already used. (It did, on 2026-07-21.)
-  async function doAllocateSi() {
-    if (saveInFlight.current) return
-    setAllocatingSi(true); setSiError('')
-    try {
-      const res = await allocateInvoice({
-        year: soYear(),
-        customer: header.customer_name,
-        currency: header.currency,
-        order_id: id || null,
-        uc_no: header.uc_no || null,
-      })
-      const patch = {
-        uc_no: res.uc_no || header.uc_no || '',
-        erp_si_no: res.si_no,
-        invoiced_at: header.invoiced_at || ocDateOnly(new Date()),
-      }
-      setHeader(h => ({ ...h, ...patch }))
-      // Persist immediately on a saved order so "Raise Invoice" is a complete
-      // action — the number is already burned in Postgres, so leaving it only in
-      // local state (needing a manual Save) is how an invoice goes missing.
-      if (id) await updateOrder(id, patch)
-
-      // V8.9 (Cindy's spec) — allocate_sales_invoice() only ever writes
-      // year/customer/currency/status into uc_registry (see PROJECT-PLAN.md's
-      // "UC Registry doesn't auto-fill..." note); order_no/deposit/balance/
-      // bal_pay_date/remarks/source are left blank for every channel, filled
-      // in by hand today. For a WooCommerce order specifically, all of that
-      // is already known — fill it automatically rather than making Cindy
-      // retype what the sync already captured. Scoped to channel ===
-      // 'woocommerce' only; wholesale/Alibaba/Amazon orders are untouched,
-      // still fully manual. Best-effort — a failure here must not undo the
-      // SI/UC allocation that already succeeded above.
-      if (header.channel === 'woocommerce' && res.uc_id) {
-        try {
-          // The registry endpoint coerces missing numeric values to zero.
-          // Keep an unknown checkout amount from overwriting existing accounts.
-          if (header.total_amount == null) throw new Error('WooCommerce order total is missing; registry amounts were not overwritten.')
-          await updateUcInvoice(res.uc_id, wooRegistryAutofillFields(header))
-        } catch (e) {
-          setSiError(`Invoice allocated, but the UC Registry details could not be auto-filled: ${e.message || e}. Fill them in manually on the UC Registry page.`)
-        }
-      }
-    } catch (e) {
-      setSiError(e.message || 'Could not allocate an invoice number.')
-    } finally {
-      setAllocatingSi(false)
+  const invoiceLocked=allocatingSi||Boolean(invoiceState?.operation&&invoiceState.operation.status!=='linked')
+  function applyInvoiceState(state) {
+    setInvoiceState(state)
+    // Server reference state is authoritative, but never erase an unsaved edit.
+    setHeader(h=>{
+      if(referenceBase.current&&!sameInvoiceValue(invoiceReferenceValues(h),invoiceReferenceValues(referenceBase.current)))return h
+      const next={...h,...state.order}
+      referenceBase.current={...next}
+      return next
+    })
+  }
+  useEffect(()=>{
+    if(!isEdit||fetching||loadError||!header.invoice_allocation_id&&header.source!=='direct_invoice')return
+    let alive=true
+    const read=async()=>{
+      if(invoiceInFlight.current)return
+      const seq=++invoiceReadSequence.current
+      try{const state=await invoiceAction(id,'status');if(alive&&seq===invoiceReadSequence.current)applyInvoiceState(state)}
+      catch(error){if(alive&&seq===invoiceReadSequence.current)setSiError(error.message)}
     }
+    read()
+    const timer=setInterval(read,15000)
+    return()=>{alive=false;clearInterval(timer)}
+  },[id,isEdit,fetching,loadError,header.invoice_allocation_id,header.source])
+
+  async function runInvoiceAction(action,details={}) {
+    if(saveInFlight.current||invoiceInFlight.current||allocatingSo||allocatingUc)return
+    if(!id){setSiError('Create and save this order before raising its invoice.');return}
+    invoiceInFlight.current=true;++invoiceReadSequence.current
+    setAllocatingSi(true);setSiError('')
+    try{
+      const state=await invoiceAction(id,action,{...details,...(['raise','new'].includes(action)?{expected:invoiceExpected(header)}:{})})
+      if(mounted.current)applyInvoiceState(state)
+    }catch(error){
+      if(mounted.current)setSiError(error.message||'Confirmation unavailable. Reopen this saved order and resume the same request.')
+      throw error
+    }finally{
+      invoiceInFlight.current=false
+      if(mounted.current)setAllocatingSi(false)
+    }
+  }
+  async function doAllocateSi() {
+    await runInvoiceAction(invoiceState?.operation?'resume':'raise').catch(()=>{})
   }
 
   const setH = field => e => {
@@ -518,7 +511,8 @@ function ShipmentEditor() {
   // ── Save ─────────────────────────────────────────────────────────────────────
   async function handleCreate(e) {
     e.preventDefault()
-    if (piImport.current.extracting) return
+    if (piImport.current.extracting || createInFlight.current) return
+    createInFlight.current=true
     setSaving(true)
     setExtractError('')
     try {
@@ -591,20 +585,9 @@ function ShipmentEditor() {
       // Allocate button is one click away rather than the work being lost.
       if (isDirect && !orderData.erp_si_no) {
         try {
-          const res = await allocateInvoice({
-            year: soYear(),
-            customer: orderData.customer_name,
-            currency: orderData.currency,
-            order_id: orderId,
-            uc_no: orderData.uc_no || null,
-          })
-          await updateOrder(orderId, {
-            erp_si_no: res.si_no,
-            uc_no: res.uc_no || orderData.uc_no || '',
-            invoiced_at: orderData.invoiced_at || ocDateOnly(new Date()),
-          })
+          await invoiceAction(orderId,'raise',{expected:invoiceExpected(orderData)})
         } catch (e) {
-          setExtractError(`Order created, but the invoice number could not be allocated: ${e.message || e}. Use Allocate on the order.`)
+          setExtractError(`Order created, but the invoice number could not be allocated: ${e.message || e}. Reopen the saved order and resume its invoice request.`)
         }
       }
 
@@ -615,13 +598,14 @@ function ShipmentEditor() {
         updateDoc(doc(db, 'client_quotes', fromQuoteId), { converted_order_id: orderId }).catch(() => {})
       }
 
-      navigate(`/shipments/${orderId}`)
+      if(mounted.current) navigate(`/shipments/${orderId}`)
     } catch (err) {
       setExtractError(err.message || 'Could not create order.')
     } finally {
       // Clear busy state on validation/upload/create failures too, so the
       // current form remains usable when creation does not navigate away.
-      setSaving(false)
+      createInFlight.current=false
+      if(mounted.current)setSaving(false)
     }
   }
 
@@ -656,7 +640,7 @@ function ShipmentEditor() {
       }
       // Header and line reconciliation commit together. A slow read or an
       // offline queued batch remains pending, never a successful timeout.
-      await saveOrderWithLines(id, orderSaveFields(header, computed, accountingTotal, adjustment), lines)
+      await saveOrderWithLines(id, {...orderSaveFields(header, computed, accountingTotal, adjustment),...invoiceReferenceSavePatch(header,referenceBase.current)}, lines)
 
       // Keep the Postgres financial record in step. Deliberately AFTER the
       // Firestore write and deliberately not awaited into the failure path:
@@ -695,6 +679,11 @@ function ShipmentEditor() {
         allocatingSi={allocatingSi} saving={saving} siError={siError}
         onRaiseInvoice={doAllocateSi} tab={tab} onTabChange={setTab}
       />
+
+      {isEdit&&(invoiceState||header.invoice_allocation_id||invoiceExpected(header).si||header.source==='direct_invoice')&&<ShipmentInvoiceRecovery
+        state={invoiceState||(!header.invoice_allocation_id?{order:header,expected:invoiceExpected(header),history:[],operation:null,canStartNew:true}:null)}
+        busy={allocatingSi||saving} error={siError} hasInvoice={!!invoiceExpected(header).si} onAction={runInvoiceAction}
+      />}
 
       {/* Packing list tab */}
       {isEdit && tab === 'packing' && (
@@ -761,6 +750,7 @@ function ShipmentEditor() {
           doAllocateUc={doAllocateUc} allocatingUc={allocatingUc} ucError={ucError}
           doAllocateSi={doAllocateSi} allocatingSi={allocatingSi} siError={siError}
           invoiceFieldRef={invoiceFieldRef}
+          referencesLocked={invoiceLocked}
           onNewRevision={() => setHeader(h => ({ ...h, pi_revision: String((parseInt(h.pi_revision, 10) || 0) + 1) }))}
           sourceFile={sourceFile}
         />

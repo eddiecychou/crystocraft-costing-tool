@@ -1141,17 +1141,45 @@ service cloud.firestore {
     // ---- Shipping & Logistics — `shipping` module, except a customer's own
     // orders (portal order history) ------------------------------------------
     match /orders/{orderId} {
+      function refValue(data, key) { return data.get(key, '') == null ? '' : data.get(key, ''); }
+      function sameInvoiceRefs() {
+        return refValue(resource.data,'erp_si_no') == refValue(request.resource.data,'erp_si_no')
+          && refValue(resource.data,'uc_no') == refValue(request.resource.data,'uc_no')
+          && refValue(resource.data,'erp_pi_no') == refValue(request.resource.data,'erp_pi_no')
+          && refValue(resource.data,'erp_so_no') == refValue(request.resource.data,'erp_so_no')
+          && refValue(resource.data,'invoiced_at') == refValue(request.resource.data,'invoiced_at');
+      }
+      function linkedInvoice() {
+        return get(/databases/$(database)/documents/orders/$(orderId)/invoice_allocations/$(resource.data.invoice_allocation_id)).data.status == 'linked';
+      }
+      function safeInvoiceSave() {
+        return request.resource.data.get('invoice_allocation_id','') == resource.data.get('invoice_allocation_id','')
+          && (resource.data.get('invoice_allocation_id','') == ''
+            ? !request.resource.data.diff(resource.data).affectedKeys().hasAny(['invoice_reference_revision'])
+            : request.resource.data.invoice_reference_revision is int
+              && (sameInvoiceRefs()
+                ? request.resource.data.invoice_reference_revision == resource.data.invoice_reference_revision
+                : linkedInvoice() && request.resource.data.invoice_reference_revision == resource.data.invoice_reference_revision + 1));
+      }
       allow read: if can('shipping')
         || (isApprovedCustomer()
             && profile().get('customer_id', '') != ''
             && resource.data.get('customer_id', '') == profile().get('customer_id', ''));
-      allow write: if can('shipping');
-      match /{allPaths=**} {
-        allow read: if can('shipping')
+      allow create: if can('shipping') && !request.resource.data.keys().hasAny(['invoice_allocation_id','invoice_reference_revision']);
+      allow update: if can('shipping') && safeInvoiceSave();
+      allow delete: if can('shipping') && (resource.data.get('invoice_allocation_id','') == '' || linkedInvoice());
+      match /invoice_allocations/{operationId} {
+        allow read: if can('shipping');
+        allow write: if false;
+      }
+      // Require a child collection/document: ** previously matched the parent
+      // too, bypassing root rules. Own-customer access excludes private receipts.
+      match /{subcollection}/{childId}/{descendants=**} {
+        allow read: if subcollection != 'invoice_allocations' && (can('shipping')
           || (isApprovedCustomer()
               && profile().get('customer_id', '') != ''
-              && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id', '') == profile().get('customer_id', ''));
-        allow write: if can('shipping');
+              && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id', '') == profile().get('customer_id', '')));
+        allow write: if subcollection != 'invoice_allocations' && can('shipping');
       }
     }
     match /packing_lists/{plId} {

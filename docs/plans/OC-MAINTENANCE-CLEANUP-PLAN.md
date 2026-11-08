@@ -1,5 +1,7 @@
 # OC maintenance and code cleanup plan
 
+**8 November — SH-05B implementation:** owner-approved [durable retry/recovery](V8.20-INVOICE-RETRY-RECOVERY.md) is implemented with fictional native SQL/Firebase tests. Publication awaits the exact-SHA two-job gate and candidate checks; follow that record for final release evidence. Explicit split/reissued invoices remain separate. General Create/conversion policy stays in SH-06/07/08.
+
 **8 November — SH-05A released:** the owner-approved permission-only transaction
 is applied and [verified](V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md). Effective public
 roles are refused; the server grant and function identity/body are preserved.

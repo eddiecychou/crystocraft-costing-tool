@@ -158,21 +158,18 @@ test('failed final canonical install cannot leave a publicly callable allocator'
  const rows=await query("select has_function_privilege('anon',p.oid,'EXECUTE') as anon,has_function_privilege('authenticated',p.oid,'EXECUTE') as authenticated from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='allocate_sales_invoice'")
  assert.ok(rows.every(r=>!r.anon&&!r.authenticated))
 })
-test('actual UC client and gateway use the retained service grant to execute real fictional SQL',async()=>{
- await db.exec(migration)
- const result=await client.allocateInvoice({year:'26',customer:'FICTIONAL gateway QA',currency:'USD',order_id:'fictional-order'})
- assert.equal(result.si_no,'SI260046');assert.equal(result.uc_no,'UC100/26');assert.equal(rpcCalls.length,1)
- assert.equal(rpcCalls[0].p_created_by,'fictional@example.invalid')
+test('legacy UC client and gateway require the protected saved-order workflow without calling SQL',async()=>{
+ await db.exec(migration);const before=await rowsAndSequences()
+ await assert.rejects(client.allocateInvoice({year:'26',customer:'FICTIONAL gateway QA',order_id:'fictional-order'}),/Refresh OC/)
+ assert.equal(rpcCalls.length,0);assert.deepEqual(await rowsAndSequences(),before)
 })
-test('gateway allows authorized UC staff and denies other staff/customer before SQL, despite forged modules',async()=>{
- await db.exec(migration)
- const call=token=>handler(new Request('https://fictional-app.invalid/api/uc',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({op:'allocate_invoice',year:'26',customer:'FICTIONAL gateway QA'})}))
+test('legacy gateway still enforces UC authorization before its refresh response',async()=>{
+ const call=token=>handler(new Request('https://fictional-app.invalid/api/uc',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({op:'allocate_invoice',year:'26'})}))
  for(const token of['FICTIONAL-staff-other','FICTIONAL-customer'])assert.equal((await call(token)).status,403)
- assert.equal(rpcCalls.length,0)
- assert.equal((await call('FICTIONAL-staff-uc')).status,200);assert.equal(rpcCalls.length,1)
+ assert.equal((await call('FICTIONAL-staff-uc')).status,409);assert.equal(rpcCalls.length,0)
 })
-test('gateway reports a bad server grant rather than falsely claiming allocation success',async()=>{
+test('legacy allocation is refused even when a server database role is misconfigured',async()=>{
  await db.exec(migration);serverRole='anon';const before=await rowsAndSequences()
- await assert.rejects(client.allocateInvoice({year:'26',customer:'FICTIONAL'}),/permission denied|Allocation failed/)
- assert.deepEqual(await rowsAndSequences(),before)
+ await assert.rejects(client.allocateInvoice({year:'26',customer:'FICTIONAL'}),/Refresh OC/)
+ assert.deepEqual(await rowsAndSequences(),before);assert.equal(rpcCalls.length,0)
 })

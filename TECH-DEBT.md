@@ -48,7 +48,7 @@ The other findings below remain open.
   allocation request for the same order. The 7 November metadata-only deployed
   review confirms each call allocates a new SI and there is no operation identity.
   Historical duplicate issuance remains unproven. The separate execution-grant
-  gap is fixed under SH-05A below; next design persistent per-intent retry/relinking;
+  gap is fixed under SH-05A below; durable per-intent retry/relinking is implemented under [SH-05B](docs/plans/V8.20-INVOICE-RETRY-RECOVERY.md), with publication state in that record;
   preserve intentional split/reissued invoices rather than imposing unique order_id.
   [Live contract, limits and prioritized plan](docs/plans/V8.20-INVOICE-ALLOCATION-RECOVERY-REVIEW.md).
 - **Allocator privilege gap — fixed 8 November 2026 (SH-05A):** the exact reviewed

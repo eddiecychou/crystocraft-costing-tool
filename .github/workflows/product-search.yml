@@ -10,7 +10,21 @@ permissions:
 jobs:
   product-search:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 7
+    services:
+      invoice-postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fictional-ci-only
+          POSTGRES_DB: oc_invoice_recovery_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d oc_invoice_recovery_qa"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      QA_INVOICE_DATABASE_URL: postgresql://postgres:fictional-ci-only@127.0.0.1:5432/oc_invoice_recovery_qa
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,6 +48,8 @@ jobs:
       - run: npm run test:quote-excel
       - run: npm run test:invoice-units
       - run: npm run test:invoice-reconciliation
+      - run: npm run test:invoice-recovery
+      - run: npm run test:invoice-recovery-postgres
       - run: npm run test:shipment-display
       - run: npm run test:packing-po
       - run: npm run test:ai-writer
@@ -44,7 +60,21 @@ jobs:
       - run: npm run test:range-mcp
   customer-merge-emulator:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
+    services:
+      invoice-postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fictional-ci-only
+          POSTGRES_DB: oc_invoice_recovery_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d oc_invoice_recovery_qa"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      QA_INVOICE_DATABASE_URL: postgresql://postgres:fictional-ci-only@127.0.0.1:5432/oc_invoice_recovery_qa
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,4 +89,4 @@ jobs:
           java-version: '21'
       - run: npm ci --no-audit --no-fund
       - name: Access rules, customer workflows and real-page task/note sync
-        run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node --test qa/access-contracts-emulator.mjs && node qa/crystal-swatches-rules.test.mjs && node --test qa/product-images-emulator.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-files-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs && npm run test:workspace-sync && node --test qa/po-receive-emulator.mjs && node --test qa/order-reservation-add-emulator.mjs && node --test qa/shipping-save-emulator.mjs && node qa/invoice-reconciliation-source-emulator.mjs && node qa/crystal-costing-emulator.mjs && node qa/crystal-image-delete-emulator.mjs && node --test qa/portal-followup-emulator.mjs"
+        run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node --test qa/access-contracts-emulator.mjs && node qa/crystal-swatches-rules.test.mjs && node --test qa/product-images-emulator.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-files-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs && npm run test:workspace-sync && node --test qa/po-receive-emulator.mjs && node --test qa/order-reservation-add-emulator.mjs && node --test qa/shipping-save-emulator.mjs && node --test qa/invoice-recovery-emulator.mjs && node qa/invoice-reconciliation-source-emulator.mjs && node qa/crystal-costing-emulator.mjs && node qa/crystal-image-delete-emulator.mjs && node --test qa/portal-followup-emulator.mjs"

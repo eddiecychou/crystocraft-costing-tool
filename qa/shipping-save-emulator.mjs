@@ -65,7 +65,9 @@ test('an acknowledged atomic save preserves unrelated header/line fields and exa
 })
 
 test('a missing order rejects the entire batch instead of creating orphan replacement lines', { timeout: 20000 }, async () => {
-  await assert.rejects(engine.saveOrderWithLines('missing-order', patch, lines), error => error.code === 'not-found')
+  // Invoice root guards deny a missing resource before the write precondition
+  // can return NOT_FOUND. Either refusal must preserve all header/line facts.
+  await assert.rejects(engine.saveOrderWithLines('missing-order', patch, lines), error => ['not-found','permission-denied'].includes(error.code))
   await withDisabled(async ctx => {
     assert.equal((await getDocFromServer(doc(ctx.firestore(), 'orders', 'missing-order'))).exists(), false)
     assert.equal((await getDocsFromServer(collection(ctx.firestore(), 'orders', 'missing-order', 'lines'))).size, 0)

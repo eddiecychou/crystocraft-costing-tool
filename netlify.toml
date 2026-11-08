@@ -24,6 +24,10 @@
 [functions]
   directory = "netlify/functions"
 
+[functions."invoice-allocation"]
+  node_bundler = "esbuild"
+  external_node_modules = ["firebase-admin"]
+
 [functions."crystal-product-media"]
   node_bundler = "esbuild"
   external_node_modules = ["firebase-admin"]
