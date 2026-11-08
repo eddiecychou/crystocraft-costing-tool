@@ -1,6 +1,12 @@
 # OC maintenance and code cleanup plan
 
-**8 November — SH-05B implementation:** owner-approved [durable retry/recovery](V8.20-INVOICE-RETRY-RECOVERY.md) is implemented with fictional native SQL/Firebase tests. Publication awaits the exact-SHA two-job gate and candidate checks; follow that record for final release evidence. Explicit split/reissued invoices remain separate. General Create/conversion policy stays in SH-06/07/08.
+**8 November — SH-05B released:** [durable retry/recovery](V8.20-INVOICE-RETRY-RECOVERY.md)
+is live as `9a5d93a` / production `6aefde0cde2e82d8e4dbb8d0`, after both exact-SHA
+jobs and fresh candidate/production admin/customer gates. Native PostgreSQL,
+actual Firebase/SQL, real-form/UI and 1,079 prebuild cases/build/lint pass.
+Rules/SQL readbacks and candidate/production artifact matches pass; no production
+numbers or customer emails used. Explicit split/reissued and historical invoices
+are preserved. Next: fresh bounded review of SH-06/07/08 Create/conversion policy.
 
 **8 November — SH-05A released:** the owner-approved permission-only transaction
 is applied and [verified](V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md). Effective public

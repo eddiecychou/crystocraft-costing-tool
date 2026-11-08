@@ -43,26 +43,27 @@ The other findings below remain open.
   drift was not detected. The saved Firestore order remained intact in the fixture.
   The Re-sync portion is corrected under the subsequent SH-04 authorization above;
   the customer export portion is released separately under SH-03 above.
-- **P1 allocation recovery:** direct SI allocation followed by a failed reference
-  patch loses the acknowledged result/warning. Ordinary Raise sends a second
-  allocation request for the same order. The 7 November metadata-only deployed
-  review confirms each call allocates a new SI and there is no operation identity.
-  Historical duplicate issuance remains unproven. The separate execution-grant
-  gap is fixed under SH-05A below; durable per-intent retry/relinking is implemented under [SH-05B](docs/plans/V8.20-INVOICE-RETRY-RECOVERY.md), with publication state in that record;
-  preserve intentional split/reissued invoices rather than imposing unique order_id.
-  [Live contract, limits and prioritized plan](docs/plans/V8.20-INVOICE-ALLOCATION-RECOVERY-REVIEW.md).
+- **P1 allocation recovery — fixed 8 November 2026 (SH-05B):** lost allocation/link
+  acknowledgments could previously issue a second SI on retry. [Durable recovery](docs/plans/V8.20-INVOICE-RETRY-RECOVERY.md)
+  is released as 9a5d93a: persisted per-intent identity, atomic SQL receipts,
+  explicit split/reissue, separate link/follow-up recovery and stale-save rules.
+  Historical invoices are preserved; no automatic duplicate repair or order-level
+  uniqueness was introduced. Native concurrency/actual Firebase tests and both
+  required CI jobs gate future releases.
 - **Allocator privilege gap — fixed 8 November 2026 (SH-05A):** the exact reviewed
   function now denies effective anon/authenticated execution and retains the
   existing service_role grant; PUBLIC is absent. Definition/OID/owner/search path
   are unchanged. Canonical setup and 18 actual PostgreSQL regression cases protect
   the fix. [Migration, CI and fresh-role evidence](docs/plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md).
-  Durable per-intent recovery above is still open. Other financial functions need
+  Durable per-intent recovery is released under SH-05B above. Other financial functions need
   a separately bounded grant review; this release does not claim their state.
 - **P2 initialization/completion:** quote read failures have no catch/Retry; delayed
-  prefill overwrites edits. Abandoned Create completion still navigates. Conversion
+  prefill overwrites edits. SH-05B adds an immediate Create guard and prevents an
+  abandoned completion from navigating a different page. General Create recovery and conversion
   Back/re-entry can create another order and replace the backlink; define intentional
   multiple-order policy before imposing uniqueness. Native repeated clicks are
-  already blocked; a synchronous handler guard is an additional robustness gap.
+  already blocked and SH-05B adds the synchronous handler guard; the broader
+  lifecycle/conversion policy remains separate.
 
 These mechanisms predate the recent extraction work. Known concurrent-editor and
 browser-close synchronization limits remain separate design debt. Packing/Freight

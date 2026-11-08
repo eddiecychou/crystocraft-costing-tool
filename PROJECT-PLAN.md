@@ -1,19 +1,28 @@
-# V8.20 — Invoice retry/recovery (SH-05B) — implementation, 8 November 2026
+# V8.20 — Invoice retry/recovery (SH-05B) — released, 8 November 2026
 
-Owner approved the durable per-intent fix and deployment after both exact-SHA
-GitHub jobs. Implementation preserves deliberate split/reissued invoices and
-historical ledger records, with server-owned requests, SQL receipts, safe Resume,
-reference-conflict review and independent financial/Woo follow-ups. Manual edits
-and unknown/zero amounts are protected. No historical deduplication or number
-reset is proposed. [Migration, verification, lessons and release state](docs/plans/V8.20-INVOICE-RETRY-RECOVERY.md).
+**Live and verified:** release SHA `9a5d93a40c8201544a090f6cdacd4cb9cc744152`,
+production `6aefde0cde2e82d8e4dbb8d0`. Both required GitHub jobs passed in
+[run 42437701089 / attempt 1](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/42437701089),
+with repeated immediate preflights before each publication. The same candidate
+assets and all ten Node function digests are verified in production. Fresh
+admin/customer sign-in, data, access, refresh, runtime and safe API gates pass
+before/after backend migration and on production.
 
-Local verification includes native PostgreSQL 17.6 concurrency/rollback/receipt
-cases, actual Admin/client Firestore transactions and rules, real client/form/
-panel regression checks and desktop/mobile Chrome. Both CI jobs now require
-these fictional workflows. Release remains pending until exact-SHA CI, candidate
-role checks, separately verified SQL/rules publication and production checks.
-No real financial number or customer email is used in verification. General
-Create/conversion lifecycle policy remains a separate cleanup task.
+Saved invoice requests now recover the same SI/UC after lost responses and
+link/follow-up failures. Split/reissue is an explicit separate intent; historical
+invoices remain intact. Root reference versions and private operation rules
+reject stale saves; manual finance edits and unknown/zero amounts are protected.
+SQL/rules are separately published/read back; Storage is unchanged. All 56 app
+invoices, 3,755 UCs and 139 invoice audits are unchanged; no production number or
+customer email was used in verification.
+
+Verification: 18 native PostgreSQL cases, 23 actual backend/Firebase/SQL cases,
+existing form/source/save/RBAC tests, ten desktop/mobile Chrome cases, 1,079
+prebuild cases/build/lint and both exact-SHA jobs PASS. CI caught and the follow-up
+commit fixed a Linux test teardown race before any deployment.
+[Full migration, ownership, tests, lessons and release evidence](docs/plans/V8.20-INVOICE-RETRY-RECOVERY.md).
+General Create/conversion lifecycle policy remains SH-06/07/08. Closeout pushes
+use `[skip netlify]`; the runtime release remains the SHA above.
 
 # V8.20 — Invoice allocator permissions (SH-05A) — released, 8 November 2026
 
