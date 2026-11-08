@@ -1,6 +1,13 @@
 # OC maintenance and code cleanup plan
 
-**8 November — SH-06 implemented:** [Quote initialization/Retry](V8.20-QUOTE-INITIALIZATION-FIX.md) now gates editing until complete startup/quote reads, handles errors and discards abandoned attempts. Twenty new cases, 191 Shipping cases, twenty Chrome cases and 1,099 prebuild/build/lint pass locally. Exact-SHA CI and publication are pending; SH-08 remains separate.
+**8 November — SH-06 released:** [Quote initialization/Retry](V8.20-QUOTE-INITIALIZATION-FIX.md)
+is live as 97cbf5d / production `6af0018353779a88119df400`. Complete read attempts
+precede editing/Create; failures have Retry and abandoned callbacks cannot
+replace edits. Twenty new cases, 191 Shipping cases, twenty Chrome cases and
+1,099 prebuild/build/lint pass. Both exact-SHA jobs, fresh candidate/production
+roles and actual SDK missing-source/Retry/refusal checks PASS; no real order or
+financial number created. No rules/SQL changes. Next: separately review SH-08
+conversion re-entry/backlinks and intentional multiple-order policy.
 
 **8 November — SH-05B released:** [durable retry/recovery](V8.20-INVOICE-RETRY-RECOVERY.md)
 is live as `9a5d93a` / production `6aefde0cde2e82d8e4dbb8d0`, after both exact-SHA

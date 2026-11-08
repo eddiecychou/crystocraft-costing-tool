@@ -1,16 +1,25 @@
-# V8.20 — Quote to Order initialization (SH-06) — implementation, 8 November 2026
+# V8.20 — Quote to Order initialization (SH-06) — released, 8 November 2026
 
-Owner approved the next bounded batch. Loading/error/Retry now belong to the
-route-keyed startup attempt. Quote header/items apply together after common
-startup reads; edits/Create are available after initialization. Empty-quote
-manual entry, existing first-tier mapping, prices/defaults and validation remain.
-Twenty new fictional cases pass (41 lifecycle / 191 shipment cases).
-[Scope, ownership, lessons and release state](docs/plans/V8.20-QUOTE-INITIALIZATION-FIX.md).
+Live as **`97cbf5d868842cd0df4c2c1772f4f76e44f6f47e`**, production
+`6af0018353779a88119df400`. Both required GitHub jobs PASS in
+[run 42448353913 / attempt 1](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/42448353913),
+with immediate pre-upload checks. Fresh candidate/production admin/customer
+sign-in, data, access, refresh and runtime gates PASS. Actual SDK missing-source
+alert/Retry/no form/refresh and customer route refusal PASS without creating
+quotes/orders or financial numbers. Served hashes match the tested candidate;
+all ten backend function digests match prior production. No SQL/rules migration.
 
-No rules, SQL, backend, permission or data migration changes. The existing
-SH-05B invoice recovery remains intact. Publication follows both exact-SHA jobs
-and fresh candidate/production role checks; SH-08 conversion re-entry policy
-remains separate.
+Quote header/items now apply together after startup reads, before editing/Create.
+Loading/error/Retry are explicit and abandoned responses cannot replace edits.
+First-tier/default/precision/validation and empty-quote manual entry remain.
+Twenty new fictional cases, 41 lifecycle / 191 Shipping cases, twenty Chrome
+cases and 1,099 prebuild cases/build/lint PASS.
+[Ownership, verification, lessons and release evidence](docs/plans/V8.20-QUOTE-INITIALIZATION-FIX.md).
+
+Next: bounded SH-08 conversion re-entry/backlink review, preserving intentional
+multiple orders. Existing SH-05B Create-submit/navigation and invoice recovery
+remain intact. Documentation closeout uses `[skip netlify]`; runtime source is
+the release SHA above.
 
 # V8.20 — Invoice retry/recovery (SH-05B) — released, 8 November 2026
 

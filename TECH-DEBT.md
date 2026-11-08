@@ -57,10 +57,11 @@ The other findings below remain open.
   the fix. [Migration, CI and fresh-role evidence](docs/plans/V8.20-INVOICE-ALLOCATOR-PERMISSIONS.md).
   Durable per-intent recovery is released under SH-05B above. Other financial functions need
   a separately bounded grant review; this release does not claim their state.
-- **P2 initialization — implemented SH-06, publication pending:** [quote initialization](docs/plans/V8.20-QUOTE-INITIALIZATION-FIX.md)
+- **P2 initialization — fixed 8 November 2026 (SH-06):** [quote initialization](docs/plans/V8.20-QUOTE-INITIALIZATION-FIX.md)
   now owns loading/error/Retry and applies the complete header/line attempt before
   enabling editing/Create. Existing source mappings and empty-quote entry remain.
-  See that record for current release evidence.
+  Released as 97cbf5d after both required jobs and fresh candidate/production
+  role, actual SDK Retry, access and served-artifact gates. See that record for evidence.
 - **P2 completion/re-entry:** SH-05B adds an immediate Create guard and prevents an
   abandoned completion from navigating a different page. General Create recovery and conversion
   Back/re-entry can create another order and replace the backlink; define intentional
