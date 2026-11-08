@@ -1,5 +1,25 @@
 # OC maintenance and code cleanup plan
 
+**8 November — SH-08 implemented, release gates pending:**
+[Quote → Order durable recovery](V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md) has
+server-owned per-order intents and atomic order/lines/SO/receipt/link, Open/Resume,
+explicit additional orders, retained legacy review and quote-copy lifecycle.
+Saved recovery remains available when the source becomes invalid. Thirty unit/
+page cases, 29 actual SDK cases, 13 Chrome scenarios and existing Shipping/RBAC/
+save/invoice-recovery checks pass. No quote uniqueness or historical repair.
+Both exact-SHA CI jobs, candidate/production roles, rules readback and deployment
+remain required. The dated read-only review below is historical.
+
+**8 November — SH-08 reviewed, not implemented:**
+[Quote → Order conversion recovery](V8.20-QUOTE-ORDER-CONVERSION-RECOVERY-REVIEW.md)
+reproduces re-entry, two-tab/backlink and inherited quote-copy ownership gaps.
+Sixteen real-page/Router characterizations, seven actual SDK/current-rules demo
+cases and 191 existing Shipping regressions pass. Proposed next: durable intent
+per order, atomic SO/order/lines/receipt/link, existing-order Open/Resume and
+explicit additional-order intent. No one-order-per-quote constraint, historical
+deduplication or live data change. Migration, stale-tab limits and acceptance
+gates are documented before implementation; no application code or deployment.
+
 **8 November — SH-06 released:** [Quote initialization/Retry](V8.20-QUOTE-INITIALIZATION-FIX.md)
 is live as 97cbf5d / production `6af0018353779a88119df400`. Complete read attempts
 precede editing/Create; failures have Retry and abandoned callbacks cannot

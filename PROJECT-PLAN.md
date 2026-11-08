@@ -1,3 +1,35 @@
+# V8.20 — Quote → Order recovery (SH-08) — authorized fix, release gates pending
+
+The owner authorized implementation, fictional tests, commit/push and deployment
+after both required GitHub jobs. [Implementation, migration and release record](docs/plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md)
+cover durable per-intent requests, atomic Firestore SO/order/lines/receipt/link,
+Open/Resume re-entry, explicit additional orders, retained legacy links and
+quote-copy ownership reset. Source validity blocks fresh Create while saved
+recovery remains reachable. No quote-level uniqueness or historical repair.
+
+Local verification: 30 unit/page cases, 29 actual SDK/rules cases, 13 native
+Chrome scenarios, 191 existing Shipping cases, 112 RBAC assertions, four actual
+save cases and 23 Firestore/PostgreSQL invoice-recovery cases pass. Full prebuild,
+build and lint pass. Exact-SHA CI, candidate/production fresh-role gates, rules
+readback and publication remain pending. Earlier review entry is historical.
+
+# V8.20 — Quote → Order recovery (SH-08) — review only, 8 November 2026
+
+The owner requested fictional-record review and a proposed fix before code
+changes. [Findings, proposed protocol and migration/acceptance plan](docs/plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY-REVIEW.md)
+cover Back/direct-entry/two-tab creation, swallowed or late backlinks, missing
+structured provenance and Duplicate quote inheriting its old order link.
+Sixteen current-form/Router characterizations, seven actual SDK/current-rules
+emulator cases and all 191 existing Shipping cases pass. Defect assertions are
+reproductions, not implemented repairs; no live duplicate diagnosis is claimed.
+
+Proposed next slice: one saved request per intended order, atomic order/lines/
+SO/receipt/link, Open/Resume on re-entry, explicit reviewed additional orders,
+and quote-copy ownership reset. No quote-level uniqueness or historical dedup.
+Documented legacy-tab and ambiguous-link limits require explicit handling.
+Only review documentation changed; no application/rules/SQL/production writes,
+commit, push or deployment. Implementation awaits the next owner instruction.
+
 # V8.20 — Quote to Order initialization (SH-06) — released, 8 November 2026
 
 Live as **`97cbf5d868842cd0df4c2c1772f4f76e44f6f47e`**, production

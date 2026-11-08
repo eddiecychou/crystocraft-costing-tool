@@ -10,6 +10,7 @@ import { createRequire } from 'node:module'
 import { build } from 'esbuild'
 import { JSDOM } from 'jsdom'
 import React, { act } from 'react'
+import {fixtureSourceToken} from './quote-conversion-page-fixture.mjs'
 
 const test = (name, fn) => nodeTest(name, { timeout: 10000 }, fn)
 const require = createRequire(import.meta.url)
@@ -33,6 +34,8 @@ const line = id => ({ id: 'line-' + id, line_no: 1, item_code: 'ITEM-' + id, des
 const quote = id => ({customer_id:'customer-A',client_name:'Fictional Quote '+id,quote_currency:'EUR',quote_no:'QU-'+id,ref_no:'UC100/26'})
 const quoteItems = id => [{id:'quote-line-'+id,is_custom:true,product_name:'Quoted '+id,product_unit:'pair',tiers:[{quantity:1000,price:1.222,remarks:'First tier 中文'},{quantity:2000,price:1.111}]}]
 const stubs = {
+  quoteConversion:'export const quoteConversionAction=(...a)=>globalThis.__shipmentLifecycle.quoteAction(...a)',
+  quoteConversionModel:'export const quoteSourceToken=async(...a)=>globalThis.__shipmentLifecycle.sourceToken(...a)',
   firebase: 'export const db={},storage={};export const authHeader=async()=>{throw Error("Network forbidden")}',
   firestore: `const f=()=>globalThis.__shipmentLifecycle;
     export const doc=(...p)=>Object.assign(p,{id:typeof p.at(-1)==='string'?p.at(-1):'new-line'}),collection=(...p)=>p,query=(...p)=>p,orderBy=()=>{},where=()=>{},limit=()=>{};
@@ -100,6 +103,11 @@ beforeEach(() => {
     return kind === 'order' ? record(id) : [line(id)]
   }
   globalThis.__shipmentLifecycle = f
+  f.sourceToken=fixtureSourceToken
+  f.quoteAction=async id=>{
+    const q=f.faults['quote-'+id]||quote(id), rows=f.faults['quoteItems-'+id]||quoteItems(id)
+    return {source_token:fixtureSourceToken(q,rows.map(item=>({...item,id:item.id}))),revision:0,active:null,latest:null,legacy:null,history:[]}
+  }
   errors = []; originalError = console.error; console.error = (...args) => {
     const message = args.map(String).join(' ')
     if (/^\(node:\d+\) ExperimentalWarning: The MockTimers API is an experimental feature/.test(message)) originalError(...args)

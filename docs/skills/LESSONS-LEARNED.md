@@ -1827,3 +1827,38 @@ of turning source-loading repair into new conversion policy. Test delayed and
 failed reads with the actual form/Router, including a pending common read from a
 failed attempt that resolves after the user edits the successful retry.
 [Scope, tests and release evidence](../plans/V8.20-QUOTE-INITIALIZATION-FIX.md).
+
+### Conversion intent differs from quote identity — review finding, not a fix
+
+8 November 2026, SH-08: current-page tests reproduce Back/two-tab extra orders,
+swallowed/late quote backlinks and Duplicate quote inheriting its previous
+order's link. Actual SDK concurrency preserves distinct SOs and orders, but no
+conversion identity. A same-editor guard and atomic SO/order transaction do not
+provide cross-tab retry recovery or atomic source linkage. A scalar backlink
+also cannot prove original ownership after header copying.
+
+Propose one durable request per intended order and atomic receipt/source linkage;
+Open/Resume repeats and make additional orders explicit. Never impose unique
+quote_id or deduplicate historical orders by matching notes/amounts. Do not call
+a deliberately injected lost-response fixture a proven production SDK failure.
+Old tabs submit manual-looking orders without a source ID: protecting only new
+fields cannot enforce a universal legacy-client cutover. These are documented
+findings and a proposed protocol, with no implementation in this review.
+[Evidence, migration limits and acceptance plan](../plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY-REVIEW.md).
+
+
+### Persist the conversion intent; keep recovery independent of source validity
+
+8 November 2026, subsequent SH-08 implementation: stable per-intent IDs and an
+atomic SO/order/lines/receipt/source-link transaction recover lost responses
+without suppressing deliberate additional orders. Keep all prior receipts,
+freeze reviewed details and compare complete typed source/item fingerprints;
+Firestore map order, timestamps, literal lookalike maps and null/NaN are distinct
+concerns. Quote copy must omit lifecycle ownership, while preserving content.
+
+Source validation governs fresh creation. If the source later becomes invalid
+or uploaded, saved history/Resume/cancellation must remain reachable; do not
+hide recovery behind the prefill error. An old source-less tab is still a manual
+Create at the backend: field guards cannot promise global legacy deduplication.
+Real Admin/Web SDK, separate native Chrome tabs and split/reissued-invoice
+regressions complement actual-form tests. [Contract, limits and release evidence](../plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md).

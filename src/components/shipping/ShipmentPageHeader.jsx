@@ -5,7 +5,7 @@ import { FileText, Receipt } from 'lucide-react'
 // in ShipmentForm; rendering this component never reads or writes business data.
 export default function ShipmentPageHeader({
   id, isEdit, isDirect, invoiceNo, ucNo, allocatingSi, saving, siError,
-  onRaiseInvoice, tab, onTabChange,
+  onRaiseInvoice, tab, onTabChange, fromQuote = false,
 }) {
   return (
     <>
@@ -15,7 +15,7 @@ export default function ShipmentPageHeader({
           <h1 className="text-2xl text-ink">
             {isEdit
               ? (invoiceNo || ucNo || 'Order Detail')
-              : (isDirect ? 'Direct Invoice' : 'New Order')}
+              : (fromQuote ? 'Quote orders' : isDirect ? 'Direct Invoice' : 'New Order')}
           </h1>
           {isEdit && (
             <div className="shrink-0 w-full sm:w-auto text-right">
@@ -48,7 +48,9 @@ export default function ShipmentPageHeader({
         </div>
         {!isEdit && (
           <p className="text-sm text-ink-60 mt-1">
-            {isDirect
+            {fromQuote
+              ? 'Open an existing order, resume a saved conversion, or review a new order from this quote.'
+              : isDirect
               ? 'A retail sale invoiced directly — no sales order needed. Add the lines, then allocate an invoice number.'
               : 'Enter the order directly, or drop a PI below to have AI read the header and line items.'}
           </p>

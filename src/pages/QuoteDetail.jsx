@@ -22,6 +22,9 @@ import { loadCustomerAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../c
 import { quoteItemKey, rangeQuoteItem, hasIncompleteRangeLine, rangeQuoteSubtitle } from '../rangeQuote'
 import QuoteProductPicker from '../components/QuoteProductPicker'
 import { costToHKD } from '../costCurrency'
+import {duplicateQuoteFields} from '../quoteConversionModel.js'
+import {QuoteOrderHistory} from '../components/shipping/QuoteOrderRecovery'
+import {useCan} from '../access'
 import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle, Receipt } from 'lucide-react'
 
 // 'confirmed' is the canonical success status (matches the "uploaded" quote
@@ -102,6 +105,7 @@ const STATUS_STYLES = {
 }
 
 export default function QuoteDetail() {
+  const can=useCan()
   const { id } = useParams()
   const navigate = useNavigate()
 
@@ -112,6 +116,7 @@ export default function QuoteDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showExport, setShowExport] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  const [actionError,setActionError]=useState('')
   const [liveImages, setLiveImages] = useState({}) // { product_id: heroImage }
   const [bankAccounts, setBankAccounts] = useState([])
 
@@ -171,15 +176,15 @@ export default function QuoteDetail() {
   }
 
   async function handleDelete() {
-    await deleteDoc(doc(db, 'client_quotes', id))
-    navigate('/quotes')
+    try{await deleteDoc(doc(db, 'client_quotes', id));navigate('/quotes')}
+    catch{setConfirmDelete(false);setActionError('This quote could not be deleted. Quotes with saved conversion requests retain their history; reload to check the current state.')}
   }
 
   async function handleDuplicate() {
     setDuplicating(true)
     try {
       // Copy quote header (reset status to draft)
-      const { id: _id, ...quoteData } = quote
+      const quoteData = duplicateQuoteFields(quote)
       const newQuote = await addDoc(collection(db, 'client_quotes'), {
         ...quoteData,
         status: 'draft',
@@ -347,7 +352,11 @@ export default function QuoteDetail() {
 
   // ── Uploaded quote view ──────────────────────────────────────────────────
   if (quote.quote_type === 'uploaded') {
-    return <UploadedQuoteDetail quote={quote} id={id} onDelete={() => { deleteDoc(doc(db, 'client_quotes', id)); navigate('/quotes') }} />
+    return <>
+      <UploadedQuoteDetail quote={quote} id={id} onDelete={handleDelete} canDelete={!Object.prototype.hasOwnProperty.call(quote,'order_conversion_version')} />
+      {actionError&&<p role="alert" className="text-sm text-brand-700 p-5">{actionError}</p>}
+      {can('shipping')&&can('quotes')&&(quote.converted_order_id||Object.prototype.hasOwnProperty.call(quote,'order_conversion_version'))&&<div className="max-w-4xl p-4 md:p-6"><QuoteOrderHistory quoteId={id} disabled /></div>}
+    </>
   }
 
   const quoteCurrency = quote.quote_currency || 'HKD'
@@ -490,29 +499,12 @@ export default function QuoteDetail() {
           <button className="btn-secondary text-sm inline-flex items-center gap-1.5" onClick={handleDuplicate} disabled={duplicating}>
             {duplicating ? 'Copying…' : <><Copy size={14} />Duplicate</>}
           </button>
-          {/* Convert to PI (2026-08-26) — most quotes have no UC number yet
-              (it's the free-text Ref No. field above, only sometimes typed by
-              hand); ShipmentForm.jsx reads ?from_quote= and, if Ref No. looks
-              like one, carries it into the new order's uc_no field. Once
-              converted, converted_order_id (written by ShipmentForm on
-              create) replaces this with a link to the resulting PI instead of
-              letting a second one be created from the same quote by mistake. */}
-          {quote.converted_order_id ? (
-            <Link to={`/shipments/${quote.converted_order_id}`} className="btn-secondary text-sm inline-flex items-center gap-1.5">
-              <Receipt size={14} />View PI →
-            </Link>
-          ) : incompleteRangeCount > 0 ? (
-            <button type="button" disabled className="btn-primary text-sm inline-flex items-center gap-1.5 opacity-50 cursor-not-allowed">
-              <Receipt size={14} />Convert to PI
-            </button>
-          ) : (
-            <Link to={`/shipments/new?from_quote=${id}`} className="btn-primary text-sm inline-flex items-center gap-1.5">
-              <Receipt size={14} />Convert to PI
-            </Link>
-          )}
-          <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
+          {!Object.prototype.hasOwnProperty.call(quote,'order_conversion_version')&&<button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>}
         </div>
+        {actionError&&<p role="alert" className="text-sm text-brand-700 mt-3">{actionError}</p>}
+        {Object.prototype.hasOwnProperty.call(quote,'order_conversion_version')&&<p className="text-sm text-ink-60 mt-3">Saved conversion history is retained. This quote cannot be deleted.</p>}
         {incompleteRangeCount > 0 && <p className="text-xs text-amber-700 mt-2">{incompleteRangeCount} Crystocraft Range line{incompleteRangeCount === 1 ? '' : 's'} need a quantity and a positive price before export or conversion to PI.</p>}
+        {can('shipping')&&can('quotes')&&<div className="mt-4"><QuoteOrderHistory quoteId={id} disabled={incompleteRangeCount>0} /></div>}
       </div>
 
       {/* Items */}
@@ -1162,7 +1154,7 @@ const UPLOADED_STATUS_STYLES = {
   lost:      'bg-red-100 text-red-600',
 }
 
-function UploadedQuoteDetail({ quote, id, onDelete }) {
+function UploadedQuoteDetail({ quote, id, onDelete, canDelete=true }) {
   const navigate = useNavigate()
   const [q, setQ]                     = useState(quote)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -1303,7 +1295,7 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
         )}
       </div>
 
-      <button onClick={() => setConfirmDelete(true)} className="text-sm text-red-500 hover:text-red-700">Delete this quote</button>
+      {canDelete?<button onClick={() => setConfirmDelete(true)} className="text-sm text-red-500 hover:text-red-700">Delete this quote</button>:<p className="text-sm text-ink-60">Saved conversion history is retained. This quote cannot be deleted.</p>}
 
       {confirmDelete && (
         <ConfirmDialog

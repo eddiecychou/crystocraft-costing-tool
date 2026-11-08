@@ -27,6 +27,9 @@ import { upsertInvoice, allocateOrderUc } from '../ucRegistry'
 import {invoiceAction} from '../invoiceRecovery'
 import {invoiceExpected,invoiceReferenceValues,invoiceReferenceSavePatch,sameInvoiceValue} from '../invoiceRecoveryModel.js'
 import ShipmentInvoiceRecovery from '../components/shipping/ShipmentInvoiceRecovery'
+import QuoteOrderRecovery from '../components/shipping/QuoteOrderRecovery'
+import {quoteConversionAction} from '../quoteConversion'
+import {quoteSourceToken} from '../quoteConversionModel.js'
 import { orderStockStatus, stockStatusDetail } from '../orderStockStatus'
 import ShipmentPageHeader from '../components/shipping/ShipmentPageHeader'
 import ShipmentPiUpload from '../components/shipping/ShipmentPiUpload'
@@ -141,6 +144,15 @@ function ShipmentEditor() {
   const [loadRevision, setLoadRevision] = useState(0)
   const [quoteLoad, setQuoteLoad] = useState(() => ({ status: hasQuoteSource ? 'loading' : 'idle', message: '' }))
   const quoteReady = !hasQuoteSource || ['ready', 'empty'].includes(quoteLoad.status)
+  const [quoteRecovery,setQuoteRecovery]=useState(null)
+  const [quoteRecoveryBusy,setQuoteRecoveryBusy]=useState(false)
+  const [quoteRecoveryError,setQuoteRecoveryError]=useState('')
+  const [quoteAdditional,setQuoteAdditional]=useState(null)
+  const [quoteDraftIssue,setQuoteDraftIssue]=useState('')
+  const quoteSource=useRef(null)
+  const recoveryInFlight=useRef(false)
+  const hasQuoteOrders=Boolean(quoteRecovery?.latest||quoteRecovery?.legacy)
+  const showQuoteDraft=!hasQuoteSource||Boolean(quoteRecovery&&!quoteDraftIssue&&!quoteRecovery.active&&(!hasQuoteOrders||quoteAdditional))
   const [saving, setSaving] = useState(false)
   const [savePending, setSavePending] = useState(false)
   const saveInFlight = useRef(false)
@@ -166,6 +178,7 @@ function ShipmentEditor() {
     setFetching(isEdit)
     setLoadError('')
     if (hasQuoteSource) setQuoteLoad({ status: 'loading', message: '' })
+    if (hasQuoteSource) {setQuoteRecovery(null);setQuoteRecoveryError('');setQuoteAdditional(null);setQuoteDraftIssue('');quoteSource.current=null}
     setPendingFile(null); setErpCheck(null); setExtractError(''); setSiError('')
     if (!isEdit) {
       setHeader(preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader)
@@ -207,12 +220,16 @@ function ShipmentEditor() {
         if (!alive) return null
         if (!qSnap.exists()) throw new Error('That quote could not be found.')
         const quote = qSnap.data()
-        if (quote.quote_type === 'uploaded') throw new Error('This quote has no product lines to convert — it\'s an uploaded document.')
         const itemSnap = await getDocs(collection(db, 'client_quotes', fromQuoteId, 'items'))
         if (!alive) return null
-        const items = itemSnap.docs.map(d => d.data())
-        if (items.some(hasIncompleteRangeLine)) throw new Error('A Crystocraft Range line has no quantity or positive price. Complete the quote before converting it to a PI.')
-        return { quote, lines: items.map(quoteItemToOrderLine) }
+        const items = itemSnap.docs.map(d => ({...d.data(),id:d.id}))
+        const token=await quoteSourceToken(quote,items)
+        const recovery=await quoteConversionAction(fromQuoteId)
+        if(!alive)return null
+        if(recovery.source_token!==token)throw new Error('The quote changed while it was loading. Retry to review its current details.')
+        const issue=quote.quote_type==='uploaded'?'This quote has no product lines to convert — it\'s an uploaded document.':items.some(hasIncompleteRangeLine)?'A Crystocraft Range line has no quantity or positive price. Complete the quote before converting it to a PI.':''
+        if(issue&&!recovery.active&&!recovery.latest&&!recovery.legacy)throw new Error(issue)
+        return { quote, lines: items.map(quoteItemToOrderLine),recovery,token,issue }
       })())
     }
     Promise.all(loads)
@@ -232,6 +249,9 @@ function ShipmentEditor() {
           notes: q.quote_no ? `Converted from Quote ${q.quote_no}` : h.notes,
         }))
         setLines(source.lines)
+        quoteSource.current=source.token
+        setQuoteRecovery(source.recovery)
+        setQuoteDraftIssue(source.issue)
         setQuoteLoad(source.lines.length
           ? { status: 'ready', message: '' }
           : { status: 'empty', message: 'That quote has no product lines yet — add lines manually.' })
@@ -244,6 +264,21 @@ function ShipmentEditor() {
       .finally(() => { if (alive) setFetching(false) })
     return () => { alive = false }
   }, [id, isEdit, loadRevision])
+
+  async function runQuoteRecovery(action='status',details={}) {
+    if(recoveryInFlight.current||createInFlight.current)return
+    recoveryInFlight.current=true
+    setQuoteRecoveryBusy(true);setQuoteRecoveryError('')
+    try{
+      const result=await quoteConversionAction(fromQuoteId,action,details)
+      if(!mounted.current)return
+      if(details.cursor)setQuoteRecovery(old=>({...old,history:[...old.history,...result.history],more_history:result.more_history,next_cursor:result.next_cursor}))
+      else{setQuoteRecovery(result);setQuoteAdditional(null)}
+      if(result.result?.order_id)navigate(`/shipments/${result.result.order_id}`)
+      if(action==='cancel')setLoadRevision(v=>v+1)
+    }catch(e){if(mounted.current)setQuoteRecoveryError(e.message)}
+    finally{recoveryInFlight.current=false;if(mounted.current)setQuoteRecoveryBusy(false)}
+  }
 
   // Bring the invoice field into view when arriving via "Raise invoice →".
   // After `fetching` clears, so the field exists and the layout has settled.
@@ -515,10 +550,11 @@ function ShipmentEditor() {
   // ── Save ─────────────────────────────────────────────────────────────────────
   async function handleCreate(e) {
     e.preventDefault()
-    if (piImport.current.extracting || createInFlight.current || !quoteReady) return
+    if (piImport.current.extracting || createInFlight.current || recoveryInFlight.current || !quoteReady || !showQuoteDraft) return
     createInFlight.current=true
     setSaving(true)
     setExtractError('')
+    setQuoteRecoveryError('')
     try {
       // Upload PI under a stable import path first, then anchor it on the order.
       let sf = null
@@ -534,6 +570,29 @@ function ShipmentEditor() {
       const orderData = orderCreateFields(header, computed, sf, isDirect)
       const v = validateOrder(orderData, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); return }
+
+      if(hasQuoteSource){
+        try{
+          const saved=await quoteConversionAction(fromQuoteId,'prepare',{
+            expected_revision:quoteRecovery.revision,expected_source:quoteSource.current,
+            kind:quoteAdditional?'additional':'initial',reason:quoteAdditional?.reason||'',
+            legacy_review:quoteAdditional?.legacy_review||null,draft:{order:orderData,lines},
+          })
+          if(mounted.current){setQuoteRecovery(saved);setQuoteAdditional(null)}
+          if(saved.active){
+            const completed=await quoteConversionAction(fromQuoteId,'commit',{operation_id:saved.active.id})
+            if(mounted.current){setQuoteRecovery(completed);if(completed.result?.order_id)navigate(`/shipments/${completed.result.order_id}`)}
+          }
+        }catch(error){
+          if(mounted.current){
+            // A request may already be prepared or committed. Hide Create until
+            // a successful status check; never treat a timeout as a new intent.
+            setQuoteRecovery(null);setQuoteAdditional(null);setQuoteRecoveryError(error.message)
+            try{const recovered=await quoteConversionAction(fromQuoteId);if(mounted.current)setQuoteRecovery(recovered)}catch{/* Keep Check saved requests available, Create blocked. */}
+          }
+        }
+        return
+      }
 
       // Allocate the SO number automatically on create. The app is now the only
       // source of new SO numbers (CuiLing, 2026-07-23: new SO/SI go in the app,
@@ -593,13 +652,6 @@ function ShipmentEditor() {
         } catch (e) {
           setExtractError(`Order created, but the invoice number could not be allocated: ${e.message || e}. Reopen the saved order and resume its invoice request.`)
         }
-      }
-
-      // Best-effort, after the order is safely committed — never let this
-      // block landing on the new order, and never let it retry into a second
-      // order if the order write itself already succeeded.
-      if (fromQuoteId) {
-        updateDoc(doc(db, 'client_quotes', fromQuoteId), { converted_order_id: orderId }).catch(() => {})
       }
 
       if(mounted.current) navigate(`/shipments/${orderId}`)
@@ -697,7 +749,7 @@ function ShipmentEditor() {
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <ShipmentPageHeader
-        id={id} isEdit={isEdit} isDirect={isDirect}
+        id={id} isEdit={isEdit} isDirect={isDirect} fromQuote={hasQuoteSource}
         invoiceNo={header.erp_si_no} ucNo={header.uc_no}
         allocatingSi={allocatingSi} saving={saving} siError={siError}
         onRaiseInvoice={doAllocateSi} tab={tab} onTabChange={setTab}
@@ -707,6 +759,13 @@ function ShipmentEditor() {
         state={invoiceState||(!header.invoice_allocation_id?{order:header,expected:invoiceExpected(header),history:[],operation:null,canStartNew:true}:null)}
         busy={allocatingSi||saving} error={siError} hasInvoice={!!invoiceExpected(header).si} onAction={runInvoiceAction}
       />}
+
+      {hasQuoteSource&&<QuoteOrderRecovery state={quoteRecovery} busy={saving||quoteRecoveryBusy} error={quoteRecoveryError}
+        draftIssue={quoteDraftIssue} sourceHref={`/quotes/${encodeURIComponent(fromQuoteId)}`}
+        onReload={()=>runQuoteRecovery()} onResume={operation_id=>runQuoteRecovery('commit',{operation_id})}
+        onCancel={(operation_id,reason)=>runQuoteRecovery('cancel',{operation_id,reason})}
+        onAdditional={details=>{setQuoteAdditional(details);setQuoteRecoveryError('')}} additional={quoteAdditional}
+        onCloseAdditional={()=>setQuoteAdditional(null)} onMore={cursor=>runQuoteRecovery('status',{cursor})} />}
 
       {/* Packing list tab */}
       {isEdit && tab === 'packing' && (
@@ -719,7 +778,7 @@ function ShipmentEditor() {
       )}
 
       {/* Order tab (or new shipment form) */}
-      {(!isEdit || tab === 'order') && (
+      {(!isEdit || tab === 'order') && showQuoteDraft && (
       <form onSubmit={isEdit ? handleSave : handleCreate} className="space-y-5">
       <fieldset disabled={saving} className="space-y-5 min-w-0">
         {hasQuoteSource && (
@@ -928,12 +987,13 @@ function ShipmentEditor() {
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Order'}
           </button>
           <button type="button" className="btn-secondary" onClick={() => navigate('/shipments')}>Cancel</button>
-          {isEdit && (
+          {isEdit && !header.quote_conversion_id && (
             <button type="button" onClick={() => setConfirmDelete(true)} className="ml-auto inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
               <Trash2 size={15} /> Delete order
             </button>
           )}
         </div>
+        {isEdit&&header.quote_conversion_id&&<p className="text-sm text-ink-60">This order has a saved quote conversion receipt. Deletion is blocked to preserve its order and numbering history.</p>}
 
       {confirmDelete && (
         <ConfirmDialog title="Delete order" message="Delete this order and all its lines? This cannot be undone."

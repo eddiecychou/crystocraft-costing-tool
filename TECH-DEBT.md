@@ -62,12 +62,16 @@ The other findings below remain open.
   enabling editing/Create. Existing source mappings and empty-quote entry remain.
   Released as 97cbf5d after both required jobs and fresh candidate/production
   role, actual SDK Retry, access and served-artifact gates. See that record for evidence.
-- **P2 completion/re-entry:** SH-05B adds an immediate Create guard and prevents an
-  abandoned completion from navigating a different page. General Create recovery and conversion
-  Back/re-entry can create another order and replace the backlink; define intentional
-  multiple-order policy before imposing uniqueness. Native repeated clicks are
-  already blocked and SH-05B adds the synchronous handler guard; the broader
-  lifecycle/conversion policy remains separate.
+- **P2 completion/re-entry — SH-08 implemented, release pending:** [Durable
+  conversion recovery](docs/plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md) uses
+  server-owned intent per order, atomic SO/order/lines/receipt/link, Open/Resume,
+  explicit additional orders and quote-copy ownership reset. Local real-page,
+  SDK/rules, native Chrome and existing regressions pass; exact-SHA CI, rules,
+  fresh candidate/production role gates and publication remain required. No
+  quote uniqueness or historical deduplication. Old tabs submit source-less
+  manual orders: new-field guards alone cannot prevent those Creates while
+  preserving manual workflows. Refresh tabs at cutover; broader SH-07 remains.
+
 
 These mechanisms predate the recent extraction work. Known concurrent-editor and
 browser-close synchronization limits remain separate design debt. Packing/Freight

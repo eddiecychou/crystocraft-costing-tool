@@ -1,4 +1,4 @@
-import { numOrNull } from './domain/validation'
+import { numOrNull } from './domain/validation.js'
 
 // A deposit settles part of the invoice; it never reduces sales/discounts or
 // the accounting value exported to PBIS. Derive the balance from that value.

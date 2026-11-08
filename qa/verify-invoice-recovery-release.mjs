@@ -9,14 +9,21 @@ const base = new URL(process.argv[2] || '')
 assert.equal(base.protocol, 'https:')
 assert.ok(base.hostname === 'portal.crystocraft.com' || /^[a-f0-9]{24}--ua-product-manager\.netlify\.app$/.test(base.hostname), 'Only the canonical site or a pinned OC candidate is authorized')
 const scope=process.argv[4]||'ready'
-assert.ok(['pre-sql','ready','quote-initialization'].includes(scope))
+assert.ok(['pre-sql','ready','quote-initialization','quote-recovery'].includes(scope))
+const isQuoteScope=['quote-initialization','quote-recovery'].includes(scope)
+const missingQuoteId='qa-sh08-missing-'+Date.now()
 const endpoints=[
  {path:'/api/invoice-allocation',body:{},status:400,error:'Choose a saved order and valid invoice action.'},
  {path:'/api/uc',body:{op:'allocate_invoice',year:'QA-INVALID'},status:409,error:'Refresh OC and use Raise Invoice on the saved order to resume the protected invoice request.'},
  ...(scope!=='pre-sql'?[{path:'/api/invoice-allocation',body:{action:'ready'},status:200,ready:true}]:[]),
+ ...(scope==='quote-recovery'?[
+  {path:'/api/quote-order-conversion',body:{},status:400,error:'Choose a saved quote and valid conversion action.'},
+  {path:'/api/quote-order-conversion',body:{action:'ready'},status:200,expectedBody:{ready:true,protocol:1}},
+  {path:'/api/quote-order-conversion',body:{action:'status',quote_id:missingQuoteId},status:404,error:'That quote could not be found.'},
+  {path:'/api/quote-order-conversion',body:{action:'commit',quote_id:missingQuoteId,operation_id:'missing'},status:404,error:'That quote could not be found.'},
+ ]:[]),
 ]
-const origin=base.origin,out=scope==='quote-initialization'?'qa/out/quote-initialization':'qa/out/invoice-recovery',phase=process.argv[3]
-const missingQuoteId='qa-sh06-missing-'+Date.now()
+const origin=base.origin,out=scope==='quote-recovery'?'qa/out/quote-conversion-recovery':scope==='quote-initialization'?'qa/out/quote-initialization':'qa/out/invoice-recovery',phase=process.argv[3]
 assert.ok(['candidate','production'].includes(phase))
 const require = createRequire(new URL('../.qa-playwright/package.json', import.meta.url))
 const { chromium } = require('playwright-core')
@@ -31,7 +38,7 @@ const report = { origin, phase, scope, checkoutSha: execFileSync('git', ['rev-pa
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--disable-quic'] })
 try {
   const anonymous = await browser.newContext()
-  for (const endpoint of endpoints.filter(e=>e.path==='/api/invoice-allocation').slice(0,1)) for (const [method, status, error] of [['POST', 401, 'Not signed in'], ['GET', 405, 'Method not allowed']]) {
+  for (const endpoint of endpoints.filter((e,i,a)=>a.findIndex(x=>x.path===e.path)===i&&['/api/invoice-allocation','/api/quote-order-conversion'].includes(e.path))) for (const [method, status, error] of [['POST', 401, 'Not signed in'], ['GET', 405, 'Method not allowed']]) {
     const r = await anonymous.request.fetch(origin + endpoint.path, { method, ...(method === 'POST' ? { data: '{}' } : {}) })
     assert.equal(r.status(), status)
     assert.deepEqual(await r.json(), { error })
@@ -73,7 +80,7 @@ try {
         await page.getByRole('heading',{name:'Document References',exact:true}).waitFor()
         assert.equal(await page.getByRole('button',{name:'Create Order',exact:true}).isDisabled(),true)
         result.shipping='PASS; blank form, no saves or allocations'
-        if(scope==='quote-initialization'){
+        if(isQuoteScope){
           // A new, nonexistent fictional ID exercises real SDK reads/catch/Retry.
           // Never create a production quote/order or press Create/Allocate.
           await go('/shipments/new?from_quote='+missingQuoteId)
@@ -131,7 +138,7 @@ try {
       for (const [i, endpoint] of endpoints.entries()) {
         assert.equal(probe.probes[i].path, endpoint.path)
         assert.equal(probe.probes[i].status, role === 'ADMIN' ? endpoint.status : 403)
-        assert.deepEqual(probe.probes[i].body, role==='CUSTOMER'?{error:'Access denied'}:endpoint.ready?{ready:true}:{error:endpoint.error})
+        assert.deepEqual(probe.probes[i].body, role==='CUSTOMER'?{error:'Access denied'}:endpoint.expectedBody|| (endpoint.ready?{ready:true}:{error:endpoint.error}))
       }
       result.profileAndEndpoint = probe
       await page.reload({ waitUntil: 'domcontentloaded' })
@@ -139,7 +146,7 @@ try {
         await page.getByRole('heading',{name:'New Order',exact:true}).waitFor()
         assert.ok(await page.locator('a[href="/settings"]').count())
         assert.equal(new URL(page.url()).pathname,'/shipments/new')
-        if(scope==='quote-initialization'){
+        if(isQuoteScope){
           await page.getByRole('alert').filter({hasText:'That quote could not be found.'}).waitFor()
           assert.equal(await page.locator('form').count(),0)
           result.quoteRefresh='PASS'
@@ -147,7 +154,7 @@ try {
       } else {
         await page.locator('h1').waitFor()
         await page.waitForFunction(() => [...document.querySelectorAll('main img')].some(i => i.complete && i.naturalWidth > 0))
-        await go('/shipments/new'+(scope==='quote-initialization'?'?from_quote='+missingQuoteId:'')); await page.waitForURL(u => u.pathname === '/shop')
+        await go('/shipments/new'+(isQuoteScope?'?from_quote='+missingQuoteId:'')); await page.waitForURL(u => u.pathname === '/shop')
         assert.equal(await page.getByRole('button', {name:'Create Order',exact:true}).count(),0)
         assert.equal(await page.locator('a[href="/settings"]').count(), 0)
       }

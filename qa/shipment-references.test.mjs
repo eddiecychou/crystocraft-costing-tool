@@ -12,6 +12,7 @@ import {JSDOM} from 'jsdom'
 import React,{act} from 'react'
 import {ocDateOnly,ocYear} from '../src/ocTime.js'
 import {referenceFixtureInvoiceAction} from './invoice-recovery-page-fixture.mjs'
+import {referenceFixtureQuoteAction,fixtureSourceToken} from './quote-conversion-page-fixture.mjs'
 
 const require=createRequire(import.meta.url)
 const dom=new JSDOM('<!doctype html><body></body>',{url:'http://fictional.test'})
@@ -83,6 +84,8 @@ const stubs={
  };export const diffLines=()=>null;`,
  soNumber:'import{ocYear}from"./src/ocTime.js";export const soYear=()=>String(ocYear(new Date())%100).padStart(2,"0");export const allocateSoNo=(...a)=>globalThis.__shipmentReferences.invoke("so",a);export const JES_SEED_BY_YEAR={};export const formatSoNo=()=>{throw Error("No order creation authorized")}',
  invoiceRecovery:'export const invoiceAction=(...a)=>globalThis.__shipmentReferences.invoiceAction(...a)',
+ quoteConversion:'export const quoteConversionAction=(...a)=>globalThis.__shipmentReferences.quoteAction(...a)',
+ quoteConversionModel:'export const quoteSourceToken=async(...a)=>globalThis.__shipmentReferences.sourceToken(...a)',
  ucRegistry:'export const allocateOrderUc=(...a)=>globalThis.__shipmentReferences.invoke("uc",a);export const allocateInvoice=(...a)=>globalThis.__shipmentReferences.invoke("si",a);export const updateUcInvoice=(...a)=>globalThis.__shipmentReferences.invoke("registry",a);export const upsertInvoice=async data=>{const f=globalThis.__shipmentReferences;if(!f.allowAccounting)throw Error("No accounting upsert authorized");f.accountingWrites.push(structuredClone(data))}',
  storage:`const f=()=>globalThis.__shipmentReferences;
  export const ref=(_storage,path)=>{if(!f().allowCreate)throw Error('No storage requests');return{path}};
@@ -111,6 +114,8 @@ beforeEach(()=>{
  f={id:'qa-order',search:'',order:order(),lines:[{id:'qa-line',line_no:1,item_code:'QA-ITEM',description:'Fictional item',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'}],calls:[],actions:{so:async()=> 'SO-FICTIONAL',uc:async()=>({full:'UC-FICTIONAL'}),si:async()=>({si_no:'SI-FICTIONAL',uc_no:'UC-FICTIONAL'}),registry:async()=>({})},orderWrites:[],lineWrites:[],accountingWrites:[],createAttempts:0,allowWrite:false,allowAccounting:false,createdRecords:[],quoteLinks:[],uploads:[]}
  f.invoke=(kind,args)=>{f.calls.push({kind,args:structuredClone(args)});return f.actions[kind](...args)}
  f.invoiceAction=(...args)=>referenceFixtureInvoiceAction(f,...args)
+ f.quoteAction=(...args)=>referenceFixtureQuoteAction(f,...args)
+ f.sourceToken=fixtureSourceToken
  globalThis.__shipmentReferences=f
  errors=[];originalError=console.error;console.error=(...a)=>errors.push(a.map(String).join(' '))
  host=document.createElement('div');document.body.append(host);root=createRoot(host)
@@ -319,7 +324,9 @@ const prepareNew=async mode=>{
 for(const mode of ['import','direct','quote']){
  test(`${mode}: rejected create shows an adjacent error and preserves unsaved values without allocating`,async()=>{
   f.createError=Error('Fictional create rejection');await prepareNew(mode);await click(submit())
-  assert.equal(f.createAttempts,1);assert.match(formError()?.textContent||'',/Could not create the order: Fictional create rejection/);assert.equal(formError().getAttribute('role'),'alert');assert.equal(formError().nextElementSibling.contains(submit()),true)
+  assert.equal(f.createAttempts,1)
+  if(mode==='quote')assert.match(host.querySelector('[aria-label="Quote order recovery"] [role="alert"]')?.textContent||'',/Fictional create rejection/)
+  else{assert.match(formError()?.textContent||'',/Could not create the order: Fictional create rejection/);assert.equal(formError().getAttribute('role'),'alert');assert.equal(formError().nextElementSibling.contains(submit()),true)}
   assert.equal(submit().disabled,false);assert.equal(input('Customer PO').value,'Unsaved PO kept');assert.equal(host.querySelector('input[placeholder="Qty"]').value,'1');assert.equal(host.querySelector('input[placeholder="Unit price"]').value,'100')
   assert.equal(f.destination,undefined);assert.deepEqual(f.calls,[]);assert.deepEqual(f.orderWrites,[]);assert.deepEqual(f.lineWrites,[]);assert.deepEqual(f.accountingWrites,[])
  })
@@ -1326,7 +1333,7 @@ for (const mode of ['manual', 'import', 'direct', 'quote']) {
     assert.equal(f.createAttempts, 1)
     const created = f.createdRecords.find(record => record.path.flat(Infinity).at(-1) === 'orders').data
     const createdLines = f.createdRecords.filter(record => record.path.flat(Infinity).at(-1) === 'lines')
-    assert.equal(created.source, mode === 'import' ? 'imported_pi' : mode === 'direct' ? 'direct_invoice' : 'manual')
+    assert.equal(created.source, mode === 'import' ? 'imported_pi' : mode === 'direct' ? 'direct_invoice' : mode === 'quote' ? 'in_app_quote' : 'manual')
     assert.equal(created.subtotal, 1222)
     assert.equal(created.total_amount, 1222)
     assert.equal(created.erp_si_no, 'SI-FICTIONAL-EXISTING')
@@ -1353,8 +1360,8 @@ for (const mode of ['manual', 'import', 'direct', 'quote']) {
       assert.equal(created.deposit_paid, null)
       assert.equal(f.uploads.length, 0)
     }
-    assert.equal(f.quoteLinks.length, mode === 'quote' ? 1 : 0)
-    if (mode === 'quote') assert.deepEqual(f.quoteLinks[0].data, { converted_order_id: 'new-line' })
+    assert.equal(f.quoteLinks.length, 0, 'no independent best-effort backlink')
+    if (mode === 'quote') assert.deepEqual(f.atomicQuoteCommits, [{quote_id:'qa-quote',order_id:'new-line'}])
     assert.equal(f.destination, '/shipments/new-line')
     assert.deepEqual(f.orderWrites, [])
     assert.deepEqual(f.calls, [])

@@ -1,4 +1,5 @@
-import { ocYear } from './ocTime.js'
+import { JES_SEED_BY_YEAR, formatSoNo, soYear } from './soNumberModel.js'
+export { formatSoNo, soYear } from './soNumberModel.js'
 import { doc, runTransaction } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -32,10 +33,7 @@ import { db } from './firebase'
 // The counter is created on first allocation from the seed, so the first number
 // the app issues is seed + 1. Re-verify before a cutover: if JES has issued more
 // since, the seed is stale and the first allocation collides.
-export const JES_SEED_BY_YEAR = {
-  '26': 27,   // JES max SO260027, verified 2026-07-20
-  '25': 42,   // JES max SO250042
-}
+export { JES_SEED_BY_YEAR } from './soNumberModel.js'
 
 // Sales Invoice numbering: same shape, own counter. Measured 2026-07-20 —
 // SI26 max SI260093 over 92 rows, SI25 144, SI24 276.
@@ -65,9 +63,6 @@ export const JES_SI_SEED_BY_YEAR = {
               // allocation path; corrected for the record.
 }
 
-export const soYear = (d = new Date()) => String(ocYear(d) % 100).padStart(2, '0')
-
-export const formatSoNo = (yy, n) => `SO${yy}${String(n).padStart(4, '0')}`
 export const formatSiNo = (yy, n) => `SI${yy}${String(n).padStart(4, '0')}`
 
 // Allocate the next SO number for the current year, atomically.

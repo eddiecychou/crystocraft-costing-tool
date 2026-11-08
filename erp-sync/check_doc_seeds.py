@@ -1,4 +1,4 @@
-"""Re-verify the SO/SI seeds in src/soNumber.js against the mirror.
+"""Re-verify SO/SI seeds in src/soNumberModel.js / soNumber.js against the mirror.
 
 Run this AFTER a sync. The app allocates document numbers into JES's own
 series, starting from a hardcoded seed (JES's last number for the year). If
@@ -31,14 +31,15 @@ def parse_seeds(text, const_name):
     m = re.search(rf"export const {const_name}\s*=\s*\{{(.*?)\}}", text, re.S)
     if not m:
         raise SystemExit(f"could not find {const_name} in {SO_NUMBER_JS}")
-    return {yy: int(n) for yy, n in re.findall(r"'(\d\d)'\s*:\s*(\d+)", m.group(1))}
+    return {yy: int(n) for yy, n in re.findall(r"['\"]?(\d\d)['\"]?\s*:\s*(\d+)", m.group(1))}
 
 
 def main():
     load_dotenv()
     js = SO_NUMBER_JS.read_text()
+    so_model = SO_NUMBER_JS.with_name("soNumberModel.js").read_text()
     seeds = {
-        "SO": parse_seeds(js, "JES_SEED_BY_YEAR"),
+        "SO": parse_seeds(so_model, "JES_SEED_BY_YEAR"),
         "SI": parse_seeds(js, "JES_SI_SEED_BY_YEAR"),
     }
 

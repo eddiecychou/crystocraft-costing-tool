@@ -676,9 +676,27 @@ service cloud.firestore {
       allow delete: if false;
     }
     match /client_quotes/{quoteId} {
-      allow read, write: if can('quotes');
+      // SH-08: additive server-owned conversion pointers/version. Existing
+      // commercial quote fields/items keep their current validation/permissions.
+      function validConversionCreate() {
+        return !request.resource.data.keys().hasAny(['converted_order_id','order_conversion_version','active_order_conversion_id','latest_order_conversion_id','legacy_converted_order_id']);
+      }
+      function validConversionUpdate() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['converted_order_id','order_conversion_version','active_order_conversion_id','latest_order_conversion_id','legacy_converted_order_id']);
+      }
+      allow read: if can('quotes');
+      allow create: if can('quotes') && validConversionCreate();
+      allow update: if can('quotes') && validConversionUpdate();
+      // Retain saved request history, including cancelled requests. Legacy
+      // quotes without the recovery protocol retain their old deletion path.
+      allow delete: if can('quotes') && !resource.data.keys().hasAny(['order_conversion_version','active_order_conversion_id','latest_order_conversion_id','legacy_converted_order_id']);
       match /items/{itemId} {
         allow read, write: if can('quotes');
+      }
+      match /order_conversions/{operationId} {
+        allow read: if can('shipping') && can('quotes')
+          && exists(/databases/$(database)/documents/client_quotes/$(quoteId));
+        allow write: if false;
       }
     }
 
@@ -1141,6 +1159,16 @@ service cloud.firestore {
     // ---- Shipping & Logistics — `shipping` module, except a customer's own
     // orders (portal order history) ------------------------------------------
     match /orders/{orderId} {
+      function validQuoteConversionCreate() {
+        return !request.resource.data.keys().hasAny(['quote_conversion_id'])
+          && request.resource.data.get('client_quote_id',null) == null
+          && request.resource.data.get('source','') != 'in_app_quote';
+      }
+      function validQuoteConversionUpdate() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['client_quote_id','quote_conversion_id'])
+          && (resource.data.get('quote_conversion_id','') == ''
+            || request.resource.data.get('source','') == resource.data.get('source',''));
+      }
       function refValue(data, key) { return data.get(key, '') == null ? '' : data.get(key, ''); }
       function sameInvoiceRefs() {
         return refValue(resource.data,'erp_si_no') == refValue(request.resource.data,'erp_si_no')
@@ -1165,9 +1193,10 @@ service cloud.firestore {
         || (isApprovedCustomer()
             && profile().get('customer_id', '') != ''
             && resource.data.get('customer_id', '') == profile().get('customer_id', ''));
-      allow create: if can('shipping') && !request.resource.data.keys().hasAny(['invoice_allocation_id','invoice_reference_revision']);
-      allow update: if can('shipping') && safeInvoiceSave();
-      allow delete: if can('shipping') && (resource.data.get('invoice_allocation_id','') == '' || linkedInvoice());
+      allow create: if can('shipping') && validQuoteConversionCreate() && !request.resource.data.keys().hasAny(['invoice_allocation_id','invoice_reference_revision']);
+      allow update: if can('shipping') && validQuoteConversionUpdate() && safeInvoiceSave();
+      allow delete: if can('shipping') && resource.data.get('quote_conversion_id','') == ''
+        && (resource.data.get('invoice_allocation_id','') == '' || linkedInvoice());
       match /invoice_allocations/{operationId} {
         allow read: if can('shipping');
         allow write: if false;

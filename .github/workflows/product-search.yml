@@ -51,6 +51,7 @@ jobs:
       - run: npm run test:invoice-recovery
       - run: npm run test:invoice-recovery-postgres
       - run: npm run test:shipment-display
+      - run: npm run test:quote-conversion
       - run: npm run test:packing-po
       - run: npm run test:ai-writer
       - run: npm run test:catalogue-cover
@@ -89,4 +90,4 @@ jobs:
           java-version: '21'
       - run: npm ci --no-audit --no-fund
       - name: Access rules, customer workflows and real-page task/note sync
-        run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node --test qa/access-contracts-emulator.mjs && node qa/crystal-swatches-rules.test.mjs && node --test qa/product-images-emulator.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-files-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs && npm run test:workspace-sync && node --test qa/po-receive-emulator.mjs && node --test qa/order-reservation-add-emulator.mjs && node --test qa/shipping-save-emulator.mjs && node --test qa/invoice-recovery-emulator.mjs && node qa/invoice-reconciliation-source-emulator.mjs && node qa/crystal-costing-emulator.mjs && node qa/crystal-image-delete-emulator.mjs && node --test qa/portal-followup-emulator.mjs"
+        run: npx --yes firebase-tools@15.33.0 emulators:exec --only firestore,storage --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs && node --test qa/access-contracts-emulator.mjs && node qa/crystal-swatches-rules.test.mjs && node --test qa/product-images-emulator.mjs && node --test qa/customer-merge-emulator.mjs && node --test qa/customer-files-emulator.mjs && node --test qa/customer-pipeline-emulator.mjs && node --test qa/pd-projects-emulator.mjs && npm run test:workspace-sync && node --test qa/po-receive-emulator.mjs && node --test qa/order-reservation-add-emulator.mjs && node --test qa/shipping-save-emulator.mjs && node --test qa/quote-conversion-emulator.mjs && node --test qa/invoice-recovery-emulator.mjs && node qa/invoice-reconciliation-source-emulator.mjs && node qa/crystal-costing-emulator.mjs && node qa/crystal-image-delete-emulator.mjs && node --test qa/portal-followup-emulator.mjs"

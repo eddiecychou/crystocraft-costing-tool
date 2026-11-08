@@ -447,3 +447,17 @@ mapping/defaults. The actual form/Router suite adds twenty deferred/failed-read,
 Retry, navigation and precision/fallback scenarios to the existing required tests.
 [Scope, lessons and release state](../plans/V8.20-QUOTE-INITIALIZATION-FIX.md).
 Conversion/backlink policy remains SH-08, not part of initialization ownership.
+
+### SH-08 conversion recovery
+
+The Node quote-order-conversion endpoint/model/repository own server-managed
+intents, typed source/payload fingerprints, stable IDs and atomic Firestore
+order/lines/SO/receipt/link. Pure `shippingModel.js` / `soNumberModel.js` preserve
+shared normalization/numbering. ShipmentForm keeps draft/init/navigation;
+QuoteOrderRecovery presents history, frozen details, Resume, cancellation and
+explicit additional-order review. QuoteDetail strips ownership on Duplicate.
+Source validity cannot hide saved recovery. Rules protect private operations,
+quote pointers and new order provenance; no historical dedup or quote uniqueness.
+[Migration, tests and release state](../plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md).
+Old source-less conversion tabs still need refresh; preventing all such manual-
+looking Creates requires a separately scoped SH-07 protocol.
