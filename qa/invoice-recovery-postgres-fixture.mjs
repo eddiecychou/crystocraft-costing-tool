@@ -119,8 +119,24 @@ export async function createInvoiceTestDatabase() {
     counts,
     close: async () => {
       await pool.end()
-      await admin.query('drop database ' + name + ' with(force)')
-      await admin.end()
+      try {
+        // pool.end() can resolve before PostgreSQL has observed the socket
+        // closures. FORCE raced those clients on Linux and emitted a late
+        // uncaught FATAL after all assertions passed. Wait for our own sessions
+        // to close normally; never terminate a backend to hide a test leak.
+        let remaining = 1
+        for (let attempt = 0; attempt < 100; attempt++) {
+          remaining = Number((await admin.query(
+            'select count(*)::int as n from pg_stat_activity where datname=$1', [name]
+          )).rows[0].n)
+          if (!remaining) break
+          await new Promise(resolve => setTimeout(resolve, 20))
+        }
+        assert.equal(remaining, 0, 'QA database sessions must close before cleanup')
+        await admin.query('drop database ' + name)
+      } finally {
+        await admin.end()
+      }
     }
   }
 }
