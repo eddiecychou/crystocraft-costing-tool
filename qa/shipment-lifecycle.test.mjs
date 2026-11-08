@@ -1,6 +1,6 @@
 // Actual form, Router and shipping normalization; fictional external I/O only.
 // No credentials, live records, number allocation or network requests.
-import { test, before, after, beforeEach, afterEach } from 'node:test'
+import { test as nodeTest, before, after, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -11,6 +11,7 @@ import { build } from 'esbuild'
 import { JSDOM } from 'jsdom'
 import React, { act } from 'react'
 
+const test = (name, fn) => nodeTest(name, { timeout: 10000 }, fn)
 const require = createRequire(import.meta.url)
 const dom = new JSDOM('<!doctype html><body></body>', { url: 'http://fictional.test' })
 for (const key of ['window', 'document', 'HTMLElement', 'Event', 'MouseEvent', 'FileReader']) globalThis[key] = dom.window[key]
@@ -29,19 +30,22 @@ const record = id => ({
   source_file: { url: 'https://fictional.invalid/PI-' + id + '.pdf', name: 'PI-' + id + '.pdf' },
 })
 const line = id => ({ id: 'line-' + id, line_no: 1, item_code: 'ITEM-' + id, description: 'Description ' + id, qty_ordered: 10, unit: 'pcs', unit_price: 1.222, line_type: 'ad_hoc' })
+const quote = id => ({customer_id:'customer-A',client_name:'Fictional Quote '+id,quote_currency:'EUR',quote_no:'QU-'+id,ref_no:'UC100/26'})
+const quoteItems = id => [{id:'quote-line-'+id,is_custom:true,product_name:'Quoted '+id,product_unit:'pair',tiers:[{quantity:1000,price:1.222,remarks:'First tier 中文'},{quantity:2000,price:1.111}]}]
 const stubs = {
   firebase: 'export const db={},storage={};export const authHeader=async()=>{throw Error("Network forbidden")}',
   firestore: `const f=()=>globalThis.__shipmentLifecycle;
     export const doc=(...p)=>Object.assign(p,{id:typeof p.at(-1)==='string'?p.at(-1):'new-line'}),collection=(...p)=>p,query=(...p)=>p,orderBy=()=>{},where=()=>{},limit=()=>{};
     export const getDoc=async path=>{
-      if(!path.includes('orders'))throw Error('Unexpected document read');
-      const id=path.at(-1),value=await f().read('order',id);
+      if(!path.includes('orders')&&!path.includes('client_quotes'))throw Error('Unexpected document read');
+      const id=path.at(-1),value=await f().read(path.includes('client_quotes')?'quote':'order',id);
       return{id,exists:()=>value!=null,data:()=>value};
     };
     export const getDocs=async raw=>{
-      const path=raw.flat();if(path.includes('range_products'))return{docs:[]};
-      if(!path.includes('orders'))throw Error('Unexpected collection read');
-      const id=path[path.indexOf('orders')+1],data=await f().read('lines',id);
+      const path=raw.flat();if(path.includes('range_products'))return{docs:await f().read('catalogue','all')};
+      if(!path.includes('orders')&&!path.includes('client_quotes'))throw Error('Unexpected collection read');
+      const type=path.includes('client_quotes')?'client_quotes':'orders';
+      const id=path[path.indexOf(type)+1],data=await f().read(type==='client_quotes'?'quoteItems':'lines',id);
       return{docs:data.map(item=>({id:item.id,ref:[{},'orders',id,'lines',item.id],data:()=>item}))};
     };
     export const onSnapshot=(path,next)=>{const state=f();state.subscriptions.push({path:[...path],next});return()=>{}},serverTimestamp=()=> 'FICTIONAL timestamp';
@@ -54,7 +58,7 @@ const stubs = {
     };
     const fail=()=>{throw Error('Unexpected standalone write/create/delete/allocation')};
     export{fail as updateDoc,fail as runTransaction,fail as addDoc,fail as deleteDoc,fail as setDoc,fail as increment};`,
-  customer: `export const loadCustomers=async()=>['A','B'].map(id=>({id:'customer-'+id,company_name:'Fictional Customer '+id}));export const getCustomer=async id=>(await loadCustomers()).find(x=>x.id===id)||null;export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error('No customer writes')};`,
+  customer: `export const loadCustomers=()=>globalThis.__shipmentLifecycle.read('customers','all');export const getCustomer=async id=>(await loadCustomers()).find(x=>x.id===id)||null;export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error('No customer writes')};`,
   criticalComponents: 'export const buildProductIndex=()=>new Map();export const matchProductCode=()=>null;',
   soNumber: 'export const JES_SEED_BY_YEAR={};export const soYear=()=>"26";const fail=()=>{throw Error("No number allocation")};export{fail as allocateSoNo,fail as formatSoNo}',
   ucRegistry: `export const upsertInvoice=async data=>globalThis.__shipmentLifecycle.accounting.push(structuredClone(data));const fail=()=>{throw Error('No financial allocation')};export{fail as allocateOrderUc,fail as allocateInvoice,fail as updateUcInvoice};`,
@@ -89,6 +93,10 @@ beforeEach(() => {
     if (gate) await gate.promise
     if (f.faults[key] instanceof Error) throw f.faults[key]
     if (key in f.faults) return f.faults[key]
+    if(kind==='quote')return quote(id)
+    if(kind==='quoteItems')return quoteItems(id)
+    if(kind==='catalogue')return []
+    if(kind==='customers')return ['A','B'].map(id=>({id:'customer-'+id,company_name:'Fictional Customer '+id}))
     return kind === 'order' ? record(id) : [line(id)]
   }
   globalThis.__shipmentLifecycle = f
@@ -270,4 +278,105 @@ test('rejected A save after B loads cannot display an A error on B', async t => 
   f.commitGate = deferred(); await startSave(t); await go('/shipments/B'); assertOrder('B')
   await act(async () => f.commitGate.reject(Error('Fictional abandoned A save rejection'))); await flush()
   assertOrder('B'); assert.equal(alert(), ''); assert.equal(f.accounting.length, 0)
+})
+
+
+// SH-06: actual route-keyed form, real mapping/defaults, deferred external reads.
+const quotePath = id => '/shipments/new?from_quote='+id
+const assertQuote = id => {
+  assert.equal(route, '/shipments/new')
+  assert.equal(host.querySelector('select')?.value,'customer-A')
+  assert.equal(one('Description')?.value,'Quoted '+id)
+  assert.equal(one('Qty')?.value,'1000')
+  assert.equal(one('Unit price')?.value,'1.222')
+  assert.equal(one('pcs')?.value,'pair')
+  assert.equal(one('Tier remarks (customer-facing)')?.value,'First tier 中文')
+  assert.equal(one('e.g. UC4950/26')?.value,'UC100/26')
+  assert.equal(host.querySelector('textarea[placeholder^="Prints on"]')?.value,'Converted from Quote QU-'+id)
+  assert.equal(submit()?.disabled,false)
+  assert.match(host.textContent,/Prefilled from the quote/)
+}
+const assertQuoteBlocked = () => {
+  assert.equal(Boolean(host.querySelector('form')),false)
+  assert.equal(Boolean(submit()),false)
+  assert.equal(Boolean(one('e.g. 56909')),false)
+  assert.equal(host.textContent.includes('Prefilled from the quote'),false)
+  assert.deepEqual(f.batches,[]);assert.deepEqual(f.accounting,[])
+}
+for (const kind of ['quote','quoteItems']) {
+  test('quote initialization waits for '+kind+' before showing editable defaults',async()=>{
+    f.gates[kind+'-Q']=deferred();await mount(quotePath('Q'));assertQuoteBlocked()
+    assert.match(host.textContent,/Loading the quote and its product lines/)
+    assert.equal(host.querySelector('[aria-label="Quote initialization"]').getAttribute('aria-busy'),'true')
+    if(kind==='quote')assert.equal(f.readEvents.includes('quoteItems-Q'),false)
+    await release(kind+'-Q');assertQuote('Q')
+  })
+  test('failed '+kind+' read shows Retry without partial fields or writes; retry reloads the whole quote',async()=>{
+    f.faults[kind+'-Q']=Error('Fictional '+kind+' read failed');await mount(quotePath('Q'));assertQuoteBlocked()
+    assert.match(alert(),/Fictional/);assert.ok(retry())
+    assert.ok(host.querySelector('a[href="/quotes/Q"]'))
+    f.faults={};await click(retry());assertQuote('Q')
+    assert.equal(f.readEvents.filter(x=>x==='quote-Q').length,2)
+  })
+  for(const outcome of ['resolve','reject'])test('abandoned '+kind+' '+outcome+' cannot replace the next quote or its edits',async()=>{
+    const gate=deferred();f.gates[kind+'-Q']=gate;await mount(quotePath('Q'));await go(quotePath('R'));assertQuote('R')
+    await fill(one('e.g. 56909'),'Keep R edit')
+    await act(async()=>outcome==='resolve'?gate.resolve():gate.reject(Error('Abandoned Q failure')));await flush()
+    assertQuote('R');assert.equal(one('e.g. 56909').value,'Keep R edit');assert.equal(alert(),'')
+    if(kind==='quote')assert.equal(f.readEvents.includes('quoteItems-Q'),false)
+  })
+}
+test('quote startup also waits for common customer data; late URL prefill cannot replace the quoted company',async()=>{
+ f.gates['customers-all']=deferred();await mount(quotePath('Q')+'&customer_id=customer-B');assertQuoteBlocked()
+ assert.ok(f.readEvents.includes('quoteItems-Q'))
+ await release('customers-all');assertQuote('Q')
+ await fill(host.querySelector('select'),'customer-B');await fill(one('Unit price'),'3.125')
+ const reads=[...f.readEvents];await go(quotePath('Q')+'&customer_id=customer-B&invoice=1')
+ assert.equal(host.querySelector('select').value,'customer-B');assert.equal(one('Unit price').value,'3.125');assert.deepEqual(f.readEvents,reads)
+})
+test('optional catalogue failure preserves its existing empty-catalogue fallback and quote defaults',async()=>{
+ f.faults['catalogue-all']=Error('Fictional optional catalogue unavailable');await mount(quotePath('Q'));assertQuote('Q');assert.equal(alert(),'')
+})
+test('retry abandons other reads from the failed attempt, protecting edits after the fresh attempt succeeds',async()=>{
+ const oldCustomers=deferred();f.gates['customers-all']=oldCustomers;f.faults['quoteItems-Q']=Error('Fictional failed items')
+ await mount(quotePath('Q'));assertQuoteBlocked();assert.ok(retry())
+ delete f.gates['customers-all'];f.faults={};await click(retry());assertQuote('Q')
+ await fill(host.querySelector('select'),'customer-B');await fill(one('e.g. 56909'),'Fresh edited PO')
+ await act(async()=>oldCustomers.resolve());await flush()
+ assert.equal(host.querySelector('select').value,'customer-B');assert.equal(one('e.g. 56909').value,'Fresh edited PO')
+})
+for(const kind of ['quote','quoteItems'])test('leaving a pending '+kind+' for a saved order or manual form discards the result',async()=>{
+ f.gates[kind+'-Q']=deferred();await mount(quotePath('Q'));await go('/shipments/B');assertOrder('B');await release(kind+'-Q');assertOrder('B')
+ f.gates[kind+'-R']=deferred();await go(quotePath('R'));await go('/shipments/new');await release(kind+'-R')
+ assert.equal(one('Item code'),null);assert.equal(one('e.g. 56909').value,'');assert.equal(submit().disabled,true)
+})
+for(const [name,patch] of [
+ ['missing quote',{'quote-Q':null}],
+ ['uploaded quote',{'quote-Q':{quote_type:'uploaded'}}],
+ ['incomplete Range price',{'quoteItems-Q':[{product_collection:'range_products',product_id:'range-Q',tiers:[{quantity:100,price:0}]}]}],
+ ['incomplete Range quantity',{'quoteItems-Q':[{product_collection:'range_products',product_id:'range-Q',tiers:[{quantity:'',price:1.222}]}]}],
+])test(name+' keeps its established validation message and blocks conversion until corrected',async()=>{
+ Object.assign(f.faults,patch);await mount(quotePath('Q'));assertQuoteBlocked();assert.ok(alert());assert.ok(retry())
+ f.faults={};await click(retry());assertQuote('Q')
+})
+test('an empty quote finishes loading and still permits manual lines with its existing warning',async()=>{
+ f.faults['quoteItems-Q']=[];await mount(quotePath('Q'))
+ assert.match(host.textContent,/That quote has no product lines yet — add lines manually/);assert.equal(alert(),'');assert.equal(submit().disabled,true)
+ assert.equal(one('e.g. UC4950/26').value,'UC100/26');assert.equal(host.querySelector('select').value,'customer-A')
+ await click([...host.querySelectorAll('button')].find(b=>b.textContent==='+ Add line'));assert.ok(one('Item code'))
+ assert.deepEqual(f.batches,[])
+})
+test('quote fallback fields and first-tier exact prices/units/images retain the existing projection',async()=>{
+ f.faults['quote-Q']={ref_no:'PO-not-a-UC'}
+ f.faults['quoteItems-Q']=[{product_id:'range-Q',product_collection:'range_products',product_variant_sku:'SKU-ROS',product_name:'Fictional Range Rosaline',product_unit:'set',hero_image:'https://fictional.invalid/original.png',tiers:[{quantity:500,price:14.222,remarks:'Original tier note'},{quantity:1000,price:12.345}]}]
+ await mount(quotePath('Q')+'&customer_id=customer-B')
+ assert.equal(host.querySelector('select').value,'customer-B');assert.equal(one('e.g. UC4950/26').value,'')
+ assert.equal(one('Item code').value,'SKU-ROS');assert.equal(one('Qty').value,'500');assert.equal(one('Unit price').value,'14.222');assert.equal(one('pcs').value,'set')
+ assert.equal(one('Tier remarks (customer-facing)').value,'Original tier note');assert.ok(host.querySelector('img[src="https://fictional.invalid/original.png"]'))
+ assert.equal(submit().disabled,false);assert.equal(host.querySelector('textarea[placeholder^="Prints on"]').value,'')
+})
+
+test('mandatory customer startup failure gets a quote Retry without applying partial quote fields',async()=>{
+ f.faults['customers-all']=Error('Fictional customer data unavailable');await mount(quotePath('Q'));assertQuoteBlocked();assert.match(alert(),/customer data unavailable/)
+ f.faults={};await click(retry());assertQuote('Q')
 })

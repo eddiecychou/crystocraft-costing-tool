@@ -435,3 +435,15 @@ Do not reintroduce the old UC allocation op, unique order_id, client operation
 writes or zero-length recursive rules. Retry the same persisted request; split
 or reissue is explicit. Native PostgreSQL plus Firebase integration tests belong
 to both required CI jobs. General Create/conversion/outbox work remains separate.
+
+
+### SH-06 quote initialization
+
+ShipmentForm's startup effect owns common reads plus quote header/items and their
+Loading/Error/Ready/Empty state. Its route key and effect cleanup own abandonment
+and Retry. Apply quote header/lines only after the attempt completes; no background
+prefill may replace an editable draft. quoteItemToOrderLine still owns first-tier
+mapping/defaults. The actual form/Router suite adds twenty deferred/failed-read,
+Retry, navigation and precision/fallback scenarios to the existing required tests.
+[Scope, lessons and release state](../plans/V8.20-QUOTE-INITIALIZATION-FIX.md).
+Conversion/backlink policy remains SH-08, not part of initialization ownership.

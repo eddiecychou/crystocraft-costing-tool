@@ -109,6 +109,7 @@ function ShipmentEditor() {
   // Arrived from QuoteDetail.jsx's "Convert to PI" — see the prefill effect
   // below and looksLikeUc above.
   const fromQuoteId = searchParams.get('from_quote')
+  const hasQuoteSource = Boolean(fromQuoteId && !isEdit)
   // Arrived from "Raise invoice →" on the Sales Invoices page. The order form is
   // long and the invoice field is well down it, so landing here without being
   // shown where to go is the same discoverability problem that action fixes.
@@ -138,6 +139,8 @@ function ShipmentEditor() {
   const [fetching, setFetching] = useState(isEdit)
   const [loadError, setLoadError] = useState('')
   const [loadRevision, setLoadRevision] = useState(0)
+  const [quoteLoad, setQuoteLoad] = useState(() => ({ status: hasQuoteSource ? 'loading' : 'idle', message: '' }))
+  const quoteReady = !hasQuoteSource || ['ready', 'empty'].includes(quoteLoad.status)
   const [saving, setSaving] = useState(false)
   const [savePending, setSavePending] = useState(false)
   const saveInFlight = useRef(false)
@@ -162,6 +165,7 @@ function ShipmentEditor() {
     const preCustomerId = searchParams.get('customer_id')
     setFetching(isEdit)
     setLoadError('')
+    if (hasQuoteSource) setQuoteLoad({ status: 'loading', message: '' })
     setPendingFile(null); setErpCheck(null); setExtractError(''); setSiError('')
     if (!isEdit) {
       setHeader(preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader)
@@ -197,49 +201,49 @@ function ShipmentEditor() {
         }
       })())
     }
+    if (hasQuoteSource) {
+      loads.push((async () => {
+        const qSnap = await getDoc(doc(db, 'client_quotes', fromQuoteId))
+        if (!alive) return null
+        if (!qSnap.exists()) throw new Error('That quote could not be found.')
+        const quote = qSnap.data()
+        if (quote.quote_type === 'uploaded') throw new Error('This quote has no product lines to convert — it\'s an uploaded document.')
+        const itemSnap = await getDocs(collection(db, 'client_quotes', fromQuoteId, 'items'))
+        if (!alive) return null
+        const items = itemSnap.docs.map(d => d.data())
+        if (items.some(hasIncompleteRangeLine)) throw new Error('A Crystocraft Range line has no quantity or positive price. Complete the quote before converting it to a PI.')
+        return { quote, lines: items.map(quoteItemToOrderLine) }
+      })())
+    }
     Promise.all(loads)
-      .catch(err => { if (alive) setLoadError(err.message || 'Could not load this order. Please retry.') })
+      .then(results => {
+        if (!alive || !hasQuoteSource) return
+        // Apply once, after BOTH quote reads and common startup reads complete.
+        // The route-keyed editor freezes fromQuoteId/customer_id for this attempt.
+        const source = results.at(-1)
+        if (!source) return
+        const q = source.quote
+        setHeader(h => ({
+          ...h,
+          customer_id: q.customer_id || h.customer_id,
+          customer_name: q.client_name || h.customer_name,
+          currency: q.quote_currency || h.currency,
+          uc_no: looksLikeUc(q.ref_no) ? q.ref_no.trim() : h.uc_no,
+          notes: q.quote_no ? `Converted from Quote ${q.quote_no}` : h.notes,
+        }))
+        setLines(source.lines)
+        setQuoteLoad(source.lines.length
+          ? { status: 'ready', message: '' }
+          : { status: 'empty', message: 'That quote has no product lines yet — add lines manually.' })
+      })
+      .catch(err => {
+        if (!alive) return
+        if (hasQuoteSource) setQuoteLoad({ status: 'error', message: err.message || 'Could not load the quote and its product lines. Please retry.' })
+        else setLoadError(err.message || 'Could not load this order. Please retry.')
+      })
       .finally(() => { if (alive) setFetching(false) })
     return () => { alive = false }
   }, [id, isEdit, loadRevision])
-
-  // Convert to PI (2026-08-26) — prefill header + lines from a client_quotes
-  // doc instead of starting blank. Only for the built-from-products quote
-  // view (quote_type !== 'uploaded'), since an uploaded quote is just PDF
-  // attachments with no items/tiers to convert. Quantities default to each
-  // item's FIRST (lowest) tier — QuoteDetail.jsx's own "Min total" comment
-  // confirms tiers are already stored lowest-qty-first — and are fully
-  // editable here same as any other line, so this is a starting point for
-  // review, not a final commit.
-  const [fromQuoteError, setFromQuoteError] = useState('')
-  useEffect(() => {
-    if (!fromQuoteId || isEdit) return
-    let alive = true
-    ;(async () => {
-      const qSnap = await getDoc(doc(db, 'client_quotes', fromQuoteId))
-      if (!alive || !qSnap.exists()) { if (alive) setFromQuoteError('That quote could not be found.'); return }
-      const q = qSnap.data()
-      if (q.quote_type === 'uploaded') { setFromQuoteError('This quote has no product lines to convert — it\'s an uploaded document.'); return }
-      const itemSnap = await getDocs(collection(db, 'client_quotes', fromQuoteId, 'items'))
-      if (!alive) return
-      if (itemSnap.docs.some(d => hasIncompleteRangeLine(d.data()))) {
-        setFromQuoteError('A Crystocraft Range line has no quantity or positive price. Complete the quote before converting it to a PI.')
-        return
-      }
-      setHeader(h => ({
-        ...h,
-        customer_id: q.customer_id || h.customer_id,
-        customer_name: q.client_name || h.customer_name,
-        currency: q.quote_currency || h.currency,
-        uc_no: looksLikeUc(q.ref_no) ? q.ref_no.trim() : h.uc_no,
-        notes: q.quote_no ? `Converted from Quote ${q.quote_no}` : h.notes,
-      }))
-      const newLines = itemSnap.docs.map((d, i) => quoteItemToOrderLine(d.data(), i))
-      setLines(newLines)
-      if (!newLines.length) setFromQuoteError('That quote has no product lines yet — add lines manually.')
-    })()
-    return () => { alive = false }
-  }, [fromQuoteId, isEdit])
 
   // Bring the invoice field into view when arriving via "Raise invoice →".
   // After `fetching` clears, so the field exists and the layout has settled.
@@ -511,7 +515,7 @@ function ShipmentEditor() {
   // ── Save ─────────────────────────────────────────────────────────────────────
   async function handleCreate(e) {
     e.preventDefault()
-    if (piImport.current.extracting || createInFlight.current) return
+    if (piImport.current.extracting || createInFlight.current || !quoteReady) return
     createInFlight.current=true
     setSaving(true)
     setExtractError('')
@@ -660,6 +664,25 @@ function ShipmentEditor() {
     }
   }
 
+  if (!quoteReady) return (
+    <div className="p-4 md:p-6 max-w-4xl">
+      <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Order Listing</Link>
+      <h1 className="text-2xl mt-1 mb-4">{isDirect ? 'Direct Invoice' : 'New Order'}</h1>
+      <section aria-label="Quote initialization" aria-busy={quoteLoad.status === 'loading'} className="card p-4 md:p-6 space-y-3">
+        <h2 className="eyebrow">{quoteLoad.status === 'error' ? 'Quote could not be loaded' : 'Loading quote'}</h2>
+        {quoteLoad.status === 'error'
+          ? <p role="alert" className="text-sm text-brand-600 break-words">{quoteLoad.message}</p>
+          : <p role="status" className="text-sm text-ink-60">Loading the quote and its product lines. Editing will be available when it is ready.</p>}
+        <div className="flex flex-wrap gap-3">
+          {quoteLoad.status === 'error' && <button type="button" className="btn-primary min-h-[44px]" onClick={() => {
+            setQuoteLoad({ status: 'loading', message: '' })
+            setLoadRevision(n => n + 1)
+          }}>Retry</button>}
+          <Link to={`/quotes/${encodeURIComponent(fromQuoteId)}`} className="btn-secondary min-h-[44px]">Back to quote</Link>
+        </div>
+      </section>
+    </div>
+  )
   if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
   if (loadError) return (
     <div className="p-4 md:p-6 max-w-4xl">
@@ -699,9 +722,9 @@ function ShipmentEditor() {
       {(!isEdit || tab === 'order') && (
       <form onSubmit={isEdit ? handleSave : handleCreate} className="space-y-5">
       <fieldset disabled={saving} className="space-y-5 min-w-0">
-        {fromQuoteId && (
-          fromQuoteError ? (
-            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">{fromQuoteError}</p>
+        {hasQuoteSource && (
+          quoteLoad.status === 'empty' ? (
+            <p role="status" className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">{quoteLoad.message}</p>
           ) : (
             <p className="text-sm text-brand-700 bg-brand-50 border border-brand-200 rounded-none px-3 py-2">
               Prefilled from the quote — review quantities, prices and the UC# below before creating. Tiers default to the lowest quantity option.

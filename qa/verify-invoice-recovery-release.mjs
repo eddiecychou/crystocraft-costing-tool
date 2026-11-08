@@ -1,4 +1,4 @@
-// Fresh role gates and read-only/invalid-input invoice recovery probes. Never issue live financial numbers.
+// Fresh Shipping role gates and read-only/invalid-input recovery probes. Never issue live financial numbers.
 // Browser tokens remain inside their own isolated page; credentials stay local.
 import { createRequire } from 'node:module'
 import { readFile, mkdir, writeFile } from 'node:fs/promises'
@@ -9,13 +9,14 @@ const base = new URL(process.argv[2] || '')
 assert.equal(base.protocol, 'https:')
 assert.ok(base.hostname === 'portal.crystocraft.com' || /^[a-f0-9]{24}--ua-product-manager\.netlify\.app$/.test(base.hostname), 'Only the canonical site or a pinned OC candidate is authorized')
 const scope=process.argv[4]||'ready'
-assert.ok(['pre-sql','ready'].includes(scope))
+assert.ok(['pre-sql','ready','quote-initialization'].includes(scope))
 const endpoints=[
  {path:'/api/invoice-allocation',body:{},status:400,error:'Choose a saved order and valid invoice action.'},
  {path:'/api/uc',body:{op:'allocate_invoice',year:'QA-INVALID'},status:409,error:'Refresh OC and use Raise Invoice on the saved order to resume the protected invoice request.'},
- ...(scope==='ready'?[{path:'/api/invoice-allocation',body:{action:'ready'},status:200,ready:true}]:[]),
+ ...(scope!=='pre-sql'?[{path:'/api/invoice-allocation',body:{action:'ready'},status:200,ready:true}]:[]),
 ]
-const origin=base.origin,out='qa/out/invoice-recovery',phase=process.argv[3]
+const origin=base.origin,out=scope==='quote-initialization'?'qa/out/quote-initialization':'qa/out/invoice-recovery',phase=process.argv[3]
+const missingQuoteId='qa-sh06-missing-'+Date.now()
 assert.ok(['candidate','production'].includes(phase))
 const require = createRequire(new URL('../.qa-playwright/package.json', import.meta.url))
 const { chromium } = require('playwright-core')
@@ -72,6 +73,20 @@ try {
         await page.getByRole('heading',{name:'Document References',exact:true}).waitFor()
         assert.equal(await page.getByRole('button',{name:'Create Order',exact:true}).isDisabled(),true)
         result.shipping='PASS; blank form, no saves or allocations'
+        if(scope==='quote-initialization'){
+          // A new, nonexistent fictional ID exercises real SDK reads/catch/Retry.
+          // Never create a production quote/order or press Create/Allocate.
+          await go('/shipments/new?from_quote='+missingQuoteId)
+          const quoteError=page.getByRole('alert').filter({hasText:'That quote could not be found.'})
+          await quoteError.waitFor()
+          assert.equal(await page.locator('form').count(),0)
+          assert.equal(await page.getByText(/Prefilled from the quote/).count(),0)
+          assert.ok(await page.locator('a[href="/quotes/'+missingQuoteId+'"]').count())
+          await page.getByRole('button',{name:'Retry',exact:true}).click()
+          await quoteError.waitFor()
+          assert.equal(await page.locator('form').count(),0)
+          result.quoteInitialization='PASS; real SDK missing-source alert, Retry, no editable form or Create'
+        }
       } else {
         await page.getByText(/QA ONLY/).first().waitFor()
         await go('/shop/figurine')
@@ -124,10 +139,15 @@ try {
         await page.getByRole('heading',{name:'New Order',exact:true}).waitFor()
         assert.ok(await page.locator('a[href="/settings"]').count())
         assert.equal(new URL(page.url()).pathname,'/shipments/new')
+        if(scope==='quote-initialization'){
+          await page.getByRole('alert').filter({hasText:'That quote could not be found.'}).waitFor()
+          assert.equal(await page.locator('form').count(),0)
+          result.quoteRefresh='PASS'
+        }
       } else {
         await page.locator('h1').waitFor()
         await page.waitForFunction(() => [...document.querySelectorAll('main img')].some(i => i.complete && i.naturalWidth > 0))
-        await go('/shipments/new'); await page.waitForURL(u => u.pathname === '/shop')
+        await go('/shipments/new'+(scope==='quote-initialization'?'?from_quote='+missingQuoteId:'')); await page.waitForURL(u => u.pathname === '/shop')
         assert.equal(await page.getByRole('button', {name:'Create Order',exact:true}).count(),0)
         assert.equal(await page.locator('a[href="/settings"]').count(), 0)
       }

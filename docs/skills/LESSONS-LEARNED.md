@@ -1813,3 +1813,17 @@ financial row with a receipt-time full typed snapshot; an updated_at-only check
 or rereading the edited row as a new baseline can still overwrite approval.
 Native multi-connection PostgreSQL tests and actual Firebase SDK/rules tests
 must prove these boundaries. [Design, migration and evidence](../plans/V8.20-INVOICE-RETRY-RECOVERY.md).
+
+
+### Initialization and editable drafts need one handoff
+
+8 November 2026, SH-06: independent quote-prefill and common customer startup
+could complete in either order, show success before data arrived or overwrite
+edits. Catch the whole read attempt, apply header/lines only when initialization
+completes, and enable editing afterward. Retry starts a fresh attempt; cleanup
+must discard every earlier callback, not only the quote request. Preserve optional
+catalogue fallback, empty-quote entry and existing price/snapshot mapping instead
+of turning source-loading repair into new conversion policy. Test delayed and
+failed reads with the actual form/Router, including a pending common read from a
+failed attempt that resolves after the user edits the successful retry.
+[Scope, tests and release evidence](../plans/V8.20-QUOTE-INITIALIZATION-FIX.md).

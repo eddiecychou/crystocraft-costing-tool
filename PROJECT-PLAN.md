@@ -1,3 +1,17 @@
+# V8.20 — Quote to Order initialization (SH-06) — implementation, 8 November 2026
+
+Owner approved the next bounded batch. Loading/error/Retry now belong to the
+route-keyed startup attempt. Quote header/items apply together after common
+startup reads; edits/Create are available after initialization. Empty-quote
+manual entry, existing first-tier mapping, prices/defaults and validation remain.
+Twenty new fictional cases pass (41 lifecycle / 191 shipment cases).
+[Scope, ownership, lessons and release state](docs/plans/V8.20-QUOTE-INITIALIZATION-FIX.md).
+
+No rules, SQL, backend, permission or data migration changes. The existing
+SH-05B invoice recovery remains intact. Publication follows both exact-SHA jobs
+and fresh candidate/production role checks; SH-08 conversion re-entry policy
+remains separate.
+
 # V8.20 — Invoice retry/recovery (SH-05B) — released, 8 November 2026
 
 **Live and verified:** release SHA `9a5d93a40c8201544a090f6cdacd4cb9cc744152`,

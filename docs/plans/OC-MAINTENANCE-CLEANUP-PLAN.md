@@ -1,5 +1,7 @@
 # OC maintenance and code cleanup plan
 
+**8 November — SH-06 implemented:** [Quote initialization/Retry](V8.20-QUOTE-INITIALIZATION-FIX.md) now gates editing until complete startup/quote reads, handles errors and discards abandoned attempts. Twenty new cases, 191 Shipping cases, twenty Chrome cases and 1,099 prebuild/build/lint pass locally. Exact-SHA CI and publication are pending; SH-08 remains separate.
+
 **8 November — SH-05B released:** [durable retry/recovery](V8.20-INVOICE-RETRY-RECOVERY.md)
 is live as `9a5d93a` / production `6aefde0cde2e82d8e4dbb8d0`, after both exact-SHA
 jobs and fresh candidate/production admin/customer gates. Native PostgreSQL,
