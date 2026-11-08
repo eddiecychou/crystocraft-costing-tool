@@ -1862,3 +1862,12 @@ hide recovery behind the prefill error. An old source-less tab is still a manual
 Create at the backend: field guards cannot promise global legacy deduplication.
 Real Admin/Web SDK, separate native Chrome tabs and split/reissued-invoice
 regressions complement actual-form tests. [Contract, limits and release evidence](../plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md).
+
+
+SH-08 release closure: dd053d7 / production 6af0400b2d921e13640ca822 passed both
+exact-SHA jobs, fresh candidate/production roles, live read-only status/denial,
+actual SDK Retry, rules readback and served-file/function-package equality.
+Archive digests can change when repackaged without existing function source
+edits; compare the actual candidate/production packages rather than assuming
+baseline archive equality from source equality. No production business writes
+or numbers were used; old tabs still require refresh.

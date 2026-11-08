@@ -1,17 +1,26 @@
-# V8.20 — Quote → Order recovery (SH-08) — authorized fix, release gates pending
+# V8.20 — Quote → Order recovery (SH-08) — released, 8 November 2026
 
-The owner authorized implementation, fictional tests, commit/push and deployment
-after both required GitHub jobs. [Implementation, migration and release record](docs/plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md)
-cover durable per-intent requests, atomic Firestore SO/order/lines/receipt/link,
-Open/Resume re-entry, explicit additional orders, retained legacy links and
-quote-copy ownership reset. Source validity blocks fresh Create while saved
-recovery remains reachable. No quote-level uniqueness or historical repair.
+Live as **`dd053d79d1161e61f4f55420c321dcf5d462cbda`**, production
+`6af0400b2d921e13640ca822`. Both exact-SHA jobs PASS in
+[run 42466019092 / attempt 1](https://github.com/eddiecychou/crystocraft-costing-tool/actions/runs/42466019092),
+with immediate preflights before every publication. Fresh candidate/production
+admin and approved-customer sign-in, data/access/refresh/runtime and real SDK
+Retry checks PASS. Live existing-quote status/history is 200 read-only; customer
+endpoint/private-operation access is 403. Served frontend and all 11 function
+packages match the tested candidate; published Firestore source matches, Storage
+and SQL unchanged. Verification changed no business records/numbers and sent no outreach.
 
-Local verification: 30 unit/page cases, 29 actual SDK/rules cases, 13 native
-Chrome scenarios, 191 existing Shipping cases, 112 RBAC assertions, four actual
-save cases and 23 Firestore/PostgreSQL invoice-recovery cases pass. Full prebuild,
-build and lint pass. Exact-SHA CI, candidate/production fresh-role gates, rules
-readback and publication remain pending. Earlier review entry is historical.
+Saved per-intent requests atomically commit SO/order/lines/receipt/link; ordinary
+re-entry Open/Resumes, explicit additional orders remain separate, legacy links
+are retained/unverified, and Duplicate quote drops conversion ownership. Source
+validity never hides saved recovery. Thirty unit/page cases, 29 real SDK cases,
+13 native Chrome scenarios, 191 Shipping, 112 RBAC, four save and 23 real invoice
+compatibility cases, full prebuild/build/lint PASS.
+[Contract, migration, lessons and release evidence](docs/plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md).
+
+Refresh open OC tabs. Old source-less/manual Create prevention remains SH-07;
+no quote-level uniqueness, historical dedup/backfill or stock policy change.
+Closeout documentation pushes use `[skip netlify]`; runtime source remains above.
 
 # V8.20 — Quote → Order recovery (SH-08) — review only, 8 November 2026
 

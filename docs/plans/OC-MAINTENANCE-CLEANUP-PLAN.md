@@ -1,14 +1,14 @@
 # OC maintenance and code cleanup plan
 
-**8 November — SH-08 implemented, release gates pending:**
-[Quote → Order durable recovery](V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md) has
-server-owned per-order intents and atomic order/lines/SO/receipt/link, Open/Resume,
-explicit additional orders, retained legacy review and quote-copy lifecycle.
-Saved recovery remains available when the source becomes invalid. Thirty unit/
-page cases, 29 actual SDK cases, 13 Chrome scenarios and existing Shipping/RBAC/
-save/invoice-recovery checks pass. No quote uniqueness or historical repair.
-Both exact-SHA CI jobs, candidate/production roles, rules readback and deployment
-remain required. The dated read-only review below is historical.
+**8 November — SH-08 released:**
+[Quote → Order durable recovery](V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md) is live
+as dd053d7 / production `6af0400b2d921e13640ca822`. Per-intent atomic recovery,
+explicit additional orders, retained legacy links and quote-copy lifecycle pass
+30 unit/page, 29 real SDK, 13 Chrome and existing Shipping/RBAC/save/invoice checks.
+Both exact-SHA jobs, fresh candidate/production roles, actual SDK Retry, read-only
+live status/customer denial, rules readback and artifact identity PASS. Storage/
+SQL and historical records unchanged. Refresh old tabs; broader SH-07 manual-
+Create identity remains separate. The dated read-only review below is historical.
 
 **8 November — SH-08 reviewed, not implemented:**
 [Quote → Order conversion recovery](V8.20-QUOTE-ORDER-CONVERSION-RECOVERY-REVIEW.md)

@@ -448,7 +448,7 @@ Retry, navigation and precision/fallback scenarios to the existing required test
 [Scope, lessons and release state](../plans/V8.20-QUOTE-INITIALIZATION-FIX.md).
 Conversion/backlink policy remains SH-08, not part of initialization ownership.
 
-### SH-08 conversion recovery
+### SH-08 conversion recovery — released as dd053d7
 
 The Node quote-order-conversion endpoint/model/repository own server-managed
 intents, typed source/payload fingerprints, stable IDs and atomic Firestore

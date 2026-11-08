@@ -62,12 +62,13 @@ The other findings below remain open.
   enabling editing/Create. Existing source mappings and empty-quote entry remain.
   Released as 97cbf5d after both required jobs and fresh candidate/production
   role, actual SDK Retry, access and served-artifact gates. See that record for evidence.
-- **P2 completion/re-entry — SH-08 implemented, release pending:** [Durable
+- **P2 completion/re-entry — SH-08 released:** [Durable
   conversion recovery](docs/plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md) uses
   server-owned intent per order, atomic SO/order/lines/receipt/link, Open/Resume,
   explicit additional orders and quote-copy ownership reset. Local real-page,
-  SDK/rules, native Chrome and existing regressions pass; exact-SHA CI, rules,
-  fresh candidate/production role gates and publication remain required. No
+  SDK/rules, native Chrome and existing regressions pass. Released as dd053d7
+  after both exact-SHA jobs, fresh candidate/production roles, live read-only
+  status/customer-denial, rules readback and artifact verification. No
   quote uniqueness or historical deduplication. Old tabs submit source-less
   manual orders: new-field guards alone cannot prevent those Creates while
   preserving manual workflows. Refresh tabs at cutover; broader SH-07 remains.
@@ -76,7 +77,8 @@ The other findings below remain open.
 These mechanisms predate the recent extraction work. Known concurrent-editor and
 browser-close synchronization limits remain separate design debt. Packing/Freight
 async failure/selection risks are source-reviewed coverage gaps, not reproduced
-cross-scenario corruption. No historical repair, app changes or deployment here.
+cross-scenario corruption. The original review made no historical repair, app
+change or deployment; subsequent authorized releases are linked above.
 [Ownership, exact fictional reproductions, limits and prioritized plan](docs/plans/V8.20-SHIPPING-HEALTH-OWNERSHIP-REVIEW-2026-11-06.md).
 
 Follow-up identity tests also reproduce a pre-existing ERP adoption unit warning:
