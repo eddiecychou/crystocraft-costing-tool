@@ -31,6 +31,22 @@ see API-REFERENCE.md's "Called from" column for those; this doc is the other
 half). Short reference: what each module owns and its main exports, so
 "where does X live" stops requiring a grep.
 
+## B2B dashboard work ownership — released 10 November 2026
+
+- `customerWorkItems.js`: shared task/note transactions and legacy follow-up
+  metadata; a newly created open task activates customer work atomically.
+- `customerWorkActivation.js`: `activateCustomerWork` reuses the manual
+  sales_pipeline transition with immutable pipeline_history, after transaction
+  reads. Existing active requests and retry identity are preserved.
+- `customerWorkStages.js`: `saveCustomerWorkStages` saves explicit parallel stage
+  choices with revision/event/merge-lock checks. Clearing stages does not close
+  other requests; customerMergeFields unions both sets during a company merge.
+- Pure `src/dashboardWorkbench.js` owns shared B2B scope, task/work projections,
+  contact review and quiet90 qualification. `src/customerActivityApi.js` is the
+  separate authenticated read-only metadata boundary, not a message-body reader.
+
+[Schema, tests and release evidence](../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md).
+
 ## `customer.js` — the customer record
 
 The biggest and most central module. Owns `customers/{id}` (see

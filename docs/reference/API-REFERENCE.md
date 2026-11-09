@@ -25,7 +25,7 @@ shape or a gotcha, read the function itself; the file names below are exact.
   customer, narrower than admin).
 - *public* = no session check.
 
-Local, not released (10 November): Node `/api/customer-workbench` GET supplies
+Released 10 November (`e5d71ac`): Node `/api/customer-workbench` GET supplies
 B2B recorded last-contact metadata for Dashboard and quiet90 Daily Drafts. Firebase
 verifyIdToken(token,true) plus fresh users profile requires admin or staff with
 customers. Customer/anonymous/service/non-CRM access is denied; private/no-store,

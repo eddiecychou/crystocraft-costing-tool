@@ -25,9 +25,9 @@ The separately authorized [refinement migration](../plans/V8.20-REFINEMENT-AUTH-
 now uses the same marketing helper; its record distinguishes local proof from
 candidate/production release verification. No client/rules change is included.
 
-## Local dashboard workbench — not released
+## B2B dashboard workbench — released 10 November 2026
 
-The approved [B2B dashboard implementation](../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md)
+The released [B2B dashboard implementation](../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md)
 uses Dashboard for subscriptions/orchestration, components/dashboard for compact
 tasks and native customer detail, dashboardWorkbench.js for pure scope/projections,
 customerWorkActivation.js for atomic audited activation and customerWorkStages.js

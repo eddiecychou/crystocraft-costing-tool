@@ -1,15 +1,15 @@
-# V8.20 — B2B dashboard workbench, implemented locally 10 November 2026
+# V8.20 — B2B dashboard workbench, released 10 November 2026
 
-Approved dashboard redesign is implemented and tested locally. The owner has
-authorized smoke testing, commit, push and deploy; release gates are in progress. All open tasks lead, compact customer rows show Exploration /
-Quotation / Order & Production, and summaries/notes move to the second layer.
-Contact review is separate from summary periods; quiet90 Daily Drafts remains
-explicit and human-reviewed. New task activation reuses the atomic audited work
-position. No production records, emails, bulk migration or rules changed.
-[Owner workflow, optional field/migration review, implementation and evidence](docs/plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md).
-The production app remains the buyer price-list release recorded below. Both
-exact-SHA jobs and fresh two-role candidate/production gates remain required
-before publishing this authorized dashboard release.
+Released `e5d71ac`, production `6af20a21ecee31b8d292e3e8`. All open B2B tasks lead,
+with Due/Waiting filters and compact parallel Exploration / Quotation / Order &
+Production customer work. Contact review (1/2/3/6/12 months) is separate from
+summaries and due dates; summaries/notes stay in the detail layer. Quiet90 Daily
+Drafts remains explicit and human-reviewed. Both exact-SHA jobs, build, fictional
+transaction/UI tests and fresh candidate/production admin/customer smoke checks
+pass. Metadata access is admin 200 / customer 403 / anonymous 401. No customer
+emails, production business edits, bulk migration or Firebase rules changes.
+All 53 unrelated work files are preserved. [Workflow, schema review, lessons and
+release evidence](docs/plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md).
 
 # V8.20 — Buyer Excel price list, released 10 November 2026
 

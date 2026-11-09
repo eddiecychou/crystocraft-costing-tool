@@ -1,6 +1,6 @@
 # Firestore Collections Map
 
-Local dashboard workbench (10 November, not released): optional internal customer
+Released dashboard workbench (10 November, `e5d71ac`): optional internal customer
 `dashboard_work` stores explicit stages (exploration/quotation/order), revision,
 operation event ID and actor/time. Absent records stay absent; no backfill/new
 collection/index/rule deployment. Merge unions manual stages. New open tasks

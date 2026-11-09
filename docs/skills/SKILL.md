@@ -286,7 +286,7 @@ emulator job. App and private read-only credentials deployed with fresh two-role
 - Edge fns: `compose-message`, `refresh-email-summary`, `discuss-customer-email`, `route-email-question`, `compose-email-answer`, `customer-order-history`
 - Collections: `customers/{id}` (+ `enquiries`=Interaction Log, `email_threads`, `whatsapp_threads`, `alibaba_threads`, `files`, `assets`, `proposal/current`) — internal CRM access is admin or staff with `customers`; the existing linked-customer exceptions apply only to eligible assets/published proposals, never files. Brand spec: `../specs/Customer_Brand_Gallery_Spec.md`; files: `../plans/V8.20-CUSTOMER-FILES.md`.
 
-- **Local B2B dashboard workbench (10 November, not released):** `Dashboard.jsx`,
+- **Released B2B dashboard workbench (10 November, `e5d71ac`):** `Dashboard.jsx`,
   `components/dashboard/WorkbenchTasks` / `WorkbenchCustomerDialog`, pure
   `dashboardWorkbench.js`, atomic `domain/customerWorkActivation` and explicit
   `customerWorkStages`; `customerActivityApi` → Node `/api/customer-workbench`.

@@ -13,6 +13,18 @@ The model boundary is strict: analysis is advisory and every human-review row de
 
 ## 1. Daily Drafts (personalized outreach)
 
+Released B2B workbench handoff (10 November 2026, `e5d71ac`):
+`/marketing?tab=drafts&contact=quiet90` selects an explicit existing-customer
+90-day no-recorded-contact mode. Fresh CRM-authorized metadata comes from
+`customerActivityApi.js` → Node `/api/customer-workbench`; unknown/partial histories
+and marketing leads cannot qualify. The B2B filter runs before the candidate cap,
+retains reviewed ongoing-work context and preserves 14-day outreach and
+21-day topic cooldowns, blocks, deduplication and human review. Navigation/mode changes never
+generate or send; history failure stops generation with no all-audience fallback.
+Normal targeting and other audiences remain available separately. Dashboard contact
+review periods do not alter summary caches, task deadlines or outreach cooldowns.
+[Contract and release evidence](../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md).
+
 Dates display in Hong Kong time. “Daily” is a workflow name, not a midnight job:
 generation and sending remain manual; pending drafts are not cleared at midnight.
 The 14-day outreach and 21-day topic cooldowns are elapsed durations. Use
