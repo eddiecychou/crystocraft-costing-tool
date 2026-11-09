@@ -28,7 +28,7 @@ export function orderEditPatch(base, attemptId) {
   const created = base.created
   return { edit_revision: base.revision + 1, last_edit_id: attemptId,
     edit_origin_ms: created && Number.isFinite(created[0]) && Number.isFinite(created[1])
-      ? created[0] * 1000 + created[1] / 1000000 : null }
+      ? created[0] * 1000 + Math.floor(created[1] / 1000000) : null }
 }
 
 export function orderEditConflict(latest) {

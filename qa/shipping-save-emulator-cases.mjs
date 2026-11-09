@@ -235,7 +235,10 @@ test('a lost acknowledgement confirms the same attempt without another line or r
 })
 
 test('legacy lines without line_no remain visible and retain their document IDs and unknown fields', {timeout:20000},async()=>{
-  await withDisabled(async ctx=>setDoc(doc(ctx.firestore(),'orders',id,'lines','legacy'),{item_code:'LEGACY',qty_ordered:1,unit_price:1.222,unrelated:'keep'}))
+  await withDisabled(async ctx=>{
+    await updateDoc(doc(ctx.firestore(),'orders',id),{createdAt:new Timestamp(1794216000,123456000)})
+    await setDoc(doc(ctx.firestore(),'orders',id,'lines','legacy'),{item_code:'LEGACY',qty_ordered:1,unit_price:1.222,unrelated:'keep'})
+  })
   const a=await snapshot(engine)
   assert.equal(a.lines.length,3);assert.ok(a.lines.find(l=>l.id==='legacy'))
   await edit(engine,a,{notes:'Legacy retained'})

@@ -22,6 +22,7 @@ import {
 import { createQuoteConversionRepository } from '../netlify/functions/lib/quoteConversionRepository.js'
 import { createQuoteConversionHandler } from '../netlify/functions/lib/quoteConversionHandler.js'
 import { normalizeConversionDraft } from '../netlify/functions/lib/quoteConversionModel.js'
+import {orderEditBase,orderEditPatch} from '../src/orderEditModel.js'
 import { quoteItemToOrderLine } from '../src/rangeQuote.js'
 if (!/^(127\.0\.0\.1|localhost):\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST || ''))
   throw Error(
@@ -605,8 +606,13 @@ test(
         product_name: 'Allowed item edit'
       })
     )
+    // An old unversioned client is refused; a fresh editor retains its access.
+    await assertFails(updateDoc(doc(admin,'orders',result.order_id),{notes:'Unversioned order edit'}))
     await assertSucceeds(
-      updateDoc(doc(admin, 'orders', result.order_id), { notes: 'Allowed order edit' })
+      updateDoc(doc(admin, 'orders', result.order_id), {
+        ...orderEditPatch(orderEditBase(raw),crypto.randomUUID()),
+        notes: 'Allowed order edit'
+      })
     )
   }
 )

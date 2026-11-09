@@ -13,6 +13,7 @@ test('legacy version zero is independent of PI and invoice revisions',()=>{
   assert.deepEqual(orderEditPatch(orderEditBase({}),'attempt-1'),{edit_revision:1,last_edit_id:'attempt-1',edit_origin_ms:null})
   for(const edit_revision of [-1,1.5,'1',2147483647])assert.throws(()=>orderEditRevision({edit_revision}),/invalid edit version/)
   assert.throws(()=>orderEditPatch({revision:2147483647},'id'),/Reload/)
+  assert.equal(orderEditPatch(orderEditBase({createdAt:{seconds:1794216000,nanoseconds:123456000}}),'microseconds').edit_origin_ms,1794216000123)
 })
 test('base identity detects changes in commercial attempt, creation and invoice ownership',()=>{
   const before=orderEditBase({createdAt:{seconds:1,nanoseconds:2}})
