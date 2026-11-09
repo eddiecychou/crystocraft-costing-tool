@@ -1,6 +1,6 @@
-# V8.20 — Compact buyer Excel order form, implementation 10 November 2026
+# V8.20 — Compact buyer Excel order form, released 10 November 2026
 
-The owner requested a simpler file. One order grid replaces the large buyer-information block, detailed stock/MOQ/lead text, filter arrows, review counters and Colour guide. Customer prices, colour quantities, images, totals and background validation remain. Compact release checks are in progress. The preceding header correction (`0b6dbeb`, production `6af1cbf6d8edcccf342d3a6b`) passed native Excel, both GitHub jobs and fresh production roles; Automatic was already on and no Excel setting changed. [Current contract and evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).
+Released `6ee3bbb`, production `6af1d758861b26cec21909ff`. One sheet with a small header, photos/product codes, crystal option/finish, customer prices, colour quantities and automatic totals replaces the large form, separate guide, filter arrows and counters. Both exact-SHA GitHub jobs, build/tests, fresh candidate/production roles, real Chrome downloads and independent calculations pass. Compact native Excel UI connection remains unavailable; the earlier header revision's native checks passed with Automatic already on. No migrations, rule changes or business-record writes. [Contract, lessons and release evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).
 
 # V8.20 — Crystocraft Range Excel order form, released 9 November 2026
 
