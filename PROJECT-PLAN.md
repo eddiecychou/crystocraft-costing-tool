@@ -1,3 +1,7 @@
+# V8.20 — Compact buyer Excel order form, implementation 10 November 2026
+
+The owner requested a simpler file. One order grid replaces the large buyer-information block, detailed stock/MOQ/lead text, filter arrows, review counters and Colour guide. Customer prices, colour quantities, images, totals and background validation remain. Compact release checks are in progress. The preceding header correction (`0b6dbeb`, production `6af1cbf6d8edcccf342d3a6b`) passed native Excel, both GitHub jobs and fresh production roles; Automatic was already on and no Excel setting changed. [Current contract and evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).
+
 # V8.20 — Crystocraft Range Excel order form, released 9 November 2026
 
 Released source `25118b4`, production `6af1b4b5802a65a5f0a911ab`. Download catalogue now offers PDF or a buyer Excel order form with colour quantity columns, customer prices/currency and automatic totals. Both exact-SHA GitHub jobs, 1,162 prebuild cases, fresh candidate/production roles, ordinary Chrome downloads and independent workbook calculations pass. No migration, rules or business-data writes; native Excel interaction remains pending while the Mac is locked. [Workflow, privacy and release evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).

@@ -386,7 +386,7 @@ export default function RangeCatalogueExport({ onClose, filteredProductIds = nul
               </select>
             </label>
           </div>
-          {format === 'xlsx' && <p className="text-sm text-ink-60">Buyer quantities by colour, with customer prices and automatic totals. MOQ is shown for reference. Products hidden from buyers are excluded.</p>}
+          {format === 'xlsx' && <p className="text-sm text-ink-60">Simple order sheet with customer prices, colour quantities and automatic totals.</p>}
           <label className="block mb-3">
             <span className="text-xs font-medium text-ink-60 uppercase tracking-wide">Trade account</span>
             <select aria-label="Trade account" value={accountId} onChange={e => setAccountId(e.target.value)} disabled={loading || busy}

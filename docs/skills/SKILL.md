@@ -145,7 +145,7 @@ the fast path from a request to the exact code.
 
 ### Crystocraft Range buyer Excel order form
 
-`Range.jsx` → `RangeCatalogueExport.jsx` → `rangeOrderForm.js` / `rangeOrderFormExcel.js`: one Download catalogue dialog (PDF / Excel), filtered or all visible products, approved account prices, one priced option per row and colour quantity columns. Preserve premium options and source identity, buyer-only field projection, null stock, whole-quantity guards and automatic totals. MOQ mixing is unconfirmed/informational. No order import, reservation or supplier fields. Shared labels live in `rangeCatalogueLabels.js`. [Contract and release checks](../plans/V8.20-RANGE-EXCEL-ORDER-FORM.md); `npm run test:range-order-form` is required in prebuild/GitHub.
+`Range.jsx` → `RangeCatalogueExport.jsx` → `rangeOrderForm.js` / `rangeOrderFormExcel.js`: one Download catalogue dialog (PDF / Excel), filtered or all visible products and approved account prices. Compact Excel is one buyer order grid with colour quantities, exact premium/source options and automatic totals. No buyer-information form, guide tab, filter arrows or review counters; one buyer-safe hidden guard column drives price/amount highlighting and an exception-only footer. Preserve privacy, nullable/shared stock, whole-quantity guards, visible-price rounding and full labels. No order import/reservation/supplier fields or new MOQ policy. [Contract and release checks](../plans/V8.20-RANGE-EXCEL-ORDER-FORM.md); `npm run test:range-order-form` is required in prebuild/GitHub.
 
 ### Catalogue — Crystocraft Range B0016 MCP (read/dry-run live; writes disabled)
 
