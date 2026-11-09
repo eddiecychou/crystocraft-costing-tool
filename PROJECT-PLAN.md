@@ -1,6 +1,6 @@
-# V8.20 — Buyer Excel price list, implementation 10 November 2026
+# V8.20 — Buyer Excel price list, released 10 November 2026
 
-The owner replaced order-taking with a price list: separate Product/Code/Size, Plating, available crystal names/codes and customer Unit price, plus a Code guide. Quantity columns, totals and hidden order checks are removed. Design-number sorting groups U/D/A/H/M versions together; UA, UB and other ranges follow. Existing price/visibility/privacy behavior and PDF are retained. Validation and release checks are in progress. [Contract and evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).
+Released `5026121`, production `6af1e20b0c5e72f0d37fbc68`. Price list now has separate Product/Code/Size, Plating, available crystal names/codes and customer Unit price, plus Code guide. Quantity columns, totals and hidden order logic are removed. Design-number/format sorting groups U/D/A/H/M versions together, then UA, UB and other series. Both exact-SHA jobs, build/tests, fresh candidate/production roles and actual Chrome price/colour/sort/download checks pass. No migration/rules/business-data changes. [Contract, history and release evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).
 
 # V8.20 — Compact buyer Excel order form, released 10 November 2026
 
