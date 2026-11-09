@@ -1878,3 +1878,12 @@ or numbers were used; old tabs still require refresh.
 A checkout can build with an external `node_modules` symlink while the uploaded Node function lacks Firebase Admin and returns HTTP 502 at startup. Copy physical dependencies into the release checkout, repackage, then require fresh candidate and production endpoint/role checks. Compare the actual function-package digests and schedule in the two deploy manifests.
 
 Netlify CLI may return masked secret values. Presence alone cannot prove a mail key is usable. Exercise the deployed registration handler with a clearly labelled fictional application, check the fixed recipient and provider acceptance, then remove only the owned fixture. Preserve the distinction between provider acceptance and inbox delivery. [Portal release evidence](../plans/V8.20-PORTAL-ACCESS-ALERTS.md)
+
+## Saved-order conflicts and actionable Portal counts — 9 November 2026
+
+- Enforce expected edit versions with the atomic header/line write and Firestore rules. A fresh query at Save alone cannot protect an older draft. Invoice Admin writers must also invalidate an older editor; reservation flags keep their separate ownership. Preserve rejected edits before submitting and compare with the latest version explicitly.
+- Read every line when building an edit snapshot: Firestore `orderBy` excludes legacy documents missing the ordered field. A header/lines/header version check prevents initializing a mixed-version form.
+- Match timestamp precision across SDKs and rules. Rules `Timestamp.toMillis()` returns an integer; a microsecond-precision SDK timestamp needs a whole-millisecond comparison stamp. Test the actual SDK/rules boundary.
+- Keep actual SDK scenarios isolated with an external process deadline. Avoid a redundant second network-enable call during offline cleanup. A test must finish normally after its assertions; retained sockets are a failure to investigate.
+- Adapt older fixtures to the guarded contract while explicitly testing old-client refusal. Compare deployment artifact digests, routes, runtimes, schedules and static hashes; deployment IDs and creation timestamps legitimately differ.
+- A Pending approval total and an operator action count serve different purposes. Confirmed Waiting for reply should leave the review badge while remaining Pending. Use a bounded admin-only projection of private follow-up state, refresh after actions, ignore late responses and retain a conservative count when status is unavailable. Status reads must not expose correspondence, send mail or change approval.

@@ -1,3 +1,7 @@
+# V8.20 — Portal waiting-for-reply badge corrected, released 9 November 2026
+
+Source `3359487`, production `6af18fc6fcdbce8ae2761e2d`. The Portal menu/banner count excludes confirmed Waiting for reply applications and keeps them in Pending. Existing live case: five pending, five waiting, zero needing review; desktop/mobile badge hidden. Both exact-SHA jobs, 1,144 prebuild cases, 24 backend cases and fresh candidate/production admin/customer checks pass. Verification sent no customer email and changed no approvals. [Scope and release evidence](docs/plans/V8.20-PORTAL-WAITING-REPLY-BADGE.md).
+
 # V8.20 — Saved-order conflict protection, released 9 November 2026
 
 Source `55ee1d3`, production `6af18b007feb292997899b95`. Atomic version checks reject stale header/line edits, including offline reconnects. Conflicting drafts remain on the operator's device for comparison and explicit reapplication. Both required jobs, fresh candidate/production admin/customer checks and published Firestore rules readback pass. [Release and migration evidence](docs/plans/V8.20-SAVED-ORDER-CONCURRENT-EDIT-FIX.md).

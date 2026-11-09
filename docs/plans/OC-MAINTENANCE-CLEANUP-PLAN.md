@@ -547,3 +547,5 @@ The form owns the user draft and comparison; `orderEditModel.js` owns version id
 `shipping.js` and Firestore rules own coherent loading and atomic guarded writes.
 `orderEditDrafts.js` stores per-operator/per-order/per-attempt device drafts.
 Invoice claim/link transactions participate without merging commercial edits.
+
+The saved-order concurrent-edit correction is released and verified with its lazy metadata migration and retained device drafts. The subsequent [Portal waiting-for-reply badge correction](V8.20-PORTAL-WAITING-REPLY-BADGE.md) is also released, using a private read-only status projection and the shared menu/banner count. Broader local creation-recovery changes remain outside these two releases.
