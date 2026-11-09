@@ -4,6 +4,7 @@ import { signOut } from 'firebase/auth'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import logo from '../assets/logo.png'
+import { PortalRequestCount, usePortalRequestCount } from '../hooks/usePortalRequestCount'
 import { APP_NAME, APP_VERSION, versionLabel } from '../appInfo'
 import { canAccess, useAccess } from '../access'
 import { useT } from '../i18n'
@@ -128,7 +129,8 @@ export default function Layout({ children, user }) {
     const q = query(collection(db, 'seo_batches'), where('status', '==', 'pending_review'))
     return onSnapshot(q, snap => setSeoPending(snap.size), () => setSeoPending(0))
   }, [role, modules])
-  const badgeFor = (to) => (to === '/seo-review' && seoPending > 0 ? seoPending : 0)
+  const accessRequests = usePortalRequestCount(role === 'admin')
+  const badgeFor = to => to === '/portal' ? accessRequests.count : to === '/seo-review' ? seoPending : 0
   const moreActive = moreNav.some(n => location.pathname.startsWith(n.to))
 
   async function handleSignOut() {
@@ -291,7 +293,7 @@ export default function Layout({ children, user }) {
 
         {/* Page content — add bottom padding on mobile for tab bar */}
         <main id="main-scroll" data-print-root className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain pb-20 md:pb-0">
-          {children}
+          <PortalRequestCount.Provider value={accessRequests}>{children}</PortalRequestCount.Provider>
         </main>
 
         {/* Bottom tab bar — mobile only */}
@@ -318,7 +320,7 @@ export default function Layout({ children, user }) {
  moreActive || moreOpen ? 'text-white' : 'text-ivory/40'
             }`}
           >
-            {seoPending > 0 && <span className="absolute top-1.5 right-1/2 translate-x-3 w-2 h-2 rounded-full bg-red-500" />}
+            {(seoPending > 0 || accessRequests.count > 0) && <span className="absolute top-1.5 right-1/2 translate-x-3 w-2 h-2 rounded-full bg-red-500" />}
             <MoreHorizontal size={20} strokeWidth={1.75} />
             <span className="text-2xs font-medium leading-none">{t('More')}</span>
           </button>

@@ -9,11 +9,13 @@ import { ShieldCheck, Clock, UserCheck, Building2, Ban, X, ChevronRight } from '
 // our own test / checking logins so they can be told apart at a glance.
 export const accountTypeOf = u => (u?.account_type === 'internal' ? 'internal' : 'customer')
 
-export default function CustomerAccounts({ embedded = false }) {
+export default function CustomerAccounts({ embedded = false, selectedTab, onTabChange }) {
   const [users, setUsers] = useState([])
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('approved')
+  const [ownTab, setOwnTab] = useState('approved')
+  const tab = selectedTab ?? ownTab
+  const setTab = onTabChange ?? setOwnTab
   const [typeFilter, setTypeFilter] = useState('all') // all | customer | internal
   const [search, setSearch] = useState('')
 

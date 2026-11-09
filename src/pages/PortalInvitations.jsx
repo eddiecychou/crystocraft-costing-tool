@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Mail, Clock, CheckCircle2, XCircle, Ban, RefreshCw, Loader2, UserPlus } from 'lucide-react'
-import { resendInvitation, revokeInvitation, rejectInvitation, approveInvitation } from '../portalInviteApi'
+import { retryAccessAlert, resendInvitation, revokeInvitation, rejectInvitation, approveInvitation } from '../portalInviteApi'
 import { CustomerPicker } from './CustomerAccounts'
 
 // SU-07A — admin view of portal_invitations (see netlify/functions/
@@ -111,6 +111,20 @@ export default function PortalInvitations({ embedded = false }) {
                       <span className="text-red-600"> · Last email failed to send</span>
                     )}
                   </p>
+                  {inv.access_alert_status === 'accepted' && <p className="text-xs text-ink-60 mb-2">Admin alert accepted by Resend</p>}
+                  {['queued','sending','retry','needs_review'].includes(inv.access_alert_status) && (
+                    <p className="text-xs text-amber-800 mb-2">
+                      {inv.access_alert_status === 'needs_review'
+                        ? 'Admin email confirmation is unknown. Check Resend for this access request.'
+                        : inv.access_alert_status === 'retry' ? 'Admin email is waiting for a retry.' : 'Admin email is queued.'}
+                    </p>
+                  )}
+                  {inv.access_alert_status === 'needs_review' && inv.status === 'claimed' && (
+                    <button type="button" className="btn-secondary text-xs" disabled={busy} onClick={() => {
+                      if (window.confirm('Have you checked Resend and confirmed the admin alert was not accepted?'))
+                        run(() => retryAccessAlert(inv.id), inv.id)
+                    }}>Retry admin alert</button>
+                  )}
                   {needsCustomerLink && (
                     <div className="mt-2 max-w-xs">
                       <label className="text-2xs text-ink-60 mb-1 flex items-center gap-1"><UserPlus size={11} /> Link to a customer before approving</label>

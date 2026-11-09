@@ -86,3 +86,7 @@ export const applyForAccount = (companyName, contactName, email, currency, hp = 
 // this one action). See portal-invite.js's applyForAccountGoogle.
 export const applyForAccountGoogle = (companyName, contactName, currency) =>
   callAdmin('apply_for_account_google', { companyName, contactName, currency })
+
+export function retryAccessAlert(invitationId) {
+  return callAdmin('retry_access_alert', {invitationId, confirmedNotSent:true})
+}

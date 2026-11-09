@@ -44,6 +44,7 @@ import { getAuth } from 'firebase-admin/auth'
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore'
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto'
 import { buildResendTags } from '../edge-functions/lib/resendTags.js'
+import { queueAccessAlert, deliverAccessAlert, retryReviewedAccessAlert } from './lib/portalAccessAlerts.js'
 import { accountFollowupAction } from './lib/portalAccountFollowup.js'
 
 const INVITE_EXPIRY_DAYS = 7
@@ -392,7 +393,8 @@ async function applyForAccount(body) {
   // typed their own email, so telling them "you already applied" is useful,
   // not a meaningful enumeration leak.
   let existingAuthUser = null
-  try { existingAuthUser = await getAuth().getUserByEmail(email) } catch { /* no existing Auth account — fine */ }
+  try { existingAuthUser = await getAuth().getUserByEmail(email) }
+  catch (err) { if (err?.code !== 'auth/user-not-found') throw err }
   if (existingAuthUser) {
     const existingUserSnap = await db.collection('users').doc(existingAuthUser.uid).get()
     const existingStatus = existingUserSnap.exists ? existingUserSnap.data().status : null
@@ -410,68 +412,17 @@ async function applyForAccount(body) {
     .where('status', 'in', ['pending', 'claimed', 'approved'])
     .limit(1)
     .get()
-  if (!existingInv.empty) {
-    const d = existingInv.docs[0]
-    const inv = d.data()
-    if (inv.status !== 'pending') return json({ error: 'already_pending' }, 409)
-    // Claim the existing admin-created invitation on the applicant's
-    // behalf — no raw token to check here (nothing was emailed to click),
-    // which is fine: this is exactly as strong as the rest of this
-    // function's security model, not weaker than it.
-    // getUserByEmail (above) → createUser here is not atomic — two
-    // simultaneous submissions for the same email can both pass the check.
-    // The loser's createUser throws auth/email-already-exists; degrade to
-    // the same response the pre-check would have given rather than a raw 500.
-    let userRecord
-    try { userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false }) }
-    catch (e) { if (e?.code === 'auth/email-already-exists') return json({ error: 'already_pending' }, 409); throw e }
-    await d.ref.update({
-      status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: userRecord.uid,
-      audit_log: FieldValue.arrayUnion(auditEntry('claimed_via_self_apply', email)),
-    })
-    await db.collection('users').doc(userRecord.uid).set({
-      role: 'customer', status: 'pending', email,
-      company_name: companyName, contact_name: contactName || inv.contact_name || '',
-      base_currency: currency, ws_discount_pct: 0,
-      customer_id: inv.customer_id || null, invitation_id: d.id,
-      createdAt: Timestamp.now(),
-    })
-    return json({ ok: true, status: 'pending' })
-  }
-
-  // Genuinely new applicant — create the invitation record AND the
-  // no-password Auth account in one step (see header comment for why
-  // there's no separate claim round trip here). Same race guard as the
-  // existing-invitation branch above.
+  const invitation = existingInv.docs[0]
+  if (invitation && invitation.get('status') !== 'pending') return json({ error: 'already_pending' }, 409)
   let userRecord
   try { userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false }) }
-  catch (e) { if (e?.code === 'auth/email-already-exists') return json({ error: 'already_registered' }, 409); throw e }
-  const ref = db.collection('portal_invitations').doc()
-  await ref.set({
-    customer_id: null, contact_email: email, contact_name: contactName,
-    // The applicant's own free-text company name — shown to the admin so
-    // they know what to search for while linking a real customers/{id}
-    // record (see PortalInvitations.jsx). Not present on an admin-created
-    // invitation, where customer_id is already known from the start.
-    applicant_company_name: companyName,
-    marketing_contact_id: null,
-    source: 'self',
-    status: 'claimed',
-    token_hash: null, // nothing to verify later — this record was never emailed as a claim link
-    created_by: 'self', created_at: Timestamp.now(), expires_at: null,
-    claimed_at: Timestamp.now(), claimed_uid: userRecord.uid,
-    approved_at: null, rejected_at: null, revoked_at: null,
-    email_send_status: null, email_send_error: null, resend_count: 0, last_resent_at: null,
-    audit_log: [auditEntry('self_applied', email)],
-  })
-  await db.collection('users').doc(userRecord.uid).set({
-    role: 'customer', status: 'pending', email,
-    company_name: companyName, contact_name: contactName,
-    base_currency: currency, ws_discount_pct: 0,
-    customer_id: null, invitation_id: ref.id,
-    createdAt: Timestamp.now(),
-  })
-  return json({ ok: true, status: 'pending' })
+  catch (e) {
+    if (e?.code === 'auth/email-already-exists')
+      return json({ error: invitation ? 'already_pending' : 'already_registered' }, 409)
+    throw e
+  }
+  return saveAccessApplication({ db, uid:userRecord.uid, email, companyName, contactName, currency, invitation })
+
 }
 
 // Google-authenticated counterpart to applyForAccount — the visitor already
@@ -512,7 +463,11 @@ async function applyForAccountGoogle(body, uid, email) {
   // linking exists yet (deferred — see the admin-invitation path's own
   // linkWithPopup plan), so the correct move here is just to say so.
   const existingByEmail = await db.collection('users').where('email', '==', email).limit(1).get()
-  if (!existingByEmail.empty) return json({ error: 'already_registered' }, 409)
+  if (!existingByEmail.empty) {
+    const existing = existingByEmail.docs[0]
+    if (existing.id === uid) return json({ok:true,status:existing.get('status') === 'approved' ? 'approved' : 'pending'})
+    return json({ error: 'already_registered' }, 409)
+  }
 
   // An admin may have already invited this exact email — funnel into that
   // invitation exactly like applyForAccount does, just with the uid we
@@ -522,45 +477,99 @@ async function applyForAccountGoogle(body, uid, email) {
     .where('status', 'in', ['pending', 'claimed', 'approved'])
     .limit(1)
     .get()
-  if (!existingInv.empty) {
-    const d = existingInv.docs[0]
-    const inv = d.data()
-    if (inv.status !== 'pending') return json({ error: 'already_pending' }, 409)
-    await d.ref.update({
-      status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: uid,
-      audit_log: FieldValue.arrayUnion(auditEntry('claimed_via_self_apply_google', email)),
-    })
-    await db.collection('users').doc(uid).set({
-      role: 'customer', status: 'pending', email,
-      company_name: companyName, contact_name: contactName || inv.contact_name || '',
-      base_currency: currency, ws_discount_pct: 0,
-      customer_id: inv.customer_id || null, invitation_id: d.id,
-      auth_provider: 'google.com', createdAt: Timestamp.now(),
-    })
-    return json({ ok: true, status: 'pending' })
-  }
+  return saveAccessApplication({ db, uid, email, companyName, contactName, currency, invitation:existingInv.docs[0], google:true })
 
-  const ref = db.collection('portal_invitations').doc()
-  await ref.set({
-    customer_id: null, contact_email: email, contact_name: contactName,
-    applicant_company_name: companyName,
-    marketing_contact_id: null,
-    source: 'self',
-    status: 'claimed',
-    token_hash: null,
-    created_by: 'self', created_at: Timestamp.now(), expires_at: null,
-    claimed_at: Timestamp.now(), claimed_uid: uid,
-    approved_at: null, rejected_at: null, revoked_at: null,
-    email_send_status: null, email_send_error: null, resend_count: 0, last_resent_at: null,
-    audit_log: [auditEntry('self_applied_google', email)],
+}
+
+// Both application forms save the review record, profile and mail job together.
+async function saveAccessApplication({
+  db,
+  uid,
+  email,
+  companyName,
+  contactName,
+  currency,
+  invitation,
+  google = false
+}) {
+  const ref = invitation?.ref || db.collection('portal_invitations').doc()
+  const user = db.collection('users').doc(uid)
+  const result = await db.runTransaction(async (tx) => {
+    const profile = await tx.get(user)
+    if (profile.exists)
+      return google
+        ? {
+            response: json({
+              ok: true,
+              status: profile.get('status') === 'approved' ? 'approved' : 'pending'
+            })
+          }
+        : { response: json({ error: 'already_pending' }, 409) }
+    const existing = invitation ? (await tx.get(ref)).data() : null
+    if (invitation && (existing?.status !== 'pending' || existing.contact_email !== email))
+      return { response: json({ error: 'already_pending' }, 409) }
+    const now = Timestamp.now()
+    const name = contactName || existing?.contact_name || ''
+    const claimed = {
+      status: 'claimed',
+      claimed_at: now,
+      claimed_uid: uid,
+      access_alert_status: 'queued'
+    }
+    if (existing) {
+      tx.update(ref, {
+        ...claimed,
+        audit_log: FieldValue.arrayUnion(
+          auditEntry(google ? 'claimed_via_self_apply_google' : 'claimed_via_self_apply', email)
+        )
+      })
+    } else {
+      tx.create(ref, {
+        ...claimed,
+        customer_id: null,
+        contact_email: email,
+        contact_name: name,
+        applicant_company_name: companyName,
+        marketing_contact_id: null,
+        source: 'self',
+        token_hash: null,
+        created_by: 'self',
+        created_at: now,
+        expires_at: null,
+        approved_at: null,
+        rejected_at: null,
+        revoked_at: null,
+        email_send_status: null,
+        email_send_error: null,
+        resend_count: 0,
+        last_resent_at: null,
+        audit_log: [auditEntry(google ? 'self_applied_google' : 'self_applied', email)]
+      })
+    }
+    tx.create(user, {
+      role: 'customer',
+      status: 'pending',
+      email,
+      company_name: companyName,
+      contact_name: name,
+      base_currency: currency,
+      ws_discount_pct: 0,
+      customer_id: existing?.customer_id || null,
+      invitation_id: ref.id,
+      ...(google ? { auth_provider: 'google.com' } : {}),
+      createdAt: now
+    })
+    queueAccessAlert(tx, ref, { uid, email, company: companyName, contact: name })
+    return { created: true }
   })
-  await db.collection('users').doc(uid).set({
-    role: 'customer', status: 'pending', email,
-    company_name: companyName, contact_name: contactName,
-    base_currency: currency, ws_discount_pct: 0,
-    customer_id: null, invitation_id: ref.id,
-    auth_provider: 'google.com', createdAt: Timestamp.now(),
-  })
+  if (!result.created) return result.response
+  // Failure to confirm delivery cannot undo a committed application. A due
+  // job survives both a failed HTTP request and an interrupted function.
+  try {
+    await deliverAccessAlert(db, ref.id)
+  } catch {
+    console.error('Portal access alert pending retry', ref.id)
+  }
   return json({ ok: true, status: 'pending' })
 }
 
@@ -1153,6 +1162,10 @@ export default async function handler(req) {
   }
 
   switch (action) {
+    case 'retry_access_alert':
+      if (body.confirmedNotSent !== true) return json({error:'Check Resend before retrying the admin notice.'},400)
+      try { await retryReviewedAccessAlert(getFirestore(),body.invitationId,uid); return json({ok:true}) }
+      catch (e) { return json({error:e.status ? e.message : 'Could not confirm the admin notice. Refresh before retrying.'},e.status || 500) }
     case 'create_invitation': return createInvitation(body, uid)
     case 'resend_invitation': return resendInvitation(body, uid)
     case 'revoke_invitation': return revokeInvitation(body, uid)

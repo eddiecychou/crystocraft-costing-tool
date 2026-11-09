@@ -1,3 +1,9 @@
+# V8.20 — Portal access request alerts, implemented locally (9 November 2026)
+
+Email and Google portal applications now enqueue an internal Resend notice to
+eddie@uart.com.hk. Admins can see a live Portal count and open the Pending queue
+from any Portal tab. [Implementation and verification](docs/plans/V8.20-PORTAL-ACCESS-ALERTS.md).
+
 # V8.20 — Quote → Order recovery (SH-08) — released, 8 November 2026
 
 Live as **`dd053d79d1161e61f4f55420c321dcf5d462cbda`**, production

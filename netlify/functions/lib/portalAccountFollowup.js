@@ -1,6 +1,8 @@
 // Private application correspondence. All browser access goes through the
 // existing admin-authenticated portal-invite function, never the users doc.
 import { createHash } from 'node:crypto'
+import { sendPortalMail as sendFollowupEmail } from './portalMail.js'
+export { sendFollowupEmail }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -22,19 +24,6 @@ const content = body => {
   if (!subject || subject.length > 200 || /[\r\n\u0000]/.test(subject)) fail('Enter a subject of up to 200 characters on one line.')
   if (!message || message.length > 6000 || /\u0000/.test(message)) fail('Enter a message of up to 6,000 characters.')
   return { subject, message }
-}
-
-export async function sendFollowupEmail(payload, key, { apiKey, fetchImpl = fetch }) {
-  try {
-    const result = await fetchImpl('https://api.resend.com/emails', {
-      method: 'POST', signal: AbortSignal.timeout(20_000),
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Idempotency-Key': key },
-      body: JSON.stringify(payload),
-    })
-    if (!result.ok) return { status: result.status >= 500 || [408, 409, 429].includes(result.status) ? 'unknown' : 'failed' }
-    const data = await result.json()
-    return data.id ? { status: 'sent', provider_id: String(data.id).slice(0, 200) } : { status: 'unknown' }
-  } catch { return { status: 'unknown' } }
 }
 
 // actorUid MUST come from requireAdmin's verified token, never the request body.

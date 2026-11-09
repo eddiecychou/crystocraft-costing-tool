@@ -31,7 +31,7 @@
     "test:product-images": "node --test qa/product-images.test.mjs qa/product-images-gallery.test.mjs qa/download-image.test.mjs qa/range-download-click.test.mjs",
     "test:crystal-swatches": "node --test qa/crystal-swatches.test.mjs qa/crystal-swatches-api.test.mjs",
     "test:crystal-products": "node --test qa/crystal-products.test.mjs qa/crystal-media.test.mjs qa/crystal-fabric.test.mjs qa/crystal-costing.test.mjs qa/crystal-costing-privacy.test.mjs qa/crystal-costing-access.test.mjs qa/crystal-supplier-quote.test.mjs qa/crystal-product-images.test.mjs",
-    "test:portal-followup": "node --test qa/portal-followup.test.mjs",
+    "test:portal-followup": "node --test qa/portal-followup.test.mjs qa/portal-access-ui.test.mjs",
     "test:customer-files": "node --test qa/customer-files.test.mjs qa/customer-files-ui.test.mjs",
     "test:invoice-allocator": "node --test qa/invoice-allocator-permissions.test.mjs",
     "test:invoice-recovery": "node --test qa/invoice-recovery.test.mjs qa/invoice-recovery-ui.test.mjs",
