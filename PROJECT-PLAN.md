@@ -1,8 +1,10 @@
-# V8.20 — Portal access request alerts, implemented locally (9 November 2026)
+# V8.20 — Portal access request alerts, released 9 November 2026
 
-Email and Google portal applications now enqueue an internal Resend notice to
-eddie@uart.com.hk. Admins can see a live Portal count and open the Pending queue
-from any Portal tab. [Implementation and verification](docs/plans/V8.20-PORTAL-ACCESS-ALERTS.md).
+Released source `531796b`, production `6af15481db54e221227144a1`. New email and
+Google applications notify eddie@uart.com.hk. Admin Portal shows the live pending
+count and Review requests. Both exact-SHA GitHub jobs, fresh candidate/production
+roles and a deployed fictional signup with one Resend acceptance passed.
+[Implementation and release evidence](docs/plans/V8.20-PORTAL-ACCESS-ALERTS.md).
 
 # V8.20 — Quote → Order recovery (SH-08) — released, 8 November 2026
 

@@ -1871,3 +1871,10 @@ Archive digests can change when repackaged without existing function source
 edits; compare the actual candidate/production packages rather than assuming
 baseline archive equality from source equality. No production business writes
 or numbers were used; old tabs still require refresh.
+
+
+### Package dependencies inside release checkouts and test the deployed mail trigger
+
+A checkout can build with an external `node_modules` symlink while the uploaded Node function lacks Firebase Admin and returns HTTP 502 at startup. Copy physical dependencies into the release checkout, repackage, then require fresh candidate and production endpoint/role checks. Compare the actual function-package digests and schedule in the two deploy manifests.
+
+Netlify CLI may return masked secret values. Presence alone cannot prove a mail key is usable. Exercise the deployed registration handler with a clearly labelled fictional application, check the fixed recipient and provider acceptance, then remove only the owned fixture. Preserve the distinction between provider acceptance and inbox delivery. [Portal release evidence](../plans/V8.20-PORTAL-ACCESS-ALERTS.md)
