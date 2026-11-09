@@ -1,12 +1,14 @@
 import { ocDateOnly } from '../ocTime.js'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { pdf } from '@react-pdf/renderer'
 import { db } from '../firebase'
-import { galleryUrl, designNumber, brandLetter, brandSortRank, RANGE_CRYSTAL_BRANDS } from '../constants'
+import { galleryUrl, designNumber, brandLetter, brandSortRank } from '../constants'
 import { useRates, wsPriceFactor, convertFromUSD, fmtMoney } from '../currency'
 import { useCrystalColors } from '../crystalColors'
 import { rangePrice } from '../rangeSku'
+import { rangeCatalogueVariantLabel as variantLabel } from '../rangeCatalogueLabels'
+import { prepareRangeOrderForm } from '../rangeOrderForm'
 import RangeCataloguePDF from './RangeCataloguePDF'
 import { X, BookOpen, Loader2, AlertTriangle } from 'lucide-react'
 
@@ -50,30 +52,6 @@ async function mapLimit(items, limit, fn, onProgress) {
     }
   }))
   return out
-}
-
-const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
-
-// "Bohemia Crystals, Gold Plated" — the row label a buyer can actually order
-// from. A variant is a brand x plating pair, and showing only the plating made
-// several rows look identical.
-//
-// v.description IS the label. The variant editor generates it from plating +
-// crystal and lets it be edited, so it is the field the team curates and the
-// one place a premium crystal gets spelled out.
-//
-// Earlier versions of this rebuilt the same sentence from brand_code and
-// plating_name. That was the mistake behind every row problem in this
-// catalogue: a reconstruction cannot see an edit, so a variant whose
-// description had been corrected still printed the generated words, and two
-// variants that differ only in an edited description printed identically.
-// Falling back to the construction only when description is blank.
-function variantLabel(v) {
-  const desc = (v.description || '').trim()
-  if (desc) return desc
-  const brand = BRAND_NAME[v.brand_code] || v.brand_code || ''
-  const plating = v.plating_name || v.plating_code || ''
-  return [brand && `${brand} Crystals`, plating && `${plating} Plated`].filter(Boolean).join(', ') || '—'
 }
 
 // Products whose priced rows still collide after labelling — same code, same
@@ -183,7 +161,12 @@ const dedupe = rows => {
   })
 }
 
-export default function RangeCatalogueExport({ onClose }) {
+export default function RangeCatalogueExport({ onClose, filteredProductIds = null, availabilityById = {} }) {
+  const [format, setFormat] = useState('pdf')
+  const [scope, setScope] = useState(filteredProductIds === null ? 'all' : 'filtered')
+  const mounted = useRef(true), buildOwner = useRef(null)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; buildOwner.current?.abort() } }, [])
+  function close() { buildOwner.current?.abort(); onClose?.() }
   const [accounts, setAccounts] = useState([])
   const [products, setProducts] = useState([])
   const [accountId, setAccountId] = useState('')
@@ -192,13 +175,15 @@ export default function RangeCatalogueExport({ onClose }) {
   const [progress, setProgress] = useState(null)   // { done, total }
   const [error, setError] = useState('')
   const rates = useRates()
-  const { colors } = useCrystalColors()
+  const { colors, loading: colorsLoading } = useCrystalColors()
 
   useEffect(() => {
+    let alive = true
     Promise.all([
       getDocs(collection(db, 'users')),
       getDocs(collection(db, 'range_products')),
     ]).then(([u, p]) => {
+      if (!alive) return
       setAccounts(
         u.docs.map(d => ({ id: d.id, ...d.data() }))
           .filter(x => x.role === 'customer' && x.status === 'approved')
@@ -206,7 +191,8 @@ export default function RangeCatalogueExport({ onClose }) {
       )
       setProducts(p.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
-    }).catch(e => { setError(e.message); setLoading(false) })
+    }).catch(e => { if (alive) { setError(e.message); setLoading(false) } })
+    return () => { alive = false }
   }, [])
 
   const profile = useMemo(
@@ -217,13 +203,36 @@ export default function RangeCatalogueExport({ onClose }) {
   // Only what a customer may see: visible, not retired. Same test the
   // storefront uses, so the catalogue can never show more than the shop.
   const sellable = useMemo(
-    () => products.filter(p => p.active !== false && p.status !== 'retired'),
-    [products],
+    () => products.filter(p => p.active !== false && p.status !== 'retired'
+      && (scope === 'all' || filteredProductIds?.includes(p.id))),
+    [products, scope, filteredProductIds],
   )
 
   async function build() {
+    if (buildOwner.current || loading || !sellable.length || (format === 'xlsx' && colorsLoading)) return
+    const owner = new AbortController()
+    buildOwner.current = owner
+    const current = () => mounted.current && !owner.signal.aborted
     setBusy(true); setError(''); setProgress(null)
     try {
+      if (format === 'xlsx') {
+        const { rangeOrderFormBytes, readRangeOrderImage } = await import('../rangeOrderFormExcel')
+        if (!current()) return
+        const model = prepareRangeOrderForm(sellable, { colors, profile, rates, availabilityById })
+        const urls = [...new Set(model.rows.map(row => row.image).filter(Boolean))]
+        const photos = await mapLimit(urls, 6, url => readRangeOrderImage(url, owner.signal),
+          (done,total) => { if (current()) setProgress({done,total}) })
+        if (!current()) return
+        const bytes = await rangeOrderFormBytes(model, { images:new Map(urls.map((url,i) => [url,photos[i]])) })
+        if (!current()) return
+        const stem = ['Crystocraft Range Order Form', profile?.company_name || profile?.name || profile?.email, ocDateOnly(new Date())]
+          .filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g,'-')
+        const url = URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))
+        const anchor = document.createElement('a');anchor.href=url;anchor.download=stem+'.xlsx';anchor.click()
+        setTimeout(() => URL.revokeObjectURL(url),1000)
+        onClose?.()
+        return
+      }
       const factor = wsPriceFactor(profile)
       const cur = profile?.base_currency || 'USD'
 
@@ -237,7 +246,7 @@ export default function RangeCatalogueExport({ onClose }) {
       const heroes = sellable.map(p => galleryUrl(p.gallery?.[0])
         || (Array.isArray(p.variants) ? p.variants.find(v => v.image)?.image : '') || '')
       const dataUrls = await mapLimit(heroes, 6, imageToDataURL,
-        (done, total) => setProgress({ done, total }))
+        (done, total) => { if (current()) setProgress({ done, total }) })
 
       const colourName = Object.fromEntries((colors || []).map(c => [c.code, c.name]))
       // Which crystal colours a variant covers, as names. Used only to tell two
@@ -322,6 +331,7 @@ export default function RangeCatalogueExport({ onClose }) {
         />,
       ).toBlob()
 
+      if (!current()) return
       const stem = ['Crystocraft Range Catalogue', profile?.name || profile?.email, ocDateOnly(new Date())]
         .filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g, '-')
       const url = URL.createObjectURL(blob)
@@ -330,9 +340,10 @@ export default function RangeCatalogueExport({ onClose }) {
       URL.revokeObjectURL(url)
       onClose?.()
     } catch (e) {
-      setError(e.message || 'Could not build the catalogue.')
+      if (current()) setError(e.message || 'Could not build the catalogue.')
     } finally {
-      setBusy(false); setProgress(null)
+      buildOwner.current = null
+      if (mounted.current) { setBusy(false); setProgress(null) }
     }
   }
 
@@ -352,19 +363,33 @@ export default function RangeCatalogueExport({ onClose }) {
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={e => { if (e.target === e.currentTarget) close() }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="range-catalogue-title" className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="text-base text-ink inline-flex items-center gap-2">
+          <h2 id="range-catalogue-title" className="text-base text-ink inline-flex items-center gap-2">
             <BookOpen size={16} className="text-brand-600" /> Crystocraft Range catalogue
           </h2>
-          <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
+          <button aria-label="Close catalogue download" onClick={close} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
         </div>
 
-        <div className="p-5">
+        <div className="p-5 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block"><span className="label">File format</span>
+              <select aria-label="File format" className="input w-full text-sm" value={format} onChange={e => setFormat(e.target.value)} disabled={loading || busy}>
+                <option value="pdf">PDF catalogue</option><option value="xlsx">Excel order form</option>
+              </select>
+            </label>
+            <label className="block"><span className="label">Products</span>
+              <select aria-label="Products to export" className="input w-full text-sm" value={scope} onChange={e => setScope(e.target.value)} disabled={loading || busy}>
+                {filteredProductIds !== null && <option value="filtered">Current selection</option>}
+                <option value="all">All visible products</option>
+              </select>
+            </label>
+          </div>
+          {format === 'xlsx' && <p className="text-sm text-ink-60">Buyer quantities by colour, with customer prices and automatic totals. MOQ is shown for reference. Products hidden from buyers are excluded.</p>}
           <label className="block mb-3">
             <span className="text-xs font-medium text-ink-60 uppercase tracking-wide">Trade account</span>
-            <select value={accountId} onChange={e => setAccountId(e.target.value)} disabled={loading || busy}
+            <select aria-label="Trade account" value={accountId} onChange={e => setAccountId(e.target.value)} disabled={loading || busy}
               className="mt-1 w-full px-2.5 py-2 text-sm border border-warm-grey rounded-none">
               <option value="">— list price, USD (no account) —</option>
               {accounts.map(a => (
@@ -391,7 +416,7 @@ export default function RangeCatalogueExport({ onClose }) {
                 <AlertTriangle size={13} /> {needsAttention.length} product{needsAttention.length === 1 ? '' : 's'} will show rows that look identical
               </div>
               <p className="mt-0.5 text-amber-700/90">
-                Two priced variants share a brand, plating and description, so the catalogue cannot tell them apart.
+                Some priced options share a brand, plating and description. Check the crystal specification before confirming an order.
                 Fill in the crystal description on those variants to fix it.
               </p>
               <p className="mt-1 font-mono text-2xs text-amber-900">
@@ -414,17 +439,17 @@ export default function RangeCatalogueExport({ onClose }) {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2">
+            <div role="alert" className="flex items-start gap-2 text-sm text-brand-700 bg-ivory border border-warm-grey rounded-none px-3 py-2">
               <AlertTriangle size={15} className="shrink-0 mt-0.5" /> {error}
             </div>
           )}
         </div>
 
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-warm-grey">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-none">Cancel</button>
-          <button onClick={build} disabled={loading || busy || !sellable.length}
+          <button onClick={close} className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-none">Cancel</button>
+          <button onClick={build} disabled={loading || busy || !sellable.length || (format === 'xlsx' && colorsLoading)}
             className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
-            {busy ? <><Loader2 size={14} className="animate-spin" /> Building…</> : <>Build PDF</>}
+            {busy ? <><Loader2 size={14} className="animate-spin" /> Building…</> : <>{format === 'xlsx' ? 'Download Excel order form' : 'Build PDF'}</>}
           </button>
         </div>
       </div>

@@ -198,6 +198,7 @@ export default function Range() {
       minPrice: prices.length ? Math.min(...prices) : null,
       maxPrice: prices.length ? Math.max(...prices) : null,
       totalStock: totalStockQty,
+      exportAvailability: { qty: totalStock, byPlating: stockByPlating },
       stockByPlating: stockByPlating || {},
       stockBottleneckByPlating: stockBottleneckByPlating || {},
       skuCount: variants.length,
@@ -279,7 +280,9 @@ export default function Range() {
       {importing && (
         <ErpProductImport products={products} onClose={() => setImporting(false)} />
       )}
-      {cataloguing && <RangeCatalogueExport onClose={() => setCataloguing(false)} />}
+      {cataloguing && <RangeCatalogueExport onClose={() => setCataloguing(false)}
+        filteredProductIds={filtered.map(item => item.id)}
+        availabilityById={Object.fromEntries(items.map(item => [item.id,item.exportAvailability]))} />}
 
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-1">
         <div>
@@ -292,7 +295,7 @@ export default function Range() {
               it fills the code, description and the FM components from the
               ERP BOM. "New product" stays for designs the ERP has never seen. */}
           <button type="button" onClick={() => setCataloguing(true)} className="btn-secondary text-sm text-center">
-            Catalogue PDF
+            Download catalogue
           </button>
           <button type="button" onClick={() => setImporting(true)} className="btn-secondary text-sm text-center">
             Import from ERP

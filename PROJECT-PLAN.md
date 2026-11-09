@@ -1,3 +1,7 @@
+# V8.20 — Crystocraft Range Excel order form, release preparation 9 November 2026
+
+Buyer colour quantity columns, customer prices/currency and automatic totals are implemented with fictional workbook/dialog checks. No migration, rules or business-data writes. Both required exact-SHA jobs and fresh candidate/production roles are required before release. [Workflow, privacy and evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).
+
 # V8.20 — Portal waiting-for-reply badge corrected, released 9 November 2026
 
 Source `3359487`, production `6af18fc6fcdbce8ae2761e2d`. The Portal menu/banner count excludes confirmed Waiting for reply applications and keeps them in Pending. Existing live case: five pending, five waiting, zero needing review; desktop/mobile badge hidden. Both exact-SHA jobs, 1,144 prebuild cases, 24 backend cases and fresh candidate/production admin/customer checks pass. Verification sent no customer email and changed no approvals. [Scope and release evidence](docs/plans/V8.20-PORTAL-WAITING-REPLY-BADGE.md).

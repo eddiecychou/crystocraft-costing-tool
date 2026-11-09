@@ -46,6 +46,7 @@ jobs:
       - run: npm run test:product-search
       - run: npm run test:quote-pdf
       - run: npm run test:quote-excel
+      - run: npm run test:range-order-form
       - run: npm run test:invoice-units
       - run: npm run test:invoice-reconciliation
       - run: npm run test:invoice-recovery

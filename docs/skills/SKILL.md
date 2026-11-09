@@ -143,6 +143,10 @@ the fast path from a request to the exact code.
 - Collections: `products/{id}` (+ `images`, `pricing_tiers` **admin-only**, `customer_prices`, `components/…/supplier_quotes`); `product_marketing_history/{runId}_{productId}` (admin-only, immutable backup)
 - Notes: corp-gift pricing card is **hidden from `production`**; per-customer price = `customer_prices/{uid}`; tier markup formula = `settings/pricing_groups` (admin-only, hard wall). `blog_links[]` (V8.16, 2026-09-22) — always-public "Learn More" links, same shape/pattern as `videos[]`: `BlogLinksEditor.jsx` in the admin form, rendered on `src/customer/CorporateDetail.jsx` right next to the videos block. MCP drafts have `active:false` and are absent from the shop listing, but current Firestore rules still allow approved customers to read their product docs directly; do not treat these as confidential. The catalogue MCP's first release is explicitly read/dry-run only: no new tool can activate a product, change a tier, or publish customer prices until a real-record review approves the live phase.
 
+### Crystocraft Range buyer Excel order form
+
+`Range.jsx` → `RangeCatalogueExport.jsx` → `rangeOrderForm.js` / `rangeOrderFormExcel.js`: one Download catalogue dialog (PDF / Excel), filtered or all visible products, approved account prices, one priced option per row and colour quantity columns. Preserve premium options and source identity, buyer-only field projection, null stock, whole-quantity guards and automatic totals. MOQ mixing is unconfirmed/informational. No order import, reservation or supplier fields. Shared labels live in `rangeCatalogueLabels.js`. [Contract and release checks](../plans/V8.20-RANGE-EXCEL-ORDER-FORM.md); `npm run test:range-order-form` is required in prebuild/GitHub.
+
 ### Catalogue — Crystocraft Range B0016 MCP (read/dry-run live; writes disabled)
 
 The catalogue display name is **Crystocraft Range** (owner rename, 2026-10-16),
