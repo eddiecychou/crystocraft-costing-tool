@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { PortalRequestCount } from '../portalRequestContext'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { getAccountFollowup, saveAccountFollowupDraft, sendAccountFollowup,
   markAccountInformationReceived, resolveAccountFollowup } from '../portalInviteApi'
 import { accountInformationTemplate } from '../portalFollowup'
@@ -8,6 +9,7 @@ const date = value => value ? `${formatOcDateTime(value, { day: 'numeric', month
 const messageStatus = { sent: 'Sent', sending: 'Sending — refresh to check', unknown: 'Send result unconfirmed', failed: 'Not sent' }
 
 export default function PortalAccountFollowup({ account }) {
+  const { refresh: refreshRequestCount } = useContext(PortalRequestCount)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -35,6 +37,7 @@ export default function PortalAccountFollowup({ account }) {
       const result = await operation()
       if (generation.current !== current) return
       setData(result)
+      refreshRequestCount()
       if (!result.active_message_id && success) success(result)
     } catch (e) { if (generation.current === current) setError(e.message || 'Could not update. Refresh before trying again.') }
     finally { lock.current = false; if (generation.current === current) setBusy(false) }

@@ -557,3 +557,7 @@ unrelated work — dead code, an inconsistency between two similar modules, a
 gap that isn't urgent but would waste time if rediscovered cold. Remove an
 entry once it's actually been fixed (or note it was fixed and why it's still
 worth knowing about, if that's useful context).
+
+## Saved-order concurrent editing resolved — 9 November 2026
+
+Versioned root/line batches, coherent server loading and device draft retention are released. Invoice ownership writers participate; stock flags retain their own ownership. [Migration and evidence](docs/plans/V8.20-SAVED-ORDER-CONCURRENT-EDIT-FIX.md). Durable cross-system financial synchronization remains a separate review, and unreleased local order-creation recovery is outside this release.

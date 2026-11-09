@@ -202,3 +202,7 @@ Node `netlify/functions/mcp-range.js`, `/api/mcp-range`: separate scoped Firebas
 ### Invoice recovery edit baseline
 
 The internal Shipping-gated invoice-allocation responses additionally return `editBase`, the saved order's edit/creation/commercial-attempt identity and invoice reference baseline. The initiating editor can adopt invoice-only version increments without replacing its unsaved commercial fields. This does not expand endpoint permissions or return order line/cost records.
+
+### Portal follow-up review count
+
+The admin-only `list_account_followup_states` action on `/api/portal-invite` accepts at most 100 UIDs and returns only UID/waiting status. `usePortalRequestCount` owns the shared menu/banner count and stale-response protection; `portalRequestContext` supplies refresh after a follow-up action. Private correspondence remains accessible only through the existing authenticated backend. [Scope and release evidence](../plans/V8.20-PORTAL-WAITING-REPLY-BADGE.md).

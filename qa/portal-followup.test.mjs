@@ -12,7 +12,7 @@ import { accountInformationTemplate } from '../src/portalFollowup.js'
 
 const require = createRequire(import.meta.url)
 const account = { id: 'fixture', role: 'customer', status: 'pending', email: 'applicant@example.test', company_name: 'Fictional Gifts', contact_name: 'Test Contact' }
-let dom, scratch, Page, createRoot, root, host, data, calls, failSave, pendingSend, failLoad
+let dom, scratch, Page, CountContext, createRoot, root, host, data, calls, failSave, pendingSend, failLoad
 const clean = () => ({ revision: 0, state: 'new', draft: null, active_message_id: null, last_sent_at: null, messages: [], from: 'QA <sender@example.test>', reply_to: 'reply@example.test', mail_configured: true })
 const copy = () => structuredClone(data)
 const click = async label => {
@@ -20,7 +20,7 @@ const click = async label => {
   assert.ok(el, 'button exists: ' + label)
   await act(async () => el.click())
 }
-const mount = async (a = account) => { host = document.createElement('div'); document.body.append(host); root = createRoot(host); await act(async () => root.render(React.createElement(Page, { account: a }))) }
+const mount = async (a = account, refresh) => { host = document.createElement('div'); document.body.append(host); root = createRoot(host); await act(async () => root.render(refresh ? React.createElement(CountContext.Provider,{value:{count:1,unavailable:false,refresh}},React.createElement(Page,{account:a})) : React.createElement(Page, { account: a }))) }
 const unmount = async () => { if (root) { await act(async () => root.unmount()); root = null; host.remove() } }
 before(async () => {
   dom = new JSDOM('<html><body></body></html>', { url: 'https://example.test/portal/accounts/fixture' })
@@ -28,13 +28,14 @@ before(async () => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   createRoot = (await import('react-dom/client')).createRoot
   scratch = await mkdtemp(join(tmpdir(), 'portal-followup-ui-'))
-  await build({ stdin: { contents: "export {default} from './src/components/PortalAccountFollowup.jsx'", resolveDir: process.cwd() }, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic', outfile: join(scratch, 'page.mjs'),
+  await build({ stdin: { contents: "export {default} from './src/components/PortalAccountFollowup.jsx';export {PortalRequestCount} from './src/portalRequestContext.js'", resolveDir: process.cwd() }, bundle: true, format: 'esm', platform: 'node', jsx: 'automatic', outfile: join(scratch, 'page.mjs'),
     plugins: [{ name: 'offline-api', setup(b) {
       b.onResolve({ filter: /^react(?:\/.*)?$/ }, a => ({ path: require.resolve(a.path), external: true }))
       b.onResolve({ filter: /\/portalInviteApi$/ }, () => ({ path: 'api', namespace: 'qa' }))
       b.onLoad({ filter: /.*/, namespace: 'qa' }, () => ({ loader: 'js', contents: `export const getAccountFollowup=(...a)=>globalThis.__followupApi.get(...a);export const saveAccountFollowupDraft=(...a)=>globalThis.__followupApi.save(...a);export const sendAccountFollowup=(...a)=>globalThis.__followupApi.send(...a);export const markAccountInformationReceived=(...a)=>globalThis.__followupApi.received(...a);export const resolveAccountFollowup=(...a)=>globalThis.__followupApi.resolve(...a);` }))
     } }] })
-  Page = (await import(pathToFileURL(join(scratch, 'page.mjs')))).default
+  const module=await import(pathToFileURL(join(scratch,'page.mjs')))
+  Page=module.default;CountContext=module.PortalRequestCount
 })
 beforeEach(() => {
   data = clean(); calls = []; failSave = false; pendingSend = null; failLoad = false
@@ -124,4 +125,15 @@ test('template tolerates missing names without inventing a customer/company', ()
   const draft = accountInformationTemplate({})
   assert.match(draft.message, /Hello,/); assert.match(draft.message, /your business/)
   assert.doesNotMatch(draft.message, /undefined|null/)
+})
+
+
+test('confirmed follow-up and information received refresh the menu count without additional sends',async()=>{
+  let refreshed=0
+  await mount(account,()=>refreshed++)
+  await click('Request more information');await click('Send email')
+  assert.equal(refreshed,1);assert.equal(data.state,'waiting')
+  await click('Mark information received')
+  assert.equal(refreshed,2)
+  assert.equal(calls.filter(c=>c[0]==='send').length,1)
 })

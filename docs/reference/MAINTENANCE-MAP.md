@@ -469,3 +469,7 @@ The form owns the user draft and comparison; `orderEditModel.js` owns version id
 `shipping.js` and Firestore rules own coherent loading and atomic guarded writes.
 `orderEditDrafts.js` stores per-operator/per-order/per-attempt device drafts.
 Invoice claim/link transactions participate without merging commercial edits.
+
+### Portal follow-up review count
+
+The admin-only `list_account_followup_states` action on `/api/portal-invite` accepts at most 100 UIDs and returns only UID/waiting status. `usePortalRequestCount` owns the shared menu/banner count and stale-response protection; `portalRequestContext` supplies refresh after a follow-up action. Private correspondence remains accessible only through the existing authenticated backend. [Scope and release evidence](../plans/V8.20-PORTAL-WAITING-REPLY-BADGE.md).

@@ -90,3 +90,5 @@ export const applyForAccountGoogle = (companyName, contactName, currency) =>
 export function retryAccessAlert(invitationId) {
   return callAdmin('retry_access_alert', {invitationId, confirmedNotSent:true})
 }
+
+export const listAccountFollowupStates = uids => callAdmin('list_account_followup_states', { uids })

@@ -1147,7 +1147,7 @@ export default async function handler(req) {
   const { uid, error } = await requireAdmin(req)
   if (error) return error
 
-  if (['get_account_followup', 'save_account_followup_draft', 'send_account_followup',
+  if (['list_account_followup_states', 'get_account_followup', 'save_account_followup_draft', 'send_account_followup',
     'mark_account_information_received', 'resolve_account_followup'].includes(action)) {
     try {
       const response = json(await accountFollowupAction({ db: getFirestore(), actorUid: uid, action, body,

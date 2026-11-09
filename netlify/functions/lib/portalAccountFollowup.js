@@ -30,6 +30,19 @@ const content = body => {
 export async function accountFollowupAction({ db, actorUid, action, body, mail, now = Date.now, send = sendFollowupEmail }) {
   const actor = (await db.collection('users').doc(actorUid).get()).data()
   if (actor?.role !== 'admin') fail('Admin access required.', 403)
+  // Read-only projection. Correspondence and drafts remain server-only.
+  if (action === 'list_account_followup_states') {
+    const uids = body.uids
+    if (!Array.isArray(uids) || uids.length > 100 || uids.some(uid =>
+      typeof uid !== 'string' || !uid || uid.length > 128 || /[/\u0000-\u001f]/.test(uid)))
+      fail('Choose up to 100 valid accounts.')
+    const states = await Promise.all([...new Set(uids)].map(async uid => {
+      const saved = await db.collection('portal_account_followups').doc(uid).get()
+      const state = saved.data() || {}
+      return {uid,waiting:state.state === 'waiting' && !state.active_message_id}
+    }))
+    return {ok:true,states}
+  }
   const uid = typeof body.uid === 'string' ? body.uid.trim() : ''
   if (!uid || uid.length > 128 || /[/\u0000-\u001f]/.test(uid)) fail('A valid account is required.')
   const user = db.collection('users').doc(uid)

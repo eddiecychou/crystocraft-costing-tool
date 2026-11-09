@@ -190,3 +190,31 @@ test('provider call uses exact text/recipient/reply inbox, bounded timeout and i
     assert.equal((await sendFollowupEmail(payload, 'same-key', { apiKey: '', fetchImpl: async () => new Response('', { status }) })).status, expected)
   assert.equal((await sendFollowupEmail(payload, 'same-key', { apiKey: '', fetchImpl: async () => { throw Error('timeout') } })).status, 'unknown')
 })
+
+
+test('read-only review status excludes waiting replies without exposing correspondence or changing records',async()=>{
+  await send()
+  const before=await state(),beforeMessage=await message(),beforeAccount=(await db.doc('users/'+uid).get()).data()
+  const result=await act('list_account_followup_states',{uids:[uid,'missing',uid]})
+  assert.deepEqual(result,{ok:true,states:[{uid,waiting:true},{uid:'missing',waiting:false}]})
+  assert.deepEqual(await state(),before);assert.deepEqual(await message(),beforeMessage)
+  assert.deepEqual((await db.doc('users/'+uid).get()).data(),beforeAccount)
+  assert.equal(sends.length,1)
+  await db.doc(root).set({active_message_id:id2},{merge:true})
+  assert.equal((await act('list_account_followup_states',{uids:[uid]})).states[0].waiting,false)
+  await db.doc(root).set({state:'received',active_message_id:null},{merge:true})
+  assert.equal((await act('list_account_followup_states',{uids:[uid]})).states[0].waiting,false)
+})
+
+test('review-status endpoint is admin-only, bounds input and never sends mail',async()=>{
+  for(const token of [null,'staff',uid]){
+    const response=await handler(request({action:'list_account_followup_states',uids:[uid]},token))
+    assert.ok([401,403].includes(response.status))
+  }
+  for(const uids of [undefined,null,Array(101).fill(uid),['bad/path'],[''],[3]])
+    await assert.rejects(act('list_account_followup_states',{uids}),error=>error.status===400)
+  const response=await handler(request({action:'list_account_followup_states',uids:[uid]}))
+  assert.equal(response.status,200)
+  assert.deepEqual(await response.json(),{ok:true,states:[{uid,waiting:false}]})
+  assert.equal(sends.length,0);assert.equal(await state(),undefined)
+})
