@@ -111,6 +111,17 @@ test('unavailable combinations stay grey and locked; missing prices are explicit
   assert.match(ws.getCell('H11').formula,/Check quantities/)
   assert.match(ws.getCell('D6').formula,/IF\(COUNTIF\(I11:I12,"Check quantities"\)>0,"Check quantities",SUM/,'Invalid pasted quantities cannot produce a plausible priced subtotal')
 })
+test('wrapped colour headings reserve space above native Excel filter buttons',async()=>{
+  const heading='Clear (Dazzle Cut)'
+  const model=modelOf([product()],{colors:[{code:'C1',name:heading,swatch:'#eeeeee'},{code:'RO',name:'Rose',swatch:'#eeaabb'}]})
+  const {ws,bytes}=await reload(model)
+  assert.equal(ws.getCell('E10').value,heading+'\nC1\nOrder qty')
+  assert.ok(ws.getRow(10).height>=72,'52pt clipped the last line in native Excel')
+  const longer=modelOf([product()],{colors:[{code:'C1',name:'非常長的水晶顏色名稱 Light Sapphire Crystal Finish',swatch:''},{code:'RO',name:'Rose',swatch:''}]})
+  const {ws:longSheet}=await reload(longer)
+  assert.ok(longSheet.getRow(10).height>ws.getRow(10).height,'Unusually long names expand the header further')
+  if(process.env.RANGE_HEADER_EVIDENCE)await writeFile(process.env.RANGE_HEADER_EVIDENCE,bytes)
+})
 test('stock formulas aggregate all colour/price rows of the same product finish',async()=>{
   const p=product({status:'stock',variants:[variant({description:'Basic'}),variant({crystal_colors:['AB'],description:'Premium',ws_price_usd:6})]})
   const {ws}=await reload(modelOf([p],{availabilityById:{[p.id]:{qty:10,byPlating:{CP:10}}}}))

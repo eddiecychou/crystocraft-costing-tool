@@ -68,7 +68,8 @@ export async function buildRangeOrderWorkbook(model, {images=new Map()}={}) {
   const firstColor=5,qtyCol=firstColor+model.colors.length,amountCol=qtyCol+1,checkCol=amountCol+1
   const letter=col=>ws.getColumn(col).letter,last=letter(checkCol)
   const currencyFormat=money(model.precision)
-  ;[14,34,36,14,...model.colors.map(()=>11),12,16,36].forEach((width,i)=>{ws.getColumn(i+1).width=width})
+  const widths=[14,34,36,14,...model.colors.map(()=>11),12,16,36]
+  widths.forEach((width,i)=>{ws.getColumn(i+1).width=width})
   const set=(address,value,options={})=>{
     const cell=ws.getCell(address);cell.value=value===''?null:value;cell.font={...FONT,...options.font};cell.alignment={vertical:'middle',wrapText:true,...options.alignment}
     if(options.input){cell.protection={locked:false};cell.fill=fill(C.input)}
@@ -90,7 +91,9 @@ export async function buildRangeOrderWorkbook(model, {images=new Map()}={}) {
   ws.mergeCells(`A8:${last}8`);set('A8','Prices valid 30 days from issue. Stock is a snapshot, not a reservation. MOQ is informational; colour-mixing rules need confirmation. Photos are representative.');ws.getRow(8).height=30
   const headers=['Photo','Product / code / size','Crystal option / finish',`Unit price (${model.currency})`,...model.colors.map(color=>`${color.name}\n${color.code==='__AS_SHOWN__'?'':color.code}\nOrder qty`),'Total qty',`Amount (${model.currency})`,'Order check']
   headers.forEach((text,i)=>{const cell=set(`${letter(i+1)}${HEADER}`,text,{font:{bold:true,color:{argb:C.white}}});cell.fill=fill(C.brand)})
-  ws.getRow(HEADER).height=52
+  // Native Excel's filter buttons occupy the bottom of each header cell.
+  // Reserve their space as well as wrapped colour names, code and Order qty.
+  ws.getRow(HEADER).height=Math.min(408,Math.max(72,...headers.map((text,i)=>height(text,Math.max(6,widths[i]-2))+12)))
   const placed=[],imageIds=new Map();let rowNumber=HEADER+1
   for(const [index,item]of model.rows.entries()){
     const product=[item.name,item.code,item.size,item.status].filter(Boolean).join('\n')
@@ -161,7 +164,7 @@ export async function buildRangeOrderWorkbook(model, {images=new Map()}={}) {
     else rr.getCell(3).value='See product photo'
   })
   const end=model.colors.length+3
-  for(const [i,text]of ['Blank quantity means no order. Grey cells are unavailable combinations.','Prices apply to the exact crystal option / finish on that row. Premium options remain separate.','Stock limits combine all colour quantities for the same product finish. Final availability needs confirmation.','Return the completed file to Crystocraft for review. This workbook does not create an order or reserve stock.','MOQ is shown for reference; colour mixing and order minimums will be confirmed.'].entries()){
+  for(const [i,text]of ['Blank quantity means no order. Grey cells are unavailable combinations.','Prices apply to the exact crystal option / finish on that row. Premium options remain separate.','Stock limits combine all colour quantities for the same product finish. Final availability needs confirmation.','Return the completed file to Crystocraft for review. This workbook does not create an order or reserve stock.','MOQ is shown for reference; colour mixing and order minimums will be confirmed.','If totals do not update, choose Formulas → Calculation Options → Automatic in Excel, or press F9 to calculate.'].entries()){
     const n=end+i;guide.mergeCells(`A${n}:D${n}`);guide.getCell(`A${n}`).value=text;guide.getCell(`A${n}`).font=FONT;guide.getCell(`A${n}`).alignment={wrapText:true,vertical:'middle'};guide.getRow(n).height=30
   }
   guide.views=[{state:'frozen',ySplit:1}]
