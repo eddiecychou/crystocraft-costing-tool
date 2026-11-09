@@ -14,14 +14,22 @@ const isWide = char => char.charCodeAt(0)>255
 // Excel has a 409pt row limit. Split unusually long public labels into visible
 // continuation rows, with ordering cells only on the first row of each option.
 function textParts(text, width=32, maxLines=14) {
-  const parts=[];let current='',line=0,lines=1
-  for(const char of String(text)){
-    if(char==='\n'){lines++;line=0}else{line+=isWide(char)?2:1;if(line>width){lines++;line=isWide(char)?2:1}}
-    if(lines>maxLines){parts.push(current);current='';lines=1;line=0}
-    current+=char
+  const parts=[];let remaining=String(text)
+  while(remaining){
+    let end=0,line=0,lines=1
+    for(const char of remaining){
+      if(char==='\n'){lines++;line=0}else{line+=isWide(char)?2:1;if(line>width){lines++;line=isWide(char)?2:1}}
+      if(lines>maxLines)break
+      end+=char.length
+    }
+    if(end===remaining.length){parts.push(remaining);break}
+    // Prefer a word/paragraph boundary, retaining its whitespace. A single
+    // unbroken token or Chinese text still splits without losing characters.
+    const boundary=Math.max(remaining.lastIndexOf(' ',end),remaining.lastIndexOf('\n',end))
+    if(boundary>end/2)end=boundary+1
+    parts.push(remaining.slice(0,end));remaining=remaining.slice(end)
   }
-  parts.push(current)
-  return parts
+  return parts.length?parts:['']
 }
 const height = (text,width=32) => String(text).split('\n').reduce((sum,line)=>sum+Math.max(1,Math.ceil([...line].reduce((n,c)=>n+(isWide(c)?2:1),0)/width)),0)*12+12
 

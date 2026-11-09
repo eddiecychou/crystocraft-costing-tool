@@ -128,6 +128,10 @@ test('long English/Chinese specifications continue visibly without dropping text
   for(let n=11;n<=ws.rowCount;n++){b+=ws.getCell(`B${n}`).value||'';c+=ws.getCell(`C${n}`).value||'';assert.ok(ws.getRow(n).height<=408);if(ws.getCell(`E${n}`).protection?.locked===false)editable++}
   assert.ok(b.includes(description));assert.ok(c.includes(option.trim()));assert.ok(ws.rowCount>12);assert.equal(editable,1)
   assert.equal(ws.getCell('B11').alignment.wrapText,true)
+  for(let n=11;n<ws.rowCount;n++){
+    const left=ws.getCell(`B${n}`).value||'',right=ws.getCell(`B${n+1}`).value||''
+    assert.ok(!(/[a-z]$/i.test(left)&&/^[a-z]/i.test(right)),'English words are not split between continuation rows')
+  }
 })
 test('photos embed once, preserve portrait/landscape proportions, and tolerate missing images',async()=>{
   const image='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q=='
