@@ -1,6 +1,6 @@
-# V8.20 — Crystocraft Range Excel order form, release preparation 9 November 2026
+# V8.20 — Crystocraft Range Excel order form, released 9 November 2026
 
-Buyer colour quantity columns, customer prices/currency and automatic totals are implemented with fictional workbook/dialog checks. No migration, rules or business-data writes. Both required exact-SHA jobs and fresh candidate/production roles are required before release. [Workflow, privacy and evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).
+Released source `25118b4`, production `6af1b4b5802a65a5f0a911ab`. Download catalogue now offers PDF or a buyer Excel order form with colour quantity columns, customer prices/currency and automatic totals. Both exact-SHA GitHub jobs, 1,162 prebuild cases, fresh candidate/production roles, ordinary Chrome downloads and independent workbook calculations pass. No migration, rules or business-data writes; native Excel interaction remains pending while the Mac is locked. [Workflow, privacy and release evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).
 
 # V8.20 — Portal waiting-for-reply badge corrected, released 9 November 2026
 
