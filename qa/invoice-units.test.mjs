@@ -29,7 +29,7 @@ globalThis.__invoiceFixture=fixture
 const stubs={
  firebase:'export const db={},storage={};export const authHeader=async()=>{throw Error("No live requests")}',
  firestore:`const f=()=>globalThis.__invoiceFixture;export const doc=(...a)=>Object.assign(a,{id:typeof a.at(-1)==='string'?a.at(-1):'qa-new-line'});export const collection=(...a)=>a;export const query=(...a)=>a;export const orderBy=()=>{};
- export const getDoc=async p=>({id:'qa-order',exists:()=>p.includes('orders'),data:()=>f().order});export const getDocs=async p=>({docs:JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
+ export {getDoc as getDocFromServer,getDocs as getDocsFromServer};export const getDoc=async p=>({id:'qa-order',exists:()=>p.includes('orders'),data:()=>f().order});export const getDocs=async p=>({docs:JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
  const fail=()=>{throw Error('Forbidden database write')};export {fail as addDoc,fail as deleteDoc,fail as runTransaction};
  export const onSnapshot=()=>()=>{};export const serverTimestamp=()=> 'QA timestamp';
  export const updateDoc=async(p,data)=>{if(!f().allowSave)fail();f().writes.push(structuredClone(data));f().order={...f().order,...data}};

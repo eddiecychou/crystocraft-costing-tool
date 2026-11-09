@@ -51,6 +51,7 @@ const stubs = {
       const id=path[path.indexOf(type)+1],data=await f().read(type==='client_quotes'?'quoteItems':'lines',id);
       return{docs:data.map(item=>({id:item.id,ref:[{},'orders',id,'lines',item.id],data:()=>item}))};
     };
+    export {getDoc as getDocFromServer,getDocs as getDocsFromServer};
     export const onSnapshot=(path,next)=>{const state=f();state.subscriptions.push({path:[...path],next});return()=>{}},serverTimestamp=()=> 'FICTIONAL timestamp';
     export const writeBatch=()=>{
       const ops=[];const add=(kind,path,data)=>{if(!f().allowWrite)throw Error('Unexpected write');ops.push({kind,path:[...path],data:structuredClone(data)})};

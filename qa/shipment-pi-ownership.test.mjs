@@ -44,6 +44,7 @@ const stubs = {
       const data=p.includes('created-order')?f().created.filter(x=>x.path.flat(Infinity).includes('lines')).map(x=>x.data):[{item_code:'SAVED-ITEM',line_no:1,qty_ordered:1,unit_price:10,line_type:'ad_hoc'}];
       return{docs:data.map((item,i)=>({id:'line-'+i,ref:[],data:()=>item}))};
     };
+    export {getDoc as getDocFromServer,getDocs as getDocsFromServer};
     export const onSnapshot=()=>()=>{},serverTimestamp=()=> 'FICTIONAL timestamp';
     export const runTransaction=async(_db,callback)=>{
       const state=f();if(!state.allowCreate)throw Error('Unexpected create');state.createCalls++;

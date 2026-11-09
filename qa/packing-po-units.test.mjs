@@ -28,7 +28,7 @@ let scratch,pages,downloaded,prints=0
 const origCreate=URL.createObjectURL,origRevoke=URL.revokeObjectURL
 const firestore=`const f=()=>globalThis.__packingFixture;const snap=(x)=>({id:x.id||'qa',ref:[],exists:()=>true,data:()=>x});
  export const doc=(...a)=>a;export const collection=(...a)=>a;export const query=(p)=>p;export const orderBy=()=>{};export const where=()=>{};
- export const getDoc=async p=>snap(p.includes('purchase_orders')?f().po:p.includes('packing_lists')?f().pl:f().order);
+ export {getDoc as getDocFromServer,getDocs as getDocsFromServer};export const getDoc=async p=>snap(p.includes('purchase_orders')?f().po:p.includes('packing_lists')?f().pl:f().order);
  export const getDocs=async p=>({docs:(p.includes('contents')?f().cartons.find(c=>p.includes(c.id))?.contents||[]:p.includes('cartons')?f().cartons:p.includes('orders')?f().po.lines:p.includes('packing_lists')?[f().pl]:[]).map(snap)});
  export const addDoc=async()=>({id:'new-carton'});export const updateDoc=async()=>{};export const deleteDoc=async()=>{};export const serverTimestamp=()=>null;
  export const writeBatch=()=>({delete(){},set(ref,value){globalThis.__packingWrites.push(value)},update(){},async commit(){}});`

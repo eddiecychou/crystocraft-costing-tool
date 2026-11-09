@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { build } from 'esbuild'
+import { orderEditBase } from '../src/orderEditModel.js'
 
 let engine, scratch, fixture
 const deferred = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b }); return { promise, resolve, reject } }
@@ -22,6 +23,8 @@ before(async () => {
       firestore: `const f=()=>globalThis.__shippingSave;
         export const collection=(...p)=>p,doc=(...p)=>{const flat=p.flat().filter(v=>typeof v==='string');if(flat.length%2)flat.push('generated-'+(++f().ids));return{id:flat.at(-1),path:flat.join('/')}};
         export const serverTimestamp=()=> 'FICTIONAL timestamp';
+        export const getDocFromServer=async()=>({exists:()=>true,data:()=>({})});
+        export const getDocsFromServer=async()=>({docs:[]});
         export const getDocs=async path=>{f().reads.push(path);if(f().readError)throw f().readError;if(f().readWait)await f().readWait.promise;return{docs:f().existing.map(id=>({id,ref:{id,path:'orders/order/lines/'+id}}))}};
         export const writeBatch=()=>{const operations=[];f().batches.push(operations);return{
           update:(ref,data)=>operations.push({kind:'update',ref,data}),
@@ -42,7 +45,7 @@ test('one acknowledged batch updates header, normalizes all lines and deletes on
   await engine.saveOrderWithLines('order', { customer_po: 'PO 中文', deposit_paid: 155 }, lines())
   assert.equal(fixture.commits, 1); assert.equal(fixture.batches.length, 1); assert.equal(fixture.acknowledged.length, 1)
   const ops = fixture.acknowledged[0]
-  assert.deepEqual(ops[0], { kind: 'update', ref: { id: 'order', path: 'orders/order' }, data: { customer_po: 'PO 中文', deposit_paid: 155, updatedAt: 'FICTIONAL timestamp' } })
+  assert.deepEqual(ops[0], { kind: 'update', ref: { id: 'order', path: 'orders/order' }, data: { customer_po: 'PO 中文', deposit_paid: 155, edit_revision: 1, last_edit_id: ops[0].data.last_edit_id, edit_origin_ms:null, updatedAt: 'FICTIONAL timestamp' } })
   assert.deepEqual(ops.map(o => o.kind), ['update', 'set', 'set', 'delete'])
   assert.equal(ops[1].ref.path, 'orders/order/lines/keep'); assert.equal(ops[1].data.unit_price, 1.222); assert.equal(ops[1].data.qty_ordered, 1000); assert.equal(ops[1].data.item_code, '中文 & item'); assert.deepEqual(ops[1].options, { merge: true })
   assert.equal(ops[2].ref.path, 'orders/order/lines/generated-1'); assert.equal(ops[2].data.unit_price, 3.125)
@@ -66,7 +69,7 @@ test('a staging failure never submits even the header already added to the batch
 })
 test('commit stays pending until acknowledgement and surfaces a late rejection', async () => {
   fixture.commitWait = deferred(); let settled = false
-  const save = engine.saveOrderWithLines('order', {}, lines()).finally(() => { settled = true })
+  const save = engine.saveOrderWithLines('order', {}, lines(), {base:orderEditBase({}),attemptId:'fixture'}).finally(() => { settled = true })
   await Promise.resolve(); await Promise.resolve(); assert.equal(settled, false); assert.equal(fixture.commits, 1)
   fixture.commitWait.reject(Error('Fictional late permissions failure'))
   await assert.rejects(save, /Fictional late permissions failure/); assert.equal(settled, true); assert.deepEqual(fixture.acknowledged, [])
@@ -75,7 +78,7 @@ test('an empty replacement deletes all existing lines in the same header batch',
   await engine.saveOrderWithLines('order', { notes: 'empty' }, [])
   assert.deepEqual(fixture.acknowledged[0].map(o => o.kind), ['update', 'delete', 'delete'])
 })
-test('the existing lines-only API retains its one-batch behavior without a header update', async () => {
+test('the lines-only API advances the edit version in its one atomic batch', async () => {
   await engine.saveOrderLines('order', lines())
-  assert.deepEqual(fixture.acknowledged[0].map(o => o.kind), ['set', 'set', 'delete'])
+  assert.deepEqual(fixture.acknowledged[0].map(o => o.kind), ['update', 'set', 'set', 'delete'])
 })

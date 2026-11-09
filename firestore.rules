@@ -1156,6 +1156,35 @@ service cloud.firestore {
       }
     }
 
+    // Commercial edit metadata. Missing revision means a historical version zero.
+    function validOrderEditTransition(before, after) {
+      let old = before.get('edit_revision', 0);
+      return old is int && old >= 0 && old < 2147483647
+        && after.edit_revision is int && after.edit_revision == old + 1
+        && after.last_edit_id is string && after.last_edit_id.size() > 0
+        && after.last_edit_id.size() <= 128
+        && after.last_edit_id != before.get('last_edit_id', '')
+        && after.get('edit_origin_ms',null) == (before.get('createdAt',null) is timestamp
+          ? before.createdAt.toMillis() : null);
+    }
+    function validOrderEditCreate(data) {
+      return (!data.keys().hasAny(['edit_revision','last_edit_id','edit_origin_ms']))
+        || (data.get('edit_revision',0) is int && data.get('edit_revision',0) == 0
+          && data.get('last_edit_id','') == '' && data.get('edit_origin_ms',null) == null);
+    }
+    function validOrderEditUpdate(before, after) {
+      let keys = after.diff(before).affectedKeys();
+      return !keys.hasAny([
+        'edit_revision','last_edit_id','edit_origin_ms','customer_id','contact_id','customer_name',
+        'erp_pi_no','erp_so_no','erp_si_no','uc_no','customer_po','invoiced_at',
+        'invoice_date','accounting_total','adjustment','adjustment_reason',
+        'order_date','est_ship_date','currency','incoterm','payment_terms',
+        'status','destination','notes','hide_total_qty','pi_revision',
+        'subtotal','total_amount','pi_subtotal','pi_total','discount_pct',
+        'discount_amount','deposit_paid','source','source_file'
+      ]) || validOrderEditTransition(before, after);
+    }
+
     // ---- Shipping & Logistics — `shipping` module, except a customer's own
     // orders (portal order history) ------------------------------------------
     match /orders/{orderId} {
@@ -1193,13 +1222,25 @@ service cloud.firestore {
         || (isApprovedCustomer()
             && profile().get('customer_id', '') != ''
             && resource.data.get('customer_id', '') == profile().get('customer_id', ''));
-      allow create: if can('shipping') && validQuoteConversionCreate() && !request.resource.data.keys().hasAny(['invoice_allocation_id','invoice_reference_revision']);
-      allow update: if can('shipping') && validQuoteConversionUpdate() && safeInvoiceSave();
+      allow create: if can('shipping') && validOrderEditCreate(request.resource.data) && validQuoteConversionCreate() && !request.resource.data.keys().hasAny(['invoice_allocation_id','invoice_reference_revision']);
+      allow update: if can('shipping') && validOrderEditUpdate(resource.data, request.resource.data) && validQuoteConversionUpdate() && safeInvoiceSave();
       allow delete: if can('shipping') && resource.data.get('quote_conversion_id','') == ''
         && (resource.data.get('invoice_allocation_id','') == '' || linkedInvoice());
       match /invoice_allocations/{operationId} {
         allow read: if can('shipping');
         allow write: if false;
+      }
+      match /lines/{lineId} {
+        function validLineEdit() {
+          let root = /databases/$(database)/documents/orders/$(orderId);
+          return !exists(root) ? existsAfter(root)
+            : (!existsAfter(root) ? request.method == 'delete'
+              : validOrderEditTransition(get(root).data, getAfter(root).data));
+        }
+        allow read: if can('shipping')
+          || (isApprovedCustomer() && profile().get('customer_id','') != ''
+            && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id','') == profile().get('customer_id',''));
+        allow write: if can('shipping') && validLineEdit();
       }
       // Require a child collection/document: ** previously matched the parent
       // too, bypassing root rules. Own-customer access excludes private receipts.
@@ -1208,7 +1249,7 @@ service cloud.firestore {
           || (isApprovedCustomer()
               && profile().get('customer_id', '') != ''
               && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id', '') == profile().get('customer_id', '')));
-        allow write: if subcollection != 'invoice_allocations' && can('shipping');
+        allow write: if subcollection != 'invoice_allocations' && subcollection != 'lines' && can('shipping');
       }
     }
     match /packing_lists/{plId} {

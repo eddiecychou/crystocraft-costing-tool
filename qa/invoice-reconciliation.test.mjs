@@ -58,7 +58,7 @@ const stubs = {
       const order=state.orders.find(o=>o.id===p[2]);return{id:p[2],exists:()=>Boolean(order),data:()=>{const{id,...data}=structuredClone(order);return data}};
     };
     const fail=()=>{throw Error('Firestore mutation/read outside order subscription is forbidden')};
-    export{fail as getDoc,fail as getDocs,fail as addDoc,fail as updateDoc,fail as deleteDoc,fail as setDoc,fail as increment,fail as serverTimestamp,fail as writeBatch,fail as runTransaction};`,
+    export{fail as getDoc,fail as getDocs,fail as getDocsFromServer,fail as addDoc,fail as updateDoc,fail as deleteDoc,fail as setDoc,fail as increment,fail as serverTimestamp,fail as writeBatch,fail as runTransaction};`,
   customer: 'export const useCustomers=()=>({customers:[]});',
   erpApi: 'export const erpLookup=async()=>[];',
   ExportFilterBar: 'export default()=>null;', ErpDocModal: 'export default()=>null;', LoadingBar: 'export default()=>null;',

@@ -10,6 +10,8 @@ import {createRequire} from 'node:module'
 import {build} from 'esbuild'
 import {JSDOM} from 'jsdom'
 import React,{act} from 'react'
+import {invoiceReferenceValues} from '../src/invoiceRecoveryModel.js'
+import {orderEditBase} from '../src/orderEditModel.js'
 import {ocDateOnly,ocYear} from '../src/ocTime.js'
 import {referenceFixtureInvoiceAction} from './invoice-recovery-page-fixture.mjs'
 import {referenceFixtureQuoteAction,fixtureSourceToken} from './quote-conversion-page-fixture.mjs'
@@ -17,6 +19,7 @@ import {referenceFixtureQuoteAction,fixtureSourceToken} from './quote-conversion
 const require=createRequire(import.meta.url)
 const dom=new JSDOM('<!doctype html><body></body>',{url:'http://fictional.test'})
 for(const k of ['window','document','HTMLElement','Event','MouseEvent','FileReader'])globalThis[k]=dom.window[k]
+globalThis.localStorage=dom.window.localStorage
 globalThis.IS_REACT_ACT_ENVIRONMENT=true
 const {createRoot}=await import('react-dom/client'),{Simulate}=await import('react-dom/test-utils')
 let scratch,Page,normOrder,validateOrder,mapWooOrderToOrder,host,root,f,errors,originalError,originalFetch
@@ -34,7 +37,8 @@ const stubs={
    if(JSON.stringify(path).includes('"orders"'))return {docs:data.lines.map(line=>({id:line.id,ref:line.id,data:()=>line}))};
    return {docs:[]};
  };
- export const onSnapshot=(path,next)=>{if(!path.includes("orders"))throw Error("Unexpected subscription");f().stockSnapshot=next;return()=>{delete f().stockSnapshot}},serverTimestamp=()=> 'FICTIONAL timestamp',where=()=>{},limit=()=>{};
+ export {getDoc as getDocFromServer,getDocs as getDocsFromServer};
+    export const onSnapshot=(path,next)=>{if(!path.includes("orders"))throw Error("Unexpected subscription");f().stockSnapshot=next;return()=>{delete f().stockSnapshot}},serverTimestamp=()=> 'FICTIONAL timestamp',where=()=>{},limit=()=>{};
  export const updateDoc=async(p,data)=>{
    if(p.includes('client_quotes')&&f().allowCreate){f().quoteLinks.push({path:[...p],data:structuredClone(data)});return}
    if(!f().allowWrite)throw Error('Unexpected order write');f().orderWrites.push({path:[...p],data:structuredClone(data)});if(f().writeError)throw f().writeError;f().order={...f().order,...data}
@@ -43,7 +47,7 @@ const stubs={
    update(p,data){if(!f().allowWrite)throw Error('Unexpected order write');f().orderWrites.push({path:[...p],data:structuredClone(data)})},
    set(p,data){if(!f().allowWrite)throw Error('Unexpected line write');f().lineWrites.push(structuredClone(data))},
    delete(){throw Error('No deletes authorized')},
-   commit:async()=>{if(f().writeError)throw f().writeError;for(const write of f().orderWrites)f().order={...f().order,...write.data}}
+   commit:async()=>{if(f().beforeCommit)await f().beforeCommit();if(f().writeError)throw f().writeError;for(const write of f().orderWrites)f().order={...f().order,...write.data}}
  });
  export const runTransaction=async(_db,callback)=>{
    if(f().createError){f().createAttempts++;throw f().createError}
@@ -111,6 +115,7 @@ before(async()=>{
    : fail()
 })
 beforeEach(()=>{
+ localStorage.clear()
  f={id:'qa-order',search:'',order:order(),lines:[{id:'qa-line',line_no:1,item_code:'QA-ITEM',description:'Fictional item',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'}],calls:[],actions:{so:async()=> 'SO-FICTIONAL',uc:async()=>({full:'UC-FICTIONAL'}),si:async()=>({si_no:'SI-FICTIONAL',uc_no:'UC-FICTIONAL'}),registry:async()=>({})},orderWrites:[],lineWrites:[],accountingWrites:[],createAttempts:0,allowWrite:false,allowAccounting:false,createdRecords:[],quoteLinks:[],uploads:[]}
  f.invoke=(kind,args)=>{f.calls.push({kind,args:structuredClone(args)});return f.actions[kind](...args)}
  f.invoiceAction=(...args)=>referenceFixtureInvoiceAction(f,...args)
@@ -122,7 +127,7 @@ beforeEach(()=>{
 })
 afterEach(async()=>{try{await act(async()=>root.unmount());assert.deepEqual(errors,[])}finally{console.error=originalError;host.remove();delete globalThis.__shipmentReferences}})
 after(async()=>{globalThis.fetch=originalFetch;dom.window.close();if(scratch)await rm(scratch,{recursive:true,force:true})})
-const render=async()=>{await act(async()=>root.render(React.createElement(Page)));await act(async()=>{await new Promise(r=>setTimeout(r,0))})}
+const render=async()=>{await act(async()=>root.render(React.createElement(Page,{uid:'fictional-admin'})));await act(async()=>{await new Promise(r=>setTimeout(r,0))})}
 const panel=()=>[...host.querySelectorAll('h2')].find(h=>h.textContent==='Document References')?.parentElement
 const input=label=>[...panel().querySelectorAll('label')].find(l=>l.querySelector('span')?.textContent===label||l.textContent.trim()===label)?.parentElement.querySelector('input')
 const allocation=label=>input(label).parentElement.querySelector('button')
@@ -1275,6 +1280,7 @@ test('saved invoice payload preserves explicit financial zeros and applies every
     notes: 'Fictional remarks\n第二行', hide_total_qty: false, pi_revision: null,
     subtotal: 100, total_amount: 100, pi_subtotal: 0, pi_total: 0,
     discount_pct: 0, discount_amount: 0, deposit_paid: 0, updatedAt: 'FICTIONAL timestamp',
+    edit_revision: 1, last_edit_id: f.orderWrites[0].data.last_edit_id, edit_origin_ms:null,
   })
   assert.deepEqual(f.accountingWrites, [{
     si_no: 'SI-FULL-PAYLOAD', uc_no: 'UC-FULL-PAYLOAD', order_id: 'qa-order',
@@ -1434,4 +1440,62 @@ test('classifying an unmatched code as Range clears an old reference and retains
   assert.equal(f.lineWrites[0].match_status, 'unmatched')
   assert.equal(f.lineWrites[0].description, 'Keep this manual description')
   assert.deepEqual(f.calls, [])
+})
+
+
+test('a conflicting real form keeps typed values, line precision and a reloadable private draft without financial writes', async () => {
+  savedInvoice({notes:'Original',total_amount:1222,accounting_total:1222})
+  f.lines[0].unit_price=1.222; f.lines[0].qty_ordered=1000
+  await render()
+  await fill(input('Customer PO'), 'Unsaved 中文 PO')
+  const beforeLines=structuredClone(f.lines)
+  f.beforeCommit=async()=>{
+    Object.assign(f.order,{notes:'Other operator',deposit_paid:99,edit_revision:1,last_edit_id:'other-operator'})
+    f.lines.push({id:'other-line',item_code:'NEW',qty_ordered:2,unit_price:3.125,line_no:2})
+    f.writeError=Object.assign(Error('Fictional stale commit'),{code:'permission-denied'})
+  }
+  await click(submit())
+  assert.equal(input('Customer PO').value,'Unsaved 中文 PO')
+  assert.equal(submit().disabled,true)
+  assert.match(host.textContent,/Your draft has been kept/)
+  assert.deepEqual(f.accountingWrites,[]);assert.equal(f.destination,undefined)
+  const key=Object.keys(localStorage).find(k=>k.startsWith('oc-order-edit:fictional-admin:qa-order:'))
+  assert.ok(key)
+  const draft=JSON.parse(localStorage.getItem(key))
+  assert.equal(draft.header.customer_po,'Unsaved 中文 PO')
+  assert.equal(draft.base.revision,0);assert.equal(draft.lines.length,beforeLines.length)
+  assert.equal(draft.lines[0].unit_price,1.222)
+  const latest=[...host.querySelectorAll('button')].find(b=>b.textContent==='Load latest and keep my draft')
+  await click(latest)
+  assert.equal(submit().disabled,false)
+  assert.equal(input('Customer PO').value,'PO-Original')
+  assert.match(host.textContent,/Your preserved draft/)
+  assert.equal(JSON.parse(localStorage.getItem(key)).header.customer_po,'Unsaved 中文 PO')
+  await act(async()=>root.unmount());root=createRoot(host)
+  f.beforeCommit=null;f.writeError=null
+  await render()
+  assert.match(host.textContent,/Your preserved draft/)
+  assert.equal(input('Customer PO').value,'PO-Original')
+  await click([...host.querySelectorAll('button')].find(b=>b.textContent==='Restore draft for review'))
+  assert.equal(input('Customer PO').value,'Unsaved 中文 PO')
+  assert.equal(submit().disabled,true)
+  assert.deepEqual(f.accountingWrites,[])
+})
+
+test('own server invoice metadata can advance the base without erasing unsaved commercial edits', async()=>{
+  savedInvoice({source:'direct_invoice',erp_si_no:'',uc_no:'',invoice_allocation_id:'',invoice_reference_revision:0})
+  let statusCalls=0
+  f.invoiceAction=async()=>{
+    statusCalls++
+    const state={...f.order,invoice_allocation_id:'fixture-operation',invoice_reference_revision:2,edit_revision:2,erp_si_no:'SI-FICTIONAL',uc_no:'UC-FICTIONAL'}
+    Object.assign(f.order,state)
+    return {order:{...invoiceReferenceValues(state),invoice_allocation_id:state.invoice_allocation_id,invoice_reference_revision:2},operation:null,history:[],editBase:orderEditBase(state)}
+  }
+  await render()
+  assert.ok(statusCalls)
+  await fill(input('Customer PO'),'Keep my unsaved PO')
+  await click(submit())
+  assert.equal(f.orderWrites[0].data.edit_revision,3)
+  assert.equal(f.orderWrites[0].data.customer_po,'Keep my unsaved PO')
+  assert.equal(f.orderWrites[0].data.erp_si_no,'SI-FICTIONAL')
 })

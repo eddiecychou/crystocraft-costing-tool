@@ -461,3 +461,11 @@ quote pointers and new order provenance; no historical dedup or quote uniqueness
 [Migration, tests and release state](../plans/V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md).
 Old source-less conversion tabs still need refresh; preventing all such manual-
 looking Creates requires a separately scoped SH-07 protocol.
+
+## Saved-order concurrent editing
+
+[Implementation and release evidence](../plans/V8.20-SAVED-ORDER-CONCURRENT-EDIT-FIX.md).
+The form owns the user draft and comparison; `orderEditModel.js` owns version identity;
+`shipping.js` and Firestore rules own coherent loading and atomic guarded writes.
+`orderEditDrafts.js` stores per-operator/per-order/per-attempt device drafts.
+Invoice claim/link transactions participate without merging commercial edits.

@@ -1,3 +1,4 @@
+import { orderEditBase } from '../../../src/orderEditModel.js'
 import {
   invoiceRecoveryView,
   invoiceResult,
@@ -114,6 +115,7 @@ export function createInvoiceRecoveryHandler({
         }
         return json({
           ...invoiceRecoveryView(state.order, op, state.history),
+          editBase: orderEditBase(state.order),
           moreHistory: state.moreHistory
         })
       }
@@ -224,6 +226,7 @@ export function createInvoiceRecoveryHandler({
                 state.operation,
                 state.history
               ),
+              editBase: orderEditBase(state.order),
               moreHistory: state.moreHistory
             })
           }
@@ -280,6 +283,7 @@ export function createInvoiceRecoveryHandler({
       const state = await repo.state(id)
       return json({
         ...invoiceRecoveryView(state.order, state.operation, state.history),
+        editBase: orderEditBase(state.order),
         moreHistory: state.moreHistory
       })
     } catch (error) {

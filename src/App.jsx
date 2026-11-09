@@ -324,8 +324,8 @@ function AdminApp({ user, profile, role }) {
                     into Credit Notes for Phase C (Cindy, 2026-08-17: no return
                     ever existed without a credit note or vice versa). */}
                 <Route path="/sales-returns" element={<Navigate to="/credit-notes" replace />} />
-                <Route path="/shipments/new" element={<Gate module="shipping"><ShipmentForm /></Gate>} />
-                <Route path="/shipments/:id" element={<Gate module="shipping"><ShipmentForm /></Gate>} />
+                <Route path="/shipments/new" element={<Gate module="shipping"><ShipmentForm uid={user?.uid} /></Gate>} />
+                <Route path="/shipments/:id" element={<Gate module="shipping"><ShipmentForm uid={user?.uid} /></Gate>} />
                 <Route path="/logistics/new" element={<Gate module="shipping"><LogisticsVendorForm /></Gate>} />
                 <Route path="/logistics/:id" element={<Gate module="shipping"><LogisticsVendorForm /></Gate>} />
                 <Route path="/portal" element={<Gate module="portal"><Portal /></Gate>} />

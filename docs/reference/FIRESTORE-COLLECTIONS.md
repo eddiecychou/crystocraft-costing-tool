@@ -246,3 +246,7 @@ Private Product Design project register and `/updates/{eventId}` immutable revis
 - enquiries: component lines snapshot source_collection=crystal_products, variant and sample
   IDs/revisions, unit, description, application and image path. attachments stores private
   paths, original filenames and content hashes. All-unpriced estimated_total is null.
+
+### Saved-order edit metadata
+
+Existing `orders` adopt internal `edit_revision`, `last_edit_id`, and `edit_origin_ms` lazily. Full header/line edits must advance the root version atomically, enforced by rules. Invoice claim/link Admin transactions also advance the version, retaining the last commercial attempt ID. Printed revisions and stock reservation flags retain their existing meaning. No new collection or bulk record migration. See [concurrent-edit release](../plans/V8.20-SAVED-ORDER-CONCURRENT-EDIT-FIX.md).

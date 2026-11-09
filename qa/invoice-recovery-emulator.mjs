@@ -24,6 +24,7 @@ import { createInvoiceTestDatabase } from './invoice-recovery-postgres-fixture.m
 import { createInvoiceRecoveryRepository } from '../netlify/functions/lib/invoiceRecoveryRepository.js'
 import { createInvoiceRecoveryHandler } from '../netlify/functions/lib/invoiceRecovery.js'
 import { createInvoiceRecoverySql } from '../netlify/functions/lib/invoiceRecoverySql.js'
+import {orderEditBase,orderEditPatch} from '../src/orderEditModel.js'
 import { invoiceExpected } from '../src/invoiceRecoveryModel.js'
 if (
   !/^(127\.0\.0\.1|localhost):\d+$/.test(
@@ -209,6 +210,8 @@ test(
     assert.equal(saved.erp_si_no, 'SI260100')
     assert.equal(saved.uc_no, 'UC100/26')
     assert.equal(saved.invoice_reference_revision, 2)
+    assert.equal(saved.edit_revision,2)
+    assert.equal((await request('status')).body.editBase.revision,2)
     for (const [key, value] of Object.entries(original))
       assert.deepEqual(saved[key], value)
     assert.deepEqual(
@@ -468,7 +471,7 @@ test(
       { invoice_reference_revision: 0 }
     ]) {
       const batch = writeBatch(client)
-      batch.update(ref, { ...patch, notes: 'Must not save' })
+      batch.update(ref, { ...orderEditPatch(orderEditBase(await current()),crypto.randomUUID()), ...patch, notes: 'Must not save' })
       batch.update(doc(client, 'orders', id, 'lines', 'existing'), {
         unit_price: 0
       })
@@ -482,12 +485,13 @@ test(
     )
     await assertSucceeds(
       updateDoc(ref, {
+        ...orderEditPatch(orderEditBase(await current()),crypto.randomUUID()),
         erp_si_no: 'SI260020',
         invoice_reference_revision: 3,
         notes: 'Deliberate linked correction'
       })
     )
-    await assertSucceeds(updateDoc(ref, { notes: 'Ordinary save' }))
+    await assertSucceeds(updateDoc(ref, { ...orderEditPatch(orderEditBase(await current()),crypto.randomUUID()), notes: 'Ordinary save' }))
     await client.terminate()
   },
   { timeout: 20000 }
@@ -504,13 +508,14 @@ test(
     )
     await assertFails(deleteDoc(ref))
     await assertSucceeds(
-      updateDoc(ref, { notes: 'Commercial note while pending' })
+      updateDoc(ref, { ...orderEditPatch(orderEditBase(await current()),crypto.randomUUID()), notes: 'Commercial note while pending' })
     )
     await assertSucceeds(
       setDoc(doc(client, 'orders', 'legacy-order'), { erp_si_no: 'SI260020' })
     )
     await assertSucceeds(
       updateDoc(doc(client, 'orders', 'legacy-order'), {
+        edit_revision:1,last_edit_id:'legacy-first-edit',
         erp_si_no: 'SI260021'
       })
     )

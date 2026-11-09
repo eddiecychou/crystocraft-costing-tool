@@ -539,3 +539,11 @@ candidate/production admin/customer gates, complete targeted financial-read/API
 checks and served-asset proof. Production 6aedaa36685b16f6596b98e9 supersedes the
 initial 04a713e publication with the final known-accounting/unknown-ledger-base
 guard. No historical financial upsert was performed during verification.
+
+## Saved-order concurrent-edit correction
+
+[Implementation and release evidence](V8.20-SAVED-ORDER-CONCURRENT-EDIT-FIX.md).
+The form owns the user draft and comparison; `orderEditModel.js` owns version identity;
+`shipping.js` and Firestore rules own coherent loading and atomic guarded writes.
+`orderEditDrafts.js` stores per-operator/per-order/per-attempt device drafts.
+Invoice claim/link transactions participate without merging commercial edits.

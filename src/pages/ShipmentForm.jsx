@@ -5,7 +5,7 @@ import { storage, authHeader } from '../firebase'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
   applyExtractedPiHeader,
-  getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderWithLines, deleteOrder,
+  getOrder, getOrderLines, getOrderEditSnapshot, createOrderWithLinesAllocatingSo, updateOrder, saveOrderWithLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, lineClassificationPatch, rematchLines, validateOrder, computeOrderTotals,
   orderCreateFields, orderSaveFields, invoiceRegistryFields, orderEditFields,
 } from '../shipping'
@@ -44,6 +44,8 @@ import ShipmentAccountingTotal from '../components/shipping/ShipmentAccountingTo
 import ShipmentDepositPaid from '../components/shipping/ShipmentDepositPaid'
 import ShipmentDiscountRow from '../components/shipping/ShipmentDiscountRow'
 import { ShipmentSubtotalRows, ShipmentTotalRow } from '../components/shipping/ShipmentOrderTotalRows'
+import OrderEditConflict from '../components/shipping/OrderEditConflict'
+import { loadOrderEditDrafts, storeOrderEditDraft, removeOrderEditDraft } from '../orderEditDrafts'
 import { invoicePaymentTotals, invoiceDepositError } from '../invoicePayments'
 import { doc, onSnapshot, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -91,16 +93,16 @@ const blankHeader = {
   pi_revision: '',
 }
 
-export default function ShipmentForm() {
+export default function ShipmentForm({ uid }) {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   // A route change must never reuse another order's editable state, pending
   // reads, stock subscription or async allocation/import state.
   const newContext = ['customer_id', 'from_quote', 'direct'].map(k => searchParams.get(k) || '')
-  return <ShipmentEditor key={id ? `order:${id}` : `new:${JSON.stringify(newContext)}`} />
+  return <ShipmentEditor uid={uid} key={id ? `order:${uid || ''}:${id}` : `new:${uid || ''}:${JSON.stringify(newContext)}`} />
 }
 
-function ShipmentEditor() {
+function ShipmentEditor({ uid }) {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
@@ -124,6 +126,67 @@ function ShipmentEditor() {
     return preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader
   })
   const [lines, setLines]     = useState([])
+  const editBase = useRef(null)
+  const saveAttempt = useRef(null)
+  const [editConflict, setEditConflict] = useState(null)
+  const [editDrafts, setEditDrafts] = useState([])
+  const [draftWarning, setDraftWarning] = useState('')
+  const [checkingEdit, setCheckingEdit] = useState(false)
+
+  function keepDraft(draft) {
+    const stored = storeOrderEditDraft(uid, id, draft)
+    setEditDrafts(old => [draft, ...old.filter(item => item.id !== draft.id)])
+    if (uid && !stored) setDraftWarning('Your draft is kept in this tab, but device storage is unavailable. Keep this page open until you have copied your edits.')
+  }
+
+  async function checkLatestEdit() {
+    setCheckingEdit(true)
+    try {
+      const latest = await getOrderEditSnapshot(id)
+      if (mounted.current) setEditConflict(current => ({ ...current, latest, error: '' }))
+    } catch (error) {
+      if (mounted.current) setEditConflict(current => ({ ...current, error: error.message }))
+    } finally { if (mounted.current) setCheckingEdit(false) }
+  }
+
+  function loadLatestEdit() {
+    const latest = editConflict?.latest
+    if (!latest) return
+    const draft = { ...saveAttempt.current, header, lines, base: editBase.current,
+      savedAt: new Date().toISOString() }
+    if (draft.id) keepDraft(draft)
+    const next = orderEditFields(latest.order, blankHeader.destination)
+    editBase.current = latest.base
+    referenceBase.current = next
+    setHeader(next); setLines(latest.lines); setSourceFile(latest.order.source_file || null)
+    saveAttempt.current = null
+    setEditConflict(null); setExtractError('')
+  }
+
+  async function restoreEditDraft(draft) {
+    saveAttempt.current = draft
+    editBase.current = draft.base
+    referenceBase.current = draft.header
+    setHeader(draft.header); setLines(draft.lines)
+    setEditConflict({ latest: null, error: '' })
+    await checkLatestEdit()
+  }
+
+  function discardEditDraft(draftId) {
+    if (!window.confirm('Discard this preserved draft from this device?')) return
+    removeOrderEditDraft(uid, id, draftId)
+    if (saveAttempt.current?.id === draftId) saveAttempt.current = null
+    setEditDrafts(old => old.filter(draft => draft.id !== draftId))
+  }
+
+  useEffect(() => {
+    if (!editConflict || !saveAttempt.current) return
+    const draft = { ...saveAttempt.current, header, lines, base: editBase.current,
+      savedAt: new Date().toISOString() }
+    saveAttempt.current = draft
+    keepDraft(draft)
+  }, [header, lines, editConflict])
+
   const [customers, setCustomers] = useState([])
   const [rangeProducts, setRangeProducts] = useState([])
   const [sourceFile, setSourceFile] = useState(null)   // { url, name } existing
@@ -198,20 +261,34 @@ function ShipmentEditor() {
     ]
     if (isEdit) {
       loads.push((async () => {
-        const o = await getOrder(id)
-        if (!alive) return
-        if (!o) throw new Error('This order could not be found.')
-        // Apply only a complete matching pair. A failed line read must never
-        // expose a partially loaded form that can overwrite existing lines.
-        const orderLines = await getOrderLines(id)
-        if (!alive) return
-        if (o) {
-          const edit=orderEditFields(o, blankHeader.destination)
-          referenceBase.current=edit
-          setHeader(edit)
-          setSourceFile(o.source_file || null)
-          setLines(orderLines)
+        const drafts = loadOrderEditDrafts(uid, id)
+        let snapshot
+        try { snapshot = await getOrderEditSnapshot(id) }
+        catch (error) {
+          if (!alive) return
+          if (!drafts.length) throw error
+          const draft = drafts[0]
+          editBase.current = draft.base
+          saveAttempt.current = draft
+          referenceBase.current = draft.header
+          setHeader(draft.header); setLines(draft.lines); setEditDrafts(drafts)
+          setEditConflict({ latest: null, error: error.message })
+          return
         }
+        if (!alive) return
+        const { order: o, lines: orderLines, base } = snapshot
+        editBase.current = base
+        const pending = drafts.filter(draft => {
+          if (snapshot.lastEditId === draft.id && base.revision === draft.base.revision + 1) {
+            removeOrderEditDraft(uid, id, draft.id)
+            return false
+          }
+          return true
+        })
+        setEditDrafts(pending)
+        const edit = orderEditFields(o, blankHeader.destination)
+        referenceBase.current = edit
+        setHeader(edit); setSourceFile(o.source_file || null); setLines(orderLines)
       })())
     }
     if (hasQuoteSource) {
@@ -349,6 +426,11 @@ function ShipmentEditor() {
       if(referenceBase.current&&!sameInvoiceValue(invoiceReferenceValues(h),invoiceReferenceValues(referenceBase.current)))return h
       const next={...h,...state.order}
       referenceBase.current={...next}
+      if (editBase.current && state.editBase &&
+          state.editBase.lastCommercialId === editBase.current.lastCommercialId &&
+          sameInvoiceValue(state.editBase.created, editBase.current.created)) {
+        editBase.current = state.editBase
+      }
       return next
     })
   }
@@ -367,7 +449,7 @@ function ShipmentEditor() {
   },[id,isEdit,fetching,loadError,header.invoice_allocation_id,header.source])
 
   async function runInvoiceAction(action,details={}) {
-    if(saveInFlight.current||invoiceInFlight.current||allocatingSo||allocatingUc)return
+    if(editConflict||saveInFlight.current||invoiceInFlight.current||allocatingSo||allocatingUc)return
     if(!id){setSiError('Create and save this order before raising its invoice.');return}
     invoiceInFlight.current=true;++invoiceReadSequence.current
     setAllocatingSi(true);setSiError('')
@@ -667,7 +749,7 @@ function ShipmentEditor() {
 
   async function handleSave(e) {
     e.preventDefault()
-    if (saveInFlight.current || fetching || loadError || allocatingSo || allocatingUc || allocatingSi || extracting) return
+    if (editConflict || saveInFlight.current || fetching || loadError || allocatingSo || allocatingUc || allocatingSi || extracting) return
     saveInFlight.current = true
     setSaving(true)
     setSavePending(false)
@@ -696,7 +778,17 @@ function ShipmentEditor() {
       }
       // Header and line reconciliation commit together. A slow read or an
       // offline queued batch remains pending, never a successful timeout.
-      await saveOrderWithLines(id, {...orderSaveFields(header, computed, accountingTotal, adjustment),...invoiceReferenceSavePatch(header,referenceBase.current)}, lines)
+      const stableLines = lines.map(line => ({ ...line, id: line.id || crypto.randomUUID() }))
+      setLines(stableLines)
+      const previous = saveAttempt.current
+      const attemptId = previous && sameInvoiceValue(previous.header, header) && sameInvoiceValue(previous.lines, stableLines)
+        ? previous.id : crypto.randomUUID()
+      const draft = { id: attemptId, header, lines: stableLines, base: editBase.current, savedAt: new Date().toISOString() }
+      saveAttempt.current = draft
+      keepDraft(draft)
+      await saveOrderWithLines(id, {...orderSaveFields(header, computed, accountingTotal, adjustment),...invoiceReferenceSavePatch(header,referenceBase.current)}, stableLines,
+        { base: editBase.current, attemptId })
+      removeOrderEditDraft(uid, id, attemptId)
 
       // Keep the Postgres financial record in step. Deliberately AFTER the
       // Firestore write and deliberately not awaited into the failure path:
@@ -708,7 +800,11 @@ function ShipmentEditor() {
       }
       if (mounted.current) navigate('/shipments')
     } catch (err) {
-      if (mounted.current) setExtractError(err.message || 'Could not save order.')
+      if (mounted.current) {
+        setExtractError(err.message || 'Could not save order.')
+        if (saveAttempt.current && err.code === 'order-edit-conflict')
+          setEditConflict({ latest: err.latest || null, error: '' })
+      }
     } finally {
       clearTimeout(pendingTimer)
       saveInFlight.current = false
@@ -751,13 +847,13 @@ function ShipmentEditor() {
       <ShipmentPageHeader
         id={id} isEdit={isEdit} isDirect={isDirect} fromQuote={hasQuoteSource}
         invoiceNo={header.erp_si_no} ucNo={header.uc_no}
-        allocatingSi={allocatingSi} saving={saving} siError={siError}
+        allocatingSi={allocatingSi} saving={saving || Boolean(editConflict)} siError={siError}
         onRaiseInvoice={doAllocateSi} tab={tab} onTabChange={setTab}
       />
 
       {isEdit&&(invoiceState||header.invoice_allocation_id||invoiceExpected(header).si||header.source==='direct_invoice')&&<ShipmentInvoiceRecovery
         state={invoiceState||(!header.invoice_allocation_id?{order:header,expected:invoiceExpected(header),history:[],operation:null,canStartNew:true}:null)}
-        busy={allocatingSi||saving} error={siError} hasInvoice={!!invoiceExpected(header).si} onAction={runInvoiceAction}
+        busy={allocatingSi||saving||Boolean(editConflict)} error={siError} hasInvoice={!!invoiceExpected(header).si} onAction={runInvoiceAction}
       />}
 
       {hasQuoteSource&&<QuoteOrderRecovery state={quoteRecovery} busy={saving||quoteRecoveryBusy} error={quoteRecoveryError}
@@ -780,7 +876,10 @@ function ShipmentEditor() {
       {/* Order tab (or new shipment form) */}
       {(!isEdit || tab === 'order') && showQuoteDraft && (
       <form onSubmit={isEdit ? handleSave : handleCreate} className="space-y-5">
-      <fieldset disabled={saving} className="space-y-5 min-w-0">
+      {isEdit && <OrderEditConflict conflict={editConflict} drafts={editDrafts} warning={draftWarning}
+        busy={saving || checkingEdit} onCheck={checkLatestEdit} onLoadLatest={loadLatestEdit}
+        onRestore={restoreEditDraft} onDiscard={discardEditDraft} />}
+      <fieldset disabled={saving || Boolean(editConflict)} className="space-y-5 min-w-0">
         {hasQuoteSource && (
           quoteLoad.status === 'empty' ? (
             <p role="status" className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">{quoteLoad.message}</p>
@@ -983,7 +1082,7 @@ function ShipmentEditor() {
         {extractError && <p id="shipment-form-error" role="alert" className="text-sm text-brand-600 break-words">{extractError}</p>}
         {savePending && <p role="status" className="text-sm text-ink-60 break-words">Save is still pending confirmation. Keep this page open; if you are offline, reconnect to finish. Please do not submit again.</p>}
         <div className="flex items-center gap-3 pt-1">
-          <button type="submit" className="btn-primary" disabled={saving || allocatingSo || allocatingUc || allocatingSi || extracting || (!isEdit && lines.length === 0)}>
+          <button type="submit" className="btn-primary" disabled={Boolean(editConflict) || saving || allocatingSo || allocatingUc || allocatingSi || extracting || (!isEdit && lines.length === 0)}>
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Order'}
           </button>
           <button type="button" className="btn-secondary" onClick={() => navigate('/shipments')}>Cancel</button>

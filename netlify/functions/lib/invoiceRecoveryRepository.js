@@ -1,3 +1,4 @@
+import { orderEditRevision } from '../../../src/orderEditModel.js'
 import { randomUUID } from 'node:crypto'
 import {
   invoiceReferenceValues,
@@ -43,6 +44,9 @@ export function createInvoiceRecoveryRepository(
   const referencePatch = (saved, patch) => ({
     ...patch,
     invoice_reference_revision: invoiceReferenceRevision(saved) + 1,
+    // Invoice ownership also invalidates an older commercial editor. Keep the
+    // last commercial attempt ID so its own invoice action can adopt this base.
+    edit_revision: orderEditRevision(saved) + 1,
     updatedAt: stamp()
   })
   return {

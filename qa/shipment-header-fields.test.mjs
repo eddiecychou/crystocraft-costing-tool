@@ -19,7 +19,7 @@ before(async () => {
       react: 'export const useState=()=>{throw Error("Unexpected hook")},useEffect=useState;',
       criticalComponents: 'const fail=()=>{throw Error("Unexpected product lookup")};export{fail as buildProductIndex,fail as matchProductCode};',
       soNumber: 'export const JES_SEED_BY_YEAR={};const fail=()=>{throw Error("Unexpected number allocation")};export{fail as soYear,fail as formatSoNo};',
-      firestore: 'const fail=()=>{throw Error("Unexpected database access")};export{fail as collection,fail as doc,fail as getDoc,fail as getDocs,fail as addDoc,fail as updateDoc,fail as deleteDoc,fail as onSnapshot,fail as query,fail as orderBy,fail as serverTimestamp,fail as writeBatch,fail as runTransaction};',
+      firestore: 'const fail=()=>{throw Error("Unexpected database access")};export{fail as collection,fail as doc,fail as getDoc,fail as getDocs,fail as getDocFromServer,fail as getDocsFromServer,fail as addDoc,fail as updateDoc,fail as deleteDoc,fail as onSnapshot,fail as query,fail as orderBy,fail as serverTimestamp,fail as writeBatch,fail as runTransaction};',
     }[a.path] }))
   } }] })
   ;({ orderEditFields } = await import(pathToFileURL(join(scratch, 'engine.mjs'))))

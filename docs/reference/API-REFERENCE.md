@@ -198,3 +198,7 @@ Node `netlify/functions/mcp-range.js`, `/api/mcp-range`: separate scoped Firebas
   no-store, no signed or permanent public URL. The server reads bytes only after these
   checks. Direct product Storage reads remain swatch-staff-only; the three-document
   authorization cannot fit Storage's two distinct Firestore document limit.
+
+### Invoice recovery edit baseline
+
+The internal Shipping-gated invoice-allocation responses additionally return `editBase`, the saved order's edit/creation/commercial-attempt identity and invoice reference baseline. The initiating editor can adopt invoice-only version increments without replacing its unsaved commercial fields. This does not expand endpoint permissions or return order line/cost records.

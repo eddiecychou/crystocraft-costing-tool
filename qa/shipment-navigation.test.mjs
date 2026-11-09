@@ -32,6 +32,7 @@ const stubs = {
     export const doc=(...p)=>Object.assign(p,{id:p.at(-1)}),collection=(...p)=>p,query=(...p)=>p,orderBy=()=>{};
     export const getDoc=async p=>{if(!p.includes('orders'))throw Error('Unexpected document read');const id=p.at(-1);f().reads.push(id);return{id,exists:()=>true,data:()=>({...f().record(id),...f().overrides})}};
     export const getDocs=async raw=>{const p=raw.flat();if(p.includes('range_products'))return{docs:[]};if(!p.includes('orders'))throw Error('Unexpected collection read');const id=p[p.indexOf('orders')+1];return{docs:[{id:'line-'+id,data:()=>({line_no:1,item_code:'ITEM-'+id,description:'Fictional item '+id,qty_ordered:10,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'})}]}};
+    export {getDoc as getDocFromServer,getDocs as getDocsFromServer};
     export const onSnapshot=()=>()=>{},serverTimestamp=()=> 'FICTIONAL timestamp';
     export const writeBatch=()=>{const operations=[];const add=(kind,path,data)=>{if(!f().allowSave)throw Error('No fictional save authorized');operations.push({kind,path,data})};return{update:(p,d)=>add('update',p,d),set:(p,d)=>add('set',p,d),delete:p=>add('delete',p),commit:async()=>{const state=f();state.batches.push(operations);if(state.saveGate)await state.saveGate.promise}}};
     const fail=()=>{throw Error('No database writes or allocation authorized')};export{fail as runTransaction,fail as addDoc,fail as updateDoc,fail as deleteDoc};`,

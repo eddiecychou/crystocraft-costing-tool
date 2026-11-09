@@ -2,9 +2,10 @@ import { INCOTERMS, PAYMENT_TERMS, ORDER_CURRENCIES, ORDER_STATUSES, orderStatus
 export { INCOTERMS, PAYMENT_TERMS, ORDER_CURRENCIES, ORDER_STATUSES, orderStatusOf, NO_INVOICE_REASONS, noInvoiceReasonOf, LINE_TYPES, lineTypeOf, isPackable, orderUc, orderSi, orderSoDisplay, normOrder, normLine, computeOrderTotals, validateOrderLine, validateOrder } from './shippingModel.js'
 export {wooRegistryAutofillFields,invoiceRegistryFields,savedInvoiceRegistryFields} from './invoiceRegistryFields.js'
 import { useState, useEffect } from 'react'
+import { orderEditBase, sameOrderEditBase, orderEditPatch, orderEditConflict } from './orderEditModel.js'
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp, writeBatch, runTransaction,
+  onSnapshot, query, orderBy, serverTimestamp, writeBatch, runTransaction, getDocFromServer, getDocsFromServer,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { numOrNull } from './domain/validation'
@@ -157,25 +158,55 @@ export async function updateOrder(id, patch) {
 // `set(..., { merge:true })` creates-or-updates and cannot throw on a missing
 // doc, and the diff deletes what the user removed. The lines subcollection ends
 // up matching the form, whatever state it was in before.
-export async function saveOrderLines(orderId, lines) {
-  const existing = await getDocs(LINES(orderId))
-  const batch = writeBatch(db)
-  reconcileOrderLines(batch, orderId, lines, existing)
-  await batch.commit()
+// Server-confirmed header/line snapshot. Versioned line writes also advance the
+// root, so equal versions around this query establish one editable baseline.
+export async function getOrderEditSnapshot(orderId) {
+  const ref = doc(db, 'orders', orderId)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const before = await getDocFromServer(ref)
+    if (!before.exists()) throw Object.assign(Error('This order could not be found.'), { code: 'not-found' })
+    const items = await getDocsFromServer(LINES(orderId))
+    const after = await getDocFromServer(ref)
+    if (!after.exists()) throw Object.assign(Error('This order could not be found.'), { code: 'not-found' })
+    const base = orderEditBase(after.data())
+    if (sameOrderEditBase(orderEditBase(before.data()), base)) {
+      const lines = items.docs.map(d => ({ id: d.id, ...normLine(d.data()) }))
+      lines.sort((a,b) => (a.line_no ?? Number.MAX_SAFE_INTEGER) - (b.line_no ?? Number.MAX_SAFE_INTEGER) || a.id.localeCompare(b.id))
+      return { order: { id: orderId, ...normOrder(after.data()) }, lines, base,
+        lastEditId: after.data().last_edit_id || '' }
+    }
+  }
+  throw Error('This order is being updated. Retry loading it before editing.')
 }
 
-// Save an existing order's commercial header and complete line set together.
-// The read must succeed before ANY mutation is staged. One rejected batch leaves
-// both unchanged; update (rather than set) also refuses to recreate a deleted
-// order. The returned promise means server acknowledgement, including when the
-// SDK has queued the batch locally while offline. Callers must keep pending
-// feedback until it settles and update the financial index only after success.
-export async function saveOrderWithLines(orderId, patch, lines) {
+// Retained narrow API. Callers editing an earlier snapshot pass that baseline.
+export async function saveOrderLines(orderId, lines, options) {
+  return saveOrderWithLines(orderId, {}, lines, options)
+}
+
+export async function saveOrderWithLines(orderId, patch, lines, options = {}) {
+  const base = options.base || (await getOrderEditSnapshot(orderId)).base
+  const attemptId = options.attemptId || crypto.randomUUID()
   const existing = await getDocs(LINES(orderId))
+  const deletions = existing.docs.filter(d => !(lines || []).some(line => line.id === d.id)).length
+  if (1 + (lines || []).length + deletions > 500)
+    throw Error('This edit exceeds the atomic save limit. Keep this draft and reduce the number of line changes.')
   const batch = writeBatch(db)
-  batch.update(doc(db, 'orders', orderId), { ...patch, updatedAt: serverTimestamp() })
+  batch.update(doc(db, 'orders', orderId), { ...patch, ...orderEditPatch(base, attemptId), updatedAt: serverTimestamp() })
   reconcileOrderLines(batch, orderId, lines, existing)
-  await batch.commit()
+  try {
+    await batch.commit()
+    return { attemptId }
+  } catch (error) {
+    // A lost acknowledgement can be checked without issuing another batch.
+    // Genuine access failures retain their original error and never become success.
+    let latest
+    try { latest = await getOrderEditSnapshot(orderId) } catch { throw error }
+    if (latest.lastEditId === attemptId && latest.base.revision === base.revision + 1)
+      return { attemptId }
+    if (!sameOrderEditBase(latest.base, base)) throw orderEditConflict(latest)
+    throw error
+  }
 }
 
 function reconcileOrderLines(batch, orderId, lines, existing) {
