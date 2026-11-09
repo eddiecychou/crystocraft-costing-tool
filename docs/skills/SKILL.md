@@ -286,6 +286,16 @@ emulator job. App and private read-only credentials deployed with fresh two-role
 - Edge fns: `compose-message`, `refresh-email-summary`, `discuss-customer-email`, `route-email-question`, `compose-email-answer`, `customer-order-history`
 - Collections: `customers/{id}` (+ `enquiries`=Interaction Log, `email_threads`, `whatsapp_threads`, `alibaba_threads`, `files`, `assets`, `proposal/current`) — internal CRM access is admin or staff with `customers`; the existing linked-customer exceptions apply only to eligible assets/published proposals, never files. Brand spec: `../specs/Customer_Brand_Gallery_Spec.md`; files: `../plans/V8.20-CUSTOMER-FILES.md`.
 
+- **Local B2B dashboard workbench (10 November, not released):** `Dashboard.jsx`,
+  `components/dashboard/WorkbenchTasks` / `WorkbenchCustomerDialog`, pure
+  `dashboardWorkbench.js`, atomic `domain/customerWorkActivation` and explicit
+  `customerWorkStages`; `customerActivityApi` → Node `/api/customer-workbench`.
+  All open tasks first, B2B-only scope, parallel three-stage work, independent
+  30/60/90/180/365 contact review, hidden summaries/notes, explicit quiet90 existing-
+  customer targeting without changing cooldowns or send review. Preserve existing
+  reviewed pipeline/history, stable retries and unsaved drafts. Optional field and
+  no-bulk-migration contract: `../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md`.
+
 ### CRM — Marketing contacts, campaigns, Daily Drafts → see `MARKETING-WORKFLOW.md`
 - Lead viewers: `components/crm/ContactEmailThreads.jsx`, `ContactWhatsAppThreads.jsx`, `ContactAlibabaThreads.jsx`, `ContactInteractionLog.jsx`. `MarketingContactDetail` imports them directly; `MarketingContacts` retains compatibility named exports. Lead/customer semantics remain distinct. `qa/crm-components.test.mjs` exercises the real components through fictional boundaries in `test:customer-workspace` (prebuild and GitHub).
 - Pages: `Marketing.jsx` (tabs), `src/marketing/DailyDrafts.jsx`, `MarketingContacts.jsx`, `MarketingContactDetail.jsx`, `Campaigns.jsx`, `BlogGenerator.jsx`

@@ -85,3 +85,26 @@ test('successful generation preserves creation payload and resets compose while 
   assert.ok(button('Generate Drafts').disabled)
   assert.ok(!f.calls.some(c => ['sendPersonalEmail', 'markDraftSent', 'addInteraction'].includes(c[0])))
 })
+
+const contactMode=()=>panel().querySelector('select')
+const daysAgo=n=>new Date(Date.now()-n*86400000).toISOString()
+test('quiet 90 mode uses real recorded contact dates before the candidate cap, excludes B2C/leads and never sends',async()=>{
+ f.contacts=Array.from({length:75},(_,i)=>({id:'lead'+i,status:'subscribed',emailable:true,audiences:['trade'],tags:[],email:'lead'+i+'@example.test'}))
+ f.customers.push({id:'unknown',company_name:'Unknown history',contacts:[{email:'unknown@example.test'}]})
+ f.handlers.fetchCustomerActivity=async()=>({checkedAt:new Date().toISOString(),customers:[{customerId:'trade',lastContactAt:daysAgo(120),historyState:'known'},{customerId:'gift',lastContactAt:daysAgo(10),historyState:'known'},{customerId:'retail',lastContactAt:daysAgo(180),historyState:'known'},{customerId:'unknown',lastContactAt:null,historyState:'unknown'}]})
+ await readyMaster();await change(contactMode(),'quiet90');assert.equal(generated(),undefined)
+ await click(button('Generate Drafts'));assert.deepEqual(candidateIds(),['trade']);assert.match(panel().textContent,/Unknown or partial histories are excluded/)
+ assert.ok(!f.calls.some(c=>['sendPersonalEmail','markDraftSent','addInteraction'].includes(c[0])))
+})
+test('quiet history failure preserves composer, stops generation, and never falls back to normal audience',async()=>{
+ f.handlers.fetchCustomerActivity=async()=>{throw Error('Fictional history unavailable')}
+ await readyMaster();await change(targeting(),'Keep this targeting');await change(contactMode(),'quiet90');await click(button('Generate Drafts'))
+ assert.equal(generated(),undefined);assert.equal(targeting().value,'Keep this targeting');assert.equal(host.querySelector('input[placeholder=Subject]').value,'Fictional master subject');assert.match(host.textContent,/Fictional history unavailable/)
+})
+test('quiet mode preserves outreach/topic cooldowns and includes current work in the reviewed draft context',async()=>{
+ f.customers.find(c=>c.id==='trade').sales_pipeline={status:'active',detail:'A long-running custom sample request'}
+ f.handlers.fetchCustomerActivity=async()=>({customers:[{customerId:'trade',lastContactAt:daysAgo(120),historyState:'known'},{customerId:'gift',lastContactAt:daysAgo(120),historyState:'partial'}]})
+ f.prior=[{id:'prior',parentId:'trade',date:{toDate:()=>new Date()}}]
+ await readyMaster();await change(contactMode(),'quiet90');await click(button('Generate Drafts'));assert.equal(generated(),undefined,'Topic exclusion remains in force')
+ await click(includePrior());await click(button('Generate Drafts'));assert.deepEqual(candidateIds(),['trade']);assert.match(generated()[3][0].notes,/long-running custom sample/)
+})

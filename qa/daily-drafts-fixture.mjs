@@ -14,6 +14,7 @@ export function dailyDraftsFixturePlugin() {
     ['src/domain/draftMemoryRules', 'export const MAX_ACTIVE_RULES=8;\n' + boundary(['listDraftMemoryRules', 'createDraftMemoryRule', 'approveDraftMemoryRule', 'rejectDraftMemoryRule', 'disableDraftMemoryRule', 'deleteDraftMemoryRule', 'updateDraftMemoryRuleText'])],
     ['src/domain/interactionLog', boundary(['addInteraction'])],
     ['src/domain/outreachTopicTemplates', boundary(['listTopicTemplates', 'saveTopicTemplate', 'updateTopicTemplate', 'deleteTopicTemplate'])],
+    ['src/customerActivityApi', boundary(['fetchCustomerActivity'])],
     ['src/outreachApi', boundary(['generateDrafts', 'draftTopic', 'sendPersonalEmail', 'discussDraft'])],
     ['src/productSource', boundary(['loadBlogProducts', 'loadBlogImages'])],
     ['src/pages/CustomerAccounts', 'import {createElement as h} from "react"; export const CustomerPicker=({customers,value,onChange})=>h("select",{"aria-label":"Fictional customer picker",value,onChange:e=>onChange(e.target.value)},h("option",{value:""},"Choose fictional customer"),...customers.map(c=>h("option",{key:c.id,value:c.id},c.company_name)));'],

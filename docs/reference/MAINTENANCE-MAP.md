@@ -25,6 +25,21 @@ The separately authorized [refinement migration](../plans/V8.20-REFINEMENT-AUTH-
 now uses the same marketing helper; its record distinguishes local proof from
 candidate/production release verification. No client/rules change is included.
 
+## Local dashboard workbench — not released
+
+The approved [B2B dashboard implementation](../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md)
+uses Dashboard for subscriptions/orchestration, components/dashboard for compact
+tasks and native customer detail, dashboardWorkbench.js for pure scope/projections,
+customerWorkActivation.js for atomic audited activation and customerWorkStages.js
+for explicit revision-checked stage choices. Read-only customerActivityApi.js →
+Node /api/customer-workbench selects communication headers under fresh CRM auth.
+The same B2B predicate covers rows, tasks, counts, picker, shared summary generation
+and quiet90 targeting. No bulk migration or rules change. Preserve legacy task
+metadata/history, one-intent retry identity, unsaved conflicts, stage union on
+customer merge, contact/summary/due-date separation and human-reviewed outreach.
+Run test:customer-workspace, test:ai-writer, the pipeline emulator and workspace-sync;
+qa/dashboard-workbench-browser.mjs checks real components with fictional sources.
+
 ## Ownership and change boundaries
 
 | Area | Start here | Preserve and verify |

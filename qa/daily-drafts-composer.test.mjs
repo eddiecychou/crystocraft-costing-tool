@@ -4,7 +4,7 @@ import { act } from 'react'
 import { setupDailyDraftsTests, host, f, button, click, change } from './daily-drafts-test-harness.mjs'
 
 const topic = () => host.querySelector('textarea')
-const selector = () => host.querySelector('select')
+const selector = () => host.querySelector('select[aria-label="Saved topics"]')
 const subject = () => host.querySelector('input[placeholder=Subject]')
 const body = () => host.querySelector('textarea[placeholder=Message]')
 const calls = name => f.calls.filter(c => c[0] === name)

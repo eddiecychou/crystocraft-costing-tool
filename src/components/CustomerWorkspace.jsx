@@ -31,9 +31,10 @@ export function SummaryText({ digest = '', collapse = true, previewLength = 500,
 }
 
 const LABEL = { todo: 'To do', waiting: 'Waiting', done: 'Done' }
-export default function CustomerWorkspace({ customerId, customerName, digest, items = [], generatedAt, showLink = false, showSummary = true, collapseSummary = false, summaryPreviewLength = 500, summaryDays=30, sourceLimited=false, saveItem = saveCustomerWorkItem }) {
+export default function CustomerWorkspace({ customerId, customerName, digest, items = [], generatedAt, showLink = false, showSummary = true, collapseSummary = false, summaryPreviewLength = 500, summaryDays=30, sourceLimited=false, saveItem = saveCustomerWorkItem, initialEditor=null, notesCollapsed=false, protectDraft=false }) {
   const uid = useId()
-  const [editor, setEditor] = useState(null)
+  const makeEditor=(kind,item=null)=>({original:item,createId:crypto.randomUUID(),kind,text:item?.text||'',due_on:item?.due_on||'',state:item?.state||'todo'})
+  const [editor, setEditor] = useState(()=>initialEditor?makeEditor(initialEditor.kind||'task',initialEditor.item):null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [showDone, setShowDone] = useState(false)
@@ -43,8 +44,9 @@ export default function CustomerWorkspace({ customerId, customerName, digest, it
   const tasks = visible.filter(i => i.kind === 'task')
   const notes = visible.filter(i => i.kind === 'note')
   function open(kind, item = null) {
+    if(protectDraft&&editor){setError('Finish or cancel the current draft before opening another item. Your draft is still here.');return}
     setError('')
-    setEditor({ original: item, createId: crypto.randomUUID(), kind, text: item?.text || '', due_on: item?.due_on || '', state: item?.state || 'todo' })
+    setEditor(makeEditor(kind,item))
   }
   async function save(e) {
     e.preventDefault(); setBusy(true); setError('')
@@ -58,7 +60,7 @@ export default function CustomerWorkspace({ customerId, customerName, digest, it
     catch (err) { setError(err.message || 'Could not update this item.') }
     finally { setBusy(false) }
   }
-  const editorForm = editor && (<form onSubmit={save} className="mt-3 p-3 bg-ivory border border-warm-grey space-y-3">
+  const editorForm = editor && (<form onSubmit={save} aria-busy={busy} className="mt-3 p-3 bg-ivory border border-warm-grey space-y-3">
       <label className="block text-sm" htmlFor={`${uid}-text`}>{editor.kind === 'note' ? 'Reference note' : 'Task'}
         <textarea id={`${uid}-text`} className="input mt-1" rows={3} maxLength={4000} required value={editor.text} onChange={e => setEditor({ ...editor, text: e.target.value })} />
       </label>
@@ -91,11 +93,12 @@ export default function CustomerWorkspace({ customerId, customerName, digest, it
       <ul aria-label="To-do list" className="divide-y divide-warm-grey">{tasks.map(workRow)}</ul>
       {!tasks.length && <p className="text-sm text-ink-60 mt-2">No outstanding tasks.</p>}
     </div>
-    {(notes.length > 0 || editor?.kind === 'note') && <div className="mt-3 border-t border-warm-grey pt-3">
+    {(notes.length > 0 || editor?.kind === 'note') && <details open={!notesCollapsed||editor?.kind==='note'?true:undefined} className="mt-3 border-t border-warm-grey pt-3">
+      <summary className="text-sm cursor-pointer">Reference notes ({notes.length})</summary>
       <h3 className="eyebrow text-ink-60">Reference notes</h3>
       {editor?.kind === 'note' && editorForm}
       <ul aria-label="Reference notes" className="divide-y divide-warm-grey">{notes.map(workRow)}</ul>
-    </div>}
+    </details>}
     {!!completed.length && <button className="text-xs text-brand-600 underline min-h-[40px]" onClick={() => setShowDone(v => !v)}>{showDone ? 'Hide completed' : `Show completed / archived (${completed.length})`}</button>}
     {showSummary && <section aria-label="Email and conversation summary" className="mt-4 border border-warm-grey bg-ivory p-3">
       <h3 className="eyebrow text-ink-60">Email &amp; conversation summary</h3>

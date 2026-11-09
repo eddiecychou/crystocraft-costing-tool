@@ -8,6 +8,10 @@ const contactsOf = customer => {
 const SCALARS = ['website','address','country','crm_category','crm_status','source','segment','erp_code','folder_path']
 export function customerMergeFields(survivor, source) {
   const out = {}
+  if (survivor.dashboard_work || source.dashboard_work) {
+    const a=survivor.dashboard_work,b=source.dashboard_work
+    out.dashboard_work={stages:[...new Set([...(a?.stages||[]),...(b?.stages||[])])],revision:Math.max(a?.revision||0,b?.revision||0)+1,last_action:'merge'}
+  }
   if (survivor.sales_pipeline || source.sales_pipeline) {
     const a=survivor.sales_pipeline, b=source.sales_pipeline
     const active=[a,b].filter(p=>p?.status==='active')

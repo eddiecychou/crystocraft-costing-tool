@@ -1,5 +1,14 @@
 # Firestore Collections Map
 
+Local dashboard workbench (10 November, not released): optional internal customer
+`dashboard_work` stores explicit stages (exploration/quotation/order), revision,
+operation event ID and actor/time. Absent records stay absent; no backfill/new
+collection/index/rule deployment. Merge unions manual stages. New open tasks
+activate existing sales_pipeline + pipeline_history atomically using the existing
+manual contract; notes/completion do not close/activate work or stamp contact.
+Contact dates are a read-only projection of selected communication metadata,
+not a new stored customer tracker. [Schema and migration review](../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md).
+
 Customer Pipeline (2026-10-17): customer `sales_pipeline` stores the confirmed position and separate AI proposal. `customers/{id}/pipeline_history` contains immutable before/after decisions. CRM capability only, never portal-readable. Each update requires matching revision, actor/time and atomic history; merge locks apply. Customer merges preserve both active request texts and both audit histories. Domain: `src/domain/customerPipeline.js`.
 
 24 top-level collections, ~20 nested subcollections, and 2 collection-group

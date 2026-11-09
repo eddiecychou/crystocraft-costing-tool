@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { collection, collectionGroup, doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db, authedUser } from '../firebase'
 import { cleanWorkItem, assertRevision, legacyWorkItems } from '../customerWorkItems'
+import {activateCustomerWork} from './customerWorkActivation'
 
 // Same customers capability as the interaction history; never customer-portal readable.
 export function useCustomerWorkItems(ids) {
@@ -30,6 +31,9 @@ export async function saveCustomerWorkItem(customerId, original, input, createId
   const target = doc(db, 'customers', customerId, legacy ? 'enquiries' : 'work_items', original?.id || createId)
   await runTransaction(db, async tx => {
     const snap = await tx.get(target)
+    const newTask=!original&&!snap.exists()&&clean.kind==='task'&&clean.state!=='done'
+    const customer=newTask?await tx.get(doc(db,'customers',customerId)):null
+    if(newTask&&(!customer.exists()||customer.data().customer_merge_lock))throw Error('Customer is missing or being merged. Your draft is still here.')
     if (original) {
       assertRevision(snap.exists() ? snap.data() : null, original.revision || 0, legacy ? 'todo_revision' : 'revision')
       if (legacy) {
@@ -41,6 +45,7 @@ export async function saveCustomerWorkItem(customerId, original, input, createId
       } else tx.update(target, { ...clean, revision: original.revision+1, updated_by: user.uid, updatedAt: serverTimestamp() })
     } else if (!snap.exists()) {
       tx.set(target, { ...clean, revision: 1, created_by: user.uid, updated_by: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+      if(newTask)activateCustomerWork(tx,customerId,customer.data(),user,`task_${createId}`,`Task: ${clean.text}`)
     } else {
       // Stable form ID makes a retry after an uncertain successful save safe.
       const previous = snap.data()

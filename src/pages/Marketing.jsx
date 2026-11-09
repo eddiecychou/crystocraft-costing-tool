@@ -72,7 +72,7 @@ export default function Marketing() {
       {tab === 'campaigns'  && (
         <Campaigns presetContactIds={presetContactIds} onConsumedPreset={() => setPresetContactIds(null)} />
       )}
-      {tab === 'drafts'     && <DailyDrafts />}
+      {tab === 'drafts'     && <DailyDrafts initialContactMode={searchParams.get('contact')==='quiet90'?'quiet90':'all'} />}
     </div>
   )
 }

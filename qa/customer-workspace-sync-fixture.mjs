@@ -3,8 +3,9 @@
 import {readFile} from 'node:fs/promises'
 import {resolve,dirname} from 'node:path'
 export async function workspaceSyncPlugin(){
- const stubs=new Map(),keep=new Set(['../components/crm/CustomerCollapsible','../components/crm/crmDates','../components/CustomerWorkspace','../hooks/useSummaryPeriod','../hooks/useSummaryUpdate','../hooks/useOcToday','../customerSummary','../domain/customerWorkItems','../customerWorkItems','../ocTime','../ocTime.js','../components/LoadingBar'])
+ const stubs=new Map(),keep=new Set(['../components/crm/CustomerCollapsible','../components/crm/crmDates','../components/CustomerWorkspace','../hooks/useSummaryPeriod','../hooks/useSummaryUpdate','../hooks/useOcToday','../customerSummary','../domain/customerWorkItems','../customerWorkItems','../ocTime','../ocTime.js','../components/LoadingBar','../dashboardWorkbench','../components/dashboard/WorkbenchTasks','../components/dashboard/WorkbenchCustomerDialog'])
  // Keep the real status hook/store; only the unrelated AI boundary is blocked.
+ stubs.set(resolve('src/customerActivityApi'),"export const fetchCustomerActivity=async()=>({customers:[],checkedAt:new Date().toISOString()});")
  stubs.set(resolve('src/domain/weeklySummary'), "export async function generateWeeklySummary(){throw Error('AI generation is disabled in the workspace sync fixture')}")
  const special={
   normalizeCustomer:'c=>({...c,contacts:c.contacts||[],tags:c.tags||[]})',RETAIL_TAG:'"Retail Customer"',
@@ -17,7 +18,7 @@ export async function workspaceSyncPlugin(){
  for(const page of ['src/pages/Dashboard.jsx','src/pages/CustomerDetail.jsx']){
   const source=await readFile(page,'utf8')
   for(const match of source.matchAll(/^import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/gm)){
-   const [,names,path]=match;if(!path.startsWith('.')||keep.has(path)||path==='../firebase')continue
+   const [,names,path]=match;if(!path.startsWith('.')||keep.has(path)||path==='../firebase'||path==='../customerActivityApi')continue
    const exports=[]
    if(!names.trim().startsWith('{')){
     const name=names.trim().split(',')[0].trim()

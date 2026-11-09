@@ -10,7 +10,7 @@ export function DailyDraftsTopicControls({
     <div>
       <label className="block text-xs font-medium text-ink-60 mb-1">Topic</label>
       {topicTemplates.length > 0 && (
-        <select value={selectedTemplateId} onChange={e => handleSelectTopicTemplate(e.target.value)}
+        <select aria-label="Saved topics" value={selectedTemplateId} onChange={e => handleSelectTopicTemplate(e.target.value)}
           className="input w-full text-sm mb-1.5">
           <option value="">Saved topics…</option>
           {topicTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}

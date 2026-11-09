@@ -28,7 +28,7 @@ const SUMMARY_CASE='both real pages expose six months and one year and load thei
 const stepFor=t=>(label,operation)=>t.name===SUMMARY_CASE?testStep(label,operation):operation()
 before(async()=>{
  dom=new JSDOM('<!doctype html><body></body>',{url:'http://localhost'});for(const name of ['window','document','HTMLElement','Event','MouseEvent','localStorage'])globalThis[name]=dom.window[name]
- globalThis.IS_REACT_ACT_ENVIRONMENT=true
+ dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true};dom.window.HTMLDialogElement.prototype.close=function(){this.open=false};globalThis.IS_REACT_ACT_ENVIRONMENT=true
  globalThis.__workspaceCalendarNow=()=>CALENDAR_NOW
  globalThis.__workspaceCalendarDate=class extends Date {constructor(...args){super(...(args.length?args:[globalThis.__workspaceCalendarNow()]))}static now(){return globalThis.__workspaceCalendarNow()}}
  env=await initializeTestEnvironment({projectId:'crystocraft-rbac-test',firestore:{rules:await readFile('firestore.rules','utf8')}})
@@ -49,13 +49,13 @@ async function eventually(check,label){
  while(Date.now()<until){try{let result;await act(async()=>{await delay(25);result=check()});if(result)return}catch(e){last=e}}
  throw Error(`${label}${last?' — '+last.message:''}`)
 }
-const button=(host,text)=>[...host.querySelectorAll('button')].find(b=>b.textContent.trim()===text)
+const button=(host,text)=>[...host.querySelectorAll('button')].find(b=>b.textContent.trim()===text||b.getAttribute('aria-label')===text)
 const workspace=(host,id=C)=>host.querySelector(`section[aria-label="Summary and to-do for ${id}"]`)
 const row=(host,text)=>[...host.querySelectorAll('li')].find(li=>li.textContent.includes(text))
 async function click(host,text){const b=button(host,text);assert.ok(b,`Missing button ${text}`);await act(async()=>b.click())}
 async function fill(el,value){assert.ok(el);await act(async()=>{el.value=value;Simulate.change(el,{target:{value}})})}
 async function save(host){await act(async()=>host.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));await eventually(()=>!host.isConnected||!host.querySelector('form')||host.querySelector('[role="alert"]'),'Save must finish')}
-async function choose(host,id){const select=[...host.querySelectorAll('label')].find(l=>l.textContent.includes('Find a customer')).querySelector('select');await fill(select,id)}
+async function choose(host,id){if(workspace(host,id))return;if(host.querySelector('dialog'))await click(host,'Close customer details');await click(host,'Browse all B2B');await fill(host.querySelector('dialog select'),id);await eventually(()=>workspace(host,id),'Chosen customer dialog loads')}
 function CustomerNavigation({id}) {
  const navigate=useNavigate()
  React.useEffect(()=>{navigate(`/customers/${id}`,{replace:true})},[id,navigate])
@@ -72,12 +72,12 @@ async function fixture(t,{withLegacy=false,withCategories=false}={}){
  for(const setDb of globalThis.__workspaceSyncDbSetters)setDb(db)
  await step('seed base records',()=>env.withSecurityRulesDisabled(async ctx=>{
   const admin=ctx.firestore();await setDoc(doc(admin,'users/sync_admin'),{role:'admin'})
-  for(const id of [C,OTHER])await setDoc(doc(admin,'customers',id),{company_name:id,contacts:[],tags:withCategories&&id===C?['Retail Customer']:[],channels:[],...(withCategories?{crm_category:id===C?'Distributor':'Gift / OEM'}:{})})
+  for(const id of [C,OTHER])await setDoc(doc(admin,'customers',id),{company_name:id,contacts:[],tags:[],channels:[],...(withCategories?{crm_category:id===C?'Distributor':'Gift / OEM'}:{})})
   await setDoc(doc(admin,'dashboard_cache/weekly_summary'),{items:[{customerId:C,digest:'Current saved summary'},{customerId:OTHER,digest:'Other customer summary'}]})
   if(withLegacy)await setDoc(doc(admin,'customers',C,'enquiries/legacy'),legacy)
  }))
  const hosts=[document.createElement('div'),document.createElement('div')];hosts.forEach(h=>document.body.append(h));let roots=hosts.map(h=>createRoot(h))
- const render=async(index,id=C)=>{await act(async()=>roots[index].render(React.createElement(MemoryRouter,{initialEntries:[index?`/customers/${id}`:'/dashboard']},index?React.createElement(React.Fragment,null,React.createElement(CustomerNavigation,{id}),React.createElement(Routes,null,React.createElement(Route,{path:'/customers/:id',element:React.createElement(CustomerDetail)}))):React.createElement(Dashboard))));await eventually(()=>workspace(hosts[index],id),'Actual page workspace loads')}
+ const render=async(index,id=C)=>{await act(async()=>roots[index].render(React.createElement(MemoryRouter,{initialEntries:[index?`/customers/${id}`:'/dashboard']},index?React.createElement(React.Fragment,null,React.createElement(CustomerNavigation,{id}),React.createElement(Routes,null,React.createElement(Route,{path:'/customers/:id',element:React.createElement(CustomerDetail)}))):React.createElement(Dashboard))));await eventually(()=>index?workspace(hosts[index],id):button(hosts[index],'Browse all B2B'),'Actual page loads')}
  let closed=false
  const close=async()=>{if(closed)return;closed=true;await step('unmount pages',async()=>{for(const r of roots)await act(async()=>r.unmount());hosts.forEach(h=>h.remove())})}
  t.after(close)
@@ -128,7 +128,7 @@ test('legacy follow-ups sync without changing original conversation, attachments
 test('changing the customer route never shows or writes another customer workspace',async t=>{
  const v=await fixture(t);await create(v.d(),'note','Only first customer');await v.render(1,OTHER)
  const second=workspace(v.customer,OTHER);assert.ok(second);assert.ok(!second.textContent.includes('Only first customer'))
- await create(second,'note','Only second customer');await eventually(()=>workspace(v.dash,OTHER)?.textContent.includes('Only second customer'),'Other customer appears in its own Dashboard card')
+ await create(second,'note','Only second customer');assert.ok(!v.d().textContent.includes('Only second customer'));await choose(v.dash,OTHER);assert.match(workspace(v.dash,OTHER).textContent,/Only second customer/);await choose(v.dash,C);
  assert.ok(!v.d().textContent.includes('Only second customer'));await v.render(1,C);assert.ok(!v.c().textContent.includes('Only second customer'))
  assert.equal((await getDocs(collection(db,'customers',OTHER,'work_items'))).size,1)
 })
@@ -141,8 +141,8 @@ test('anonymous and customer portal identities cannot read or change internal ta
 
 
 // Read the real tile and drilldown, never a copied implementation of its count.
-const dueCard=host=>[...host.querySelectorAll('button')].find(b=>[...b.querySelectorAll('p')].some(p=>p.textContent==='Follow-ups Due'))
-const dueCount=host=>Number(dueCard(host)?.querySelector('p')?.textContent)
+const dueCard=host=>host.querySelector('[data-task-filter=due]')
+const dueCount=host=>Number(dueCard(host)?.dataset.count)
 const duePanel=host=>host.querySelector('[aria-label="Follow-ups due"]')
 const PAST='2000-01-01',FUTURE='2099-01-01'
 function hkToday(){return new Date(globalThis.__workspaceCalendarNow()+8*3600000).toISOString().slice(0,10)}
@@ -187,47 +187,43 @@ for(const fromDashboard of [true,false])test(`Follow-ups Due combines native and
 test('Follow-ups Due tile and already-open drilldown stay in agreement during edits on either page',async t=>{
  const v=await fixture(t);await create(v.c(),'task','First overdue',{date:PAST});await mirrored(v,'First overdue',{date:PAST});await expectDue(v,1)
  await act(async()=>dueCard(v.dash).click())
- async function panelCount(n,text){await eventually(()=>dueCount(v.dash)===n&&duePanel(v.dash)?.querySelectorAll('li').length===n&&duePanel(v.dash)?.querySelector('h2')?.textContent===`Follow-ups Due · ${n}`&&(!text||duePanel(v.dash).textContent.includes(text)),`Tile and drilldown should both contain ${n} due tasks`)}
+ async function panelCount(n,text){await eventually(()=>dueCount(v.dash)===n&&duePanel(v.dash)?.querySelectorAll('li').length===n&&(!text||duePanel(v.dash).textContent.includes(text)),`Tile and drilldown should both contain ${n} due tasks`)}
  await panelCount(1,'First overdue')
  // The same task moves between groups without changing the total, from either page.
  const group=label=>duePanel(v.dash)?.querySelector(`[aria-label="${label} tasks"]`)
- async function grouped(overdue,today){await eventually(()=>group('Overdue')?.querySelectorAll('li').length===overdue&&group('Today')?.querySelectorAll('li').length===today&&dueCard(v.dash).textContent.includes(`${overdue} overdue · ${today} today`),'Tile breakdown and separate task groups agree')}
+ async function grouped(overdue,today){await eventually(()=>group('Overdue')?.querySelectorAll('li').length===overdue&&group('Today')?.querySelectorAll('li').length===today&&duePanel(v.dash).textContent.includes(`${overdue} overdue · ${today} today`),'Tile breakdown and separate task groups agree')}
  await grouped(1,0)
  await edit(v.c(),'First overdue','First overdue',{date:hkToday()});await panelCount(1);await grouped(0,1)
- await edit(workspace(group('Today')),'First overdue','First overdue',{date:PAST});await panelCount(1);await grouped(1,0)
+ await edit(v.d(),'First overdue','First overdue',{date:PAST});await panelCount(1);await grouped(1,0)
  await create(v.c(),'task','Due today',{date:hkToday(),state:'waiting'});await panelCount(2,'Due today');await grouped(1,1)
- await click(row(group('Today'),'Due today'),'Done');await panelCount(1);await grouped(1,0)
+ await click(row(v.d(),'Due today'),'Done');await panelCount(1);await grouped(1,0)
  await click(v.c(),'Show completed / archived (1)');await click(row(v.c(),'Due today'),'Reopen');await panelCount(2);await grouped(1,1)
  await edit(v.c(),'Due today','Due today',{date:FUTURE});await panelCount(1);await grouped(1,0)
  await create(v.c(),'task','Future then overdue',{date:FUTURE});await eventually(()=>row(v.c(),'Future then overdue'),'Future saved');await panelCount(1)
  await edit(v.c(),'Future then overdue','Future then overdue',{date:PAST});await panelCount(2,'Future then overdue')
- await click(row(duePanel(v.dash),'First overdue'),'Done');await panelCount(1,'Future then overdue');await eventually(()=>!!button(row(v.c(),'First overdue'),'Reopen'),'Dashboard completion reaches customer')
- await edit(v.c(),'Future then overdue','Future then overdue',{date:FUTURE});await panelCount(0);assert.match(duePanel(v.dash).textContent,/No overdue tasks/)
+ await click(row(v.d(),'First overdue'),'Done');await panelCount(1,'Future then overdue');await eventually(()=>!!button(row(v.c(),'First overdue'),'Reopen'),'Dashboard completion reaches customer')
+ await edit(v.c(),'Future then overdue','Future then overdue',{date:FUTURE});await panelCount(0);assert.match(duePanel(v.dash).textContent,/0 overdue/)
  await click(row(v.c(),'First overdue'),'Reopen');await panelCount(1,'First overdue')
- await edit(workspace(duePanel(v.dash)),'First overdue','First overdue',{date:FUTURE});await panelCount(0)
- await click(v.dash,'Back to to-do list');await mirrored(v,'First overdue',{date:FUTURE});await expectDue(v,0)
+ await edit(v.d(),'First overdue','First overdue',{date:FUTURE});await panelCount(0)
+ await click(v.dash,'Show all open tasks');await mirrored(v,'First overdue',{date:FUTURE});await expectDue(v,0)
 })
-test('Follow-ups Due counts tasks per filtered customer and ignores notes, completed work and summary period',async t=>{
+test('Follow-ups Due B2B counts obey category/search filters and remain independent of summary period',async t=>{
  const v=await fixture(t,{withCategories:true})
  await create(v.d(),'task','First C task',{date:PAST});await create(v.d(),'task','Second C task',{date:hkToday(),state:'waiting'});await mirrored(v,'Second C task',{date:hkToday()});await expectDue(v,2)
  await v.render(1,OTHER);const other=()=>workspace(v.customer,OTHER)
- await create(other(),'task','Other customer task',{date:PAST});await eventually(()=>row(workspace(v.dash,OTHER),'Other customer task'),'Other customer live');await expectDue(v,3)
- await create(other(),'task','Already completed',{date:PAST,state:'done'});await eventually(()=>button(other(),'Show completed / archived (1)'),'Completed item saved');await expectDue(v,3)
- // Defensive historic data: a reference note is never a task, even if it has a date.
- await env.withSecurityRulesDisabled(async ctx=>setDoc(doc(ctx.firestore(),'customers',C,'work_items/dated_note'),{kind:'note',text:'Dated reference note',due_on:PAST,state:'todo',revision:1,created_by:'sync_admin',updated_by:'sync_admin'}))
- await eventually(()=>row(v.d(),'Dated reference note'),'Dated note delivered to Dashboard');await expectDue(v,3)
- await click(v.dash,'Distributor');await expectDue(v,2)
- await click(v.dash,'Gift / OEM');await expectDue(v,1)
- await click(v.dash,'Retail Customer');await expectDue(v,0)
- await click(v.dash,'Gift / OEM');await expectDue(v,2)
- await click(v.dash,'Retail Customer');await expectDue(v,3)
- const period=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.includes('Conversation window')).querySelector('select')
+ await create(other(),'task','Other customer task',{date:PAST});await expectDue(v,3)
+ await create(other(),'task','Already completed',{date:PAST,state:'done'});await expectDue(v,3)
+ await env.withSecurityRulesDisabled(async ctx=>{const d=ctx.firestore();await setDoc(doc(d,'customers','sync_retail'),{company_name:'Individual B2C',customer_type:'retail'});await setDoc(doc(d,'customers','sync_retail','work_items','retail_task'),{kind:'task',text:'Retail task',due_on:PAST,state:'todo',revision:1,created_by:'sync_admin',updated_by:'sync_admin'});await setDoc(doc(d,'customers',C,'work_items/dated_note'),{kind:'note',text:'Dated reference note',due_on:PAST,state:'todo',revision:1,created_by:'sync_admin',updated_by:'sync_admin'})})
+ await eventually(()=>row(v.d(),'Dated reference note'),'Dated note delivered');await expectDue(v,3)
+ const category=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.startsWith('Category')).querySelector('select')
+ await fill(category,'Distributor');await expectDue(v,2);await fill(category,'Gift / OEM');await expectDue(v,1);await fill(category,'');await expectDue(v,3)
+ const period=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.startsWith('Summary context')).querySelector('select')
  for(const days of ['14','90','30']){await fill(period,days);await expectDue(v,3)}
- await act(async()=>dueCard(v.dash).click());await eventually(()=>duePanel(v.dash)?.querySelectorAll('li').length===3,'Unfiltered drilldown contains all three tasks')
- assert.ok(!duePanel(v.dash).textContent.includes('Dated reference note'));assert.ok(!duePanel(v.dash).textContent.includes('Already completed'))
- await click(v.dash,'Distributor');await eventually(()=>duePanel(v.dash)?.querySelectorAll('li').length===2,'Filter updates open drilldown');await expectDue(v,2)
- await edit(other(),'Other customer task','Other customer rescheduled',{date:FUTURE});await eventually(()=>row(other(),'Other customer rescheduled'),'Excluded customer changed');await expectDue(v,2)
- await click(v.dash,'Clear filter');await expectDue(v,2);assert.equal(duePanel(v.dash).querySelectorAll('li').length,2)
+ await act(async()=>dueCard(v.dash).click());await eventually(()=>duePanel(v.dash)?.querySelectorAll('li').length===3,'Due view contains all B2B tasks')
+ assert.doesNotMatch(duePanel(v.dash).textContent,/Dated reference note|Already completed|Retail task/)
+ await fill(category,'Distributor');await expectDue(v,2)
+ await edit(other(),'Other customer task','Other rescheduled',{date:FUTURE});await expectDue(v,2)
+ await click(v.dash,'Clear filters');await expectDue(v,2)
 })
 
 for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])test(`Follow-ups Due rolls forward without remount or writes on ${wake}`,async t=>{
@@ -242,8 +238,8 @@ for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])
  await create(v.c(),'task','Future stays excluded',{date:'2026-10-20'})
  await create(v.c(),'task','Completed stays excluded',{date:'2026-10-17',state:'done'})
  await create(v.c(),'note','Reference stays excluded')
- await expectDue(v,2);await click(v.dash,'Distributor')
- const period=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.includes('Conversation window')).querySelector('select')
+ await expectDue(v,2);await fill([...v.dash.querySelectorAll('label')].find(l=>l.textContent.startsWith('Category')).querySelector('select'),'Distributor')
+ const period=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.startsWith('Summary context')).querySelector('select')
  await fill(period,'90');await act(async()=>dueCard(v.dash).click())
  const panel=duePanel(v.dash),group=label=>panel.querySelector(`[aria-label="${label} tasks"]`)
  await eventually(()=>group('Today')?.querySelectorAll('li').length===2,'Initial Today group')
@@ -275,8 +271,8 @@ for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])
  const order=[...v.c().querySelectorAll('li')].map(el=>el.textContent)
  assert.ok(order.findIndex(text=>text.includes('Tomorrow becomes today'))<order.findIndex(text=>text.includes('Undated stays excluded')),'Customer tasks re-sort at midnight')
  assert.equal(v.c().querySelector('textarea').value,'Unsaved reference draft','Calendar updates preserve unsaved edits')
- assert.equal(period.value,'90');assert.ok(button(v.dash,'Clear filter'),'Customer filter preserved')
- assert.ok(dueCard(v.dash).textContent.includes('2 overdue · 1 today'))
+ assert.equal(period.value,'90');assert.ok(button(v.dash,'Clear filters'),'Customer filter preserved')
+ assert.ok(duePanel(v.dash).textContent.includes('2 overdue · 1 today'))
  assert.ok(!panel.textContent.includes('Future stays excluded'));assert.ok(!panel.textContent.includes('Completed stays excluded'));assert.ok(!panel.textContent.includes('Reference stays excluded'))
  const after=await getDocs(collection(db,'customers',C,'work_items'))
  assert.deepEqual(after.docs.map(d=>[d.id,d.data()]),before.docs.map(d=>[d.id,d.data()]),'Calendar change does not write task data')
@@ -287,10 +283,10 @@ for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])
 test(SUMMARY_CASE,{timeout:45000},async t=>{
  const step=stepFor(t),v=await fixture(t)
  await step('seed long-period caches',()=>env.withSecurityRulesDisabled(async ctx=>{for(const days of [180,365])await setDoc(doc(ctx.firestore(),'dashboard_cache','customer_summary_'+days),{lookbackDays:days,items:[{customerId:C,digest:'Saved '+days+' day customer context'}]})}))
- for(const [host,label] of [[v.dash,'Conversation window'],[v.customer,'Summary period']]){
+ for(const [host,label] of [[v.dash,'Summary context'],[v.customer,'Summary period']]){
   const select=[...host.querySelectorAll('label')].find(l=>l.textContent.includes(label)).querySelector('select')
   assert.deepEqual([...select.options].map(o=>o.value),['14','30','90','180','365'])
-  for(const days of [180,365]){await step(`select ${label} ${days}`,()=>fill(select,String(days)));await step(`wait for ${label} ${days}`,()=>eventually(()=>workspace(host).textContent.includes('Saved '+days+' day customer context'),'Selected long-period saved summary appears'))}
+  for(const days of [180,365]){await step(`select ${label} ${days}`,()=>fill(select,String(days)));await step(`wait for ${label} ${days}`,()=>eventually(()=>(host===v.dash?host.querySelector('dialog'):workspace(host)).textContent.includes('Saved '+days+' day customer context'),'Selected long-period saved summary appears'))}
  }
  assert.equal((await step('read original cache',()=>auditDb.doc('dashboard_cache/weekly_summary').get())).data().items[0].digest,'Current saved summary')
 })

@@ -1,6 +1,6 @@
 import { collectionGroup, collection, doc, getDoc, getDocs, query, where, orderBy, Timestamp, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, authedUser } from '../firebase'
-import { NOT_CUSTOMER_TAG, RETAIL_TAG } from './customer'
+import {isDashboardB2B} from '../dashboardWorkbench'
 import { summaryDays, summaryCacheId, summarySource } from '../customerSummary'
 
 // On-demand shared CRM/email/WhatsApp summaries for 14, 30, 90, 180 or 365 days.
@@ -178,23 +178,9 @@ export async function findActiveCustomers(days = 30) {
   const ids = new Set([...enquiriesByCustomer.keys(), ...threadsByCustomer.keys(), ...whatsappByCustomer.keys()])
   const entries = await Promise.all([...ids].map(async (id) => {
     const custSnap = await getDoc(doc(db, 'customers', id))
-    // Not every `customers` doc is a real relationship — a personal/company
-    // bank account or an inbound marketing email can get matched here by
-    // email-sync just like a genuine customer would. Tagged with
-    // NOT_CUSTOMER_TAG (via the ordinary tag editor), excluded here entirely
-    // rather than just not mentioned — no point spending a raw activity
-    // read/render on something that'll never appear in the digest.
-    //
-    // Retail/B2C customers excluded too (Eddie, 2026-09-17: "too many names,
-    // not much importance... transaction amount is very small compared to
-    // B2B" — e.g. Tiffany Mak). Same RETAIL_TAG ProductDetail.jsx's "branded
-    // for" picker already filters on — B2C is a tag, not a crm_category, so
-    // this can't be a query filter and has to be this same read-then-check.
-    if (!custSnap.exists()) return null
-    if (custSnap.exists()) {
-      const tags = custSnap.data().tags || []
-      if (tags.includes(NOT_CUSTOMER_TAG) || tags.includes(RETAIL_TAG)) return null
-    }
+    // Same B2B scope as dashboard rows/counts, including legacy trade accounts
+    // and explicitly reviewed wholesale retailers with an old retail tag.
+    if (!custSnap.exists() || !isDashboardB2B({...custSnap.data(),id})) return null
     const name = custSnap.exists() ? (custSnap.data().company_name || custSnap.data().name || 'Unnamed customer') : 'Unknown customer'
     const enquiries = enquiriesByCustomer.get(id) || []
     const threads = threadsByCustomer.get(id) || []

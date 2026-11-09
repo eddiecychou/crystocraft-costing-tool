@@ -1,4 +1,6 @@
 import DailyDraftsPendingToolbar from '../components/marketing/DailyDraftsPendingToolbar'
+import {isDashboardB2B,quietCustomerIds,WORK_STAGES} from '../dashboardWorkbench'
+import {fetchCustomerActivity} from '../customerActivityApi'
 import DailyDraftReviewCard from '../components/marketing/DailyDraftReviewCard'
 import DailyDraftsMasterChat from '../components/marketing/DailyDraftsMasterChat'
 import { DailyDraftsProductLinks, DailyDraftsImages } from '../components/marketing/DailyDraftsAttachments'
@@ -329,7 +331,7 @@ async function checkAlreadyContacted(topicLabel) {
 const REPLY_CHANNELS = ['Personal WhatsApp', 'WhatsApp Business', 'WeChat', 'Alibaba', 'Email']
 
 
-export default function DailyDrafts() {
+export default function DailyDrafts({initialContactMode='all'}) {
   // ── Compose phase ──────────────────────────────────────────────────────
   const [topic, setTopic] = useState('')
   const [topicTemplates, setTopicTemplates] = useState([])
@@ -364,6 +366,8 @@ export default function DailyDrafts() {
 
   // ── Target & Generate phase ────────────────────────────────────────────
   const [targetingNote, setTargetingNote] = useState('')
+  const [contactMode,setContactMode]=useState(initialContactMode==='quiet90'?'quiet90':'all')
+  const [contactReview,setContactReview]=useState('')
   // Retail Customer segment (2026-08-22) — a hard pre-filter on the
   // candidate pool, not just a hint in targetingNote (which the AI can
   // ignore/misread). Defaults to 'b2b': Daily Drafts has always been a
@@ -795,14 +799,31 @@ export default function DailyDrafts() {
       // leads (retail leads are already excluded upstream) — there is no
       // such thing as a "retail contact" in this pool, so the retail
       // audience is customer-sourced only.
-      let customerEntities = customers.map(customerToEntity)
-      if (audienceFilter === 'retail') {
+      let sourceCustomers=customers
+      if(contactMode==='quiet90'){
+        setContactReview('')
+        const activity=await fetchCustomerActivity()
+        const quiet=quietCustomerIds(activity.customers)
+        sourceCustomers=customers.filter(c=>isDashboardB2B(c)&&quiet.has(c.id))
+        setContactReview(`${sourceCustomers.length} B2B customers have no recorded contact in 90 days. Unknown or partial histories are excluded; existing cooldowns still apply.`)
+      }
+      let customerEntities = sourceCustomers.map(c=>{
+        const entity=customerToEntity(c)
+        if(entity&&contactMode==='quiet90'){
+          const current=[c.sales_pipeline?.status==='active'?c.sales_pipeline.detail:'',...(c.dashboard_work?.stages||[]).map(s=>WORK_STAGES[s])].filter(Boolean).join(' · ')
+          if(current)entity.notes=[entity.notes,`Current ongoing work (preserve this context): ${current}`].filter(Boolean).join('\n')
+        }
+        return entity
+      })
+      if (contactMode==='quiet90') {
+        if(categoryFilter.length)customerEntities=customerEntities.filter(e=>e&&categoryFilter.includes(e.crm_category))
+      } else if (audienceFilter === 'retail') {
         customerEntities = customerEntities.filter(e => e && e.customer_type === 'retail')
       } else if (audienceFilter === 'b2b') {
         customerEntities = customerEntities.filter(e => e && e.customer_type !== 'retail')
         if (categoryFilter.length) customerEntities = customerEntities.filter(e => categoryFilter.includes(e.crm_category))
       }
-      const entities = audienceFilter === 'retail'
+      const entities = contactMode==='quiet90'||audienceFilter === 'retail'
         ? customerEntities
         : [...customerEntities, ...contacts.map(contactToEntity)]
       let candidates = eligibleCandidates(entities, excludedIds, excludedEmails)
@@ -1316,6 +1337,7 @@ export default function DailyDrafts() {
 
       {/* ── 2. Target & Generate ───────────────────────────────────────── */}
       <DailyDraftsTargeting
+        contactMode={contactMode} setContactMode={mode=>{setContactMode(mode);setContactReview('')}} contactReview={contactReview}
         hasMaster={hasMaster}
         audienceFilter={audienceFilter}
         setAudienceFilter={setAudienceFilter}

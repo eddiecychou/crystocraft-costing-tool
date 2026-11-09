@@ -5,7 +5,7 @@ import { emptyPipeline } from '../customerPipeline'
 import { savePipelineDecision, suggestCustomerPipeline } from '../domain/customerPipeline'
 import {summaryPeriodLabel} from '../customerSummary'
 
-export function CustomerPipeline({ customer, showLink=false, save=savePipelineDecision }) {
+export function CustomerPipeline({ customer, showLink=false, save=savePipelineDecision, workbench=false }) {
   const p=customer.sales_pipeline || emptyPipeline(), proposal=p.suggestion
   const [editor,setEditor]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[history,setHistory]=useState(false)
   async function act(action,input) {
@@ -16,10 +16,10 @@ export function CustomerPipeline({ customer, showLink=false, save=savePipelineDe
   }
   return <section className="p-4 border-b border-warm-grey" aria-label={`Pipeline for ${customer.company_name || 'customer'}`}>
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h3 className="text-sm">{showLink?<Link className="text-brand-600 hover:underline" to={`/customers/${customer.id}`}>{customer.company_name || 'Customer'}</Link>:'Customer Pipeline'} · {p.status==='active'?'Active':'Not active'}</h3>
+      <h3 className="text-sm">{showLink?<Link className="text-brand-600 hover:underline" to={`/customers/${customer.id}`}>{customer.company_name || 'Customer'}</Link>:workbench?'Active customer work':'Customer Pipeline'} · {p.status==='active'?'Active':'Not active'}</h3>
       <div className="flex flex-wrap gap-2">
-      <button className="btn-secondary text-xs min-h-[40px]" disabled={busy} onClick={()=>{setError('');setEditor({action:'manual',status:'active',detail:p.detail || '',expectedRevision:p.revision,eventId:crypto.randomUUID()})}}>{p.status==='active'?'Edit position':'Add to Pipeline'}</button>
-        <button className="btn-secondary text-xs min-h-[40px]" disabled={busy} onClick={()=>{setError('');setEditor({action:'manual',status:'inactive',detail:'Transaction completed; no outstanding buying requests.',expectedRevision:p.revision,eventId:crypto.randomUUID(),transactionCompleted:true})}}>Transaction completed</button>
+      <button className="btn-secondary text-xs min-h-[40px]" disabled={busy} onClick={()=>{setError('');setEditor({action:'manual',status:'active',detail:p.detail || '',expectedRevision:p.revision,eventId:crypto.randomUUID()})}}>{p.status==='active'?'Edit position':workbench?'Track active work':'Add to Pipeline'}</button>
+        <button className="btn-secondary text-xs min-h-[40px]" disabled={busy} onClick={()=>{setError('');setEditor({action:'manual',status:'inactive',detail:'Transaction completed; no outstanding buying requests.',expectedRevision:p.revision,eventId:crypto.randomUUID(),transactionCompleted:true})}}>{workbench?'Review work closure':'Transaction completed'}</button>
       </div>
     </div>
     {p.detail&&<p className="text-sm mt-2 whitespace-pre-wrap break-words">{p.detail}</p>}
@@ -37,7 +37,7 @@ export function CustomerPipeline({ customer, showLink=false, save=savePipelineDe
       </div>
     </div>}
     {error&&<p role="alert" className="text-sm text-brand-600 mt-2">{error}</p>}
-    {editor&&<form className="mt-3 space-y-3" onSubmit={e=>{e.preventDefault();act(editor.action,editor)}}>
+    {editor&&<form className="mt-3 space-y-3" aria-busy={busy} onSubmit={e=>{e.preventDefault();act(editor.action,editor)}}>
       {editor.transactionCompleted&&<p className="text-sm text-brand-600">Complete this customer’s Pipeline only if all buying requests are resolved. Keep the customer active if a separate sample, price, product or repeat-order request remains. This does not change any order, invoice, task or interaction history.</p>}
       <label className="block text-sm">Pipeline position
         <select className="input mt-1" value={editor.status} disabled={editor.action==='confirm'||editor.transactionCompleted||busy} onChange={e=>setEditor({...editor,status:e.target.value})}>

@@ -1,381 +1,87 @@
-import { inOcLast30Days, formatOcDate, formatOcDateTime, OC_TIME_ZONE } from '../ocTime.js'
-import { useState, useEffect } from 'react'
-import { collection, collectionGroup, query, onSnapshot, doc } from 'firebase/firestore'
-import { db } from '../firebase'
-import { Link } from 'react-router-dom'
-import LoadingBar from '../components/LoadingBar'
-import CustomerWorkspace from '../components/CustomerWorkspace'
+import {useState,useEffect,useMemo} from 'react'
+import {collection,collectionGroup,query,onSnapshot,doc} from 'firebase/firestore'
+import {Link} from 'react-router-dom'
+import {db} from '../firebase'
+import {normalizeCustomer} from '../domain/customer'
+import {useCustomerWorkItems} from '../domain/customerWorkItems'
+import {combineWorkItems} from '../customerWorkItems'
+import {isDashboardB2B,groupCustomerItems,dashboardTasks,customerWorkRows,REVIEW_PERIODS,WORK_STAGES} from '../dashboardWorkbench'
+import {fetchCustomerActivity} from '../customerActivityApi'
+import WorkbenchTasks from '../components/dashboard/WorkbenchTasks'
+import WorkbenchCustomerDialog from '../components/dashboard/WorkbenchCustomerDialog'
 import PipelinePanel from '../components/CustomerPipeline'
 import useOcToday from '../hooks/useOcToday'
 import useSummaryPeriod from '../hooks/useSummaryPeriod'
-import {SUMMARY_PERIODS,summaryCacheId,summaryPeriodLabel} from '../customerSummary'
-import { useCustomerWorkItems } from '../domain/customerWorkItems'
-import { combineWorkItems, hasOpenWork } from '../customerWorkItems'
-import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
 import useSummaryUpdate from '../hooks/useSummaryUpdate'
-import { orderStatusOf, orderUc } from '../shipping'
+import {SUMMARY_PERIODS,summaryCacheId,summaryPeriodLabel} from '../customerSummary'
+import {formatOcDate,formatOcDateTime,inOcLast30Days} from '../ocTime'
 
-// Orders in these statuses are "in production" — committed and being made, but
-// not yet shipped. Closing out = set the order to Shipped (it then drops off).
-const IN_PRODUCTION_ORDER_STATUSES = ['confirmed', 'packing', 'ready']
-import {
-  AlertTriangle, ClipboardList, Factory, Trophy, Calendar, Check,
-  Store, ShoppingCart, Gift, Sparkles, Smartphone, X, ChevronUp, ShoppingBag, Mail,
-} from 'lucide-react'
-
-// Thirty Hong Kong calendar days, including today.
-const isDateStrLast30Days = s => inOcLast30Days(s)
-
-const CHANNEL_BADGE = {
-  'Email':             'bg-purple-100 text-purple-700',
-  'WhatsApp Business': 'bg-green-100 text-green-700',
-  'Alibaba':           'bg-orange-100 text-orange-700',
-  'Personal WhatsApp': 'bg-amber-100 text-amber-700',
-}
-
-const QUOTE_STATUS_BADGE = {
-  draft: 'bg-ivory-dark text-ink-70',
-  sent:  'bg-blue-100 text-blue-700',
-}
-
+const customerName=c=>c.company_name||c.contact_name||c.id
 export default function Dashboard() {
-  const [summaryPeriod,setSummaryPeriod]=useSummaryPeriod()
-  const {running:weeklyGenerating, progress:summaryProgress, error:summaryUpdateError, days:summaryUpdateDays, start:startSummaryUpdate} = useSummaryUpdate()
-  const [customers, setCustomers]       = useState([])
-  const [orders, setOrders]             = useState([])
-  const [allEnquiries, setAllEnquiries] = useState([])
-  const [loading, setLoading]           = useState(true)
-  const [selectedCustomer, setSelectedCustomer] = useState('')
-  const [activeFilter, setActiveFilter]     = useState(null) // 'due' | 'open' | 'quotes' | 'won'
-  const [categoryFilter, setCategoryFilter] = useState(null) // customer category pill
-  const [retailFilter, setRetailFilter] = useState(false) // Retail-tagged-only toggle — independent of category
-  const [weeklySummary, setWeeklySummary] = useState(null) // { generatedAt, weekStart, items[] } | null (never generated yet)
-  const [weeklyLoading, setWeeklyLoading] = useState(true)
-  const [weeklyError, setWeeklyError] = useState('')
-
-  function toggleFilter(f) { setActiveFilter(prev => prev === f ? null : f) }
-
-  useEffect(() => {
-    const unsubCustomers = onSnapshot(query(collection(db, 'customers')), snap => {
-      setCustomers(snap.docs.map(d => ({ id: d.id, ...normalizeCustomer(d.data()) })))
-    })
-    const unsubOrders = onSnapshot(query(collection(db, 'orders')), snap => {
-      setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    })
-    return () => { unsubCustomers(); unsubOrders() }
-  }, [])
-
-  // Both views subscribe to the same interaction records: legacy task edits
-  // become visible without a manual reload or summary generation.
-  useEffect(() => {
-    if (!customers.length) { setAllEnquiries([]); setLoading(false); return }
-    const customerById = new Map(customers.map(c => [c.id, c]))
-    return onSnapshot(collectionGroup(db, 'enquiries'), snap => {
-      setAllEnquiries(snap.docs.filter(d => d.ref.parent.parent?.parent.id === 'customers' && customerById.has(d.ref.parent.parent.id)).map(d => {
-        const c = customerById.get(d.ref.parent.parent.id)
-        return {...d.data(), id:d.id, customerId:c.id, customerName:c.contact_name || '', companyName:c.company_name || ''}
-      }))
-      setLoading(false)
-    }, () => { setWeeklyError('Interaction history could not load. Reload this page or check your access.'); setLoading(false) })
-  }, [customers])
-
-  const work = useCustomerWorkItems(customers.map(c => c.id))
-  // On-demand only (V8.15) — load whatever was cached from the last time
-  // someone clicked "Update AI summaries" below; never auto-generates on its own.
-  useEffect(() => {setWeeklyLoading(true);setWeeklySummary(null);return onSnapshot(doc(db, 'dashboard_cache', summaryCacheId(summaryPeriod)), snap => {
-    setWeeklySummary(snap.exists() ? snap.data() : null); setWeeklyLoading(false)
-  }, () => { setWeeklyError('The summary could not load. Reload this page or check your access.'); setWeeklyLoading(false) })}, [summaryPeriod])
-
-  function handleGenerateWeeklySummary() {
-    setWeeklyError('')
-    startSummaryUpdate(summaryPeriod)
-  }
-  const summaryError = weeklyError || summaryUpdateError
-
-  const customerMap = Object.fromEntries(customers.map(c => [c.id, c]))
-
-  // Same, for orders (which key on customer_id, not customerId)
-  function byCatOrder(list) {
-    return list.filter(o => {
-      const c = customerMap[o.customer_id]
-      return (!categoryFilter || c?.crm_category === categoryFilter) &&
-             (!retailFilter || c?.tags?.includes(RETAIL_TAG))
-    })
-  }
-
-  // Only human-confirmed customer positions count. Historical interactions never seed approvals.
-  const pipelineCustomers = customers.filter(c => (!categoryFilter || c.crm_category === categoryFilter) && (!retailFilter || c.tags?.includes(RETAIL_TAG)))
-  const pipelineList = pipelineCustomers.filter(c => c.sales_pipeline?.status === 'active')
-
-  // In Production and New Orders are both ORDER-based, not enquiry-based.
-  // Production/shipment is an order lifecycle (Confirmed → Packing → Ready →
-  // Shipped), updated in place on the order in the Shipping module — not a dated
-  // log entry you rewrite. An order drops off In Production the moment it's
-  // marked Shipped/Delivered.
-  const inProductionOrders = byCatOrder(
-    orders.filter(o => IN_PRODUCTION_ORDER_STATUSES.includes(o.status))
-  ).sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))
-
-  // New Orders = actual orders received (by PI date) in the last 30 days — the
-  // real order record, not the enquiry's "Confirmed" pipeline signal.
-  const newOrdersList = byCatOrder(
-    orders.filter(o => isDateStrLast30Days(o.order_date))
-  ).sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))
-
-  // Follow-ups are task-driven: any thread with an outstanding follow-up date is
-  // a distinct actionable item, so these are NOT collapsed per customer — a
-  // customer chasing two threads shows both. Filtering on follow_up_date first
-  // also means a follow-up on a non-latest thread is no longer hidden.
-  const groupedWork = new Map(customers.map(c => [c.id, combineWorkItems(
-    allEnquiries.filter(e => e.customerId === c.id), work.items.filter(i => i.customerId === c.id))]))
-  const today = useOcToday()
-  const dueList = [] // native tasks and carried follow-ups, without a recency cutoff
-  for (const c of customers) {
-    if ((categoryFilter && c.crm_category !== categoryFilter) || (retailFilter && !c.tags?.includes(RETAIL_TAG))) continue
-    for (const item of groupedWork.get(c.id) || []) {
-      if (item.kind === 'task' && item.state !== 'done' && item.due_on && item.due_on <= today) dueList.push({ ...item, customerId: c.id })
-    }
-  }
-  const dueGroups = [
-    { label: 'Overdue', items: dueList.filter(i => i.due_on < today), empty: 'No overdue tasks in this view.' },
-    { label: 'Today', items: dueList.filter(i => i.due_on === today), empty: 'No tasks due today in this view.' },
-  ]
-  const digestByCustomer = new Map((weeklySummary?.items || []).map(i => [i.customerId, i]))
-  const workspaceCustomers = customers.filter(c =>
-    (!categoryFilter || c.crm_category === categoryFilter) && (!retailFilter || c.tags?.includes(RETAIL_TAG)) &&
-    (activeFilter === 'due'
-      ? dueList.some(i => i.customerId === c.id)
-      : c.id === selectedCustomer || digestByCustomer.has(c.id) || hasOpenWork(groupedWork.get(c.id) || []))
-  ).sort((a,b) => {
-    const tasks = c => (groupedWork.get(c.id) || []).filter(i => i.kind === 'task' && i.state !== 'done')
-    const aTasks = tasks(a), bTasks = tasks(b)
-    const due = items => items.filter(i => i.due_on).map(i => i.due_on).sort()[0] || '9999'
-    return Number(!aTasks.length) - Number(!bTasks.length) || due(aTasks).localeCompare(due(bTasks)) || (a.company_name || '').localeCompare(b.company_name || '')
-  })
-
-  function customerWorkspace(c) { return <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || c.contact_name || 'Customer'}
-          digest={digestByCustomer.get(c.id)?.digest} items={groupedWork.get(c.id) || []} showLink collapseSummary summaryPreviewLength={200}
-          summaryDays={summaryPeriod} sourceLimited={digestByCustomer.get(c.id)?.sourceLimited} /> }
-
-  const filterConfig = {
-    quotes: { title:'In Production', empty:'No orders currently in production', items:inProductionOrders },
-    won: { title:'New Orders — Last 30 Days', empty:'No orders received in the last 30 days', items:newOrdersList },
-  }
-
-  const personalWaCustomers = customers.filter(c => c.is_personal_wa)
-
-  return (
-    <div className="p-4 md:p-6 max-w-3xl">
-      {loading && <LoadingBar />}
-
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-xl md:text-2xl text-ink">Dashboard</h1>
-          <p className="text-sm text-ink-60 mt-0.5">{formatOcDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: OC_TIME_ZONE }, 'en-GB')} · Hong Kong time</p>
-        </div>
-        <p className="text-xs text-ink-60 mt-1 max-w-40 text-right">Saved data updates automatically</p>
-      </div>
-
-      {/* Customer Type filter pills — Retail Customer sits alongside
-          Distributor/Small B2B/Gift-OEM/Crystal Fabric as a peer type
-          (owner, 2026-08-13: same visual row, not a separate toggle below),
-          but stays functionally independent under the hood — it's a tag,
-          not a value of crm_category, so it can combine with any of the
-          other four (a trade-bucket customer, e.g. shared ERP code C13,
-          can also buy retail sometimes; see domain/customer.js's
-          RETAIL_TAG comment). Clicking it toggles retailFilter, the others
-          set categoryFilter — both AND together in byCat()/byCatOrder(). */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {[
-          { label: 'Distributor',   value: 'Distributor',   Icon: Store },
-          { label: 'Small B2B',     value: 'Small B2B',     Icon: ShoppingCart },
-          { label: 'Gift / OEM',    value: 'Gift / OEM',    Icon: Gift },
-          { label: 'Crystal Fabric', value: 'Crystal Fabric', Icon: Sparkles },
-        ].map(({ label, value, Icon }) => (
-          <button
-            key={value}
-            onClick={() => setCategoryFilter(f => f === value ? null : value)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
- categoryFilter === value
-                ? 'bg-ink border-ink text-white'
-                : 'bg-white border-warm-grey text-ink-70 hover:border-ink-60'
-            }`}
-          >
-            {Icon && <Icon size={13} className="inline align-[-2px] mr-1" />}{label}
-          </button>
-        ))}
-        <button
-          onClick={() => setRetailFilter(v => !v)}
-          className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
- retailFilter
-              ? 'bg-ink border-ink text-white'
-              : 'bg-white border-warm-grey text-ink-70 hover:border-ink-60'
-          }`}
-        >
-          <ShoppingBag size={13} className="inline align-[-2px] mr-1" />{RETAIL_TAG}
-        </button>
-        {(categoryFilter || retailFilter) && (
-          <button
-            onClick={() => { setCategoryFilter(null); setRetailFilter(false) }}
-            className="px-3 py-1 rounded-full text-xs font-medium border border-dashed border-warm-grey text-ink-60 hover:text-ink-70 transition-colors"
-          >
-            Clear filter
-          </button>
-        )}
-      </div>
-
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatCard
-          label="Follow-ups Due"
-          value={dueList.length}
-          colour="red"
-          note={`${dueGroups[0].items.length} overdue · ${dueGroups[1].items.length} today`}
-          active={activeFilter === 'due'}
-          onClick={() => toggleFilter('due')}
-        />
-        <StatCard
-          label="Pipeline"
-          value={pipelineList.length}
-          colour="amber"
-          note="confirmed customers"
-          active={activeFilter === 'open'}
-          onClick={() => toggleFilter('open')}
-        />
-        <StatCard
-          label="In Production"
-          value={inProductionOrders.length}
-          colour="blue"
-          note="active orders"
-          active={activeFilter === 'quotes'}
-          onClick={() => toggleFilter('quotes')}
-        />
-        <StatCard
-          label="New Orders"
-          value={newOrdersList.length}
-          colour="green"
-          note="last 30 days"
-          active={activeFilter === 'won'}
-          onClick={() => toggleFilter('won')}
-        />
-      </div>
-
-      {activeFilter && <button className="text-sm text-brand-600 underline mb-4 min-h-[40px]" onClick={() => setActiveFilter(null)}>Back to to-do list</button>}
-      {activeFilter === 'due' && <div className="card mb-6" aria-label="Follow-ups due">
-        <h2 className="text-base p-4 border-b border-warm-grey">Follow-ups Due · {dueList.length}</h2>
-        {(summaryError || work.error) && <p role="alert" className="p-4 text-sm text-brand-600">{summaryError || work.error}</p>}
-        {dueGroups.map(group => <section key={group.label} aria-label={`${group.label} tasks`}>
-          <h3 className={`text-sm p-4 border-b border-warm-grey ${group.label === 'Overdue' ? 'text-brand-600' : 'text-ink'}`}>{group.label} · {group.items.length}</h3>
-          {pipelineCustomers.filter(c => group.items.some(i => i.customerId === c.id)).map(c => <CustomerWorkspace key={c.id} customerId={c.id} customerName={c.company_name || 'Customer'}
-            items={group.items.filter(i => i.customerId === c.id)} showLink showSummary={false} />)}
-          {!group.items.length && <p className="p-4 text-sm text-ink-60">{group.empty}</p>}
-        </section>)}
-      </div>}
-      {(activeFilter === 'quotes' || activeFilter === 'won') && <div className="card mb-6" aria-label={filterConfig[activeFilter].title}>
-        <h2 className="text-base p-4 border-b border-warm-grey">{filterConfig[activeFilter].title} · {filterConfig[activeFilter].items.length}</h2>
-        {!filterConfig[activeFilter].items.length && <p className="p-4 text-sm text-ink-60">{filterConfig[activeFilter].empty}</p>}
-        <div className="divide-y divide-warm-grey">{filterConfig[activeFilter].items.map(o => <Link key={o.id} to={`/shipments/${o.id}`} className="flex items-center justify-between gap-3 p-4 hover:bg-ivory">
-          <span className="min-w-0"><span className="block text-sm">{customerMap[o.customer_id]?.company_name || o.customer_name || 'Customer'} · {orderStatusOf(o.status).label}</span><span className="block text-xs text-ink-60 mt-1">{orderUc(o) || o.id}</span></span>
-          <span className="text-xs text-ink-60 shrink-0">{o.order_date || '—'}</span>
-        </Link>)}</div>
-      </div>}
-
-      {activeFilter === 'open' && <>
-        <div className="card p-4 mb-4">
-          <ConversationWindow value={summaryPeriod} onChange={setSummaryPeriod} disabled={weeklyGenerating} pipeline />
-        </div>
-        <PipelinePanel customers={pipelineCustomers} allCustomers={customers} summaryPeriod={summaryPeriod} />
-      </>}
-
-      {!activeFilter && (<div className="card mb-6">
-        <div className="p-4 border-b border-warm-grey flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-base">Customer to-do list</h2><p className="text-xs text-ink-60 mt-1">Your tasks first. Review each customer's summary when planning new follow-ups.</p></div>
-          <label className="text-sm w-full">Find a customer to add a task or note
-            <select className="input mt-1" value={selectedCustomer} onChange={e => { setSelectedCustomer(e.target.value); setActiveFilter(null) }}>
-              <option value="">Choose customer…</option>{[...customers].sort((a,b) => (a.company_name || '').localeCompare(b.company_name || '')).map(c => <option key={c.id} value={c.id}>{c.company_name || c.contact_name || c.id}</option>)}
-            </select>
-          </label>
-          <details className="w-full">
-            <summary className="text-sm text-ink-60 cursor-pointer min-h-11 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600">Summary settings · Last {summaryPeriodLabel(summaryPeriod)}{weeklyGenerating ? ' · Updating…' : ''}</summary>
-            <div className="mt-2 space-y-3">
-              <ConversationWindow value={summaryPeriod} onChange={setSummaryPeriod} disabled={weeklyGenerating} />
-              <div className="flex flex-wrap items-center gap-3"><button onClick={handleGenerateWeeklySummary} disabled={weeklyGenerating} className="btn-secondary text-xs">{weeklyGenerating ? 'Updating AI summaries…' : 'Update AI summaries'}</button>
-                {weeklySummary?.generatedAt && <p className="text-xs text-ink-60">Updated {formatOcDateTime(weeklySummary.generatedAt?.toDate?.(), {}, 'en-GB')}</p>}
-              </div>
-              <p className="text-xs text-ink-60">Uses already-synced conversations. Your tasks stay unchanged.</p>
-            </div>
-          </details>
-        </div>
-        {customerMap[selectedCustomer] && customerWorkspace(customerMap[selectedCustomer])}
-        {(summaryError || work.error) && <p role="alert" className="text-sm text-brand-600 p-4">{summaryError || work.error}</p>}
-        {(weeklyLoading || work.loading || loading) && <p className="text-sm text-ink-60 p-4">Loading summaries and tasks…</p>}
-        {weeklyGenerating&&<p role="status" className="text-sm text-ink-60 p-4">Updating AI summaries · Last {summaryPeriodLabel(summaryUpdateDays)}. {summaryProgress}</p>}
-        {!weeklyLoading&&!weeklySummary&&<p className="text-sm text-ink-60 p-4">No saved summaries for this period. You can still add tasks; summaries can be prepared in Summary settings.</p>}
-        {workspaceCustomers.filter(c => c.id !== selectedCustomer).map(customerWorkspace)}
-        {!selectedCustomer && !loading && !work.loading && !workspaceCustomers.length && <p className="text-sm text-ink-60 p-4">{activeFilter === 'due' ? 'No tasks due today or overdue.' : 'No outstanding tasks or recent summaries. Choose a customer above to add a task.'}</p>}
-      </div>
-      )}
-
-      {/* Personal WhatsApp panel */}
-      {!activeFilter && personalWaCustomers.length > 0 && (
-        <div className="card mb-4">
-          <div className="px-5 py-4 border-b border-warm-grey">
-            <h2 className="flex items-center gap-1.5 text-sm text-ink-80"><Smartphone size={15} />Personal WhatsApp Contacts</h2>
-            <p className="text-xs text-ink-60 mt-0.5">These contacts use personal WhatsApp — check your personal phone</p>
-          </div>
-          <ul className="divide-y divide-warm-grey">
-            {personalWaCustomers.map(c => (
-              <li key={c.id}>
-                <Link
-                  to={`/customers/${c.id}`}
-                  className="flex items-center gap-3 px-5 py-3 hover:bg-ivory transition-colors"
-                >
-                  <span className="text-sm text-ink">
-                    <span className="font-medium">{c.contact_name || c.company_name}</span>
-                    {c.contact_name && c.company_name && <span className="text-ink-60"> · {c.company_name}</span>}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function StatCard({ label, value, colour, note, active, onClick }) {
-  const colours = {
-    red:   { bg: 'bg-red-50',   border: 'border-red-100',  activeBorder: 'border-red-400',  num: 'text-red-600',   label: 'text-red-700' },
-    amber: { bg: 'bg-amber-50', border: 'border-amber-100',activeBorder: 'border-amber-400',num: 'text-amber-600', label: 'text-amber-700' },
-    blue:  { bg: 'bg-blue-50',  border: 'border-blue-100', activeBorder: 'border-blue-400', num: 'text-blue-600',  label: 'text-blue-700' },
-    green: { bg: 'bg-green-50', border: 'border-green-100',activeBorder: 'border-green-400',num: 'text-green-600', label: 'text-green-700' },
-  }
-  const c = colours[colour] || colours.blue
-
-  return (
-    <button
-      onClick={onClick}
-      className={`${c.bg} border-2 ${active ? c.activeBorder : c.border} rounded-none p-4 text-left w-full transition-all hover:shadow-sm ${active ? 'shadow-sm' : ''}`}
-    >
-      <p className={`text-3xl font-bold ${c.num}`}>{value}</p>
-      <p className={`text-xs font-semibold mt-1 leading-tight ${c.label}`}>{label}</p>
-      {note && <p className="text-xs text-ink-60 mt-0.5 leading-tight">{note}</p>}
-      {active && <p className={`inline-flex items-center gap-1 text-xs mt-1 font-medium ${c.label} opacity-70`}><ChevronUp size={12} />filtered</p>}
-    </button>
-  )
-}
-
-function ConversationWindow({value, onChange, disabled, pipeline = false}) {
-  return <div>
-    <label className="block text-sm">{pipeline ? 'Use saved summaries from' : 'Conversation window'}
-      <select className="input mt-1 max-w-xs" value={value} disabled={disabled} onChange={e => onChange(e.target.value)}>
-        {SUMMARY_PERIODS.map(p => <option key={p.days} value={p.days}>{p.label}</option>)}
-      </select>
-    </label>
-    <p className="text-xs text-ink-60 mt-2">{pipeline
-      ? 'Selects the saved conversation summaries used for AI suggestions. Confirmed Pipeline positions do not expire with this window.'
-      : 'Shows saved summaries of email, WhatsApp and interactions from this window (6 months = 180 days; 1 year = 365 days). Changing it does not run AI. Tasks and dashboard figures are unaffected.'}</p>
+  const [customers,setCustomers]=useState([]),[orders,setOrders]=useState([]),[quotes,setQuotes]=useState([]),[enquiries,setEnquiries]=useState([])
+  const [loaded,setLoaded]=useState({}),[errors,setErrors]=useState({})
+  const [filter,setFilter]=useState('all'),[search,setSearch]=useState(''),[category,setCategory]=useState('')
+  const [selection,setSelection]=useState(null),[reviewDays,setReviewDays]=useState(()=>{try{const v=Number(localStorage.getItem('oc:contact-review-days'));return REVIEW_PERIODS.includes(v)?v:30}catch{return 30}})
+  const [activity,setActivity]=useState({customers:[],checkedAt:null,loading:true,error:''}),[refresh,setRefresh]=useState(0)
+  const [summaryPeriod,setSummaryPeriod]=useSummaryPeriod(),[summary,setSummary]=useState(null),[summaryError,setSummaryError]=useState('')
+  const update=useSummaryUpdate(),today=useOcToday()
+  useEffect(()=>{
+    const stops=[['customers',rows=>setCustomers(rows.map(c=>({...normalizeCustomer(c),id:c.id})))],['orders',setOrders],['client_quotes',setQuotes]].map(([name,set])=>onSnapshot(query(collection(db,name)),snap=>{
+      set(snap.docs.map(d=>({...d.data(),id:d.id})));setLoaded(v=>({...v,[name]:true}));setErrors(v=>({...v,[name]:''}))
+    },()=>{setErrors(v=>({...v,[name]:`${name==='client_quotes'?'Quotations':name==='orders'?'Orders':'Customers'} could not load. Reload or check access.`}));setLoaded(v=>({...v,[name]:true}))}))
+    return()=>stops.forEach(stop=>stop())
+  },[])
+  useEffect(()=>onSnapshot(collectionGroup(db,'enquiries'),snap=>{
+    setEnquiries(snap.docs.filter(d=>d.ref.parent.parent?.parent.id==='customers').map(d=>({...d.data(),id:d.id,customerId:d.ref.parent.parent.id})))
+    setLoaded(v=>({...v,enquiries:true}));setErrors(v=>({...v,enquiries:''}))
+  },()=>{setErrors(v=>({...v,enquiries:'Interaction follow-ups could not load. Reload or check access.'}));setLoaded(v=>({...v,enquiries:true}))}),[])
+  useEffect(()=>{
+    const controller=new AbortController();setActivity(v=>({...v,loading:true,error:''}))
+    fetchCustomerActivity({signal:controller.signal}).then(data=>{if(!controller.signal.aborted)setActivity({...data,loading:false,error:''})}).catch(e=>{if(!controller.signal.aborted)setActivity({customers:[],checkedAt:null,loading:false,error:e.message})})
+    return()=>controller.abort()
+  },[refresh])
+  useEffect(()=>{setSummary(null);setSummaryError('');return onSnapshot(doc(db,'dashboard_cache',summaryCacheId(summaryPeriod)),snap=>setSummary(snap.exists()?snap.data():null),()=>setSummaryError('Saved summaries could not load. Reload or check access.'))},[summaryPeriod])
+  const b2b=useMemo(()=>customers.filter(isDashboardB2B).sort((a,b)=>customerName(a).localeCompare(customerName(b))),[customers])
+  const work=useCustomerWorkItems(b2b.map(c=>c.id))
+  const grouped=useMemo(()=>groupCustomerItems(b2b,enquiries,work.items,combineWorkItems),[b2b,enquiries,work.items])
+  const scoped=b2b.filter(c=>(!category||c.crm_category===category)&&(!search||`${customerName(c)} ${c.contact_name||''}`.toLowerCase().includes(search.toLowerCase())))
+  const all=dashboardTasks(scoped,grouped,today),due=dashboardTasks(scoped,grouped,today,'due'),waiting=dashboardTasks(scoped,grouped,today,'waiting')
+  const rows=customerWorkRows({customers:scoped,grouped,quotes,orders,activity:activity.customers,days:reviewDays})
+  const everyRow=customerWorkRows({customers:b2b,grouped,quotes,orders,activity:activity.customers,days:36500})
+  const ids=new Set(scoped.map(c=>c.id)),b2bOrders=orders.filter(o=>ids.has(o.customer_id))
+  const activeOrders=b2bOrders.filter(o=>['confirmed','packing','ready'].includes(o.status)),newOrders=b2bOrders.filter(o=>inOcLast30Days(o.order_date))
+  const tasksLoading=!loaded.customers||!loaded.enquiries||work.loading
+  function open(customerId,editor=null){setSelection({customerId,editor})}
+  function review(value){setReviewDays(value);try{localStorage.setItem('oc:contact-review-days',String(value))}catch{ /* Private browsing still supports this session. */ }}
+  const summaryTools=<div className="space-y-3">
+    <label className="block text-sm">Summary context<select className="input mt-1 max-w-xs" value={summaryPeriod} disabled={update.running} onChange={e=>setSummaryPeriod(e.target.value)}>{SUMMARY_PERIODS.map(p=><option key={p.days} value={p.days}>{p.label}</option>)}</select></label>
+    <button className="btn-secondary text-xs" disabled={update.running} onClick={()=>update.start(summaryPeriod)}>{update.running?'Updating AI summaries…':'Update AI summaries'}</button>
+    {summary?.generatedAt&&<p className="text-xs text-ink-60">Updated {formatOcDateTime(summary.generatedAt?.toDate?.())}</p>}
+    <p className="text-xs text-ink-60">Uses synced conversations for the last {summaryPeriodLabel(summaryPeriod)}. Contact review and tasks are separate; changing either period does not run AI.</p>
+    {(summaryError||update.error)&&<p role="alert" className="text-sm text-brand-600">{summaryError||update.error}</p>}
+  </div>
+  return <div className="p-4 md:p-6 max-w-7xl space-y-5">
+    <header className="flex flex-wrap items-start justify-between gap-2"><div><h1 className="text-xl md:text-2xl">Dashboard</h1><p className="text-xs text-ink-60 mt-1">B2B customer work · {formatOcDate(new Date())} · Hong Kong time</p></div><Link className="text-sm text-brand-600 underline min-h-11 py-2" to="/marketing?tab=drafts&contact=quiet90">Daily Drafts · quiet 3 months →</Link></header>
+    {update.running&&<p role="status" className="text-sm text-ink-60">Updating AI summaries · Last {summaryPeriodLabel(update.days)}. {update.progress}</p>}
+    <WorkbenchTasks scopeLabel={[category,search].filter(Boolean).join(' · ')} onClearScope={()=>{setCategory('');setSearch('')}} items={filter==='due'?due:filter==='waiting'?waiting:all} all={all} due={due} waiting={waiting} filter={filter} onFilter={setFilter} today={today} loading={tasksLoading} error={errors.customers||errors.enquiries||work.error} onOpen={open} onAdd={()=>open('',{kind:'task'})}/>
+    <section className="card" aria-label="Customers I’m dealing with">
+      <div className="p-4 border-b border-warm-grey flex flex-wrap justify-between gap-3 items-center"><div><h2 className="text-lg">Customers I’m dealing with</h2><p className="text-xs text-ink-60 mt-1">Ongoing work stays visible beyond the contact review period.</p></div><label className="text-xs text-ink-60">Contact review<select className="input mt-1 py-2" value={reviewDays} onChange={e=>review(Number(e.target.value))}>{REVIEW_PERIODS.map(d=><option key={d} value={d}>{d===365?'1 year':`${d/30} month${d===30?'':'s'}`}</option>)}</select></label></div>
+      <div className="p-4 flex flex-wrap gap-3 items-end"><label className="text-xs text-ink-60 flex-1 min-w-0">Find B2B customer<input type="search" className="input mt-1" placeholder="Company or contact" value={search} onChange={e=>setSearch(e.target.value)}/></label><label className="text-xs text-ink-60">Category<select className="input mt-1" value={category} onChange={e=>setCategory(e.target.value)}><option value="">All B2B</option>{['Distributor','Small B2B','Gift / OEM','Crystal Fabric'].map(c=><option key={c}>{c}</option>)}</select></label><button className="text-sm text-brand-600 underline min-h-11" onClick={()=>open('')}>Browse all B2B</button></div>
+      {(search||category)&&<p className="px-4 pb-3 text-xs text-ink-60">Task counts and customer rows are filtered. <button className="underline text-brand-600 min-h-11" onClick={()=>{setSearch('');setCategory('')}}>Clear filters</button></p>}
+      {Object.values(errors).filter(Boolean).map(message=><p role="alert" key={message} className="px-4 pb-2 text-sm text-brand-600">{message}</p>)}
+      {activity.error&&<p role="alert" className="px-4 pb-3 text-sm text-brand-600">{activity.error} Current tasks and saved work remain visible. <button className="underline min-h-11" onClick={()=>setRefresh(n=>n+1)}>Retry contact history</button></p>}
+      {activity.loading&&<p role="status" className="px-4 pb-3 text-xs text-ink-60">Loading recorded contact dates…</p>}
+      <ul className="divide-y divide-warm-grey" aria-label="Customer work overview">{rows.map(row=><li key={row.customer.id}><button className="w-full text-left p-4 flex flex-wrap items-center gap-x-4 gap-y-2 hover:bg-ivory min-w-0" onClick={()=>open(row.customer.id)}>
+        <span className="flex-1 min-w-[120px] break-words text-sm font-medium">{customerName(row.customer)}</span>
+        <span className="flex flex-wrap gap-1.5 sm:flex-1">{row.stages.length?row.stages.map(stage=><span key={stage} className="text-xs bg-ivory px-2 py-1 border border-warm-grey">{WORK_STAGES[stage]}</span>):<span className="text-xs text-ink-60">{row.active?'Stage not set':'Recent contact'}</span>}</span>
+        <span className="text-xs text-ink-60">{row.lastContact?`Contact: ${formatOcDate(new Date(row.lastContact))}`:'Contact date unknown'}{row.historyState==='partial'?' · Partial history':''}{row.active&&!row.recent?' · Ongoing work':''}</span>
+        <span className="text-xs text-ink-60">{row.tasks.length} open {row.tasks.length===1?'task':'tasks'} →</span>
+      </button></li>)}</ul>
+      {!tasksLoading&&!rows.length&&<p className="p-4 text-sm text-ink-60">No current work or recorded contacts in this view. Browse all B2B to review a customer.</p>}
+      <div className="px-4 py-3 border-t border-warm-grey flex flex-wrap justify-between gap-2 text-xs text-ink-60"><span>{activity.checkedAt?`Contact dates checked ${formatOcDateTime(new Date(activity.checkedAt))}`:'No contact-date snapshot loaded'}</span><button className="underline min-h-11" disabled={activity.loading} onClick={()=>setRefresh(n=>n+1)}>Refresh contact dates</button></div>
+    </section>
+    <div className="flex flex-wrap gap-4 text-sm text-ink-60"><Link className="text-brand-600 underline min-h-11 py-2" to="/shipping">Order &amp; Production · {loaded.orders?activeOrders.length:'…'}</Link><Link className="text-brand-600 underline min-h-11 py-2" to="/shipping">New orders · {loaded.orders?newOrders.length:'…'} in 30 days</Link></div>
+    <details className="card"><summary className="p-4 text-sm cursor-pointer">Summary and work review tools</summary><div className="p-4">{summaryTools}</div><PipelinePanel customers={scoped} allCustomers={b2b} summaryPeriod={summaryPeriod}/><details className="p-4"><summary className="text-sm cursor-pointer">Personal WhatsApp contacts</summary>{scoped.filter(c=>c.is_personal_wa).map(c=><button key={c.id} onClick={()=>open(c.id)} className="block py-3 text-sm text-brand-600 underline">{customerName(c)}</button>)}</details></details>
+    {selection&&<WorkbenchCustomerDialog key={selection.customerId||'choose'} customers={b2b} selection={selection} onSelect={id=>open(id,selection.editor)} onClose={()=>setSelection(null)} items={grouped.get(selection.customerId)||[]} row={everyRow.find(r=>r.customer.id===selection.customerId)} digest={summary?.items?.find(i=>i.customerId===selection.customerId)} summaryDays={summaryPeriod} summaryTools={summaryTools}/>}
   </div>
 }

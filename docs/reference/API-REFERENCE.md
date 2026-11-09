@@ -25,6 +25,15 @@ shape or a gotcha, read the function itself; the file names below are exact.
   customer, narrower than admin).
 - *public* = no session check.
 
+Local, not released (10 November): Node `/api/customer-workbench` GET supplies
+B2B recorded last-contact metadata for Dashboard and quiet90 Daily Drafts. Firebase
+verifyIdToken(token,true) plus fresh users profile requires admin or staff with
+customers. Customer/anonymous/service/non-CRM access is denied; private/no-store,
+no raw messages, no writes or shared cache. Repository selects/paginates header
+metadata only and fails closed on incomplete reads. Owners: customerActivityApi.js,
+functions/customer-workbench.js and functions/lib/customerWorkbench.js. See
+[implementation/migration review](../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md).
+
 ## CRM & Outreach
 
 - **Node `/api/customer-files`** (`netlify/functions/customer-files.js`): internal Business Cards & Customer Files, separate from Brand Assets. Fresh revoked-token and current `admin` / `staff+customers` checks on every operation, including original/thumbnail chunks. GET list/content, POST begin/chunk/complete/thumbnail, PATCH details. Server-derived immutable storage paths, 20 MiB originals / 3 MiB binary chunks, SHA256, exact original filename headers and revision-checked descriptors/actual saved contact IDs. No public/token read URLs, OCR/contact mutation, subscriptions or sends. Client: `src/customerFiles.js` / `components/crm/CustomerFiles.jsx`. [Implementation, additive rules and local verification; publication pending](../plans/V8.20-CUSTOMER-FILES.md).

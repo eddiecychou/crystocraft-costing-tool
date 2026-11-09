@@ -1,3 +1,16 @@
+# V8.20 — B2B dashboard workbench, implemented locally 10 November 2026
+
+Approved dashboard redesign is implemented and tested locally. The owner has
+authorized smoke testing, commit, push and deploy; release gates are in progress. All open tasks lead, compact customer rows show Exploration /
+Quotation / Order & Production, and summaries/notes move to the second layer.
+Contact review is separate from summary periods; quiet90 Daily Drafts remains
+explicit and human-reviewed. New task activation reuses the atomic audited work
+position. No production records, emails, bulk migration or rules changed.
+[Owner workflow, optional field/migration review, implementation and evidence](docs/plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md).
+The production app remains the buyer price-list release recorded below. Both
+exact-SHA jobs and fresh two-role candidate/production gates remain required
+before publishing this authorized dashboard release.
+
 # V8.20 — Buyer Excel price list, released 10 November 2026
 
 Released `5026121`, production `6af1e20b0c5e72f0d37fbc68`. Price list now has separate Product/Code/Size, Plating, available crystal names/codes and customer Unit price, plus Code guide. Quantity columns, totals and hidden order logic are removed. Design-number/format sorting groups U/D/A/H/M versions together, then UA, UB and other series. Both exact-SHA jobs, build/tests, fresh candidate/production roles and actual Chrome price/colour/sort/download checks pass. No migration/rules/business-data changes. [Contract, history and release evidence](docs/plans/V8.20-RANGE-EXCEL-ORDER-FORM.md).

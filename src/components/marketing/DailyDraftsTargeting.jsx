@@ -5,10 +5,13 @@ export default function DailyDraftsTargeting({
   hasMaster, audienceFilter, setAudienceFilter, categoryFilter, setCategoryFilter,
   categories: CRM_CATEGORIES, targetingNote, setTargetingNote,
   includeAlreadyContacted, setIncludeAlreadyContacted, generating, handleGenerate,
+  contactMode='all',setContactMode,contactReview='',
 }) {
   return (
     <div className={`card p-5 space-y-4 ${!hasMaster ? 'opacity-50' : ''}`}>
       <h2 className="text-sm text-ink">2. Who do you want to reach?</h2>
+      <label className="block text-sm">Contact review<select className="input mt-1 max-w-md" value={contactMode} disabled={!hasMaster||generating} onChange={e=>setContactMode(e.target.value)}><option value="all">Normal targeting and cooldowns</option><option value="quiet90">Existing B2B customers · no recorded contact for 90 days</option></select></label>
+      {contactMode==='quiet90'&&<p className="text-xs text-ink-60">B2B companies only; marketing leads and unknown/partial histories are excluded. Contact dates are checked when you generate. Drafting and sending still require your review. {contactReview}</p>}
       {/* Hard pre-filter, not a hint — see handleGenerate's own comment on
           why this can't just be folded into the free-text Targeting note
           below (the AI can ignore/misread free text; this can't be). */}
@@ -21,13 +24,13 @@ export default function DailyDraftsTargeting({
             { v: 'all', label: 'Everyone' },
           ].map(opt => (
             <label key={opt.v} className="flex items-center gap-1.5 text-sm text-ink-80">
-              <input type="radio" name="audienceFilter" value={opt.v} checked={audienceFilter === opt.v}
-                disabled={!hasMaster} onChange={() => setAudienceFilter(opt.v)} />
+              <input type="radio" name="audienceFilter" value={opt.v} checked={(contactMode==='quiet90'?'b2b':audienceFilter) === opt.v}
+                disabled={!hasMaster||contactMode==='quiet90'} onChange={() => setAudienceFilter(opt.v)} />
               {opt.label}
             </label>
           ))}
         </div>
-        {audienceFilter === 'b2b' && (
+        {(audienceFilter === 'b2b'||contactMode==='quiet90') && (
           <div className="flex items-center gap-3 flex-wrap mt-2">
             {CRM_CATEGORIES.map(cat => (
               <label key={cat} className="flex items-center gap-1.5 text-xs text-ink-70">

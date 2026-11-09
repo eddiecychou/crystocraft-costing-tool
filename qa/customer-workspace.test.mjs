@@ -46,7 +46,7 @@ test('revision check rejects missing or concurrently edited records',()=>{
  assert.throws(()=>assertRevision(null,0),/changed/);assert.throws(()=>assertRevision({revision:2},1),/changed/);assert.doesNotThrow(()=>assertRevision({revision:2},2))
 })
 test('real save transaction creates once on retry, updates with revision, refuses stale edits',async()=>{
- globalThis.__workDb={};const input={kind:'task',text:'Send quotation',state:'waiting',due_on:'2026-10-18'};await api.saveCustomerWorkItem('c1',null,input,'stable');await api.saveCustomerWorkItem('c1',null,input,'stable');assert.equal(Object.keys(globalThis.__workDb).length,1)
+ globalThis.__workDb={'customers/c1':{company_name:'Fictional'}};const input={kind:'task',text:'Send quotation',state:'waiting',due_on:'2026-10-18'};await api.saveCustomerWorkItem('c1',null,input,'stable');await api.saveCustomerWorkItem('c1',null,input,'stable');assert.equal(Object.keys(globalThis.__workDb).length,3)
  const saved=globalThis.__workDb['customers/c1/work_items/stable'];assert.equal(saved.revision,1);await api.saveCustomerWorkItem('c1',{id:'stable',source:'work_item',revision:1},{...input,state:'done'});assert.equal(globalThis.__workDb['customers/c1/work_items/stable'].revision,2);await assert.rejects(api.saveCustomerWorkItem('c1',{id:'stable',source:'work_item',revision:1},input),/changed/)
 })
 test('legacy completion transaction changes only task metadata, preserving original content and dated follow-up',async()=>{
@@ -71,7 +71,7 @@ test('completed tasks can be reopened without deleting the record',async()=>moun
  assert.doesNotMatch(host.textContent,/Finished task/);await act(async()=>button(host,'Show completed / archived (1)').click());assert.match(host.textContent,/Finished task/);await act(async()=>button(host,'Reopen').click());assert.equal(globalThis.__reopen[2].state,'todo')
 },{items:[{id:'done',source:'work_item',kind:'task',text:'Finished task',state:'done',revision:2}],saveItem:async(...a)=>{globalThis.__reopen=a}}))
 test('both real pages use the same workflow and legacy carry-over; dashboard no longer has a second follow-up list',async()=>{
- const dashboard=await readFile('src/pages/Dashboard.jsx','utf8'), customer=await readFile('src/pages/CustomerDetail.jsx','utf8');for(const source of [dashboard,customer]){assert.match(source,/<CustomerWorkspace/);assert.match(source,/combineWorkItems/);assert.match(source,/useCustomerWorkItems/)}assert.doesNotMatch(dashboard,/Priority Follow-ups/);assert.match(customer,/Interaction history/);assert.match(customer,/defaultOpen=\{false\}/)
+ const dashboard=await readFile('src/pages/Dashboard.jsx','utf8'), customer=await readFile('src/pages/CustomerDetail.jsx','utf8');for(const source of [dashboard,customer]){assert.match(source,/CustomerWorkspace|WorkbenchCustomerDialog/);assert.match(source,/combineWorkItems/);assert.match(source,/useCustomerWorkItems/)}assert.doesNotMatch(dashboard,/Priority Follow-ups/);assert.match(customer,/Interaction history/);assert.match(customer,/defaultOpen=\{false\}/)
 })
 
 const longSummary = 'Recent customer discussions and quotation requests. '.repeat(18) + 'Unique final detail.'
