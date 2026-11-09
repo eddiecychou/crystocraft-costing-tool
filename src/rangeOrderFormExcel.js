@@ -1,14 +1,12 @@
 import ExcelJS from 'exceljs'
-import JSZip from 'jszip'
+import { RANGE_CRYSTAL_BRANDS, RANGE_PLATINGS, RANGE_FORMAT_CODES } from './constants'
 import { ocDateOnly } from './ocTime'
 
-const C = { ink:'FF222222', brand:'FF6E2433', white:'FFFFFFFF', input:'FFE8F3FC', border:'FFE9E8E6', grey:'FFECECEC', muted:'FF666666', alt:'FFFAF7F2', alert:'FF9C3526' }
+const C = { ink:'FF222222', brand:'FF6E2433', white:'FFFFFFFF', border:'FFE9E8E6', muted:'FF666666', alt:'FFFAF7F2' }
 const HEADER = 4
-const NOTICE = { invalid:'Check quantities', option:'Confirm option specification', concept:'Concept — enquiry only', price:'Quotation required', stock:'Confirm stock', overstock:'Over stock — confirm' }
 const FONT = {name:'Calibri',size:10,color:{argb:C.ink}}
 const fill = argb => ({type:'pattern',pattern:'solid',fgColor:{argb}})
 const money = precision => '#,##0.'+'0'.repeat(precision)
-const formula = (expression,result=0) => ({formula:expression,result})
 const isWide = char => char.charCodeAt(0)>255
 
 // Excel has a 409pt row limit. Split unusually long public labels into visible
@@ -59,128 +57,106 @@ export async function readRangeOrderImage(url, signal) {
   }catch(error){if(signal?.aborted)throw error;return null}
 }
 
+// Existing module/export names remain stable for the catalogue caller. The
+// buyer-facing workbook is a static price list, with no order-entry logic.
 export async function buildRangeOrderWorkbook(model, {images=new Map()}={}) {
   if(!model.rows.length)throw Error('There are no buyer-visible products in this selection.')
   const wb=new ExcelJS.Workbook()
-  wb.creator='Crystocraft';wb.title='Crystocraft Range — Order Form'
-  wb.created=new Date(model.generatedAt);wb.calcProperties={fullCalcOnLoad:true}
-  const ws=wb.addWorksheet('Order form')
-  const firstColor=5,qtyCol=firstColor+model.colors.length,amountCol=qtyCol+1,checkCol=amountCol+1
-  const letter=col=>ws.getColumn(col).letter,last=letter(amountCol),checkLetter=letter(checkCol)
-  const currencyFormat=money(model.precision)
-  const widths=[12,30,30,13,...model.colors.map(()=>9),10,14,16]
+  wb.creator='Crystocraft';wb.title='Crystocraft Range — Price List';wb.created=new Date(model.generatedAt)
+  const ws=wb.addWorksheet('Price list'),guide=wb.addWorksheet('Code guide')
+  const widths=[12,30,20,18,18,48,19],colorNames=new Map(model.colors.map(c=>[c.code,c.name]))
   widths.forEach((width,i)=>{ws.getColumn(i+1).width=width})
-  // A buyer sees only the order grid. This last column holds buyer-safe guards,
-  // with exceptions surfaced through highlighting and one short footer note.
-  ws.getColumn(checkCol).hidden=true
-  const set=(address,value,options={})=>{
-    const cell=ws.getCell(address);cell.value=value===''?null:value
-    cell.font={...FONT,...options.font}
-    cell.alignment={vertical:'middle',wrapText:true,...options.alignment}
-    if(options.input){cell.protection={locked:false};cell.fill=fill(C.input)}
-    if(options.numberFormat)cell.numFmt=options.numberFormat
+  ws.getColumn(3).numFmt='@'
+  guide.getColumn(1).numFmt='@'
+  function set(sheet,row,col,value,{bold=false,muted=false,moneyFormat=false}={}) {
+    const cell=sheet.getCell(row,col);cell.value=value===''?null:value
+    cell.font={...FONT,bold,color:{argb:muted?C.muted:C.ink}}
+    cell.alignment={vertical:'middle',wrapText:true,horizontal:moneyFormat?'right':'left'}
+    if(moneyFormat)cell.numFmt=money(model.precision)
     return cell
   }
-  ws.mergeCells('A1:C1')
-  set('A1','CRYSTOCRAFT · ORDER FORM',{font:{size:16,color:{argb:C.white}}}).fill=fill(C.brand)
-  ws.getRow(1).height=34
-  ws.mergeCells('A2:C2');set('A2',model.buyer||'Trade buyer',{font:{color:{argb:C.muted}}})
-  ws.getRow(2).height=30
-  ws.mergeCells(`A3:${last}3`)
-  set('A3','Enter quantities in blue cells. Grey cells are unavailable.',{font:{size:9,color:{argb:C.muted}}})
-  ws.getRow(3).height=20
-  const headers=['Photo','Product / code / size','Crystal option / finish',`Unit price (${model.currency})`,
-    ...model.colors.map(color=>[color.name,color.code==='__AS_SHOWN__'?'':color.code].filter(Boolean).join('\n')),
-    'Qty',`Amount (${model.currency})`,'Check']
-  headers.forEach((text,i)=>{
-    const cell=set(`${letter(i+1)}${HEADER}`,text,{font:{bold:true,color:{argb:C.white}}})
-    cell.fill=fill(C.brand)
-  })
-  // No filter arrows or repeated "Order qty" labels. Allow room for native
-  // Excel's wrapped colour names/codes without shrinking the text.
-  ws.getRow(HEADER).height=Math.min(408,Math.max(54,...headers.map((text,i)=>height(text,Math.max(6,widths[i]-2)))))
-  const placed=[],imageIds=new Map();let rowNumber=HEADER+1
-  for(const [index,item]of model.rows.entries()){
-    const product=[item.name,item.code,item.size].filter(Boolean).join('\n')
-    const details=[item.option,item.status==='Retired Stock'?'Limited stock':''].filter(Boolean).join('\n')
-    const productParts=textParts(product,28),optionParts=textParts(details,28)
-    const start=rowNumber
-    for(let part=0;part<Math.max(productParts.length,optionParts.length);part++,rowNumber++){
-      const rr=ws.getRow(rowNumber),b=productParts[part]||`${item.code}\nDetails continued`,c=optionParts[part]||''
-      rr.height=Math.min(408,Math.max(part===0?60:28,height(b,28),height(c,28)))
-      for(let col=1;col<=checkCol;col++){
-        const cell=set(`${letter(col)}${rowNumber}`,'')
+  function banner(sheet,row,end,text) {
+    sheet.mergeCells(row,1,row,end)
+    const cell=set(sheet,row,1,text,{bold:true});cell.font={...FONT,bold:true,size:15,color:{argb:C.white}};cell.fill=fill(C.brand)
+    sheet.getRow(row).height=32
+  }
+  banner(ws,1,7,'CRYSTOCRAFT RANGE · PRICE LIST')
+  ws.mergeCells('A2:E2');set(ws,2,1,model.buyer||'Trade buyer',{muted:true})
+  set(ws,2,6,'Issued',{muted:true});set(ws,2,7,new Date(ocDateOnly(new Date(model.generatedAt))+'T00:00:00Z')).numFmt='dd mmm yyyy'
+  ws.getRow(2).height=26
+  ws.mergeCells('A3:G3');set(ws,3,1,'Crystal colours and codes are listed per price option. See Code guide for the full item-code format.',{muted:true});ws.getRow(3).height=22
+  const headers=['Photo','Product','Code','Size','Plating','Crystal options available',`Unit price (${model.currency})`]
+  headers.forEach((label,i)=>{const c=set(ws,HEADER,i+1,label,{bold:true});c.font.color={argb:C.white};c.fill=fill(C.brand)})
+  ws.getRow(HEADER).height=32
+  const imageIds=new Map();let next=HEADER+1
+  for(const [index,item]of model.rows.entries()) {
+    const colours=item.colors.map(code=>code==='__AS_SHOWN__'?'As shown':`${code} — ${colorNames.get(code)||code}`).join('; ')
+    const crystal=[item.crystalOption||item.option,colours,item.review?'Please confirm specification':''].filter(Boolean).join('\n')
+    const product=[item.name,item.status==='Retired Stock'?'Retired stock':item.status==='Concept — enquiry only'?'Concept — enquiry only':''].filter(Boolean).join('\n')
+    const displayCode=[item.code,item.runningNo?`Running no. ${item.runningNo}`:''].filter(Boolean).join('\n')
+    const plating=[item.platingCode,item.plating].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' — ')
+    const values=[null,product,displayCode,item.size,plating,crystal,item.price==null?'Quotation required':item.price]
+    const parts=values.map((v,i)=>i===0||i===6?[v]:textParts(v||'',widths[i]-2))
+    const start=next
+    for(let part=0;part<Math.max(...parts.map(a=>a.length));part++,next++) {
+      let rowHeight=part===0?66:28
+      for(let i=0;i<7;i++) {
+        const value=parts[i][part]??null,cell=set(ws,next,i+1,value,{bold:i===6,moneyFormat:i===6&&typeof value==='number'})
         cell.fill=fill(index%2?C.alt:C.white);cell.border={bottom:{style:'hair',color:{argb:C.border}}}
+        if(value!=null)rowHeight=Math.max(rowHeight,height(value,widths[i]-2))
       }
-      set(`B${rowNumber}`,b);set(`C${rowNumber}`,c)
-      if(part)continue
-      set(`D${rowNumber}`,item.price==null?NOTICE.price:item.price,{numberFormat:currencyFormat,alignment:{horizontal:'right'},font:{bold:true}})
-      for(const [colorIndex,color]of model.colors.entries()){
-        const address=`${letter(firstColor+colorIndex)}${rowNumber}`,allowed=item.colors.includes(color.code)
-        const cell=set(address,null,{input:allowed,alignment:{horizontal:'center'},numberFormat:'#,##0'})
-        if(!allowed){cell.fill=fill(C.grey);continue}
-        cell.dataValidation={type:'whole',operator:'greaterThanOrEqual',formulae:[0],allowBlank:true,showErrorMessage:true,errorStyle:'stop',errorTitle:'Whole quantities only',error:'Enter a whole quantity of zero or more.',showInputMessage:true,promptTitle:color.name.slice(0,32),prompt:`${item.skuByColor[color.code]}. Enter whole quantities; blank means no order.`.slice(0,255)}
-      }
-      const inputAddresses=model.colors.flatMap((color,i)=>item.colors.includes(color.code)?[`${letter(firstColor+i)}${rowNumber}`]:[])
-      const qty=`${letter(qtyCol)}${start}`,amount=`${letter(amountCol)}${start}`,check=`${checkLetter}${start}`
-      set(qty,formula(`SUM(${inputAddresses.join(',')})`),{numberFormat:'#,##0;-#,##0;;@',alignment:{horizontal:'right'}})
-      set(amount,formula(`IF(${check}="${NOTICE.invalid}","${NOTICE.invalid}",IF(${qty}=0,"",IF(ISNUMBER(D${start}),ROUND(${qty}*D${start},${model.precision}),"Quote required")))`,''),{numberFormat:currencyFormat,alignment:{horizontal:'right'}})
-      placed.push({...item,row:start,inputAddresses,qty,amount,check})
-      const image=images.get(item.image)
-      if(image){
-        let id=imageIds.get(item.image)
-        if(id==null){id=wb.addImage({base64:image.data,extension:'jpeg'});imageIds.set(item.image,id)}
-        const scale=Math.min(64/image.width,50/image.height,1),w=image.width*scale,h=image.height*scale
-        ws.addImage(id,{tl:{col:(80-w)/2/80,row:start-1+Math.max(0,(rr.height/0.75-h)/2)/(rr.height/0.75)},ext:{width:w,height:h},editAs:'oneCell'})
-      }
+      ws.getRow(next).height=Math.min(408,rowHeight)
+    }
+    const image=images.get(item.image)
+    if(image) {
+      let id=imageIds.get(item.image)
+      if(id==null){id=wb.addImage({base64:image.data,extension:'jpeg'});imageIds.set(item.image,id)}
+      const scale=Math.min(70/image.width,62/image.height,1),w=image.width*scale,h=image.height*scale,rowHeight=ws.getRow(start).height/0.75
+      ws.addImage(id,{tl:{col:(80-w)/2/80,row:start-1+(rowHeight-h)/2/rowHeight},ext:{width:w,height:h},editAs:'oneCell'})
     }
   }
-  for(const item of placed){
-    const invalid=`SUM(${item.inputAddresses.map(ref=>`IF(ISNUMBER(${ref}),IF(${ref}<0,1,IF(MOD(${ref},1)<>0,1,0)),IF(${ref}="",0,1))`).join(',')})>0`
-    const poolQty=`SUM(${placed.filter(other=>other.pool===item.pool).map(other=>other.qty).join(',')})`
-    const review=item.review?`"${NOTICE.option}"`:item.status===NOTICE.concept?`"${NOTICE.concept}"`:item.price==null?`"${NOTICE.price}"`:item.status==='Retired Stock'?(item.stock==null?`"${NOTICE.stock}"`:`IF(${poolQty}>${item.stock},"${NOTICE.overstock}","")`):'""'
-    set(item.check,formula(`IF(${invalid},"${NOTICE.invalid}",IF(${item.qty}=0,"",${review}))`,''))
-  }
-  const finalRow=rowNumber-1,totalRow=rowNumber,noteRow=totalRow+2,issuedRow=totalRow+3
-  const qtyLetter=letter(qtyCol),amountLetter=letter(amountCol)
-  const checks=`${checkLetter}${HEADER+1}:${checkLetter}${finalRow}`
-  const invalidRows=`COUNTIF(${checks},"${NOTICE.invalid}")>0`
-  const unquotedQty=`SUMIF(D${HEADER+1}:D${finalRow},"${NOTICE.price}",${qtyLetter}${HEADER+1}:${qtyLetter}${finalRow})`
-  const issues=`SUM(${Object.values(NOTICE).map(message=>`COUNTIF(${checks},"${message}")`).join(',')})`
-  const totalLabel=`IF(${unquotedQty}>0,"Priced subtotal (${model.currency})","Total (${model.currency})")`
-  set('D1',formula(totalLabel,`Total (${model.currency})`),{font:{bold:true},alignment:{horizontal:'right'}})
-  set('D2',formula(`${amountLetter}${totalRow}`),{font:{bold:true,size:12},numberFormat:currencyFormat,alignment:{horizontal:'right'}})
-  ws.mergeCells(`A${totalRow}:D${totalRow}`)
-  set(`A${totalRow}`,formula(totalLabel,`Total (${model.currency})`),{font:{bold:true}})
-  set(`${qtyLetter}${totalRow}`,formula(`IF(${invalidRows},"${NOTICE.invalid}",SUM(${qtyLetter}${HEADER+1}:${qtyLetter}${finalRow}))`),{font:{bold:true},numberFormat:'#,##0'})
-  set(`${amountLetter}${totalRow}`,formula(`IF(${invalidRows},"${NOTICE.invalid}",SUM(${amountLetter}${HEADER+1}:${amountLetter}${finalRow}))`),{font:{bold:true},numberFormat:currencyFormat})
-  ws.getRow(totalRow).height=28
-  ws.mergeCells(`A${noteRow}:${last}${noteRow}`)
-  set(`A${noteRow}`,formula(`IF(${invalidRows},"Please enter whole quantities of zero or more.",IF(${unquotedQty}>0,"Some selected items need a quotation. The subtotal includes priced items only.",IF(${issues}>0,"Please confirm the highlighted items before placing your order.","")))`,''),{font:{size:9,color:{argb:C.alert}}})
-  ws.getRow(noteRow).height=26
-  set(`A${issuedRow}`,'Issued',{font:{size:9,color:{argb:C.muted}}})
-  set(`B${issuedRow}`,new Date(ocDateOnly(new Date(model.generatedAt))+'T00:00:00Z'),{font:{size:9,color:{argb:C.muted}},numberFormat:'dd mmm yyyy'})
-  ws.mergeCells(`C${issuedRow}:${last}${issuedRow}`)
-  set(`C${issuedRow}`,'Prices valid 30 days. Final prices and availability confirmed on acceptance.',{font:{size:9,color:{argb:C.muted}}})
-  ws.getRow(issuedRow).height=24
-  for(const column of ['D',amountLetter])ws.addConditionalFormatting({ref:`${column}${HEADER+1}:${column}${finalRow}`,rules:[{type:'expression',formulae:[`$${checkLetter}${HEADER+1}<>""`],style:{font:{color:{argb:C.alert}},fill:fill('FFFCEEEB')}}]})
-  ws.views=[{state:'frozen',xSplit:4,ySplit:HEADER,topLeftCell:`E${HEADER+1}`,activeCell:`E${HEADER+1}`,zoomScale:85,showGridLines:false}]
-  ws.pageSetup={paperSize:9,orientation:'landscape',scale:100,printTitlesRow:`${HEADER}:${HEADER}`,printTitlesColumn:'A:D',margins:{left:0.25,right:0.25,top:0.4,bottom:0.4,header:0.15,footer:0.2}}
-  ws.pageSetup.printArea=`A1:${last}${issuedRow}`
+  ws.mergeCells(`A${next+1}:G${next+1}`)
+  set(ws,next+1,1,'Prices valid 30 days. Final prices and availability confirmed on quotation. Retired stock is available while stocks last; no further production.',{muted:true})
+  ws.getRow(next+1).height=30
+  ws.views=[{state:'frozen',xSplit:3,ySplit:HEADER,topLeftCell:`D${HEADER+1}`,activeCell:`D${HEADER+1}`,showGridLines:false,zoomScale:90}]
+  ws.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,printTitlesRow:`${HEADER}:${HEADER}`,printArea:`A1:G${next+1}`,margins:{left:0.25,right:0.25,top:0.4,bottom:0.4,header:0.15,footer:0.2}}
   ws.headerFooter={oddFooter:'Crystocraft · Page &P of &N'}
-  await ws.protect('',{selectLockedCells:true,selectUnlockedCells:true,formatRows:true,spinCount:1000})
+
+  ;[20,37,65].forEach((w,i)=>{guide.getColumn(i+1).width=w})
+  banner(guide,1,3,'CODE GUIDE')
+  guide.mergeCells('A2:C2');set(guide,2,1,'Example: D0002-001-GC1',{bold:true});guide.getRow(2).height=26
+  guide.mergeCells('A3:C3');set(guide,3,1,'D = crystal prefix; 0002 = design; 001 = format; G = plating; C1 = crystal colour. An optional running number follows the colour.',{muted:true});guide.getRow(3).height=36
+  let gr=5
+  const add=(code,meaning,detail='')=>{
+    const vals=[code,meaning,detail],parts=vals.map((v,i)=>textParts(v,[18,35,63][i]))
+    for(let n=0;n<Math.max(...parts.map(a=>a.length));n++,gr++){
+      let h=24;parts.forEach((p,i)=>{const v=p[n]||'',cell=set(guide,gr,i+1,v);if(i===0&&/^\d+$/.test(v))cell.numFmt='0'.repeat(v.length);h=Math.max(h,height(v,[18,35,63][i]))});guide.getRow(gr).height=Math.min(408,h)
+    }
+  }
+  const section=title=>{guide.mergeCells(gr,1,gr,3);const c=set(guide,gr,1,title,{bold:true});c.fill=fill(C.alt);guide.getRow(gr).height=28;gr++}
+  section('How to use the price list')
+  add('Product code','Design and format','The Code column shows the crystal prefix + design number and format. Combine it with the plating and one listed colour to identify the full item code.')
+  add('Example','D0002-001 + G + C1','Full item code: D0002-001-GC1. A running number, if shown in the Code column, is appended after the colour.')
+  add('Price','Per piece in '+model.currency,'Each row is a separate price option. Use only the colours listed on that row. Quotation required means no confirmed customer price is shown.')
+  add('As shown','No separate colour code','The source option has no selected colour code. Refer to the product image/specification; do not add a colour suffix.')
+  section('Crystal prefixes and series')
+  const brands=new Map(RANGE_CRYSTAL_BRANDS.map(b=>[b.code,b.name])),prefixes=[...new Set(model.rows.map(r=>r.code.match(/^[A-Za-z]+/)?.[0]||'').filter(Boolean))]
+  for(const prefix of prefixes)add(prefix,brands.get(prefix)|| (prefix==='UA'?'Swarovski, crystal body':`${prefix} series`),brands.has(prefix)?'Same design number and format can be offered with different crystal options.':'Use the option description in the price list. No additional crystal type is inferred from this series code.')
+  section('Format codes in this price list')
+  const formats=new Map(RANGE_FORMAT_CODES.map(f=>[f.code,f.label]))
+  for(const code of [...new Set(model.rows.map(r=>r.code.split('-')[1]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})))add(code,formats.get(code)||'Format code as recorded','The middle segment identifies the product format.')
+  section('Plating codes in this price list')
+  const platings=new Map(RANGE_PLATINGS.map(p=>[p.code,p.name]))
+  for(const code of [...new Set(model.rows.map(r=>r.platingCode).filter(Boolean))])add(code,model.rows.find(r=>r.platingCode===code)?.plating||platings.get(code)||code,'Use the plating code printed on the applicable price row.')
+  section('Crystal colour / configuration codes')
+  for(const color of model.colors)if(color.code!=='__AS_SHOWN__')add(color.code,color.name,'Only available on price rows that list this code.')
+  guide.views=[{showGridLines:false,zoomScale:90}]
+  guide.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,printArea:`A1:C${gr-1}`,margins:{left:0.25,right:0.25,top:0.4,bottom:0.4,header:0.15,footer:0.2}}
+  guide.headerFooter={oddFooter:'Crystocraft · Code guide · Page &P of &N'}
   return wb
 }
 
 export async function rangeOrderFormBytes(model, options) {
   const workbook=await buildRangeOrderWorkbook(model,options)
-  const bytes=await workbook.xlsx.writeBuffer()
-  // ExcelJS exposes fullCalcOnLoad, but not calcMode. Set the standard OOXML
-  // flags so editable quantities recalculate, including after reopening.
-  const zip=await JSZip.loadAsync(bytes),part=zip.file('xl/workbook.xml')
-  const xml=await part.async('string')
-  if(!/<calcPr\b[^>]*\/>/.test(xml))throw Error('The Excel calculation settings could not be written.')
-  const updated=xml.replace(/<calcPr\b([^>]*)\/>/,(_,attrs)=>`<calcPr${attrs.replace(/\s(?:calcMode|forceFullCalc)="[^"]*"/g,'')} calcMode="auto" forceFullCalc="1"/>`)
-  zip.file('xl/workbook.xml',updated)
-  return zip.generateAsync({type:'uint8array'})
+  return workbook.xlsx.writeBuffer()
 }

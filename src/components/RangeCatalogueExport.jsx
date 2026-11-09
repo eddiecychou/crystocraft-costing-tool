@@ -225,7 +225,7 @@ export default function RangeCatalogueExport({ onClose, filteredProductIds = nul
         if (!current()) return
         const bytes = await rangeOrderFormBytes(model, { images:new Map(urls.map((url,i) => [url,photos[i]])) })
         if (!current()) return
-        const stem = ['Crystocraft Range Order Form', profile?.company_name || profile?.name || profile?.email, ocDateOnly(new Date())]
+        const stem = ['Crystocraft Range Price List', profile?.company_name || profile?.name || profile?.email, ocDateOnly(new Date())]
           .filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g,'-')
         const url = URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))
         const anchor = document.createElement('a');anchor.href=url;anchor.download=stem+'.xlsx';anchor.click()
@@ -376,7 +376,7 @@ export default function RangeCatalogueExport({ onClose, filteredProductIds = nul
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block"><span className="label">File format</span>
               <select aria-label="File format" className="input w-full text-sm" value={format} onChange={e => setFormat(e.target.value)} disabled={loading || busy}>
-                <option value="pdf">PDF catalogue</option><option value="xlsx">Excel order form</option>
+                <option value="pdf">PDF catalogue</option><option value="xlsx">Excel price list</option>
               </select>
             </label>
             <label className="block"><span className="label">Products</span>
@@ -386,7 +386,7 @@ export default function RangeCatalogueExport({ onClose, filteredProductIds = nul
               </select>
             </label>
           </div>
-          {format === 'xlsx' && <p className="text-sm text-ink-60">Simple order sheet with customer prices, colour quantities and automatic totals.</p>}
+          {format === 'xlsx' && <p className="text-sm text-ink-60">Customer price list with separate product details, plating and available crystal codes. Includes a Code guide sheet.</p>}
           <label className="block mb-3">
             <span className="text-xs font-medium text-ink-60 uppercase tracking-wide">Trade account</span>
             <select aria-label="Trade account" value={accountId} onChange={e => setAccountId(e.target.value)} disabled={loading || busy}
@@ -449,7 +449,7 @@ export default function RangeCatalogueExport({ onClose, filteredProductIds = nul
           <button onClick={close} className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-none">Cancel</button>
           <button onClick={build} disabled={loading || busy || !sellable.length || (format === 'xlsx' && colorsLoading)}
             className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
-            {busy ? <><Loader2 size={14} className="animate-spin" /> Building…</> : <>{format === 'xlsx' ? 'Download Excel order form' : 'Build PDF'}</>}
+            {busy ? <><Loader2 size={14} className="animate-spin" /> Building…</> : <>{format === 'xlsx' ? 'Download Excel price list' : 'Build PDF'}</>}
           </button>
         </div>
       </div>
