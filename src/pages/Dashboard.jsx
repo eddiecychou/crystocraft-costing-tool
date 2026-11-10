@@ -6,10 +6,11 @@ import {db} from '../firebase'
 import {normalizeCustomer} from '../domain/customer'
 import {useCustomerWorkItems} from '../domain/customerWorkItems'
 import {combineWorkItems} from '../customerWorkItems'
-import {isDashboardB2B,groupCustomerItems,dashboardTasks,customerWorkRows,REVIEW_PERIODS,WORK_STAGES} from '../dashboardWorkbench'
+import {isDashboardB2B,groupCustomerItems,dashboardTasks,customerWorkRows,REVIEW_PERIODS} from '../dashboardWorkbench'
 import {fetchCustomerActivity} from '../customerActivityApi'
 import WorkbenchTasks from '../components/dashboard/WorkbenchTasks'
 import WorkbenchCustomerDialog from '../components/dashboard/WorkbenchCustomerDialog'
+import WorkStageBadge from '../components/dashboard/WorkStageBadge'
 import PipelinePanel from '../components/CustomerPipeline'
 import useOcToday from '../hooks/useOcToday'
 import useSummaryPeriod from '../hooks/useSummaryPeriod'
@@ -84,7 +85,7 @@ export default function Dashboard() {
       <ul className="divide-y divide-warm-grey" aria-label="Customer work overview">{rows.map(row=><li key={row.customer.id}>
         <button className="dashboard-customer-row grid w-full items-start gap-x-3 gap-y-2 p-4 text-left hover:bg-ivory focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-600" onClick={()=>open(row.customer.id)}>
           <span className="dashboard-customer-name min-w-0 break-words text-sm text-ink">{customerName(row.customer)}</span>
-          <span className="dashboard-work-stages flex min-w-0 flex-wrap gap-2">{row.stages.length?row.stages.map(stage=><span key={stage} className="badge border border-warm-grey bg-ivory text-ink-70">{WORK_STAGES[stage]}</span>):<span className="text-xs text-ink-60">{row.active?'Stage not set':'Recent contact'}</span>}</span>
+          <span className="dashboard-work-stages flex min-w-0 flex-wrap gap-2">{row.stages.length?row.stages.map(stage=><WorkStageBadge key={stage} stage={stage}/>):<span className="text-xs text-ink-60">{row.active?'Stage not set':'Recent contact'}</span>}</span>
           <span className="dashboard-contact-date min-w-0 break-words text-xs text-ink-60">{row.lastContact?`Contact: ${formatOcDate(new Date(row.lastContact))}`:'Contact date unknown'}{row.historyState==='partial'?' · Partial history':''}{row.active&&!row.recent?' · Ongoing work':''}</span>
           <span className="dashboard-task-count flex shrink-0 lg:w-24 items-center justify-end gap-1 whitespace-nowrap text-xs text-ink-60"><span>{row.tasks.length} open {row.tasks.length===1?'task':'tasks'}</span><ChevronRight size={14} aria-hidden="true"/></span>
         </button>

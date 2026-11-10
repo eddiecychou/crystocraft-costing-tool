@@ -1,3 +1,13 @@
+# V8.20 — Coloured work stages and manual Exploration, release preparation 10 November 2026
+
+Locally verified and owner-authorized for release; CI and role gates pending.
+Stage tags reuse purple,
+amber and green design-system badges. Work stages is directly visible in the
+customer dialog; Exploration means ongoing discussion before a quotation/PI
+for that project and stays explicitly manual, as selected by the owner. Multiple
+projects and existing automatic quote/order tags remain. No data/rules migration
+or real customer writes. [Scope, UI ownership and fictional verification](docs/plans/V8.20-DASHBOARD-STAGE-COLOURS.md).
+
 # V8.20 — Dashboard design-system polish, released 10 November 2026
 
 Released `d2668c2`, production `6af27daebe072d8e2531c70a`. The task

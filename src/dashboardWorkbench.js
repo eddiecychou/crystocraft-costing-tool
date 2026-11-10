@@ -1,6 +1,11 @@
 // Dashboard scope and projections. No Firestore or AI side effects.
 export const REVIEW_PERIODS = [30,60,90,180,365]
 export const WORK_STAGES = {exploration:'Exploration',quotation:'Quotation',order:'Order & Production'}
+export const WORK_STAGE_DESCRIPTIONS = {
+  exploration:'Ongoing discussions before a quotation or PI is issued for this project.',
+  quotation:'A customer quotation is being prepared or has been sent.',
+  order:'A confirmed order or PI is progressing through production and delivery.',
+}
 export function isDashboardB2B(customer) {
   if (!customer || customer.id === 'online-crystocraft-o07' || customer.tags?.includes('Not a Real Customer')) return false
   if (customer.customer_type === 'retail') return false

@@ -35,6 +35,11 @@ export async function auditWorkbenchUi(page,browser) {
       assert.ok(clearsNav,'Dashboard content must clear the fixed bottom navigation')
     }
   }
+  // Read the compiled status styles, including readable contrast, not class names.
+  const stageColors=await page.locator('.dashboard-work-stages [data-work-stage]').evaluateAll(nodes=>nodes.map(e=>{const s=getComputedStyle(e);return {stage:e.dataset.workStage,foreground:s.color,background:s.backgroundColor,font:s.fontFamily}}))
+  assert.equal(stageColors.length,3);assert.equal(new Set(stageColors.map(c=>c.background)).size,3)
+  const luminance=rgb=>rgb.match(/[\d.]+/g).slice(0,3).map(Number).map(c=>{const s=c/255;return s<=0.04045?s/12.92:((s+0.055)/1.055)**2.4}).reduce((sum,c,i)=>sum+c*[0.2126,0.7152,0.0722][i],0)
+  for(const color of stageColors){const a=luminance(color.foreground),b=luminance(color.background);color.contrast=(Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);assert.ok(color.contrast>=4.5,`${color.stage} must have readable label contrast`);assert.match(color.font,/Work Sans/)}
   // Long company names and task text stay readable without forcing horizontal scrolling.
   const longName='Fictional customer — 客戶公司 '+ 'LongCompanyReference'.repeat(10),longText='Fictional task — 詳細要求 '+ 'LongSpecificationReference'.repeat(35)
   await page.evaluate(({longName,longText})=>{
@@ -91,7 +96,7 @@ export async function auditWorkbenchUi(page,browser) {
   }finally{await touch.close()}
   await page.evaluate(()=>{delete globalThis.__dashboardFixture.records['customers/long'];delete globalThis.__dashboardFixture.records['customers/long/work_items/long-task'];for(const cb of globalThis.__dashboardFixture.watchers)cb()})
   await page.setViewportSize({width:1440,height:1000});await page.evaluate(()=>document.querySelector('#main-scroll').scrollTo(0,0))
-  const report={viewports:results,dialog:dialogGeometry,checks:['20px visual mark / 44px hit target','non-overlapping completion/edit targets','usable search','mobile 16px controls','one-row task filters','desktop aligned columns','bottom navigation clearance','long English/Chinese content','full editor text','sticky dialog close','keyboard Enter/Escape draft protection','empty state','failed save retains draft','touch completion exactly once']}
+  const report={viewports:results,dialog:dialogGeometry,stageColors,checks:['20px visual mark / 44px hit target','non-overlapping completion/edit targets','usable search','mobile 16px controls','one-row task filters','desktop aligned columns','distinct stage colors and AA label contrast','bottom navigation clearance','long English/Chinese content','full editor text','sticky dialog close','keyboard Enter/Escape draft protection','empty state','failed save retains draft','touch completion exactly once']}
   await writeFile(out+'/ui-results.json',JSON.stringify(report,null,2)+'\n')
   return report
 }
