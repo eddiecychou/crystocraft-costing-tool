@@ -131,7 +131,7 @@ test('contact review and summary periods are independent, all AI generation/sugg
  globalThis.localStorage=dom.window.localStorage;localStorage.clear();globalThis.__dashboardAiCalls=[];globalThis.__dashboardSuggestionCalls=[]
  globalThis.__dashboardRows={customers:[{id:'c1',company_name:'QA',sales_pipeline:{...emptyPipeline(),status:'active',detail:'Private work position'}}]}
  await mount(Dashboard,{},async h=>{
-  const select=label=>[...h.querySelectorAll('label')].find(l=>l.textContent.startsWith(label)).querySelector('select')
+  const select=text=>{const label=[...h.querySelectorAll('label')].find(l=>l.textContent.startsWith(text));return label.querySelector('select')||h.querySelector('#'+label.htmlFor)}
   await act(async()=>Simulate.change(select('Contact review'),{target:{value:'60'}}))
   assert.equal(select('Summary context').value,'30');assert.deepEqual(globalThis.__dashboardAiCalls,[])
   await act(async()=>Simulate.change(select('Summary context'),{target:{value:'90'}}))
@@ -143,7 +143,7 @@ test('contact review and summary periods are independent, all AI generation/sugg
 test('B2B picker can open quiet customers outside the main filter; unsaved drafts survive attempted close',async()=>{
  globalThis.__dashboardRows={customers:[{id:'c1',company_name:'Earlier summary',crm_category:'Distributor'},{id:'c2',company_name:'Chosen customer',crm_category:'Gift / OEM'},{id:'retail',company_name:'Individual buyer',customer_type:'retail'}]}
  await mount(Dashboard,{},async h=>{
-  await act(async()=>button(h,'+ Add task').click())
+  await act(async()=>button(h,'Add task').click())
   const picker=h.querySelector('dialog select');assert.doesNotMatch(picker.textContent,/Individual buyer/)
   await act(async()=>Simulate.change(picker,{target:{value:'c2'}}))
   const region=h.querySelector('section[aria-label="Summary and to-do for Chosen customer"]');assert.ok(region.querySelector('textarea'))

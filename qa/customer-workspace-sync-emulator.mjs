@@ -51,6 +51,7 @@ async function eventually(check,label){
 }
 const button=(host,text)=>[...host.querySelectorAll('button')].find(b=>b.textContent.trim()===text||b.getAttribute('aria-label')===text)
 const workspace=(host,id=C)=>host.querySelector(`section[aria-label="Summary and to-do for ${id}"]`)
+const selectControl=(host,text)=>{const label=[...host.querySelectorAll('label')].find(l=>l.textContent.startsWith(text));return label.querySelector('select')||host.querySelector('#'+label.htmlFor)}
 const row=(host,text)=>[...host.querySelectorAll('li')].find(li=>li.textContent.includes(text))
 async function click(host,text){const b=button(host,text);assert.ok(b,`Missing button ${text}`);await act(async()=>b.click())}
 async function fill(el,value){assert.ok(el);await act(async()=>{el.value=value;Simulate.change(el,{target:{value}})})}
@@ -215,7 +216,7 @@ test('Follow-ups Due B2B counts obey category/search filters and remain independ
  await create(other(),'task','Already completed',{date:PAST,state:'done'});await expectDue(v,3)
  await env.withSecurityRulesDisabled(async ctx=>{const d=ctx.firestore();await setDoc(doc(d,'customers','sync_retail'),{company_name:'Individual B2C',customer_type:'retail'});await setDoc(doc(d,'customers','sync_retail','work_items','retail_task'),{kind:'task',text:'Retail task',due_on:PAST,state:'todo',revision:1,created_by:'sync_admin',updated_by:'sync_admin'});await setDoc(doc(d,'customers',C,'work_items/dated_note'),{kind:'note',text:'Dated reference note',due_on:PAST,state:'todo',revision:1,created_by:'sync_admin',updated_by:'sync_admin'})})
  await eventually(()=>row(v.d(),'Dated reference note'),'Dated note delivered');await expectDue(v,3)
- const category=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.startsWith('Category')).querySelector('select')
+ const category=selectControl(v.dash,'Category')
  await fill(category,'Distributor');await expectDue(v,2);await fill(category,'Gift / OEM');await expectDue(v,1);await fill(category,'');await expectDue(v,3)
  const period=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.startsWith('Summary context')).querySelector('select')
  for(const days of ['14','90','30']){await fill(period,days);await expectDue(v,3)}
@@ -238,7 +239,7 @@ for(const wake of ['midnight','focus','pageshow','visibilitychange','watchdog'])
  await create(v.c(),'task','Future stays excluded',{date:'2026-10-20'})
  await create(v.c(),'task','Completed stays excluded',{date:'2026-10-17',state:'done'})
  await create(v.c(),'note','Reference stays excluded')
- await expectDue(v,2);await fill([...v.dash.querySelectorAll('label')].find(l=>l.textContent.startsWith('Category')).querySelector('select'),'Distributor')
+ await expectDue(v,2);await fill(selectControl(v.dash,'Category'),'Distributor')
  const period=[...v.dash.querySelectorAll('label')].find(l=>l.textContent.startsWith('Summary context')).querySelector('select')
  await fill(period,'90');await act(async()=>dueCard(v.dash).click())
  const panel=duePanel(v.dash),group=label=>panel.querySelector(`[aria-label="${label} tasks"]`)

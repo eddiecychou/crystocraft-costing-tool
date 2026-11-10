@@ -252,9 +252,13 @@ were reconciled here.
   none` on body; `-webkit-tap-highlight-color: transparent` on
   `a,button,[role="button"],summary,label`; a `.no-scrollbar` utility (hides
   the bar, keeps momentum scroll) for horizontal strips.
-- **iOS input-zoom is already handled** — `@media (max-width:767px) {
-  input,select,textarea { font-size:16px } }` (L-… / V8.6). **MUST NOT** add a
-  "shrink fonts on mobile" rule that fights it.
+- **Verify the mobile input-zoom mitigation by computed style.** The intended
+  global `@media (max-width:767px) { input,select,textarea { font-size:16px } }`
+  has lower specificity than `.input`; the 10 November dashboard audit still
+  measured 14px. Its local polish uses `.dashboard-workbench .input` at 16px
+  below md. Do not apply a "shrink fonts on mobile" rule; audit other forms
+  separately before changing their shared styles. See TECH-DEBT.md and the
+  [dashboard audit](../plans/V8.20-DASHBOARD-UI-POLISH.md).
 
 ### 7.2 Touch targets — the pragmatic rule
 
@@ -273,6 +277,12 @@ Instead:
 - **`.tag` filter chips are exempt** — shared with the OpsCenter's dense
   filter bars, and low mis-tap risk in a gapped, wrapping row. Left at
   `py-1.5`.
+
+**Visual size and hit area are separate.** The dashboard completion mark is
+20px inside a 44px button. Keep the outer target usable and prevent it overlapping
+the row-edit target; do not draw the entire 44px target as a visible checkbox.
+The [local audit](../plans/V8.20-DASHBOARD-UI-POLISH.md) checks touch on the outer
+area, not just the small mark.
 
 ### 7.3 The horizontal-scroll nav strip (when a bottom bar is overkill)
 
@@ -295,6 +305,14 @@ At 375px (`resize_window` mobile preset), per page:
   (`env(safe-area-inset-bottom)`).
 - [ ] Cards visually separable (hairline / `.mosaic-grid`, not just whitespace).
 - [ ] A "Back" affordance is present on every detail page.
+
+For dense operational pages, also measure control width and computed font size.
+A flex toolbar can squeeze a search field to 26px without causing body overflow.
+Use grid and the actual available content width (including the desktop sidebar),
+not viewport width alone, when choosing breakpoints. In dialogs, scroll long
+content and verify Close remains visible at a short viewport such as 375×500.
+For Dashboard, `qa/dashboard-workbench-browser.mjs` mounts the real OC Layout and
+`qa/dashboard-workbench-ui-cases.mjs` checks these cases with fictional records.
 
 ### 7.5 PWA is a project, not an audit
 

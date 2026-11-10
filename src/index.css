@@ -194,6 +194,62 @@
     border: 1px solid #E9E8E6; /* warm-grey hairline */
   }
 
+  /* Dashboard layout only; shared tokens and other operational forms stay intact. */
+  .dashboard-customer-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .dashboard-customer-filters {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .dashboard-customer-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .dashboard-work-stages,
+  .dashboard-contact-date {
+    grid-column: 1 / -1;
+  }
+  .dashboard-task-count {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .dashboard-customer-name,
+  .dashboard-workbench .break-words {
+    overflow-wrap: anywhere;
+  }
+  .dashboard-customer-dialog {
+    @apply m-auto max-w-3xl overflow-y-auto overscroll-contain;
+    width: calc(100% - theme('spacing.8'));
+    max-height: calc(var(--app-vh, 1dvh) * 100 - theme('spacing.8'));
+  }
+  @media (max-width: 767px) {
+    .dashboard-workbench .input {
+      @apply min-h-11 text-base;
+    }
+  }
+  @screen lg {
+    .dashboard-customer-filters {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+    }
+  }
+  @screen lg {
+    .dashboard-customer-row {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    }
+    .dashboard-work-stages {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+    }
+    .dashboard-contact-date {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .dashboard-task-count {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+      align-self: center;
+    }
+  }
+
   /* ── Badges / status pills — square, Work Sans caps ──── */
   .badge {
     @apply inline-flex items-center px-2 py-0.5 rounded-none text-xs uppercase;

@@ -12,6 +12,17 @@ proposed behaviour-preserving work; it does not override accepted owner decision
 or authorize fixing unrelated entries as part of another change. Resolved entries
 retain historical evidence and link their later release records.
 
+## Mobile form font specificity — P2, dashboard corrected locally
+
+10 November responsive audit: the intended global 16px input/select/textarea rule
+under max-width 767px has lower specificity than .input, which still computed to
+14px on the live dashboard. This weakens the repository's documented mitigation
+for mobile input zoom. The local dashboard polish scopes 16px/minimum-height rules
+to .dashboard-workbench only; desktop density and other modules are unchanged.
+Audit remaining forms before a separate global change. Verify computed styles and
+physical-device behavior rather than treating a media-rule declaration as proof.
+[Measured scope and limits](docs/plans/V8.20-DASHBOARD-UI-POLISH.md).
+
 ## Shipping health/ownership checkpoint — open, review only
 
 6 November 2026, clean dbd107ae. All 149 existing Shipping regressions pass;

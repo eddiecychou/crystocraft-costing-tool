@@ -4,6 +4,7 @@ import {mkdir,writeFile} from 'node:fs/promises'
 import {spawn} from 'node:child_process'
 import {createRequire} from 'node:module'
 import assert from 'node:assert/strict'
+import {auditWorkbenchUi} from './dashboard-workbench-ui-cases.mjs'
 const out='qa/out/dashboard-visual'
 await mkdir(out,{recursive:true})
 const fixture=`
@@ -23,24 +24,28 @@ const records={...Object.fromEntries(customers.map(c=>['customers/'+c.id,c])),
 const watchers=new Set();
 const snapshot=path=>({exists:()=>!!records[path],data:()=>records[path]});
 const doc=(path,data)=>({id:path.split('/').at(-1),data:()=>data,ref:{parent:{parent:{id:path.split('/')[1],parent:{id:path.split('/')[0]}}}}});
-const publish=(path,cb)=>{if(path.startsWith('dashboard_cache/')){cb(snapshot(path));return}const rows=Object.entries(records).filter(([key])=>path.startsWith('group/')?key.split('/')[2]===path.slice(6):key.startsWith(path+'/')&&key.split('/').length===path.split('/').length+1);cb({docs:rows.map(([key,value])=>doc(key,value))})};
+const publish=(path,cb)=>{if(path.startsWith('dashboard_cache/')){cb(snapshot(path));return}const rows=Object.entries(records).filter(([key])=>path.startsWith('group/')?key.split('/')[2]===path.slice(6):key.startsWith(path+'/')&&key.split('/').length===path.split('/').length+1);cb({size:rows.length,docs:rows.map(([key,value])=>doc(key,value))})};
 globalThis.__dashboardFixture={records,watchers,snapshot,publish};
 `
-await writeFile(out+'/entry.jsx',`import React from 'react';import{createRoot}from'react-dom/client';import{MemoryRouter}from'react-router-dom';import Dashboard from '../../../src/pages/Dashboard';${fixture}
-createRoot(document.getElementById('root')).render(<MemoryRouter><div className="qa-main"><aside className="hidden md:block fixed left-0 top-0 bottom-0 w-64 bg-ink text-white p-6"><p className="text-xl">CRYSTOCRAFT</p><p className="text-xs mt-2 text-white/70">OPERATION CENTER · FICTIONAL QA</p><p className="mt-10">Dashboard</p></aside><Dashboard/></div></MemoryRouter>);`)
-await build({entryPoints:[out+'/entry.jsx'],outfile:out+'/app.js',bundle:true,format:'esm',jsx:'automatic',plugins:[{name:'fictional-dashboard-boundaries',setup(b){
- b.onResolve({filter:/firebase\/firestore$|\/firebase$|domain\/customer$|customerActivityApi$|domain\/weeklySummary$/},a=>({path:a.path,namespace:'qa'}))
- b.onLoad({filter:/.*/,namespace:'qa'},a=>({loader:'js',contents:a.path==='firebase/firestore'?`
- const f=()=>globalThis.__dashboardFixture;export const collection=(...p)=>p.slice(1).join('/'),collectionGroup=(_,name)=>'group/'+name,doc=collection,query=x=>x,serverTimestamp=()=>new Date().toISOString();
+await writeFile(out+'/entry.jsx',`import React from 'react';import{createRoot}from'react-dom/client';import{MemoryRouter}from'react-router-dom';import Dashboard from '../../../src/pages/Dashboard';import Layout from '../../../src/components/Layout';${fixture}
+createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={['/dashboard']}><Layout user={{email:'fictional-qa@example.test'}}><Dashboard/></Layout></MemoryRouter>);`)
+await build({entryPoints:[out+'/entry.jsx'],outfile:out+'/app.js',bundle:true,format:'esm',jsx:'automatic',loader:{'.png':'file'},plugins:[{name:'fictional-dashboard-boundaries',setup(b){
+ b.onResolve({filter:/firebase\/auth$|\/access$|\/i18n$|hooks\/usePortalRequestCount$|firebase\/firestore$|\/firebase$|domain\/customer$|customerActivityApi$|domain\/weeklySummary$/},a=>({path:a.path,namespace:'qa'}))
+ b.onLoad({filter:/.*/,namespace:'qa'},a=>({loader:'js',resolveDir:process.cwd(),contents:a.path==='firebase/firestore'?`
+ const f=()=>globalThis.__dashboardFixture;export const collection=(...p)=>p.slice(1).join('/'),collectionGroup=(_,name)=>'group/'+name,doc=collection,query=x=>x,where=(...args)=>args,serverTimestamp=()=>new Date().toISOString();
  export const onSnapshot=(path,cb)=>{const watch=()=>f().publish(path,cb);f().watchers.add(watch);watch();return()=>f().watchers.delete(watch)};
- export const runTransaction=async(_,fn)=>{const writes=[];const result=await fn({get:async path=>f().snapshot(path),set:(path,data)=>writes.push([path,data]),update:(path,data)=>writes.push([path,{...f().records[path],...data}])});for(const[path,data]of writes)f().records[path]=data;queueMicrotask(()=>{for(const cb of f().watchers)cb()});return result};
+ export const runTransaction=async(_,fn)=>{if(f().rejectWrites)throw Error("Fictional save conflict — draft preserved");const writes=[];const result=await fn({get:async path=>f().snapshot(path),set:(path,data)=>writes.push([path,data]),update:(path,data)=>writes.push([path,{...f().records[path],...data}])});for(const[path,data]of writes)f().records[path]=data;queueMicrotask(()=>{for(const cb of f().watchers)cb()});return result};
  export const getDoc=async path=>f().snapshot(path);
- `:a.path.endsWith('/firebase')?'export const db={};export const authedUser=async()=>({uid:"fictional_admin"});'
+ `:a.path==='firebase/auth'?'export const signOut=async()=>{throw Error("Sign-out disabled in fictional QA")};'
+ :a.path.endsWith('/access')?'export const useAccess=()=>({role:"admin",modules:[]});export const canAccess=()=>true;'
+ :a.path.endsWith('/i18n')?'export const useT=()=>text=>text;'
+ :a.path.endsWith('hooks/usePortalRequestCount')?'import{createContext}from"react";export const PortalRequestCount=createContext({count:0});export const usePortalRequestCount=()=>({count:0});'
+ :a.path.endsWith('/firebase')?'export const auth={};export const db={};export const authedUser=async()=>({uid:"fictional_admin"});'
  :a.path.endsWith('domain/customer')?'export const normalizeCustomer=c=>c;export const RETAIL_TAG="Retail Customer";'
  :a.path.endsWith('customerActivityApi')?`export const fetchCustomerActivity=async()=>({checkedAt:new Date().toISOString(),customers:['c1','c2','c3','c4'].map((customerId,i)=>({customerId,lastContactAt:new Date(Date.now()-[5,45,180,120][i]*86400000).toISOString(),historyState:'known'}))});`
  :'export const generateWeeklySummary=async()=>{throw Error("AI disabled in fictional QA")};'}))
 }}]})
-await writeFile(out+'/index.html','<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="style.css"><style>@media(min-width:768px){.qa-main{margin-left:256px}}</style></head><body><div id="root"></div><script type="module" src="app.js"></script></body></html>')
+await writeFile(out+'/index.html','<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head><body><div id="root"></div><script type="module" src="app.js"></script></body></html>')
 await new Promise((resolve,reject)=>{const child=spawn(process.execPath,['node_modules/tailwindcss/lib/cli.js','-i','src/index.css','-o',out+'/style.css'],{stdio:'ignore'});child.on('exit',code=>code?reject(Error('CSS build failed')):resolve())})
 if(process.argv.includes('--prepare-only'))process.exit(0)
 const {chromium}=createRequire('/Users/eddie/Developer/costing-tool/.qa-playwright/package.json')('playwright-core')
@@ -52,15 +57,16 @@ try{
  for(let n=0;n<30;n++){try{await page.goto('http://127.0.0.1:5198');break}catch{await new Promise(r=>setTimeout(r,100))}}
  await page.getByRole('heading',{name:/My tasks/}).waitFor()
  for(const width of [1440,375,320]){
-  await page.setViewportSize({width,height:1000});await page.evaluate(async()=>{scrollTo(0,0);await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))});await page.screenshot({path:out+`/dashboard-${width}.png`,fullPage:true})
+  await page.setViewportSize({width,height:1000});await page.evaluate(async()=>{document.querySelector('#main-scroll')?.scrollTo(0,0);await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))});await page.screenshot({path:out+`/dashboard-${width}.png`,fullPage:true})
   const check=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,taskY:document.querySelector('[aria-label="Outstanding tasks"] li')?.getBoundingClientRect().top,count:document.querySelector('[aria-label="Outstanding tasks"]').children.length}))
   assert.equal(check.overflow,false);assert.equal(check.count,5);assert.ok(check.taskY<400);results.push({width,...check})
  }
+ await auditWorkbenchUi(page,browser)
  await page.setViewportSize({width:1440,height:1000})
  const tasks=page.getByRole('region',{name:'My tasks',exact:true})
  await tasks.getByRole('button',{name:/Due 2/}).click();assert.equal(await page.locator('[aria-label="Follow-ups due"] li').count(),2)
  await tasks.getByRole('button',{name:'Show all open tasks'}).click()
- await page.getByRole('button',{name:'+ Add task',exact:true}).click()
+ await page.getByRole('button',{name:'Add task',exact:true}).click()
  let dialog=page.getByRole('dialog');assert.equal(await dialog.locator('select option').filter({hasText:'EXCLUDED RETAIL'}).count(),0)
  await dialog.locator('select').selectOption('c4')
  await dialog.getByRole('textbox',{name:'Task',exact:true}).fill('Fictional new follow-up')

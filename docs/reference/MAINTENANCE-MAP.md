@@ -40,6 +40,12 @@ customer merge, contact/summary/due-date separation and human-reviewed outreach.
 Run test:customer-workspace, test:ai-writer, the pipeline emulator and workspace-sync;
 qa/dashboard-workbench-browser.mjs checks real components with fictional sources.
 
+The subsequent [dashboard UI polish](../plans/V8.20-DASHBOARD-UI-POLISH.md) is
+local, not released: shared design classes, smaller visual completion mark with
+44px hit target, usable mobile filters/fields and sticky dialog controls. Its
+real-shell seeded browser audit covers seven widths, long content, keyboard,
+short viewports and touch; do not substitute it for fresh release-role gates.
+
 ## Ownership and change boundaries
 
 | Area | Start here | Preserve and verify |

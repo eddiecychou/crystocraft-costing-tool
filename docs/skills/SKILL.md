@@ -296,6 +296,13 @@ emulator job. App and private read-only credentials deployed with fresh two-role
   reviewed pipeline/history, stable retries and unsaved drafts. Optional field and
   no-bulk-migration contract: `../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md`.
 
+- **Local dashboard UI polish (10 November, not released):** shared OC
+  label/tag/badge/card classes; 20px completion mark inside a 44px target;
+  grid-based filters/rows, scoped 16px mobile inputs and sticky dialog Close.
+  `qa/dashboard-workbench-browser.mjs` uses the real Layout; its UI-case helper
+  covers seven viewports, long content, keyboard and touch. Scope/evidence:
+  `../plans/V8.20-DASHBOARD-UI-POLISH.md`. Business logic and release gates remain.
+
 ### CRM — Marketing contacts, campaigns, Daily Drafts → see `MARKETING-WORKFLOW.md`
 - Lead viewers: `components/crm/ContactEmailThreads.jsx`, `ContactWhatsAppThreads.jsx`, `ContactAlibabaThreads.jsx`, `ContactInteractionLog.jsx`. `MarketingContactDetail` imports them directly; `MarketingContacts` retains compatibility named exports. Lead/customer semantics remain distinct. `qa/crm-components.test.mjs` exercises the real components through fictional boundaries in `test:customer-workspace` (prebuild and GitHub).
 - Pages: `Marketing.jsx` (tabs), `src/marketing/DailyDrafts.jsx`, `MarketingContacts.jsx`, `MarketingContactDetail.jsx`, `Campaigns.jsx`, `BlogGenerator.jsx`
