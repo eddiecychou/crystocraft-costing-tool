@@ -255,7 +255,7 @@ were reconciled here.
 - **Verify the mobile input-zoom mitigation by computed style.** The intended
   global `@media (max-width:767px) { input,select,textarea { font-size:16px } }`
   has lower specificity than `.input`; the 10 November dashboard audit still
-  measured 14px. Its local polish uses `.dashboard-workbench .input` at 16px
+  measured 14px. Its released polish uses `.dashboard-workbench .input` at 16px
   below md. Do not apply a "shrink fonts on mobile" rule; audit other forms
   separately before changing their shared styles. See TECH-DEBT.md and the
   [dashboard audit](../plans/V8.20-DASHBOARD-UI-POLISH.md).
@@ -281,7 +281,7 @@ Instead:
 **Visual size and hit area are separate.** The dashboard completion mark is
 20px inside a 44px button. Keep the outer target usable and prevent it overlapping
 the row-edit target; do not draw the entire 44px target as a visible checkbox.
-The [local audit](../plans/V8.20-DASHBOARD-UI-POLISH.md) checks touch on the outer
+The [responsive audit](../plans/V8.20-DASHBOARD-UI-POLISH.md) checks touch on the outer
 area, not just the small mark.
 
 ### 7.3 The horizontal-scroll nav strip (when a bottom bar is overkill)

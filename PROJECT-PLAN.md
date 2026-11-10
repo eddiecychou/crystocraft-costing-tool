@@ -1,14 +1,14 @@
-# V8.20 — Dashboard design-system polish, release preparation 10 November 2026
+# V8.20 — Dashboard design-system polish, released 10 November 2026
 
-Locally verified and owner-authorized for release; CI and role gates pending.
-The task mark is 20px inside
-its 44px hit area, phone search uses the full row, mobile fields are 16px,
-customer columns align, and the dialog keeps Close visible. Shared OC labels,
-chips, badges, cards, fonts and spacing are reused. Seven responsive sizes,
-long content, keyboard/touch, draft/error handling, existing task sync and full
-build pass. No API/domain/rule or business-data changes. [Audit, evidence and
-limits](docs/plans/V8.20-DASHBOARD-UI-POLISH.md). Production remains the release
-recorded below until this slice passes all publication gates.
+Released `d2668c2`, production `6af27daebe072d8e2531c70a`. The task
+mark is 20px inside its 44px hit area, phone search uses the full row, mobile
+fields are 16px, customer columns align, and the dialog keeps Close visible.
+Shared OC labels/chips/badges/cards/fonts/spacing are reused. Both exact-SHA jobs,
+full build, fictional long-content/touch/draft/error checks and fresh candidate /
+production admin and approved-customer gates pass. Live checks cover seven widths
+and populated short-dialog scrolling. No business edits, customer emails, rules,
+API/domain changes or migration. Unrelated Shipping work preserved. [Audit,
+lessons, limits and release evidence](docs/plans/V8.20-DASHBOARD-UI-POLISH.md).
 
 # V8.20 — B2B dashboard workbench, released 10 November 2026
 

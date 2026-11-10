@@ -296,7 +296,7 @@ emulator job. App and private read-only credentials deployed with fresh two-role
   reviewed pipeline/history, stable retries and unsaved drafts. Optional field and
   no-bulk-migration contract: `../plans/V8.20-DASHBOARD-WORKBENCH-AUDIT.md`.
 
-- **Local dashboard UI polish (10 November, not released):** shared OC
+- **Dashboard UI polish (released 10 November):** shared OC
   label/tag/badge/card classes; 20px completion mark inside a 44px target;
   grid-based filters/rows, scoped 16px mobile inputs and sticky dialog Close.
   `qa/dashboard-workbench-browser.mjs` uses the real Layout; its UI-case helper
