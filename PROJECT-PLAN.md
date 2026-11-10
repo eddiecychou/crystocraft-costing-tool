@@ -1,12 +1,15 @@
-# V8.20 — Coloured work stages and manual Exploration, release preparation 10 November 2026
+# V8.20 — Coloured work stages and manual Exploration, released 10 November 2026
 
-Locally verified and owner-authorized for release; CI and role gates pending.
-Stage tags reuse purple,
-amber and green design-system badges. Work stages is directly visible in the
-customer dialog; Exploration means ongoing discussion before a quotation/PI
-for that project and stays explicitly manual, as selected by the owner. Multiple
-projects and existing automatic quote/order tags remain. No data/rules migration
-or real customer writes. [Scope, UI ownership and fictional verification](docs/plans/V8.20-DASHBOARD-STAGE-COLOURS.md).
+Released `0358ce4`, production `6af28b834554fad71fd70848`. Exploration
+is purple, Quotation amber and Order & Production green, using existing badges.
+Manual stage controls are visible below customer tasks, with project-specific
+Exploration guidance and 44px editor actions. Existing stage transactions,
+quote/order projection and parallel projects remain. Both exact-SHA jobs, full
+build and fresh candidate/production admin/customer gates pass. Live stage UI
+checks at 320/375/1440 and overall seven-width checks pass; cancelled drafts
+preserve the stored manual stages. No production stage saves, customer emails,
+rules or migrations. All 53 unrelated work files preserved. [Scope, lessons and
+release evidence](docs/plans/V8.20-DASHBOARD-STAGE-COLOURS.md).
 
 # V8.20 — Dashboard design-system polish, released 10 November 2026
 

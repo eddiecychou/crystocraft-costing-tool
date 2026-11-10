@@ -47,7 +47,7 @@ real-shell seeded browser audit covers seven widths, long content, keyboard,
 short viewports and touch; do not substitute it for fresh release-role gates.
 
 The subsequent [stage-colour/manual Exploration UI](../plans/V8.20-DASHBOARD-STAGE-COLOURS.md)
-is local, not released: WorkStageBadge owns shared badge styling; stage descriptions
+is released 10 November 2026: WorkStageBadge owns shared badge styling; stage descriptions
 live beside WORK_STAGES. Manual work-stage controls sit below customer tasks, not
 inside the linked-record accordion. Exploration means ongoing discussion before
 quotation/PI for that project and remains an explicit selection. Preserve the

@@ -303,7 +303,7 @@ emulator job. App and private read-only credentials deployed with fresh two-role
   covers seven viewports, long content, keyboard and touch. Scope/evidence:
   `../plans/V8.20-DASHBOARD-UI-POLISH.md`. Business logic and release gates remain.
 
-- **Local stage-colour / manual Exploration follow-up (10 November, not released):**
+- **Stage-colour / manual Exploration follow-up (released 10 November):**
   shared WorkStageBadge renders purple/amber/green existing status variants in
   rows and the customer dialog. Work stages sits below tasks outside accordions.
   Exploration stays operator-selected for discussion before quotation/PI for that
