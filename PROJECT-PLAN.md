@@ -1,6 +1,6 @@
-## 2026-11-12 — Five review corrections (release in progress)
+## 2026-11-12 — Five review corrections released
 
-Owner approved OC-R01–05: trusted portal/ERP identity, filtered Corporate Gift customer reads, private costing markup, conflict-safe ProductForm saves, and explicitly linked lead contact dates. [Plan, migration and evidence](docs/plans/V8.20-REVIEW-FIVE-FIXES.md). Local build/prebuild and fictional rules/form/API/history checks pass; live pricing migration dry-run: 73 accounts, 57 candidates, zero conflicts, no writes. Exact-SHA CI and candidate/production gates remain required. Unrelated Shipping edits remain outside this release.
+Released `fffe1d2`, production `6af48a2bfe505b6564a25518`: trusted portal/ERP identity, filtered Corporate Gift customer reads, private costing markup, conflict-safe ProductForm saves, and explicitly linked lead contact dates. Both exact-SHA GitHub jobs, full prebuild/build and fictional rules/form/API/history cases passed. Fresh candidate/production admin and approved-customer sign-ins, ordinary Chrome image downloads, read-only pricing editor and five live customer-access denials passed. Firestore rules published and read back; Storage/SQL unchanged. Moved 57 private pricing records across 73 checked accounts, with exact values and unrelated fields preserved. No emails or real order/product edits. All 53 unrelated Shipping/workspace files preserved. [Plan, migration, limitations and release evidence](docs/plans/V8.20-REVIEW-FIVE-FIXES.md).
 
 # V8.20 — Coloured work stages and manual Exploration, released 10 November 2026
 
