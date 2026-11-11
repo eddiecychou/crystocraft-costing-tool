@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react'
-import { doc, onSnapshot, getDoc, collection, query, orderBy } from 'firebase/firestore'
+import { useState } from 'react'
+import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import { useParams, Link } from 'react-router-dom'
-import { db, auth } from '../firebase'
 import { Package, ArrowLeft, Check, Plus, Sparkles, Download, ExternalLink } from 'lucide-react'
 import { useRates, convertFromHKD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
@@ -10,7 +9,6 @@ import LoadingBar from '../components/LoadingBar'
 import VideoEmbed from '../components/VideoEmbed'
 import { isStorefrontVisible, normVideos, youtubeEmbed, normBlogLinks } from '../constants'
 import { engineTypeOf, engineAvailable, engineLabel } from '../customizerEngines'
-import { screenSensitiveImages } from '../sensitiveImages'
 import ImageLightbox from '../components/ImageLightbox'
 import { imageDownloadUrl } from '../imageDownloadUrl'
 import { customerMainImage } from '../cardImages'
@@ -22,47 +20,17 @@ const downloadUrl = (fileUrl, filename) => imageDownloadUrl(fileUrl, filename ||
 
 export default function CorporateDetail({ profile }) {
   const { id } = useParams()
-  const [p, setP] = useState(undefined)
-  const [images, setImages] = useState([])
-  const [tiers, setTiers] = useState([])
+  const { data, loading, error, retry } = useCustomerCatalogue(profile, id)
+  const p = loading ? undefined : data?.products[0] || null
+  const images = p?.images || []
+  const tiers = p?.tiers || []
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const rates = useRates()
   const cart = useCart()
   const cur = profile?.base_currency || 'USD'
 
-  useEffect(() => onSnapshot(doc(db, 'products', id),
-    s => setP(s.exists() ? { id: s.id, ...s.data() } : null), () => setP(null)), [id])
-
-  useEffect(() => onSnapshot(
-    query(collection(db, 'products', id, 'images'), orderBy('sort_order')),
-    // screenSensitiveImages: the Firestore rule does NOT reliably filter
-    // this list query per-document for a sensitive viewer — confirmed
-    // empirically, see sensitiveImages.js's header comment. Filtered again
-    // here, client-side, right at the fetch boundary so nothing downstream
-    // in this file can accidentally see an unfiltered `images`.
-    snap => setImages(screenSensitiveImages(snap.docs.map(d => ({ id: d.id, ...d.data() })), profile)),
-    () => setImages([])
-  ), [id, profile?.sensitive, profile?.customer_id])
-
-  useEffect(() => {
-    const uid = profile?.id || auth.currentUser?.uid
-    if (!uid) { setTiers([]); return }
-    // Prices are published per-customer (cost × this customer's markup), so we
-    // read only this customer's own price doc — raw cost is never sent here.
-    getDoc(doc(db, 'products', id, 'customer_prices', uid))
-      .then(s => {
-        const list = s.exists() ? (s.data().tiers || []) : []
-        // `> 0`, not `!= null`: an uncosted product publishes price_hkd 0
-        // (Math.ceil(0 * markup)), and 0 passed the null check and rendered to
-        // the customer as "HKD 0" — i.e. free. The admin grid filters truthily
-        // so it showed nothing, meaning the one person who could spot it
-        // couldn't. See LESSONS-LEARNED L-37.
-        setTiers(list.filter(t => Number(t.price_hkd) > 0).sort((a, b) => (a.quantity || 0) - (b.quantity || 0)))
-      })
-      .catch(() => setTiers([]))
-  }, [id, profile?.id])
-
   if (p === undefined) return <LoadingBar />
+  if (error) return <p role="alert" className="text-sm text-red-600">{error} <button onClick={retry} className="underline">Retry</button></p>
   if (p === null) return (
     <div className="text-center py-16">
       <p className="eyebrow text-ink-60 mb-1.5">Unavailable</p>
@@ -71,15 +39,7 @@ export default function CorporateDetail({ profile }) {
     </div>
   )
 
-  // p.heroImage is a plain cached URL on the product doc — it bypasses the
-  // images subcollection entirely, so it needs its own explicit check
-  // against the tag on whichever image doc actually IS the hero (found via
-  // matching file_url, since `images` here is already screenSensitiveImages()-
-  // filtered at the fetch above — see that effect's comment for the full
-  // "why", including the empirical proof the Firestore rule alone doesn't
-  // do this). If the hero's URL isn't in the (already-filtered) `images`,
-  // it was blocked — same derivation as before, just no longer trusting the
-  // rule to have done the filtering; the filter already ran client-side.
+  // Both product fields and image visibility are projected server-side.
   const visibleImages = images.filter(im => im.file_url && isStorefrontVisible(im))
   const displayHero = customerMainImage(visibleImages, p, profile?.sensitive)
 

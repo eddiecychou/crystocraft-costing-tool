@@ -194,7 +194,7 @@ await ok('none DENIED suppliers',       assertFails(getDoc(doc(none, 'suppliers/
 await ok('none DENIED sourcing captures', assertFails(getDoc(doc(none, 'sourcing_captures/sc1'))))
 
 // ---- customer — unchanged (storefront only) -----------------------------
-await ok('customer read storefront product', assertSucceeds(getDoc(doc(cust, 'products/p1'))))
+await ok('customer DENIED raw storefront product (projected API only)', assertFails(getDoc(doc(cust, 'products/p1'))))
 await ok('customer DENIED customers',   assertFails(getDoc(doc(cust, 'customers/c1'))))
 await ok('customer DENIED suppliers',   assertFails(getDoc(doc(cust, 'suppliers/s1'))))
 await ok('customer DENIED sourcing captures', assertFails(getDoc(doc(cust, 'sourcing_captures/sc1'))))

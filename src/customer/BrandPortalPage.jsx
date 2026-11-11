@@ -1,6 +1,7 @@
+import { loadCustomerBrandedImages } from '../customerCatalogueApi'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { loadCustomerVisibleAssets, loadBrandedProductImages, cannotRenderAsImage, TYPE_LABEL } from '../customerAssets'
+import { loadCustomerVisibleAssets,  cannotRenderAsImage, TYPE_LABEL } from '../customerAssets'
 import { loadProposal, resolveProposalAsset, resolveProposalAssetIds, resolveProductRefs } from '../customerProposal'
 import { isStorefrontVisible } from '../constants'
 import { Download, FileText, Loader2 } from 'lucide-react'
@@ -64,7 +65,7 @@ export default function BrandPortalPage({ profile }) {
     ;(async () => {
       const [visibleAssets, brandedImages] = await Promise.all([
         loadCustomerVisibleAssets(customerId),
-        loadBrandedProductImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
+        loadCustomerBrandedImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
       ])
       if (!alive) return
       setBrandAssets(visibleAssets.filter(a => a.category === 'brand_asset'))

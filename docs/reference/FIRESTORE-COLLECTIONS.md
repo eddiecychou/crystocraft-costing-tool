@@ -259,3 +259,8 @@ Private Product Design project register and `/updates/{eventId}` immutable revis
 ### Saved-order edit metadata
 
 Existing `orders` adopt internal `edit_revision`, `last_edit_id`, and `edit_origin_ms` lazily. Full header/line edits must advance the root version atomically, enforced by rules. Invoice claim/link Admin transactions also advance the version, retaining the last commercial attempt ID. Printed revisions and stock reservation flags retain their existing meaning. No new collection or bulk record migration. See [concurrent-edit release](../plans/V8.20-SAVED-ORDER-CONCURRENT-EDIT-FIX.md).
+
+
+### `account_pricing/{uid}` (review corrections, 12 November 2026)
+
+Internal account markup/group settings moved out of self-readable users. Admin writes; admin/pricing/CRM reads; customer denied. `legacy_profile_pricing` preserves migrated values, `migratedAt` records the atomic move. No sale-price recalculation. Customer catalogue projection reads selling tiers from protected `products/{id}/customer_prices/{authenticatedUid}` and omits markup. See `docs/plans/V8.20-REVIEW-FIVE-FIXES.md` before applying the migration.

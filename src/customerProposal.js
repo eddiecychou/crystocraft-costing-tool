@@ -1,10 +1,11 @@
+import { loadCustomerProduct, loadCustomerBrandedImages } from './customerCatalogueApi'
 import {
   doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, getDocs,
 } from 'firebase/firestore'
 import { db, auth } from './firebase'
 import { normGallery, isStorefrontVisible, productStatusOf } from './constants'
 import { screenSensitiveImages } from './sensitiveImages'
-import { loadCustomerVisibleAssets, loadBrandedProductImages } from './customerAssets'
+import { loadCustomerVisibleAssets } from './customerAssets'
 
 // Customer proposal data layer — see docs/specs/Sun-Life-Proposal-Build-Spec.md §3/§6.
 //
@@ -114,7 +115,7 @@ export async function hasBrandPortalContent(customerId) {
   const [proposal, assets, brandedImages] = await Promise.all([
     loadProposal(customerId).catch(() => null),
     loadCustomerVisibleAssets(customerId),
-    loadBrandedProductImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
+    loadCustomerBrandedImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
   ])
   return proposal?.status === 'published' || assets.length > 0 || brandedImages.length > 0
 }
@@ -180,6 +181,7 @@ export function resolveProposalAssetIds(assetsById, assetRefs) {
 // ProposalEditor's per-product image picker, so "what the customer will
 // actually see" and "what the admin is choosing from" are the exact same set.
 export async function loadProductImageChoices(productId, profile) {
+  if (profile?.role === 'customer') return (await loadCustomerProduct(productId))?.images || []
   const imgSnap = await getDocs(query(collection(db, 'products', productId, 'images'), orderBy('sort_order')))
   return screenSensitiveImages(imgSnap.docs.map(d => ({ id: d.id, ...d.data() })), profile)
     .filter(im => im.file_url && isStorefrontVisible(im))
@@ -220,13 +222,13 @@ export async function resolveProductRefs(refs, profile) {
         image, to: `/shop/figurine/${r.id}`,
       }
     }
-    const snap = await getDoc(doc(db, 'products', r.id))
-    if (!snap.exists()) return null
-    const p = snap.data()
+    const p = profile?.role === 'customer' ? await loadCustomerProduct(r.id)
+      : await getDoc(doc(db, 'products', r.id)).then(s => s.exists() ? s.data() : null)
+    if (!p) return null
     if (p.active === false || productStatusOf(p.status).value === 'retired') return null
     let image = ''
     try {
-      const imgs = await loadProductImageChoices(r.id, profile)
+      const imgs = p.images || await loadProductImageChoices(r.id, profile)
       const picked = r.image_id && imgs.find(im => im.id === r.image_id)
       const branded = customerId && imgs.find(im => im.branded_for_customer_id === customerId)
       const heroOk = p.heroImage && imgs.some(im => im.file_url === p.heroImage)

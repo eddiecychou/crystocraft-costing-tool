@@ -11,15 +11,38 @@ export function projectCustomerActivity(customers,records,now=Date.now()) {
     if(date===null){row.partial=true;return}
     if(!row.lastContactAt||date>Date.parse(row.lastContactAt))row.lastContactAt=new Date(date).toISOString()
   }
-  for(const c of customers)for(const field of ['last_contacted','lastOutreachAt'])if(c[field])add(c.id,c[field])
-  for(const record of records){
-    const match=record.path?.match(/^customers\/([^/]+)\/(email_threads|whatsapp_threads|alibaba_threads|enquiries)\/[^/]+$/)
-    if(!match||!result.has(match[1])||record.migrated_to)continue
-    if(match[2]==='enquiries'){
-      if(CHANNELS.has(record.channel))add(match[1],record.date)
-      else if(!['Internal','Note','Reference note','Draft'].includes(record.channel))result.get(match[1]).partial=true
-    }else add(match[1],record.date_range?.[1] || record.last_message_at)
+  const owners = new Map()
+  for (const c of customers) {
+    for (const field of ['last_contacted','lastOutreachAt']) if (c[field]) add(c.id,c[field])
+    for (const id of new Set(Array.isArray(c.linked_marketing_contact_ids) ? c.linked_marketing_contact_ids : [])) {
+      if (typeof id !== 'string' || !id || id.includes('/')) { if(result.has(c.id)) result.get(c.id).partial=true; continue }
+      if (!owners.has(id)) owners.set(id,new Set())
+      owners.get(id).add(c.id)
+    }
   }
+  const foundLeads = new Set(), seen = new Set()
+  for(const record of records){
+    if (!record.path || seen.has(record.path)) continue
+    seen.add(record.path)
+    const lead = record.path.match(/^marketing_contacts\/([^/]+)$/)
+    if (lead && owners.has(lead[1])) {
+      if (record.missing) continue
+      foundLeads.add(lead[1])
+      for (const id of owners.get(lead[1])) for (const field of ['last_contacted','lastOutreachAt']) if(record[field]) add(id,record[field])
+      continue
+    }
+    const match=record.path.match(/^(customers|marketing_contacts)\/([^/]+)\/(email_threads|whatsapp_threads|alibaba_threads|enquiries)\/[^/]+$/)
+    if(!match || record.migrated_to)continue
+    const ids = match[1]==='customers' ? [match[2]] : [...(owners.get(match[2]) || [])]
+    for (const id of ids) {
+      if (!result.has(id)) continue
+      if(match[3]==='enquiries'){
+        if(CHANNELS.has(record.channel))add(id,record.date)
+        else if(!['Internal','Note','Reference note','Draft'].includes(record.channel))result.get(id).partial=true
+      }else add(id,record.date_range?.[1] || record.last_message_at)
+    }
+  }
+  for (const [leadId,ids] of owners) if (!foundLeads.has(leadId)) for (const id of ids) if(result.has(id))result.get(id).partial=true
   return [...result.values()].map(({partial,...row})=>({...row,historyState:partial?'partial':row.lastContactAt?'known':'unknown'}))
 }
 export function createCustomerWorkbenchHandler({verifyToken,getProfile,load,now=()=>Date.now()}) {
@@ -51,8 +74,15 @@ export async function loadCustomerActivity(db,documentId) {
     throw Error('Contact history is too large for one review.')
   }
   const [customers,...groups]=await Promise.all([
-    pages(db.collection('customers').select('customer_type','tags','last_contacted','lastOutreachAt')),
+    pages(db.collection('customers').select('customer_type','tags','last_contacted','lastOutreachAt','linked_marketing_contact_ids')),
     ...['email_threads','whatsapp_threads','alibaba_threads','enquiries'].map(name=>pages(db.collectionGroup(name).select('date_range','last_message_at','migrated_to','channel','date'))),
   ])
-  return {customers,records:groups.flat()}
+  const leadIds = [...new Set(customers.filter(isDashboardB2B).flatMap(c => Array.isArray(c.linked_marketing_contact_ids) ? c.linked_marketing_contact_ids : []))]
+    .filter(id => typeof id==='string' && id && !id.includes('/'))
+  const leads = []
+  for (let i=0;i<leadIds.length;i+=100) {
+    const snaps = await db.getAll(...leadIds.slice(i,i+100).map(id=>db.doc('marketing_contacts/'+id)), {fieldMask:['last_contacted','lastOutreachAt']})
+    leads.push(...snaps.map(d=>({...d.data(),path:d.ref.path,missing:!d.exists})))
+  }
+  return {customers,records:[...leads,...groups.flat()]}
 }

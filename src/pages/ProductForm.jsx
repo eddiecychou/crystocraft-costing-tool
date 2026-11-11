@@ -1,9 +1,10 @@
+import { PRODUCT_FORM_DEFAULTS, productFormFields, productFormPatch } from '../productFormFields'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, addDoc, runTransaction, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { CATEGORIES, PRODUCT_STATUSES, productStatusOf, normVideos, normBlogLinks } from '../constants'
-import { CUSTOMIZER_OPTIONS, engineTypeOf } from '../customizerEngines'
+import { CATEGORIES, PRODUCT_STATUSES, normVideos, normBlogLinks } from '../constants'
+import { CUSTOMIZER_OPTIONS } from '../customizerEngines'
 import MarketingCopyEditor from '../components/MarketingCopyEditor'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
 import BlogLinksEditor from '../components/BlogLinksEditor'
@@ -13,27 +14,25 @@ export default function ProductForm() {
   const navigate = useNavigate()
   const isEdit = Boolean(id)
 
-  const [form, setForm] = useState({
-    name: '', product_code: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '', videos: [], blog_links: [],
-    is_new: false, customizer_type: '', active: true,
-  })
+  const [form, setForm] = useState(PRODUCT_FORM_DEFAULTS)
+  const [baseline, setBaseline] = useState(null)
+  const [loadError, setLoadError] = useState('')
   const [loading, setLoading]   = useState(false)
   const [saveError, setSaveError] = useState('')
   const [fetching, setFetching] = useState(isEdit)
 
   useEffect(() => {
-    if (!isEdit) return
+    let alive = true
+    setBaseline(null); setLoadError(''); setSaveError(''); setFetching(isEdit)
+    setForm(PRODUCT_FORM_DEFAULTS)
+    if (!isEdit) return () => { alive = false }
     getDoc(doc(db, 'products', id)).then(snap => {
-      if (snap.exists()) {
-        const d = snap.data()
-        // Fold the legacy 'discontinued' status into 'retired' on load; never
-        // written back until the form is saved again (then it's canonical).
-        // Seed the customizer engine from the field, folding the legacy
-        // `customizable: true` boolean into the crystal_fabric engine.
-        setForm(f => ({ ...f, ...d, status: productStatusOf(d.status).value, videos: normVideos(d.videos, d.video_url), blog_links: normBlogLinks(d.blog_links), customizer_type: engineTypeOf(d) }))
-      }
-      setFetching(false)
-    })
+      if (!alive) return
+      if (!snap.exists()) { setLoadError('Product not found.'); setFetching(false); return }
+      const fields = productFormFields(snap.data())
+      setForm(fields); setBaseline(fields); setFetching(false)
+    }).catch(() => { if (alive) { setLoadError('Product could not load. Refresh to try again.'); setFetching(false) } })
+    return () => { alive = false }
   }, [id, isEdit])
 
   function set(field) {
@@ -42,15 +41,19 @@ export default function ProductForm() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (loading) return   // guard a double-click/double-Enter from firing two writes
+    if (loading || fetching || loadError || (isEdit && !baseline)) return   // guard a double-click/double-Enter from firing two writes
     setLoading(true)
     setSaveError('')
     try {
       const videos = normVideos(form.videos)
       const blog_links = normBlogLinks(form.blog_links)
-      const payload = { ...form, videos, video_url: videos[0] || '', blog_links }
+      const payload = { ...productFormFields(form), videos, video_url: videos[0] || '', blog_links }
       if (isEdit) {
-        await updateDoc(doc(db, 'products', id), { ...payload, updatedAt: serverTimestamp() })
+        await runTransaction(db, async tx => {
+          const ref = doc(db, 'products', id), snap = await tx.get(ref)
+          const patch = productFormPatch(baseline, form, snap.exists() ? snap.data() : null)
+          if (Object.keys(patch).length) tx.update(ref, { ...patch, updatedAt: serverTimestamp() })
+        })
         navigate(`/products/${id}`)
       } else {
         const ref = await addDoc(collection(db, 'products'), {
@@ -70,6 +73,7 @@ export default function ProductForm() {
     }
   }
 
+  if (loadError) return <p role="alert" className="p-6 text-red-600">{loadError}</p>
   if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (

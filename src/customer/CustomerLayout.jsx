@@ -30,7 +30,7 @@ export default function CustomerLayout({ children, profile }) {
   useEffect(() => {
     let alive = true
     if (!customerId) { setHasBrandContent(false); return }
-    hasBrandPortalContent(customerId).then(v => { if (alive) setHasBrandContent(v) })
+    hasBrandPortalContent(customerId).then(v => { if (alive) setHasBrandContent(v) }).catch(() => { if (alive) setHasBrandContent(false) })
     return () => { alive = false }
   }, [customerId])
 

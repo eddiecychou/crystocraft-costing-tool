@@ -29,6 +29,16 @@ let scratch, pages, Router, root, host, errors, originalError
 const empty = 'export default function Empty(){return null}'
 const stubs = {
   firebase: 'export const db={}; export const auth={currentUser:null}',
+  useCustomerCatalogue: `import {useState,useEffect} from 'react';
+    import {onSnapshot,getDocs} from '${fixturePath}';
+    import {projectCorporateProduct} from '${rootDir}netlify/functions/lib/customerCatalogue.js';
+    export function useCustomerCatalogue(profile){
+      const [state,setState]=useState({data:null,loading:true,error:''});
+      useEffect(()=>{let alive=true;const unsub=onSnapshot('products',async snap=>{
+        const products=await Promise.all(snap.docs.map(async d=>projectCorporateProduct({id:d.id,...d.data()},(await getDocs('products/'+d.id+'/images')).docs.map(i=>({id:i.id,...i.data()})),null,{customerId:profile.customer_id,sensitive:profile.sensitive})));
+        if(alive)setState({data:{products:products.filter(Boolean)},loading:false,error:''});
+      });return()=>{alive=false;unsub()};},[profile.customer_id,profile.sensitive]);return {...state,retry:()=>{}};
+    }`,
   criticalComponents: 'const components=[]; export const useComponents=()=>({components}); export const buildableFromComponents=()=>({qty:0,byPlating:{}})',
   crystalColors: 'const colors=[];export const useCrystalColors=()=>({colors});export const colorMap=()=>({})',
   currency: 'const rates={USD:7.8,HKD:1};export const useRates=()=>rates;export const wsPriceFactor=()=>1;export const convertFromUSD=x=>x;export const convertFromHKD=x=>x;export const fmtMoney=x=>String(x??"—")',
@@ -43,6 +53,7 @@ before(async () => {
     stdin: { contents: `export {default as adminRange} from './src/pages/Range.jsx';export {default as adminCorp} from './src/pages/Products.jsx';export {default as customerRange} from './src/customer/FigurineShop.jsx';export {default as customerCorp} from './src/customer/CorporateShop.jsx';export {MemoryRouter} from 'react-router-dom'`, resolveDir: rootDir },
     bundle: true, platform: 'node', mainFields: ['module', 'main'], format: 'esm', jsx: 'automatic', outfile: join(scratch, 'pages.mjs'),
     plugins: [{ name: 'offline-catalogue-boundaries', setup(b) {
+      b.onResolve({ filter: /^\//, namespace: 'catalogue-mock' }, args => ({ path: args.path, external: true }))
       b.onResolve({ filter: /^react(?:-dom)?(?:\/.*)?$/ }, args => ({ path: require.resolve(args.path), external: true }))
       b.onResolve({ filter: /^firebase\/firestore$/ }, () => ({ path: fixturePath, external: true }))
       b.onResolve({ filter: /^\.\.?\// }, args => {

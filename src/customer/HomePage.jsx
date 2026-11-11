@@ -1,12 +1,13 @@
+import { loadCustomerBrandedImages } from '../customerCatalogueApi'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Heart, ClipboardList, Receipt, Images, ArrowRight } from 'lucide-react'
-import { useFrontPageFeatured } from '../frontPageFeatured'
+import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import { isNew } from '../newArrivals'
 import { useCart, useFavourites } from './store'
-import { loadBrandedProductImages } from '../customerAssets'
+
 import { loadProposal } from '../customerProposal'
 import { isStorefrontVisible } from '../constants'
 import ProposalInviteCard from './ProposalInviteCard'
@@ -36,7 +37,7 @@ function useProposalInviteStatus(customerId) {
       } catch { /* draft/missing — not an error, just nothing to show */ }
       if (!next) {
         try {
-          const imgs = await loadBrandedProductImages(customerId)
+          const imgs = await loadCustomerBrandedImages(customerId)
           if (imgs.filter(isStorefrontVisible).length > 0) next = 'collection_ready'
         } catch { /* ignore — invite just won't show */ }
       }
@@ -53,22 +54,22 @@ const PILLAR_IMAGE = { figurine: pillarFigurine, corporate: pillarCorporate, cry
 // renamed/retired product doesn't leave stale text on the homepage — only
 // the CHOSEN PHOTO is fixed by the admin's pick (src/frontPageFeatured.js);
 // everything else about the product stays live.
-function useFeaturedProductsMeta(items) {
+function useFeaturedProductsMeta(items, corporateProducts) {
   const [meta, setMeta] = useState({})
   useEffect(() => {
     if (!items || items.length === 0) { setMeta({}); return }
     let alive = true
     Promise.all(items.map(async it => {
       const path = it.product_type === 'corp_gift' ? 'products' : 'range_products'
-      const snap = await getDoc(doc(db, path, it.product_id))
-      if (!snap.exists()) return null
-      const p = snap.data()
+      const p = path === 'products' ? corporateProducts?.find(p => p.id === it.product_id)
+        : await getDoc(doc(db, path, it.product_id)).then(s => s.exists() ? s.data() : null)
+      if (!p) return null
       const name = it.product_type === 'corp_gift' ? (p.name || it.product_id) : (p.design_name || p.description || p.design_code || it.product_id)
       const to = it.product_type === 'corp_gift' ? `/shop/corporate/${it.product_id}` : `/shop/figurine/${it.product_id}`
       return [it.id, { name, to, isNew: isNew(p) }]
     })).then(entries => { if (alive) setMeta(Object.fromEntries(entries.filter(Boolean))) })
     return () => { alive = false }
-  }, [items])
+  }, [items, corporateProducts])
   return meta
 }
 
@@ -174,8 +175,9 @@ export default function HomePage({ profile }) {
   const fav = useFavourites()
   const cart = useCart()
   const quickCount = { favourites: fav?.count || 0, enquiry: cart?.count || 0 }
-  const featured = useFrontPageFeatured()
-  const featuredMeta = useFeaturedProductsMeta(featured?.items)
+  const { data: catalogue } = useCustomerCatalogue(profile)
+  const featured = catalogue?.featured
+  const featuredMeta = useFeaturedProductsMeta(featured?.items, catalogue?.products)
   const inviteStatus = useProposalInviteStatus(profile?.customer_id)
 
   // The hero CTA is the customer's most relevant first move, not a generic

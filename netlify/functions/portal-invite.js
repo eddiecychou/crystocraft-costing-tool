@@ -1,3 +1,4 @@
+import { approveLegacyAccount } from './lib/approveLegacyAccount.js'
 // SU-07A — customer portal invitation / approval / password-setup flow.
 //
 // A Node Lambda function, not a Deno edge function — the one exception to
@@ -1045,9 +1046,12 @@ async function runApproval({ ref, claimedUid, customerId, actorUid, auditAction,
     userUpdate.base_currency = pricing.base_currency
     userUpdate.fx_rate = pricing.fx_rate
     userUpdate.ws_discount_pct = pricing.ws_discount_pct
-    userUpdate.corp_markup_override = pricing.corp_markup_override
+
   }
-  await claimedUserRef.update(userUpdate)
+  const approvalBatch = db.batch()
+  approvalBatch.update(claimedUserRef, userUpdate)
+  if (pricing) approvalBatch.set(db.doc('account_pricing/' + claimedUid), { corp_markup_override: pricing.corp_markup_override }, { merge: true })
+  await approvalBatch.commit()
   await ref.update({
     status: 'approved', approved_at: Timestamp.now(), customer_id: customerId || null,
     audit_log: FieldValue.arrayUnion(auditEntry(auditAction, actorUid)),
@@ -1166,6 +1170,9 @@ export default async function handler(req) {
       if (body.confirmedNotSent !== true) return json({error:'Check Resend before retrying the admin notice.'},400)
       try { await retryReviewedAccessAlert(getFirestore(),body.invitationId,uid); return json({ok:true}) }
       catch (e) { return json({error:e.status ? e.message : 'Could not confirm the admin notice. Refresh before retrying.'},e.status || 500) }
+    case 'approve_legacy_account':
+      try { await approveLegacyAccount(getFirestore(), body.uid, body.customerId, { role: body.role }); return json({ ok: true }) }
+      catch (e) { return json({ error: e.status ? e.message : 'Could not approve account.' }, e.status || 503) }
     case 'create_invitation': return createInvitation(body, uid)
     case 'resend_invitation': return resendInvitation(body, uid)
     case 'revoke_invitation': return revokeInvitation(body, uid)

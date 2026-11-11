@@ -240,10 +240,6 @@ path = "/api/mcp-catalogue"
   path = "/api/unsubscribe"
 
 [[edge_functions]]
-  function = "customer-order-history"
-  path = "/api/customer-order-history"
-
-[[edge_functions]]
   function = "customizer-render"
   path = "/api/customizer-render"
 

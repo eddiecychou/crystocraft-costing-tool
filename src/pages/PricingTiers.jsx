@@ -1,3 +1,4 @@
+import { loadAccountPricing } from '../accountPricing'
 import { formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
@@ -142,9 +143,10 @@ export default function PricingTiers() {
     setPublishing(true); setPublishMsg(null)
     try {
       const usersSnap = await getDocs(collection(db, 'users'))
-      const customers = usersSnap.docs
+      const customerRows = usersSnap.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(u => u.role === 'customer' && u.status === 'approved')
+      const customers = await Promise.all(customerRows.map(async u => ({ ...u, ...await loadAccountPricing(u.id) })))
 
       // Chunk writes so we stay well under the 500-op batch limit.
       const chunkSize = 400

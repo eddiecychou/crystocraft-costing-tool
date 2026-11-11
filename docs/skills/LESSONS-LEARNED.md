@@ -1887,3 +1887,11 @@ Netlify CLI may return masked secret values. Presence alone cannot prove a mail 
 - Keep actual SDK scenarios isolated with an external process deadline. Avoid a redundant second network-enable call during offline cleanup. A test must finish normally after its assertions; retained sockets are a failure to investigate.
 - Adapt older fixtures to the guarded contract while explicitly testing old-client refusal. Compare deployment artifact digests, routes, runtimes, schedules and static hashes; deployment IDs and creation timestamps legitimately differ.
 - A Pending approval total and an operator action count serve different purposes. Confirmed Waiting for reply should leave the review badge while remaining Pending. Use a bounded admin-only projection of private follow-up state, refresh after actions, ignore late responses and retain a conservative count when status is unavailable. Status reads must not expose correspondence, send mail or change approval.
+
+
+## 12 November 2026 — Review confidentiality and edit ownership
+
+- **Symptom:** customer-readable corporate records included Internal Remarks, hidden image tokens and published markup. **Cause:** UI filtering happened after full-document delivery. **Fix:** deny raw customer reads and explicitly project eligible fields/images/prices server-side; move account markup/group to an internal record without recalculating prices. Protect featured tiles and proposal readers too. Previously issued bearer links are a separate revocation concern.
+- **Symptom:** a legacy applicant could seed an ERP code that survived status-only approval. **Fix:** strict self-create/update field boundaries, server-derived approval linkage, and an independent authoritative CRM read on every ERP history request.
+- **Symptom:** rename-only product save could restore an old hero or visibility. **Fix:** changed-field transaction over form-owned fields; same-field conflicts retain the draft.
+- **Symptom:** customers with recent linked-lead messages could enter quiet90. **Fix:** traverse only explicit linked lead IDs, deduplicate links/paths, select metadata only, and mark missing lead roots partial. Fictional tests cover all four mechanisms and preserve unrelated records.

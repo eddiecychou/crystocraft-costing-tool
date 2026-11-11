@@ -1,67 +1,22 @@
 import useCatalogueFilter from '../hooks/useCatalogueFilter'
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { collection, query, orderBy, onSnapshot, doc, getDoc, getDocs } from 'firebase/firestore'
+import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import { Link } from 'react-router-dom'
-import { db, auth } from '../firebase'
 import { Package } from 'lucide-react'
 import { useRates, convertFromHKD, fmtMoney } from '../currency'
 import { isNew, newFirst } from '../newArrivals'
-import { productStatusOf, isStorefrontVisible } from '../constants'
 import CollectionBand from './CollectionBand'
 import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
-import { screenSensitiveImages } from '../sensitiveImages'
 import CardImageCarousel from '../components/CardImageCarousel'
-import useInViewOnce from '../hooks/useInViewOnce'
 
 const PAGE_SIZE = 24
 
-// Resolve the image a SENSITIVE viewer is actually allowed to see for one
-// product. Shared by every place in this file that renders a product image
-// — the "Shop by" band (bandItems below) was found to be a SECOND leak
-// surface using the same unscreened p.heroImage directly (owner,
-// 2026-08-07: "I can still see the product images tagged for brands of
-// other customers").
-//
-// screenSensitiveImages() filters CLIENT-SIDE, after the fetch — do not
-// remove this and trust the Firestore rule alone. Confirmed empirically
-// (see sensitiveImages.js's header comment: minted a real auth token for
-// Sunlife's own account and ran the exact list query her browser runs) that
-// the rule does NOT reliably filter this kind of unconstrained collection
-// list per-document, even though it correctly gates a direct single-doc
-// read. Two earlier attempts at this exact fix both still leaked in
-// production because they trusted the rule to have already done this.
-// Returns EVERY storefront-visible image this viewer may see for one product,
-// hero first — the card carousel (CardImageCarousel) pages through the whole
-// list, and imageFor() below still takes [0] wherever a single image is all
-// that's needed (the "Shop by" band, the favourites payload).
-//
-// COST NOTE: the full-list pass is required up front only for sensitive
-// viewers. Ordinary viewers start from p.heroImage and call this helper only
-// when they interact with a card (or its cached hero fails).
-async function resolveSafeImages(productId, heroImage, profile) {
-  try {
-    const snap = await getDocs(query(collection(db, 'products', productId, 'images'), orderBy('sort_order')))
-    const imgs = screenSensitiveImages(snap.docs.map(d => d.data()), profile)
-      .filter(im => im.file_url && isStorefrontVisible(im))
-    const urls = imgs.map(im => ({ url: im.file_url, caption: im.caption || '' }))
-    // Hero first when it survived screening; otherwise the list stands on its
-    // own (a sensitive viewer whose hero was blocked sees the next allowed
-    // photo first, exactly as before).
-    const heroOk = heroImage && urls.some(u => u.url === heroImage)
-    return heroOk
-      ? [{ url: heroImage, caption: '' }, ...urls.filter(u => u.url !== heroImage)]
-      : urls
-  } catch {
-    return []
-  }
-}
-
 export default function CorporateShop({ profile }) {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filtersReady, setFiltersReady] = useState(false)
+  const { data, loading, error, retry } = useCustomerCatalogue(profile)
+  const products = useMemo(() => [...(data?.products || [])].sort((a, b) => newFirst(a, b) || (a.name || '').localeCompare(b.name || '')), [data])
+  const filtersReady = !loading && !error
   // Filters persist across a detail visit so returning keeps your search/category.
   const [search, setSearch] = useState(() => sessionStorage.getItem('cs-search') || '')
   const [coll, setColl] = useState(null)
@@ -71,75 +26,15 @@ export default function CorporateShop({ profile }) {
   const cur = profile?.base_currency || 'USD'
   const sensitive = !!profile?.sensitive
 
-  useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
-    return onSnapshot(q, snap => {
-      setProducts(
-        snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .filter(p => p.active !== false && productStatusOf(p.status).value !== 'retired')
-          // New-tagged products first (C0), then alphabetical.
-          .sort((a, b) => newFirst(a, b) || (a.name || '').localeCompare(b.name || ''))
-      )
-      setFiltersReady(true)
-      setLoading(false)
-    }, () => setLoading(false))
-  }, [profile?.sensitive, profile?.customer_id])
-
-  // One shared resolution pass for sensitive viewers — the card grid, card
-  // carousel and "Shop by" band all read from this instead of allowing an
-  // unscreened cached hero onto any of those surfaces.
-  //
-  // Updated PER PRODUCT as each of the ~115 parallel reads resolves,
-  // instead of one setState after the whole Promise.all — a card can now
-  // render (and pop in its own photo) as soon as ITS read finishes, rather
-  // than every card waiting on the single slowest of 115 concurrent
-  // Firestore round trips. Customer-reported slow product-page loads (V8.6)
-  // traced to exactly that all-or-nothing gate.
-  const [safeImagesByProductId, setSafeImagesByProductId] = useState({})
-  // Whether the resolution pass has finished for the CURRENT product list —
-  // still needed to hold the GRID (not each card) back for a `sensitive`
-  // viewer specifically: screenSensitiveImages() is a no-op when
-  // !profile.sensitive (see sensitiveImages.js), so only a sensitive viewer
-  // can have a product that must be dropped from the shelf entirely once
-  // its only photo turns out to be blocked — that's the one case a flash-
-  // then-hide would be visible. Everyone else can see cards immediately.
-  const [safeImagesReady, setSafeImagesReady] = useState(false)
-  useEffect(() => {
-    // Ordinary customer accounts can safely use the cached product hero and
-    // defer the full carousel until interaction. Sensitive accounts must keep
-    // the deterministic per-image screening pass before any shelf is shown.
-    if (!sensitive) {
-      setSafeImagesByProductId({})
-      setSafeImagesReady(true)
-      return
-    }
-    if (products.length === 0) { setSafeImagesByProductId({}); setSafeImagesReady(false); return }
-    let alive = true
-    setSafeImagesByProductId({})
-    setSafeImagesReady(false)
-    let remaining = products.length
-    products.forEach(p => {
-      resolveSafeImages(p.id, p.heroImage, profile).then(imgs => {
-        if (!alive) return
-        setSafeImagesByProductId(prev => ({ ...prev, [p.id]: imgs }))
-        remaining -= 1
-        if (remaining === 0) setSafeImagesReady(true)
-      })
-    })
-    return () => { alive = false }
-  }, [products, sensitive, profile?.customer_id])
-
-  const imagesFor = p => sensitive
-    ? (safeImagesByProductId[p.id] || [])
-    : (p.heroImage && p.heroImage_visibility !== 'internal' ? [{ url: p.heroImage, caption: '' }] : [])
-  const imageFor = p => imagesFor(p)[0]?.url || ''
+  const imagesFor = p => p.images.map(im => ({ url: im.file_url, caption: im.caption }))
+  const imageFor = p => p.heroImage || ''
 
   const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))].sort(), [products])
   const [cat, setCat] = useCatalogueFilter('cs-cat', categories, filtersReady)
   // Light list the Shop-by band can render image tiles from.
   const bandItems = useMemo(() => products.map(p => ({
     id: p.id, category: p.category || '', is_new: !!p.is_new, image: imageFor(p), name: p.name || '',
-  })), [products, sensitive, safeImagesByProductId])
+  })), [products, sensitive])
   const filtered = useMemo(() => {
     const base = coll ? collectionProducts(coll, products, 'corp_gift') : products
     return base.filter(p => {
@@ -157,7 +52,7 @@ export default function CorporateShop({ profile }) {
       if (sensitive && !imageFor(p)) return false
       return true
     })
-  }, [products, coll, search, cat, sensitive, safeImagesByProductId])
+  }, [products, coll, search, cat, sensitive])
   const visible = filtered.slice(0, visibleCount)
 
   useEffect(() => {
@@ -166,26 +61,20 @@ export default function CorporateShop({ profile }) {
     sessionStorage.setItem('cs-visible', String(PAGE_SIZE))
   }, [search, cat, coll])
 
-  // Held back until the resolution pass finishes ONLY for a sensitive
-  // viewer — that's the one case where a product might need to disappear
-  // entirely once screening finishes (see safeImagesReady's comment above).
-  // Everyone else sees the grid immediately; cards gain their photos as
-  // each product's own read resolves instead of waiting on the slowest one.
-  const stillResolving = sensitive && !safeImagesReady
-
   // After returning from a product detail, scroll the last-opened card back into
   // view so you can carry on browsing where you left off.
   useEffect(() => {
-    if (loading || stillResolving) return
+    if (loading) return
     const lastId = sessionStorage.getItem('cs-last-id')
     if (!lastId) return
     const el = document.getElementById(`corp-card-${lastId}`)
     if (el) { el.scrollIntoView({ block: 'center' }); sessionStorage.removeItem('cs-last-id') }
-  }, [loading, filtered, stillResolving])
+  }, [loading, filtered])
 
   return (
     <div>
-      {(loading || stillResolving) && <LoadingBar />}
+      {loading && <LoadingBar />}
+      {error && <p role="alert" className="text-sm text-red-600">{error} <button onClick={retry} className="underline">Retry</button></p>}
       <div className="mb-5">
         <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Catalogue</p>
         <h1 className="text-2xl md:text-3xl text-ink">Corporate Gifts</h1>
@@ -218,7 +107,7 @@ export default function CorporateShop({ profile }) {
           </div>
         </div>
       </div>
-      {stillResolving ? null : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="text-center py-16">
           <p className="eyebrow text-ink-60 mb-1.5">No matches</p>
           <p className="text-sm text-ink-60">No products match your search or filters.</p>
@@ -227,11 +116,11 @@ export default function CorporateShop({ profile }) {
         <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {visible.map(p => (
             <CorpCard key={p.id} p={p} cur={cur} rates={rates} profile={profile}
-              images={imagesFor(p)} sensitive={sensitive} />
+              images={imagesFor(p)} />
           ))}
         </div>
       )}
-      {!stillResolving && visible.length < filtered.length && (
+      {visible.length < filtered.length && (
         <div className="flex justify-center mt-6">
           <button type="button" className="btn-secondary text-sm"
             onClick={() => setVisibleCount(n => {
@@ -247,49 +136,18 @@ export default function CorporateShop({ profile }) {
   )
 }
 
-function CorpCard({ p, cur, rates, profile, images: initialImages, sensitive }) {
-  const [cardRef, inView] = useInViewOnce()
-  const [images, setImages] = useState(initialImages)
-  const galleryRequested = useRef(false)
-  useEffect(() => {
-    if (sensitive) setImages(initialImages)
-    else setImages(current => current.length > 1 ? current : initialImages)
-  }, [initialImages, sensitive])
-  const loadGallery = () => {
-    if (sensitive || galleryRequested.current) return
-    galleryRequested.current = true
-    resolveSafeImages(p.id, p.heroImage, profile).then(setImages)
-  }
+function CorpCard({ p, cur, rates, profile, images: initialImages }) {
+  const images = [...initialImages].sort((a, b) => Number(b.url === p.heroImage) - Number(a.url === p.heroImage))
   const displayImage = images[0]?.url || null
-  const [fromPrice, setFromPrice] = useState(undefined) // undefined=loading, null=none
-
-  useEffect(() => {
-    if (!inView) return
-    const uid = profile?.id || auth.currentUser?.uid
-    if (!uid) { setFromPrice(null); return }
-    getDoc(doc(db, 'products', p.id, 'customer_prices', uid))
-      .then(s => {
-        // `> 0`, not `!= null` — an uncosted tier publishes 0 and Math.min()
-        // would make "from HKD 0" the headline price. See LESSONS-LEARNED L-37.
-        const hkds = (s.exists() ? (s.data().tiers || []) : []).map(t => Number(t.price_hkd)).filter(v => v > 0)
-        setFromPrice(hkds.length ? convertFromHKD(Math.min(...hkds), profile, rates) : null)
-      })
-      .catch(() => setFromPrice(null))
-  }, [inView, p.id, cur, rates, profile?.id, profile?.fx_rate])
-
-  useEffect(() => {
-    if (inView) loadGallery()
-  }, [inView])
+  const hkds = (p.tiers || []).map(t => Number(t.price_hkd)).filter(v => v > 0)
+  const fromPrice = hkds.length ? convertFromHKD(Math.min(...hkds), profile, rates) : null
 
   return (
     <Link id={`corp-card-${p.id}`} to={`/shop/corporate/${p.id}`}
-      ref={cardRef}
-      onMouseEnter={loadGallery} onFocus={loadGallery}
       onClick={() => sessionStorage.setItem('cs-last-id', p.id)}
       className="mosaic-tile flex flex-col group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         <CardImageCarousel images={images} alt={p.name}
-          onImageError={loadGallery}
           imgClassName="object-cover group-hover:scale-105 transition-transform duration-300"
           fallback={<Package size={32} strokeWidth={1.25} className="text-platinum" />} />
         {isNew(p) && (

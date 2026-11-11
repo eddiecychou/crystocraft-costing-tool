@@ -1,3 +1,7 @@
+## 2026-11-12 — Five review corrections (release in progress)
+
+Owner approved OC-R01–05: trusted portal/ERP identity, filtered Corporate Gift customer reads, private costing markup, conflict-safe ProductForm saves, and explicitly linked lead contact dates. [Plan, migration and evidence](docs/plans/V8.20-REVIEW-FIVE-FIXES.md). Local build/prebuild and fictional rules/form/API/history checks pass; live pricing migration dry-run: 73 accounts, 57 candidates, zero conflicts, no writes. Exact-SHA CI and candidate/production gates remain required. Unrelated Shipping edits remain outside this release.
+
 # V8.20 — Coloured work stages and manual Exploration, released 10 November 2026
 
 Released `0358ce4`, production `6af28b834554fad71fd70848`. Exploration

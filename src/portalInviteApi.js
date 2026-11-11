@@ -92,3 +92,5 @@ export function retryAccessAlert(invitationId) {
 }
 
 export const listAccountFollowupStates = uids => callAdmin('list_account_followup_states', { uids })
+
+export const approveLegacyAccount = (uid, customerId, role) => callAdmin('approve_legacy_account', { uid, customerId, role })

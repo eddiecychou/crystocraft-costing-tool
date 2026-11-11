@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { doc, onSnapshot } from 'firebase/firestore'
-import { db } from '../firebase'
+import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import LoadingBar from '../components/LoadingBar'
 import { engineTypeOf, engineDef, engineAvailable } from '../customizerEngines'
 import CrystalFabricCustomizer from './customizer/CrystalFabricCustomizer'
@@ -10,11 +8,9 @@ import CrystalFabricCustomizer from './customizer/CrystalFabricCustomizer'
 // and renders that engine's UI. Add a case here as new engines are built.
 export default function CustomizerPage({ profile }) {
   const { productId } = useParams()
-  const [product, setProduct] = useState(undefined)
-
-  useEffect(() => onSnapshot(doc(db, 'products', productId),
-    s => setProduct(s.exists() ? { id: s.id, ...s.data() } : null),
-    () => setProduct(null)), [productId])
+  const { data, loading, error, retry } = useCustomerCatalogue(profile, productId)
+  const product = loading ? undefined : data?.products[0] || null
+  if (error) return <p role="alert">{error} <button onClick={retry}>Retry</button></p>
 
   if (product === undefined) return <LoadingBar />
   if (product === null) return <NotAvailable msg="This product is no longer available." />

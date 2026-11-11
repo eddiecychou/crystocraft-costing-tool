@@ -1,14 +1,15 @@
+import { loadAccountPricing, updateAccountWithPricing } from '../accountPricing'
 import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, updateDoc, serverTimestamp, collection, getDocs, query, where, addDoc } from 'firebase/firestore'
+import { doc, getDoc, serverTimestamp, collection, getDocs, query, where, addDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { useCustomers, getCustomer, saveCustomer, CUSTOMER_COUNTRIES, CRM_CATEGORIES, CUSTOMER_SOURCES } from '../domain/customer'
 import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import { CustomerPicker, TypeBadge } from './CustomerAccounts'
 import ContactPicker from '../components/ContactPicker'
 import { notifyEmail } from '../notify'
-import { approveInvitation, deleteAccount } from '../portalInviteApi'
+import { approveInvitation, approveLegacyAccount, deleteAccount } from '../portalInviteApi'
 import LoadingBar from '../components/LoadingBar'
 import PortalAccountFollowup from '../components/PortalAccountFollowup'
 import { MODULE_GROUPS, resolveModules } from '../access'
@@ -60,9 +61,9 @@ export default function AccountEdit() {
   const [mods, setMods] = useState([])   // staff module checklist, editable
 
   useEffect(() => {
-    getDoc(doc(db, 'users', id)).then(s => {
+    Promise.all([getDoc(doc(db, 'users', id)), loadAccountPricing(id)]).then(([s, pricing]) => {
       if (s.exists()) {
-        const d = { id: s.id, ...s.data() }
+        const d = { id: s.id, ...s.data(), ...pricing }
         setU(d)
         setMods(Array.isArray(d.modules) ? d.modules : resolveModules(d))
         setCur(d.base_currency || 'USD')
@@ -74,7 +75,7 @@ export default function AccountEdit() {
         setContactId(d.contact_id || '')
       }
       setLoading(false)
-    })
+    }).catch(() => { setStatus('Error: account pricing could not load. Refresh to try again.'); setLoading(false) })
     // Enquiry activity for this login. Equality-only query (no orderBy) so it
     // needs no composite index; sort newest-first client-side.
     getDocs(query(collection(db, 'enquiries'), where('uid', '==', id)))
@@ -97,7 +98,7 @@ export default function AccountEdit() {
   }, [u, customers, customerId, contactId])
 
   if (loading) return <LoadingBar />
-  if (!u) return <div className="p-6 text-ink-60">Account not found. <Link to="/portal" className="text-brand-600">Back to Portal</Link></div>
+  if (!u) return <div className="p-6 text-ink-60">{status || 'Account not found.'} <Link to="/portal" className="text-brand-600">Back to Portal</Link></div>
 
   const isSelf   = auth.currentUser?.uid === id
   const isAdmin  = u.role === 'admin'
@@ -118,7 +119,8 @@ export default function AccountEdit() {
     setStatus('saving')
     const before = u   // captured before the write, for the audit diff
     try {
-      await updateDoc(doc(db, 'users', id), { ...patch, updatedAt: serverTimestamp() })
+      if (patch.status === 'approved' && (patch.role || u.role) === 'customer') await approveLegacyAccount(id, customerId || u.customer_id || null, patch.role)
+      else await updateAccountWithPricing(id, patch)
       // Audit every role / status / account_type transition. L-01 (admin
       // silently demoted to `pending`, TWICE) is exactly what this trail
       // exists to catch. Best-effort and non-blocking — a failed audit
@@ -140,9 +142,10 @@ export default function AccountEdit() {
         }).catch(() => {})
       }
       setU(prev => ({ ...prev, ...patch }))
-      if (back) { navigate('/portal'); return }
+      if (back) { navigate('/portal'); return true }
       setStatus('saved')
       setTimeout(() => setStatus(s => (s === 'saved' ? null : s)), 2500)
+      return true
     } catch (e) {
       setStatus('Error: ' + (e?.message || 'could not save'))
     }
@@ -208,8 +211,7 @@ export default function AccountEdit() {
       }
       return
     }
-    notifyEmail('account_approved', { uid: id })
-    apply({ status: 'approved' }, { back: true })
+    if (await apply({ status: 'approved' }, { back: true })) notifyEmail('account_approved', { uid: id })
   }
 
   const saveForm = () => apply({

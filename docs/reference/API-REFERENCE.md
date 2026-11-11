@@ -215,3 +215,10 @@ The internal Shipping-gated invoice-allocation responses additionally return `ed
 ### Portal follow-up review count
 
 The admin-only `list_account_followup_states` action on `/api/portal-invite` accepts at most 100 UIDs and returns only UID/waiting status. `usePortalRequestCount` owns the shared menu/banner count and stale-response protection; `portalRequestContext` supplies refresh after a follow-up action. Private correspondence remains accessible only through the existing authenticated backend. [Scope and release evidence](../plans/V8.20-PORTAL-WAITING-REPLY-BADGE.md).
+
+
+## Review corrections — 12 November 2026
+
+- `GET /api/customer-catalogue[?id=...]` (Node): fresh verified approved-customer token; own selling tiers, allowlisted corporate fields/images and safe featured configuration. No admin impersonation/query UID. `private, no-store`; errors fail closed. No writes.
+- `POST /api/customer-order-history` now uses the Node handler with the existing history/lines request and response contract; authoritative linked-company ERP code/shared-code guard and invoice ownership verification. Old edge route removed. No schema or ERP writes.
+- `POST /api/portal-invite`, action `approve_legacy_account`: admin-only approval of an existing legacy account, deriving current company identity transactionally. Invitation-based pending accounts continue through `approve_invitation` and its existing notification flow. No email is sent by the legacy action itself.

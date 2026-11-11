@@ -637,3 +637,12 @@ use the explicit revoked-token/profile/parent/image/current-path Node gate at
 /api/crystal-product-media; direct customer Storage access stays denied. Do not add a
 third Firestore lookup to Storage rules or replace publication checks with a UI-only gate.
 Always test actual customer bytes/PDF downloads, not just metadata/emulator permission.
+
+
+### Corporate catalogue confidentiality correction (12 November 2026)
+
+Approved customers must use `/api/customer-catalogue`; raw `products`, `images`, `pricing_tiers`, `customer_prices` and `settings/front_page` documents are internal. The API explicitly projects customer fields, uses the authenticated UID for published tiers and the linked CRM company for sensitive-image screening, and never returns costing signatures/markup/internal image URLs. Portal shop/detail/customizer, featured tiles and proposal loaders share this boundary. Admin readers retain their module permissions.
+
+`account_pricing/{uid}` owns `corp_markup_override` and `pricing_group`. Do not write those fields to the self-readable `users/{uid}` record. The bounded transaction migration preserves exact values and a private legacy snapshot; divergent destinations stop the run. See [migration/release plan](../plans/V8.20-REVIEW-FIVE-FIXES.md). ERP customer history now runs in a Node function and derives ERP identity from the linked `customers` record, never a profile mirror. Legacy approval derives those mirrors server-side.
+
+ProductForm writes only changed form-owned fields after a transactional baseline comparison; an overlapping edit keeps the draft. Contact-date workbench projection includes explicit `linked_marketing_contact_ids`, with missing lead roots treated as partial history rather than eligible quiet outreach.

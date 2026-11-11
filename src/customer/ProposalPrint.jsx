@@ -1,6 +1,7 @@
+import { loadCustomerBrandedImages } from '../customerCatalogueApi'
 import { useState, useEffect } from 'react'
 import {
-  loadCustomerVisibleAssets, loadBrandedProductImages,
+  loadCustomerVisibleAssets,
 } from '../customerAssets'
 import { loadProposal, resolveProposalAsset, resolveProposalAssetIds, resolveProductRefs } from '../customerProposal'
 import { isStorefrontVisible } from '../constants'
@@ -119,7 +120,7 @@ export default function ProposalPrint({ profile }) {
         if (!p || p.status !== 'published') throw new Error('No published proposal is available yet.')
         const [visibleAssets, brandedImages] = await Promise.all([
           loadCustomerVisibleAssets(customerId),
-          loadBrandedProductImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
+          loadCustomerBrandedImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
         ])
         if (!alive) return
         const assetsById = new Map(visibleAssets.map(a => [a.id, a]))

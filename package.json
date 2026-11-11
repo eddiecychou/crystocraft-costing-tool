@@ -12,7 +12,7 @@
     "test:access-contracts": "node --test qa/access-contracts.test.mjs",
     "test:supplier-quote": "node --test qa/supplier-quote-save.test.mjs",
     "test:product-search": "node --test qa/catalogue-search.test.mjs qa/quote-product-search.test.mjs qa/range-quote.test.mjs qa/catalogue-filter.test.mjs",
-    "prebuild": "npm run test:release-ci && npm run test:access-contracts && npm run test:portal-followup && npm run test:crystal-products && npm run test:crystal-swatches && npm run test:product-images && npm run test:oc-time && npm run test:design-projects && npm run test:customer-workspace && npm run test:product-search && npm run test:quote-pdf && npm run test:quote-excel && npm run test:range-order-form && npm run test:invoice-units && npm run test:invoice-reconciliation && npm run test:invoice-recovery && npm run test:shipment-display && npm run test:quote-conversion && npm run test:packing-po && npm run test:ai-writer && npm run test:catalogue-cover && npm run test:seo-control-plane && node --test qa/range-upload.test.mjs qa/range-quick-entry.test.mjs",
+    "prebuild": "npm run test:review-fixes && npm run test:release-ci && npm run test:access-contracts && npm run test:portal-followup && npm run test:crystal-products && npm run test:crystal-swatches && npm run test:product-images && npm run test:oc-time && npm run test:design-projects && npm run test:customer-workspace && npm run test:product-search && npm run test:quote-pdf && npm run test:quote-excel && npm run test:range-order-form && npm run test:invoice-units && npm run test:invoice-reconciliation && npm run test:invoice-recovery && npm run test:shipment-display && npm run test:quote-conversion && npm run test:packing-po && npm run test:ai-writer && npm run test:catalogue-cover && npm run test:seo-control-plane && node --test qa/range-upload.test.mjs qa/range-quick-entry.test.mjs",
     "test:quote-pdf": "npm run test:supplier-quote && node --test qa/quote-pdf-units.test.mjs",
     "test:range-order-form": "node --test qa/range-order-form.test.mjs",
     "test:quote-excel": "node --test qa/quote-excel-units.test.mjs",
@@ -37,7 +37,8 @@
     "test:invoice-allocator": "node --test qa/invoice-allocator-permissions.test.mjs",
     "test:invoice-recovery": "node --test qa/invoice-recovery.test.mjs qa/invoice-recovery-ui.test.mjs",
     "test:quote-conversion": "node --test qa/quote-conversion.test.mjs qa/quote-conversion-ui.test.mjs",
-    "test:invoice-recovery-postgres": "node --test qa/invoice-recovery-postgres.test.mjs"
+    "test:invoice-recovery-postgres": "node --test qa/invoice-recovery-postgres.test.mjs",
+    "test:review-fixes": "node --test qa/review-five-fixes.test.mjs && node qa/product-form-concurrency.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
