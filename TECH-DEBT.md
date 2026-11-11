@@ -12,6 +12,20 @@ proposed behaviour-preserving work; it does not override accepted owner decision
 or authorize fixing unrelated entries as part of another change. Resolved entries
 retain historical evidence and link their later release records.
 
+## Credit-note RPC privilege review — P1, separate from Shipping
+
+12 November Shipping migration preflight: Supabase advisors flag the existing
+`public.allocate_credit_note(...)` and `public.void_credit_note(bigint,text)`.
+Read-only catalog checks confirm both are SECURITY DEFINER and effectively
+executable by `anon`, `authenticated` and `service_role`. Their bodies and caller
+migration need a bounded authorization review before changing grants; no function
+was invoked, no credit note was created/voided and no ACL was changed by this
+Shipping release. Prioritize identifying authorized callers and testing a
+service-only boundary with fictional records. Preserve legitimate credit-note
+workflows. [Function privilege guidance](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable).
+This is a pre-existing exposure to review, not a regression caused by the new
+Shipping receipt function, which has explicit service-only execution.
+
 ## Mobile form font specificity — P2, dashboard correction released
 
 10 November responsive audit: the intended global 16px input/select/textarea rule
@@ -25,13 +39,13 @@ physical-device behavior rather than treating a media-rule declaration as proof.
 
 ## Shipping health/ownership checkpoint — open, review only
 
-**12 November authorized correction:** SH07-R1 and SH07-R2 are corrected locally.
+**12 November released correction:** SH07-R1 and SH07-R2 are fixed in `443173e`, production `6af49af233e344fb714e28fa`.
 Initial retries finish the pinned first invoice's accounting work; changed
 ownership requires review. New PI originals are capped at 20 MB in selection,
 server validation and Storage create rules. Both original failures now run as
 ordinary acceptance tests in required CI. [Current implementation and publication status](docs/plans/V8.20-SHIPPING-RECOVERY-RELEASE.md).
 
-**12 November SH-07 readiness:** [review and evidence](docs/plans/V8.20-SHIPPING-RECOVERY-RELEASE-READINESS.md).
+**Historical 12 November SH-07 readiness findings (now corrected):** [review and evidence](docs/plans/V8.20-SHIPPING-RECOVERY-RELEASE-READINESS.md).
 **SH07-R1 / P1:** initial Direct Invoice labels a linked first SI complete while
 financial follow-up is pending. A failed RPC leaves registry amounts/references
 blank; an original-request retry skips the unfinished operation. Saved-order

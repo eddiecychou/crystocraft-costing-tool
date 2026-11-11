@@ -16,5 +16,12 @@
   },
   "resolution": {
     "SH07-R2": "20 MiB limit; exactly-at-limit upload and identical download pass, oversized descriptor/actual upload fail, and existing oversized originals remain readable. Publication and live readback are recorded in V8.20-SHIPPING-RECOVERY-RELEASE.md."
+  },
+  "release_verification": {
+    "source_sha": "443173ea0ca5b36c7dad6b0a57244327c72e428a",
+    "storage_source_readback": "exact match",
+    "firestore_source_readback": "unchanged, exact match",
+    "production_admin_customer": "PASS",
+    "record": "V8.20-SHIPPING-RECOVERY-RELEASE.md"
   }
 }

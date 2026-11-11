@@ -1,10 +1,13 @@
 # OC maintenance and code cleanup plan
 
-**12 November — SH-07 readiness corrections implemented; publication authorized.**
-The original Direct Invoice request now finishes pending accounting updates on
-the same SI, with changed-ownership review. New PI originals have a shared 20 MB
-size policy and independent Storage enforcement. Existing repeat/split/reissue
-contracts are preserved. [Tests, migration and live release status](V8.20-SHIPPING-RECOVERY-RELEASE.md).
+**12 November — SH-07 released as `443173e`.** Direct Invoice follow-up recovery,
+manual/PI/copy requests and the 20 MB original-file limit are published after both
+exact-SHA jobs and fresh candidate/production roles. Intentional repeats and
+split/reissued invoices remain independent; no historical backfill or test issuance
+in production. [Migration and evidence](V8.20-SHIPPING-RECOVERY-RELEASE.md).
+Next priority: the separate credit-note RPC caller/grant review in TECH-DEBT,
+then durable financial follow-up after browser closure and Packing/Freight ownership.
+Do not begin those separate scopes without the owner's instruction.
 
 **12 November — SH-07 release-readiness review complete; publication on hold.**
 Existing combined suites/build and 11 Chrome scenarios pass, including intentional

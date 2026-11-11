@@ -88,7 +88,7 @@ Direct Invoice uses the same saved request for the retail order and tracks its f
 
 The Shipping list reuses the saved request for Duplicate Order. The copy repository owns the source snapshot and per-operator pointer. PostgreSQL owns UC issuance and its receipt. [Local implementation and verification](../plans/V8.20-DUPLICATE-ORDER-RECOVERY.md).
 
-The [manual and PI order request](../plans/V8.20-MANUAL-ORDER-PI-RECOVERY.md) is implemented locally. NewShipmentEntry owns the recoverable route and original-file hand-off. ShipmentForm supplies the reviewed header, lines and original. The server owns preparation, file verification, SO allocation and atomic commit.
+The [manual and PI order request](../plans/V8.20-MANUAL-ORDER-PI-RECOVERY.md) is released in `443173e`. NewShipmentEntry owns the recoverable route and original-file hand-off. ShipmentForm supplies the reviewed header, lines and original. The server owns preparation, file verification, SO allocation and atomic commit.
 
 Shipping presentation ownership is now explicit in
 components/shipping/ShipmentReconciliation.jsx: ERP comparison (controlled onUse)
@@ -501,7 +501,9 @@ quote pointers and new order provenance; no historical dedup or quote uniqueness
 Old source-less conversion tabs still need refresh; preventing all such manual-
 looking Creates requires a separately scoped SH-07 protocol.
 
-### SH-07 saved-order request list — local implementation
+### SH-07 saved-order request list — released 12 November 2026
+
+[Release and migration evidence](../plans/V8.20-SHIPPING-RECOVERY-RELEASE.md), source `443173e`, records both exact-SHA jobs and fresh candidate/production roles.
 
 `SavedOrderRequests.jsx` presents the operator's saved manual/PI, copy and Direct
 Invoice requests in Shipping and Sales Invoices. An operator-keyed inner panel
@@ -510,10 +512,11 @@ Retry preserves the failed page cursor. The existing `orderRequestAction`
 transport and `requestUrl` / `needsInitialInvoice` models own API calls and
 navigation semantics. Five actual component/Router regressions join
 `test:order-create`. [Scope and evidence](../plans/V8.20-SAVED-ORDER-REQUESTS-LOADING.md).
-The broader local recovery work and its Storage/SQL changes await release.
+The combined recovery workflow and its Storage/SQL changes are published; refresh old tabs to acquire request identities.
 
-### Saved-order concurrent editing — reviewed, repair proposed
+### Saved-order concurrent editing — historical review, repair released
 
+The [concurrent-edit correction](../plans/V8.20-SAVED-ORDER-CONCURRENT-EDIT-FIX.md) was released as `55ee1d3`; the following describes its earlier review.
 The existing saved-order loader and `shipping.saveOrderWithLines` remain the
 commercial edit boundary. `qa/shipping-concurrency-review.mjs` runs ten isolated
 Web SDK/rules scenarios covering stale headers/lines, offline and read/commit

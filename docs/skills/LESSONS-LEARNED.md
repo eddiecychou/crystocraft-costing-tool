@@ -11,6 +11,11 @@ persisted financial values/counts, not only the issued SI or a success label.
 PI original size limits must also cover frontend selection, server descriptors
 and actual Storage bytes; a small JSON request can describe a very large file.
 [Correction, tests and release evidence](../plans/V8.20-SHIPPING-RECOVERY-RELEASE.md).
+Release probes must follow the actual role contract: customer approval status is
+not an admin profile requirement. Management exports can mask server credentials;
+validate the export before using it in a local probe and never treat a masked-key
+401 as evidence that the deployed function is broken. Do not alter profiles or
+rotate credentials just to satisfy a mistaken verification assumption.
 
 ## Remove inherited execution as well as named function grants
 
