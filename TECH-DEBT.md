@@ -26,6 +26,10 @@ workflows. [Function privilege guidance](https://supabase.com/docs/guides/databa
 This is a pre-existing exposure to review, not a regression caused by the new
 Shipping receipt function, which has explicit service-only execution.
 
+12 November follow-up confirmed the sole tracked write gateway and validated
+the proposed grants, posting, filtered reads, void and audit with fictional data.
+[Credit-note permission review and proposed fix](docs/plans/V8.20-CREDIT-NOTE-PERMISSION-REVIEW.md).
+
 ## Mobile form font specificity — P2, dashboard correction released
 
 10 November responsive audit: the intended global 16px input/select/textarea rule

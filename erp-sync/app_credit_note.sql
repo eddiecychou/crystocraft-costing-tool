@@ -13,6 +13,9 @@
 -- not reset back to 001 each year"). JES's last real credit note was
 -- CN581/26; seeded to start at 600 so the app's first number can't collide
 -- with it (Cindy, 2026-08-18).
+-- Commit the function definitions and their access grants together.
+begin;
+
 create sequence if not exists public.cn_seq start with 600;
 
 create table if not exists public.app_credit_note (
@@ -182,12 +185,15 @@ grant usage, select on sequence public.cn_seq to service_role;
 
 revoke all on function public.allocate_credit_note(
   text, text, text, text, text, bigint, text, text, numeric, numeric, text, text, text, text, jsonb, date, date, text, text
-) from anon, authenticated;
+) from public, anon, authenticated;
 grant execute on function public.allocate_credit_note(
   text, text, text, text, text, bigint, text, text, numeric, numeric, text, text, text, text, jsonb, date, date, text, text
 ) to service_role;
 
-revoke all on function public.void_credit_note(bigint, text) from anon, authenticated;
+revoke all on function public.void_credit_note(bigint, text) from public, anon, authenticated;
 grant execute on function public.void_credit_note(bigint, text) to service_role;
 
+revoke execute on function public.credit_note_audit_fn() from public, anon, authenticated, service_role;
+
 notify pgrst, 'reload schema';
+commit;

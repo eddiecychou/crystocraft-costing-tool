@@ -18,7 +18,7 @@
     "test:range-order-form": "node --test qa/range-order-form.test.mjs",
     "test:quote-excel": "node --test qa/quote-excel-units.test.mjs",
     "test:invoice-units": "node --test qa/invoice-units.test.mjs",
-    "test:invoice-reconciliation": "node --test qa/invoice-reconciliation.test.mjs qa/invoice-allocator-permissions.test.mjs",
+    "test:invoice-reconciliation": "node --test qa/invoice-reconciliation.test.mjs qa/invoice-allocator-permissions.test.mjs qa/credit-note-permissions.test.mjs",
     "test:shipment-display": "node --test qa/shipment-display.test.mjs qa/shipment-references.test.mjs qa/shipment-lifecycle.test.mjs qa/shipping-save.test.mjs qa/order-edit.test.mjs qa/shipment-header-fields.test.mjs qa/shipment-navigation.test.mjs qa/shipment-pi-ownership.test.mjs",
     "test:packing-po": "node --test qa/packing-po-units.test.mjs qa/po-receive.test.mjs",
     "test:ai-writer": "node --test qa/ai-writer.test.mjs qa/bulk-blog-ai.test.mjs qa/daily-drafts-targeting.test.mjs qa/daily-drafts-sent.test.mjs qa/daily-drafts-rules.test.mjs qa/daily-drafts-composer.test.mjs qa/daily-drafts-attachments.test.mjs qa/daily-drafts-refinement.test.mjs qa/daily-drafts-pending.test.mjs qa/daily-drafts-bulk.test.mjs",
