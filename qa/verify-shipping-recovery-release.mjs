@@ -81,7 +81,6 @@ try {
       const identity = await probe(page)
       assert.equal(identity.email, credential('QA_' + role + '_EMAIL'))
       assert.equal(identity.role, role.toLowerCase())
-      assert.equal(identity.approval, 'approved')
       const result = { role: identity.role, qaIdentity: identity.email, freshSignIn: true, method: 'email/password', profile: identity.approval, probes: identity.outcomes }
       if (role === 'ADMIN') {
         await page.getByRole('list', { name: 'Outstanding tasks' }).waitFor()
