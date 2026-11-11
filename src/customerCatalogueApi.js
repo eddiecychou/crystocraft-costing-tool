@@ -23,7 +23,14 @@ export async function loadCustomerProduct(id) {
   return (await loadCustomerCatalogue(id)).products[0] || null
 }
 export async function loadCustomerBrandedImages(customerId) {
-  const { products } = await loadCustomerCatalogue()
-  return products.flatMap(p => p.images.filter(im => im.branded_for_customer_id === customerId)
-    .map(im => ({ ...im, product_id: p.id, product_name: p.name })))
+  if (!customerId) return []
+  try {
+    const { products } = await loadCustomerCatalogue()
+    return products.flatMap(p => p.images.filter(im => im.branded_for_customer_id === customerId)
+      .map(im => ({ ...im, product_id: p.id, product_name: p.name })))
+  } catch {
+    // Match the previous gallery loader: unavailable product photos must not
+    // strand the customer's independent brand assets/proposal on a spinner.
+    return []
+  }
 }
