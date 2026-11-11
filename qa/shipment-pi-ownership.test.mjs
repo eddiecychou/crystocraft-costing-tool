@@ -115,10 +115,18 @@ function Bridge() {
   currentRoute = location.pathname
   return null
 }
+async function createFixture(order, lines, file) {
+  assert.ok(f.allowCreate)
+  f.createCalls++
+  if (file) f.uploads.push(file)
+  f.created.push({path:['orders'],data:{...order,source_file:file ? {name:file.name} : null}})
+  for (const line of lines) f.created.push({path:['lines'],data:line})
+  navigate('/shipments/created-order')
+}
 async function render() {
   await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: ['/shipments/new'], future: { v7_startTransition: true, v7_relativeSplatPath: true } },
     React.createElement(Bridge), React.createElement(Routes, null,
-      React.createElement(Route, { path: '/shipments/new', element: React.createElement(Page) }),
+      React.createElement(Route, { path: '/shipments/new', element: React.createElement(Page, {onCreateOrder:createFixture}) }),
       React.createElement(Route, { path: '/shipments/:id', element: React.createElement(Page) }),
     ))))
   await flush()

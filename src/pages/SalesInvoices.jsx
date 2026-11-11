@@ -3,6 +3,8 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import ExportFilterBar from '../components/ExportFilterBar'
 import { downloadCsv, exportStem, inDateRange } from '../exportCsv'
 import { Link, useNavigate } from 'react-router-dom'
+import SavedOrderRequests from '../components/shipping/SavedOrderRequests'
+import { useCan } from '../access'
 import LoadingBar from '../components/LoadingBar'
 import { useOrders, updateOrder, NO_INVOICE_REASONS, noInvoiceReasonOf } from '../shipping'
 import { listAppInvoicesForReconciliation, upsertInvoiceStrict } from '../ucRegistry'
@@ -70,7 +72,8 @@ function useErpInvoices(search) {
   return { rows, loading, error }
 }
 
-export default function SalesInvoices() {
+export default function SalesInvoices({uid}) {
+  const can = useCan()
   const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
@@ -363,6 +366,7 @@ export default function SalesInvoices() {
       </div>
 
       <div className="p-4 md:p-6">
+        {uid && can('shipping') && <SavedOrderRequests key={uid} uid={uid} />}
         {loading && <LoadingBar />}
         {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 

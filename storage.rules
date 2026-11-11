@@ -144,6 +144,20 @@ service firebase.storage {
       allow write: if (isAuth() && request.auth.uid == uid);
     }
 
+    // Originals of prepared manual/PI requests. Their immutable path and saved
+    // descriptor are checked again by the order commit endpoint.
+    match /shipping_pi_originals/{uid}/{requestId}/{digest} {
+      function preparedFile() {
+        return firestore.get(/databases/(default)/documents/shipping_create_operators/$(uid)/requests/$(requestId)).data;
+      }
+      allow get: if can('shipping') && request.auth.uid == uid;
+      allow create: if resource == null && can('shipping') && request.auth.uid == uid
+        && request.resource.size > 0 && request.resource.size <= 20 * 1024 * 1024
+        && preparedFile().status == 'prepared' && preparedFile().file.sha256 == digest
+        && request.resource.size == preparedFile().file.size
+        && request.resource.contentType == preparedFile().file.type;
+    }
+
     // Shipping — imported PI files + freight quote attachments.
     match /orders/{orderId}/{allPaths=**} {
       allow read, write: if can('shipping');

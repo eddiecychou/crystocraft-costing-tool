@@ -73,6 +73,7 @@ const CreditNotePrint = lazy(() => import('./pages/CreditNotePrint'))
 const Logistics = lazy(() => import('./pages/Logistics'))
 const LogisticsVendorForm = lazy(() => import('./pages/LogisticsVendorForm'))
 const Shipments = lazy(() => import('./pages/Shipments'))
+const NewShipmentEntry = lazy(() => import('./pages/NewShipmentEntry'))
 const ShipmentForm = lazy(() => import('./pages/ShipmentForm'))
 const Shipping = lazy(() => import('./pages/Shipping'))
 const Portal = lazy(() => import('./pages/Portal'))
@@ -309,8 +310,8 @@ function AdminApp({ user, profile, role }) {
                     Remove once bank_accounts is the single source. */}
                 <Route path="/bank-audit" element={<Gate module="settings"><BankDetailsAudit /></Gate>} />
                 <Route path="/bank-accounts" element={<Gate module="settings"><BankAccounts /></Gate>} />
-                <Route path="/shipping" element={<Gate module="shipping"><Shipping /></Gate>} />
-                <Route path="/sales-invoices" element={<Gate module="invoices"><SalesInvoices /></Gate>} />
+                <Route path="/shipping" element={<Gate module="shipping"><Shipping uid={user.uid} /></Gate>} />
+                <Route path="/sales-invoices" element={<Gate module="invoices"><SalesInvoices uid={user.uid} /></Gate>} />
                 <Route path="/credit-notes" element={<Gate module="credit_notes"><CreditNotes /></Gate>} />
                 <Route path="/woo-sync" element={<Gate module="woo"><WooCommerceSync /></Gate>} />
                 <Route path="/woo-stock" element={<Gate module="woo"><WooStockReconcile /></Gate>} />
@@ -324,7 +325,7 @@ function AdminApp({ user, profile, role }) {
                     into Credit Notes for Phase C (Cindy, 2026-08-17: no return
                     ever existed without a credit note or vice versa). */}
                 <Route path="/sales-returns" element={<Navigate to="/credit-notes" replace />} />
-                <Route path="/shipments/new" element={<Gate module="shipping"><ShipmentForm uid={user?.uid} /></Gate>} />
+                <Route path="/shipments/new" element={<Gate module="shipping"><NewShipmentEntry uid={user.uid} /></Gate>} />
                 <Route path="/shipments/:id" element={<Gate module="shipping"><ShipmentForm uid={user?.uid} /></Gate>} />
                 <Route path="/logistics/new" element={<Gate module="shipping"><LogisticsVendorForm /></Gate>} />
                 <Route path="/logistics/:id" element={<Gate module="shipping"><LogisticsVendorForm /></Gate>} />

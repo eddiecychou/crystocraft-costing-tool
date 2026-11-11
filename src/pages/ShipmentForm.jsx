@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { storage, authHeader } from '../firebase'
+import { authHeader } from '../firebase'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
   applyExtractedPiHeader,
-  getOrder, getOrderLines, getOrderEditSnapshot, createOrderWithLinesAllocatingSo, updateOrder, saveOrderWithLines, deleteOrder,
+  getOrder, getOrderLines, getOrderEditSnapshot, updateOrder, saveOrderWithLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, lineClassificationPatch, rematchLines, validateOrder, computeOrderTotals,
   orderCreateFields, orderSaveFields, invoiceRegistryFields, orderEditFields,
 } from '../shipping'
@@ -93,16 +92,16 @@ const blankHeader = {
   pi_revision: '',
 }
 
-export default function ShipmentForm({ uid }) {
+export default function ShipmentForm({ uid, onCreateOrder }) {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   // A route change must never reuse another order's editable state, pending
   // reads, stock subscription or async allocation/import state.
   const newContext = ['customer_id', 'from_quote', 'direct'].map(k => searchParams.get(k) || '')
-  return <ShipmentEditor uid={uid} key={id ? `order:${uid || ''}:${id}` : `new:${uid || ''}:${JSON.stringify(newContext)}`} />
+  return <ShipmentEditor onCreateOrder={onCreateOrder} uid={uid} key={id ? `order:${uid || ''}:${id}` : `new:${uid || ''}:${JSON.stringify(newContext)}`} />
 }
 
-function ShipmentEditor({ uid }) {
+function ShipmentEditor({ uid, onCreateOrder }) {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
@@ -569,9 +568,11 @@ function ShipmentEditor({ uid }) {
       // mirror. Cross-check the parse against them — the ERP's version is the
       // original, the parse is a reading of a picture of it.
       checkAgainstErp(data.so_no, matched, attempt)
-    } catch {
+    } catch (err) {
       if (mounted.current && piImport.current === attempt) {
-        setExtractError(`Could not read this PI (${file.name}) — the existing fields and lines have been kept. The failed file was not attached; try another file or continue manually.`)
+        setExtractError(err.code === 'pi-file-too-large'
+          ? `${err.message} The existing fields and lines have been kept; this file was not attached.`
+          : `Could not read this PI (${file.name}) — the existing fields and lines have been kept. The failed file was not attached; try another file or continue manually.`)
       }
     } finally {
       if (mounted.current && piImport.current === attempt) {
@@ -638,18 +639,11 @@ function ShipmentEditor({ uid }) {
     setExtractError('')
     setQuoteRecoveryError('')
     try {
-      // Upload PI under a stable import path first, then anchor it on the order.
-      let sf = null
-      if (pendingFile) {
-        const r = storageRef(storage, `orders/imports/${Date.now()}_${pendingFile.name}`)
-        await uploadBytes(r, pendingFile, { contentType: pendingFile.type || 'application/octet-stream' })
-        sf = { url: await getDownloadURL(r), name: pendingFile.name }
-      }
       // Fall back to the line-item-computed total when the PI extraction never
       // captured a stated total — otherwise the order silently has no value
       // even though a correct one is computable (and was shown on this page).
       const computed = computeOrderTotals(header, lines)
-      const orderData = orderCreateFields(header, computed, sf, isDirect)
+      const orderData = orderCreateFields(header, computed, pendingFile ? {name: pendingFile.name} : null, isDirect)
       const v = validateOrder(orderData, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); return }
 
@@ -676,67 +670,7 @@ function ShipmentEditor({ uid }) {
         return
       }
 
-      // Allocate the SO number automatically on create. The app is now the only
-      // source of new SO numbers (CuiLing, 2026-07-23: new SO/SI go in the app,
-      // old JES ones may be edited but no new ones are added), so the JES
-      // collision the manual button guarded against no longer applies. Only
-      // when empty: an imported old JES PI already carries its SO and must keep
-      // it.
-      //
-      // NOT for a Direct Invoice. The business runs two invoicing paths (owner,
-      // 2026-07-24):
-      //   wholesale — sales order, deposit, production, then the invoice is
-      //               raised FROM the SO when the goods are ready to ship;
-      //   retail    — Amazon, web and small Alibaba orders skip the sales order
-      //               entirely and are invoiced directly to keep it simple.
-      // So a retail sale has no sales order by design, and minting one for it
-      // would consume a number out of a gapless series for a document that does
-      // not exist.
-      //
-      // Allocation and the order write happen in ONE Firestore transaction
-      // (createOrderWithLinesAllocatingSo) — previously these were two
-      // separate steps, and a write failure AFTER a successful allocation
-      // burned a real, permanent gap in the gapless SO series with no order
-      // to explain it (bug-fix pack B-02). Not raced against a timeout like a
-      // normal save: a transaction needs a real round-trip to read the
-      // counter, so there is nothing to optimistically assume here.
-      let orderId
-      try {
-        const created = await createOrderWithLinesAllocatingSo(orderData, lines, {
-          allocateSo: !isDirect && !orderData.erp_so_no,
-        })
-        orderId = created.id
-        orderData.erp_so_no = created.so || orderData.erp_so_no
-      } catch (e) {
-        setExtractError(`Could not create the order: ${e.message || e}.`)
-        return
-      }
-
-      // A Direct Invoice with no invoice number vanishes: the Sales Invoices
-      // page lists orders that HAVE an SI, plus un-invoiced ones that are
-      // shipped/delivered. A new direct invoice is neither, so it appeared
-      // nowhere and CuiLing could not find what she had just created
-      // (2026-07-23).
-      //
-      // Unlike a normal order — where invoicing happens later, so the SI stays
-      // a deliberate act — this flow exists to produce an invoice. Its own
-      // instruction is "add the lines, then allocate an invoice number", which
-      // is a step the app can simply take.
-      //
-      // Deliberately AFTER the order is committed, not before: allocating first
-      // and then failing to create would burn an invoice number with nothing
-      // behind it, which is the exact fault V7.17 removed from this path. If
-      // this fails the order still exists and she lands on it, so the manual
-      // Allocate button is one click away rather than the work being lost.
-      if (isDirect && !orderData.erp_si_no) {
-        try {
-          await invoiceAction(orderId,'raise',{expected:invoiceExpected(orderData)})
-        } catch (e) {
-          setExtractError(`Order created, but the invoice number could not be allocated: ${e.message || e}. Reopen the saved order and resume its invoice request.`)
-        }
-      }
-
-      if(mounted.current) navigate(`/shipments/${orderId}`)
+      await onCreateOrder(orderData, lines, pendingFile)
     } catch (err) {
       setExtractError(err.message || 'Could not create order.')
     } finally {

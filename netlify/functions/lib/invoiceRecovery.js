@@ -6,6 +6,7 @@ import {
   validInvoiceOperationId,
   invoiceFollowupsDone
 } from '../../../src/invoiceRecoveryModel.js'
+import { validRequestId } from '../../../src/orderCreateRequestModel.js'
 import { InvoiceRecoveryError } from './invoiceRecoveryRepository.js'
 
 const json = (body, status = 200) =>
@@ -68,6 +69,7 @@ export function createInvoiceRecoveryHandler({
               'order_id',
               'expected',
               'previous_operation_id',
+              'request_id',
               'purpose',
               'reason',
               'review_expected'
@@ -84,6 +86,7 @@ export function createInvoiceRecoveryHandler({
         ![
           'status',
           'raise',
+          'initial_direct',
           'resume',
           'new',
           'link_review',
@@ -119,7 +122,24 @@ export function createInvoiceRecoveryHandler({
           moreHistory: state.moreHistory
         })
       }
-      if (!has(profile, 'uc')) return json({ error: 'Access denied' }, 403)
+      if (!has(profile, 'uc'))
+        return json(
+          {
+            error:
+              input.action === 'initial_direct'
+                ? 'UC permission is required to issue this invoice. The order is saved.'
+                : 'Access denied'
+          },
+          403
+        )
+      if (
+        input.action === 'initial_direct' &&
+        !validRequestId(input.request_id)
+      )
+        throw new InvoiceRecoveryError(
+          'Choose the saved Direct Invoice request.',
+          400
+        )
       if (input.action === 'new') {
         if (
           input.previous_operation_id != null &&
@@ -173,10 +193,12 @@ export function createInvoiceRecoveryHandler({
           input.reason
         )
       else {
-        let state = ['raise', 'new'].includes(input.action)
+        let state = ['raise', 'new', 'initial_direct'].includes(input.action)
           ? await repo.begin(id, input, identity)
           : await repo.state(id)
         let op = state.operation
+        if (!op && input.action === 'initial_direct')
+          return json({ initial_complete: true })
         if (!op)
           throw new InvoiceRecoveryError(
             'There is no saved invoice request to resume. Use Raise Invoice first.'

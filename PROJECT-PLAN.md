@@ -1,3 +1,11 @@
+## 2026-11-12 — Shipping recovery corrections implemented; release authorized
+
+Direct Invoice keeps its original request resumable until accounting updates finish; changed references require review and later split/reissued invoices remain separate. New PI originals have a consistent 20 MB selection/server/Storage limit; existing originals stay readable. Fictional recovery, boundary and preservation checks pass locally. The owner authorized the SH-07 release after both exact-SHA jobs and required role checks. [Implementation, migration and release evidence](docs/plans/V8.20-SHIPPING-RECOVERY-RELEASE.md). The dated review below records the failures before correction.
+
+## 2026-11-12 — Shipping recovery readiness reviewed; hold publication
+
+The combined local SH-07 recovery work passes the existing unit/build, 29 new-recovery emulator, 11 Chrome and related save/quote/invoice/RBAC checks. A new fictional probe confirms that initial Direct Invoice can report completion while its accounting follow-up is still pending; the original request cannot finish it, although saved-order Resume safely completes the same SI. Correct this before release. Also bound PI original upload size. No app code, production data, rules or SQL changed in this review; no commit/push/deploy. The saved-order concurrent-edit fix is already released and is not pending cleanup. [Findings, evidence and ordered release prerequisites](docs/plans/V8.20-SHIPPING-RECOVERY-RELEASE-READINESS.md).
+
 ## 2026-11-12 — Five review corrections released
 
 Released `fffe1d2`, production `6af48a2bfe505b6564a25518`: trusted portal/ERP identity, filtered Corporate Gift customer reads, private costing markup, conflict-safe ProductForm saves, and explicitly linked lead contact dates. Both exact-SHA GitHub jobs, full prebuild/build and fictional rules/form/API/history cases passed. Fresh candidate/production admin and approved-customer sign-ins, ordinary Chrome image downloads, read-only pricing editor and five live customer-access denials passed. Firestore rules published and read back; Storage/SQL unchanged. Moved 57 private pricing records across 73 checked accounts, with exact values and unrelated fields preserved. No emails or real order/product edits. All 53 unrelated Shipping/workspace files preserved. [Plan, migration, limitations and release evidence](docs/plans/V8.20-REVIEW-FIVE-FIXES.md).
@@ -62,6 +70,23 @@ Source `55ee1d3`, production `6af18b007feb292997899b95`. Atomic version checks r
 
 The owner's subsequent Portal badge correction follows the recorded Waiting for reply state, retaining accounts in Pending. [Scope and verification](docs/plans/V8.20-PORTAL-WAITING-REPLY-BADGE.md).
 
+# V8.20 — Saved-order concurrent editing, reviewed 9 November 2026
+
+Two fictional Shipping operators reproduced stale commercial overwrites,
+deleted/restored lines, mixed-version loading and offline total/line mismatch.
+Ten review scenarios and existing controls verify the findings. A guarded
+commercial revision, coherent baseline and draft-preserving conflict workflow
+are proposed before changing the save contract.
+[Findings, proposed repair and acceptance plan](docs/plans/V8.20-SAVED-ORDER-CONCURRENCY-REVIEW.md).
+
+# V8.20 — Saved-order request list loading, corrected locally 9 November 2026
+
+The shared Shipping/Direct Invoice panel ignores abandoned reads, clears state
+on operator change, prevents overlapping pagination and retries the failed page.
+Ten focused regressions and the full 1,141-test prebuild/build pass. This is
+part of the local Shipping recovery work awaiting release.
+[Scope, verification and next cleanup](docs/plans/V8.20-SAVED-ORDER-REQUESTS-LOADING.md).
+
 # V8.20 — Portal access request alerts, released 9 November 2026
 
 Released source `531796b`, production `6af15481db54e221227144a1`. New email and
@@ -69,6 +94,36 @@ Google applications notify eddie@uart.com.hk. Admin Portal shows the live pendin
 count and Review requests. Both exact-SHA GitHub jobs, fresh candidate/production
 roles and a deployed fictional signup with one Resend acceptance passed.
 [Implementation and release evidence](docs/plans/V8.20-PORTAL-ACCESS-ALERTS.md).
+
+# V8.20 — Initial Direct Invoice recovery, implemented locally (9 November 2026)
+
+Direct Invoice recovers one saved order and its first SI after interruption.
+Sales Invoices and Shipping list the operator’s saved requests. Supplied invoice
+numbers, independent new sales and deliberate split/reissued invoices are preserved.
+[Implementation and fictional verification](docs/plans/V8.20-INITIAL-DIRECT-INVOICE-RECOVERY.md).
+
+# V8.20 — Duplicate Order UC recovery (SH-07), implemented locally
+
+Duplicate Order now saves a request for the operator and source. A retry resumes
+that copy with its issued UC and SO. Make another copy opens a separate request.
+The additive SQL migration has only been exercised with fictional records.
+[Implementation, migration and checks](docs/plans/V8.20-DUPLICATE-ORDER-RECOVERY.md).
+
+# V8.20 — Manual order and PI recovery (SH-07), implemented locally
+
+New Order, Import PI and customer-prefilled New PI recover the operator’s saved request.
+An interrupted submission can resume with the same order, SO and original PI.
+Shipping lists the operator’s requests. Duplicate Order and initial Direct Invoice
+are separate follow-ups. [Implementation, fictional checks and release boundary](docs/plans/V8.20-MANUAL-ORDER-PI-RECOVERY.md).
+
+# V8.20 — General order creation and retry recovery (SH-07) review, 8 November 2026
+
+Fictional tests reproduced duplicate orders after a lost Create confirmation,
+repeated PI uploads and an unattached UC after a failed Duplicate Order.
+Chrome confirmed the Retry, Back, reload and two-tab cases. The documented
+proposal starts with recoverable manual and PI drafts, then extends the same
+request to Duplicate and initial Direct Invoice. This is a review-only entry.
+[Findings, verification and implementation plan](docs/plans/V8.20-GENERAL-ORDER-CREATE-RECOVERY-REVIEW.md).
 
 # V8.20 — Quote → Order recovery (SH-08) — released, 8 November 2026
 

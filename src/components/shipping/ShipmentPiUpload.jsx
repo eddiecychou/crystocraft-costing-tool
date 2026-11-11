@@ -1,5 +1,6 @@
 import { FileInput, FolderOpen, FileText } from 'lucide-react'
 import { ErpCrossCheck } from './ShipmentReconciliation'
+import { PI_FILE_SIZE_HINT } from '../../piUploadPolicy.js'
 
 export default function ShipmentPiUpload({
   dragOver, fileName, extracting, error, erpCheck,
@@ -14,7 +15,7 @@ export default function ShipmentPiUpload({
         onDragLeave={onDragLeave} onDrop={onDrop}>
         <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
         <span className="text-sm text-ink-70">{dragOver ? 'Drop to import' : 'Click to upload or drag & drop a PI (PDF or image)'}</span>
-        <span className="text-xs text-ink-60 mt-0.5">PDF, JPG, PNG</span>
+        <span className="text-xs text-ink-60 mt-0.5">PDF, JPG, PNG · {PI_FILE_SIZE_HINT}</span>
         <input type="file" accept="image/*,.pdf" className="hidden"
                onChange={onFileChange} />
       </label>

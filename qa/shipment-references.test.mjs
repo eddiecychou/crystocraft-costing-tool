@@ -10,6 +10,8 @@ import {createRequire} from 'node:module'
 import {build} from 'esbuild'
 import {JSDOM} from 'jsdom'
 import React,{act} from 'react'
+import {normOrder as normalizeFixtureOrder, normLine as normalizeFixtureLine} from '../src/shippingModel.js'
+
 import {invoiceReferenceValues} from '../src/invoiceRecoveryModel.js'
 import {orderEditBase} from '../src/orderEditModel.js'
 import {ocDateOnly,ocYear} from '../src/ocTime.js'
@@ -127,7 +129,17 @@ beforeEach(()=>{
 })
 afterEach(async()=>{try{await act(async()=>root.unmount());assert.deepEqual(errors,[])}finally{console.error=originalError;host.remove();delete globalThis.__shipmentReferences}})
 after(async()=>{globalThis.fetch=originalFetch;dom.window.close();if(scratch)await rm(scratch,{recursive:true,force:true})})
-const render=async()=>{await act(async()=>root.render(React.createElement(Page,{uid:'fictional-admin'})));await act(async()=>{await new Promise(r=>setTimeout(r,0))})}
+// The form hands the reviewed fields and original File to the recovery entry.
+const createFixture = async (order, lines, file) => {
+ f.createAttempts++
+ if(f.createError) throw Error('Could not create the order: '+f.createError.message)
+ assert.ok(f.allowCreate)
+ if(file) f.uploads.push({name:file.name,metadata:{contentType:file.type}})
+ f.createdRecords.push({path:['orders'],data:normalizeFixtureOrder({...order,source_file:file?{name:file.name,url:'https://fictional.invalid/uploaded-pi.pdf'}:null})})
+ for(const line of lines) f.createdRecords.push({path:['orders','new-line','lines'],data:normalizeFixtureLine(line)})
+ f.destination='/shipments/new-line'
+}
+const render=async()=>{await act(async()=>root.render(React.createElement(Page,{uid:'fictional-admin',onCreateOrder:createFixture})));await act(async()=>{await new Promise(r=>setTimeout(r,0))})}
 const panel=()=>[...host.querySelectorAll('h2')].find(h=>h.textContent==='Document References')?.parentElement
 const input=label=>[...panel().querySelectorAll('label')].find(l=>l.querySelector('span')?.textContent===label||l.textContent.trim()===label)?.parentElement.querySelector('input')
 const allocation=label=>input(label).parentElement.querySelector('button')
@@ -1355,7 +1367,7 @@ for (const mode of ['manual', 'import', 'direct', 'quote']) {
       assert.equal(created.discount_amount, 0)
       assert.equal(created.deposit_paid, 0)
       assert.equal(f.uploads.length, 1)
-      assert.match(f.uploads[0].path, /^orders\/imports\/\d+_Fictional PI\.pdf$/)
+      assert.equal(f.uploads[0].name, 'Fictional PI.pdf')
       assert.deepEqual(f.uploads[0].metadata, { contentType: 'application/pdf' })
     } else {
       assert.equal(created.source_file, null)

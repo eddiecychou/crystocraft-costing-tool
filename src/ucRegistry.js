@@ -96,13 +96,8 @@ export async function upsertInvoiceStrict(fields) {
   return data.row
 }
 
-// Allocate a FRESH UC# for an app-originated order (used by "Duplicate order").
-// Deliberately never copies the source order's UC — a carried-over UC is the
-// exact, repeatable slip CuiLing's JES workflow produces (duplicate an order to
-// reuse the customer details, then forget to change the UC before the product
-// codes). See PROJECT-PLAN.md, "CuiLing's sales walkthrough", 2026-07-20.
-// uc_no is allocated server-side by a Postgres sequence; year is derived here
-// from today's date, matching the registry's own "/YY" convention.
+// Standalone Allocate UC in the order editor. Duplicate Order uses the
+// server-owned request and SQL receipt in shipping-order-request.js.
 export async function allocateOrderUc({ customer_name, currency } = {}) {
   const year = '/' + String(ocYear() % 100).padStart(2, '0')
   // No `source`: it is the sales channel, and allocating a number tells us

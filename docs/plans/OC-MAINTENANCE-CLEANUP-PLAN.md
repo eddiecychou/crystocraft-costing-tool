@@ -1,5 +1,45 @@
 # OC maintenance and code cleanup plan
 
+**12 November — SH-07 readiness corrections implemented; publication authorized.**
+The original Direct Invoice request now finishes pending accounting updates on
+the same SI, with changed-ownership review. New PI originals have a shared 20 MB
+size policy and independent Storage enforcement. Existing repeat/split/reissue
+contracts are preserved. [Tests, migration and live release status](V8.20-SHIPPING-RECOVERY-RELEASE.md).
+
+**12 November — SH-07 release-readiness review complete; publication on hold.**
+Existing combined suites/build and 11 Chrome scenarios pass, including intentional
+repeat orders and split/reissued invoices. A newly reproduced initial Direct
+Invoice completion shortcut leaves financial follow-up pending; correct its
+status/retry path before release. PI originals also lack an explicit size ceiling.
+Application source and production are unchanged. [Findings and next steps](V8.20-SHIPPING-RECOVERY-RELEASE-READINESS.md).
+Saved-order concurrent-edit protection was already released as `55ee1d3`;
+the older 9 November proposal below is historical. After SH-07, independently
+review durable financial follow-up, then Packing/Freight async ownership.
+
+**9 November — Concurrent saved-order editing reviewed.** Ten actual SDK/rules
+scenarios confirm commercial last-writer loss and online/offline mixed states.
+The proposed next correction adds a coherent edit baseline, commit-enforced
+commercial version and retained-draft conflict review. Implementation follows
+review of the writer map and offline/legacy rollout contract.
+[Reproductions and proposed repair](V8.20-SAVED-ORDER-CONCURRENCY-REVIEW.md).
+
+**9 November — Saved-order request list loading corrected locally.** The shared
+Shipping/Direct Invoice panel now abandons old reads on close, unmount and
+operator change, serializes pagination and retries the failed cursor. Five
+component regressions and the full 1,141-test prebuild/build pass. This joins
+the local SH-07 work awaiting release. Its current readiness findings are linked
+above; the concurrent-edit fix was subsequently released separately.
+[Finding, ownership and verification](V8.20-SAVED-ORDER-REQUESTS-LOADING.md).
+
+**9 November — General Create recovery is implemented locally.** Manual orders, PI imports, Duplicate Order and initial Direct Invoice now have recoverable requests. The next separate review is concurrent editing of an existing order. [Manual and PI recovery](V8.20-MANUAL-ORDER-PI-RECOVERY.md) · [Duplicate Order](V8.20-DUPLICATE-ORDER-RECOVERY.md) · [Initial Direct Invoice](V8.20-INITIAL-DIRECT-INVOICE-RECOVERY.md).
+
+**8 November — General Create recovery reviewed (SH-07).** Start with a
+recoverable request for manual orders and PI imports, then reuse it for Duplicate
+UC allocation and initial Direct Invoice creation. Existing saved-order invoice
+recovery passes its split and reissue regressions. Concurrent saved-order editing
+and durable financial follow-up remain separate reviews.
+[Fictional findings, rollout boundaries and proposed sequence](V8.20-GENERAL-ORDER-CREATE-RECOVERY-REVIEW.md).
+
 **8 November — SH-08 released:**
 [Quote → Order durable recovery](V8.20-QUOTE-ORDER-CONVERSION-RECOVERY.md) is live
 as dd053d7 / production `6af0400b2d921e13640ca822`. Per-intent atomic recovery,

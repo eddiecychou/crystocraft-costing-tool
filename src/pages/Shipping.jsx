@@ -1,14 +1,16 @@
 import { asOcDate, formatOcDate } from '../ocTime.js'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import { useOrders, orderStatusOf, orderUc, orderSi, orderSoDisplay, getOrder, getOrderLines, createOrderWithLinesAllocatingSo } from '../shipping'
-import { allocateOrderUc } from '../ucRegistry'
+import { useOrders, orderStatusOf, orderUc, orderSi, orderSoDisplay } from '../shipping'
+import { beginOrderCopy, orderRequestAction } from '../orderCreateRequest'
+import { copyOrderHeader, requestUrl } from '../orderCreateRequestModel.js'
 import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
 import { erpLookup } from '../erpApi'
 import { useCustomers } from '../domain/customer'
 import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck, Copy, Plus, Database } from 'lucide-react'
 import ComponentRequirements from './ComponentRequirements'
+import SavedOrderRequests from '../components/shipping/SavedOrderRequests'
 import ErpDocModal from '../components/ErpDocModal'
 
 const TABS = [
@@ -44,7 +46,7 @@ function useErpOrders(search) {
   return { rows, loading, error }
 }
 
-export default function Shipping() {
+export default function Shipping({uid}) {
   const [tab, setTab] = useState('shipments')
 
   return (
@@ -63,14 +65,14 @@ export default function Shipping() {
         </div>
       </div>
 
-      {tab === 'shipments' && <ShipmentsList />}
+      {tab === 'shipments' && <ShipmentsList key={uid} uid={uid} />}
       {tab === 'requirements' && <ComponentRequirements />}
       {tab === 'logistics' && <LogisticsList />}
     </div>
   )
 }
 
-function ShipmentsList() {
+function ShipmentsList({uid}) {
   const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
@@ -116,42 +118,37 @@ function ShipmentsList() {
 
   const jesOnly = merged.length - filtered.length
 
-  // "Duplicate" — matches how CuiLing actually works in JES: copy a repeat
-  // customer's previous order rather than re-entering their details, then edit
-  // the product codes. The one thing this deliberately does NOT copy is the
-  // UC# — a carried-over UC is the exact, repeatable slip that workflow
-  // produces there (confirmed against the registry: UC4657 duplicated onto
-  // SI240240, which then had no registry row of its own). A fresh UC is
-  // allocated instead; everything else copies through, same as her habit.
-  async function handleDuplicate(o) {
-    if (duplicatingId) return
-    setDuplicatingId(o.id); setDupError('')
+  const mounted = useRef(false)
+  const copying = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+
+  async function handleDuplicate(source) {
+    if (copying.current) return
+    copying.current = true
+    setDuplicatingId(source.id)
+    setDupError('')
+    let saved
     try {
-      const [src, lines] = await Promise.all([getOrder(o.id), getOrderLines(o.id)])
-      if (!src) throw new Error('Order not found.')
-      const uc = await allocateOrderUc({ customer_name: src.customer_name, currency: src.currency })
-      const newOrderData = {
-        source: 'duplicated',
-        customer_id: src.customer_id, customer_name: src.customer_name,
-        currency: src.currency, incoterm: src.incoterm,
-        destination: src.destination, notes: src.notes,
-        uc_no: uc.full,
-        // JES references and totals belong to the source document, not the
-        // copy — order_date resets too, since a duplicate is naturally today's.
-        erp_so_no: '', order_date: '', status: 'draft',
-        subtotal: null, discount_pct: null, discount_amount: null, total_amount: null,
+      saved = await beginOrderCopy(uid, source.id, null, copyOrderHeader(source))
+      if (!mounted.current) return
+      if (saved.created) {
+        const copy = await orderRequestAction('commit', {operator:uid, id:saved.id})
+        if (mounted.current) navigate(copy.status === 'committed' && copy.order_id
+          ? '/shipments/' + copy.order_id
+          : requestUrl(uid, saved.id))
+      } else {
+        navigate(requestUrl(uid, saved.id))
       }
-      const newLines = lines.map((l, i) => ({ ...l, line_no: i + 1 }))
-      // Allocated fresh here (bug-fix pack B-02) — a duplicate used to leave
-      // erp_so_no blank entirely rather than either copying the source's
-      // number (wrong — see the UC# comment above for the exact same failure
-      // mode) or getting its own, so it silently fell out of step with every
-      // other order-creation path, which already allocates on create.
-      const { id: newId } = await createOrderWithLinesAllocatingSo(newOrderData, newLines, { allocateSo: true })
-      navigate(`/shipments/${newId}`)
     } catch (err) {
-      setDupError(err.message || 'Could not duplicate this order.')
-      setDuplicatingId(null)
+      if (!mounted.current) return
+      if (saved) navigate(requestUrl(uid, saved.id), {state:{requestError:err.message}})
+      else setDupError(err.message || 'Could not confirm the copy. Choose Duplicate on the same order to recover it.')
+    } finally {
+      copying.current = false
+      if (mounted.current) setDuplicatingId(null)
     }
   }
 
@@ -180,6 +177,7 @@ function ShipmentsList() {
         </div>
       </div>
 
+      <SavedOrderRequests uid={uid} />
       <input type="text" placeholder="Search by customer, PI no, SO no, destination…"
         className="input w-full mb-4" value={search} onChange={e => setSearch(e.target.value)} />
       {erp.error && (
@@ -267,7 +265,7 @@ function ShipmentsList() {
                     </td>
                     <td className="px-2 py-3 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
                       <button type="button" onClick={() => handleDuplicate(o)} disabled={duplicatingId === o.id}
-                              title="Duplicate this order — allocates a fresh UC#"
+                              title="Duplicate this order or open its last copy" aria-label="Duplicate order"
                               className="p-1.5 rounded-none text-ink-60 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors">
                         <Copy size={14} className={duplicatingId === o.id ? 'animate-pulse' : ''} />
                       </button>

@@ -25,6 +25,31 @@ physical-device behavior rather than treating a media-rule declaration as proof.
 
 ## Shipping health/ownership checkpoint — open, review only
 
+**12 November authorized correction:** SH07-R1 and SH07-R2 are corrected locally.
+Initial retries finish the pinned first invoice's accounting work; changed
+ownership requires review. New PI originals are capped at 20 MB in selection,
+server validation and Storage create rules. Both original failures now run as
+ordinary acceptance tests in required CI. [Current implementation and publication status](docs/plans/V8.20-SHIPPING-RECOVERY-RELEASE.md).
+
+**12 November SH-07 readiness:** [review and evidence](docs/plans/V8.20-SHIPPING-RECOVERY-RELEASE-READINESS.md).
+**SH07-R1 / P1:** initial Direct Invoice labels a linked first SI complete while
+financial follow-up is pending. A failed RPC leaves registry amounts/references
+blank; an original-request retry skips the unfinished operation. Saved-order
+Resume repairs the same SI without another issue. Fix status and pinned-first-
+operation retry before deploying; two fictional desired-behavior probes remain
+explicit TODO failures. **SH07-R2 / P3:** the new PI original path has no byte-size
+ceiling; add consistent selection/server/Storage limits. These are documented,
+not silently fixed. Existing recovery and intentional-repeat/split/reissue tests
+pass. The saved-order concurrent-edit issue in the next dated entry was already
+[fixed and released as 55ee1d3](docs/plans/V8.20-SAVED-ORDER-CONCURRENT-EDIT-FIX.md).
+
+**9 November concurrent-edit review.** Fictional two-operator Web SDK/rules
+tests confirm stale deposits/prices, removal/recreation of another editor's
+lines, mixed-version loading and header/line total mismatch on reconnect or a
+read/commit race. Existing invoice-reference revision guards remain narrower.
+The proposed commercial revision and draft-preserving conflict workflow are
+documented before implementation. [Review and next repair](docs/plans/V8.20-SAVED-ORDER-CONCURRENCY-REVIEW.md).
+
 6 November 2026, clean dbd107ae. All 149 existing Shipping regressions pass;
 33 additional fictional characterizations cover previously untested combinations.
 Pause routine presentation extractions for separately authorized correctness work:
@@ -83,6 +108,7 @@ The other findings below remain open.
   quote uniqueness or historical deduplication. Old tabs submit source-less
   manual orders: new-field guards alone cannot prevent those Creates while
   preserving manual workflows. Refresh tabs at cutover; broader SH-07 remains.
+- **SH-07 general Create recovery.** Manual orders, PI imports, Duplicate Order and initial Direct Invoice have local fixes for lost confirmations. Each intended copy owns one UC receipt, and intentional repeats obtain independent numbers. Direct Invoice retries reuse the saved order and its first invoice operation. [Direct Invoice implementation](docs/plans/V8.20-INITIAL-DIRECT-INVOICE-RECOVERY.md). [Manual and PI implementation](docs/plans/V8.20-MANUAL-ORDER-PI-RECOVERY.md) · [Duplicate Order implementation](docs/plans/V8.20-DUPLICATE-ORDER-RECOVERY.md) · [Original fictional findings](docs/plans/V8.20-GENERAL-ORDER-CREATE-RECOVERY-REVIEW.md).
 
 
 These mechanisms predate the recent extraction work. Known concurrent-editor and

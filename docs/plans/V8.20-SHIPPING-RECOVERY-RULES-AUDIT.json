@@ -1,0 +1,20 @@
+{
+  "score": 5,
+  "summary": "Scoped 12 November 2026 corrected local review: the PI original limit is enforced at selection, descriptor preparation, actual-byte verification and Storage creation. Operator/module isolation, immutable originals and private request receipts retain their fictional regression coverage. This is not a whole-app security certification and does not change Firebase download-token bearer access.",
+  "findings": [],
+  "review_history": {
+    "score": 4,
+    "summary": "Scoped 12 November 2026 review of the new shipping_pi_originals Storage path, private Shipping request ownership and their server validators. Fictional tests enforce operator/module access, immutable originals and service-owned receipts. One minor resource-exhaustion gap remains: no maximum original-file byte size. This score is not a whole-app security certification or a claim that Firebase download-token URLs require authentication.",
+    "findings": [
+      {
+        "check": "Storage Abuse / Resource Exhaustion",
+        "severity": "minor",
+        "issue": "SH07-R2: originalFile accepts any positive safe-integer size and Storage checks only equality with the prepared descriptor. A 2147483648-byte fictional PDF descriptor was accepted; zero bytes were uploaded. An authorized Shipping operator can prepare an oversized original, causing storage/bandwidth cost and repeated verification timeouts.",
+        "recommendation": "Choose and document a practical maximum PI original size; enforce the same boundary in frontend selection, backend preparation and Storage create rules. Test boundary values and direct oversized requests while retaining access to existing originals. See V8.20-SHIPPING-RECOVERY-RELEASE-READINESS.md."
+      }
+    ]
+  },
+  "resolution": {
+    "SH07-R2": "20 MiB limit; exactly-at-limit upload and identical download pass, oversized descriptor/actual upload fail, and existing oversized originals remain readable. Publication and live readback are recorded in V8.20-SHIPPING-RECOVERY-RELEASE.md."
+  }
+}

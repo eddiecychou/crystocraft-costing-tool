@@ -43,6 +43,7 @@ const ledgerRow = order => ({
 })
 const ownedFields = ['si_no', 'uc_no', 'order_id', 'customer', 'currency', 'total', 'accounting_total', 'adjustment', 'adjustment_reason', 'invoice_date', 'invoiced_at', 'customer_po', 'remarks', 'channel', 'external_order_no']
 const stubs = {
+  SavedOrderRequests:'export default ()=>null',
   firebase: 'export const db={};export const authedUser=async()=>({getIdToken:async()=>"FICTIONAL"});',
   firestore: `const f=()=>globalThis.__invoiceReconciliation;
     export const collection=(...p)=>p,doc=(...p)=>p,query=(...p)=>p,orderBy=()=>{},where=()=>{},limit=()=>{};

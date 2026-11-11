@@ -1,5 +1,17 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## An issued invoice number is not a completed recovery request
+
+12 November 2026: initial Direct Invoice status treated a linked SI as complete,
+although its accounting update could still be pending. A retry returned success
+without populating invoice amounts/references. Keep a distinct recoverable
+follow-up state and resume the pinned first operation. Never switch an old
+request to the latest split/reissue. Verify lost acknowledgments and exact
+persisted financial values/counts, not only the issued SI or a success label.
+PI original size limits must also cover frontend selection, server descriptors
+and actual Storage bytes; a small JSON request can describe a very large file.
+[Correction, tests and release evidence](../plans/V8.20-SHIPPING-RECOVERY-RELEASE.md).
+
 ## Remove inherited execution as well as named function grants
 
 8 November 2026, SH-05A: revoking anon/authenticated from a PostgreSQL function

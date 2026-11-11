@@ -1,3 +1,6 @@
+import { permitted } from './orderRequestAccess.js'
+import { readInitialDirectInvoice } from './initialDirectInvoice.js'
+
 import { orderEditRevision } from '../../../src/orderEditModel.js'
 import { randomUUID } from 'node:crypto'
 import {
@@ -85,9 +88,41 @@ export function createInvoiceRecoveryRepository(
     },
     async begin(id, input, identity) {
       const operationId = randomUUID()
-      await db.runTransaction(async (tx) => {
-        const saved = requireOrder(await tx.get(order(id))),
-          op = await current(tx, saved)
+      const direct = input.action === 'initial_direct'
+      const selected = await db.runTransaction(async (tx) => {
+        const root = await tx.get(order(id))
+        const saved = requireOrder(root)
+        let receipt
+        if (direct) {
+          const profile = (
+            await tx.get(db.collection('users').doc(identity.uid))
+          ).data()
+          if (!permitted(profile, 'shipping') || !permitted(profile, 'uc'))
+            throw new InvoiceRecoveryError(
+              'Shipping and UC permission are required to issue this invoice.',
+              403
+            )
+          receipt = db
+            .collection('shipping_create_operators')
+            .doc(identity.uid)
+            .collection('requests')
+            .doc(input.request_id)
+          const snap = await tx.get(receipt)
+          if (!snap.exists)
+            throw new InvoiceRecoveryError(
+              'Your Direct Invoice request could not be found.',
+              404
+            )
+          const initial = await readInitialDirectInvoice(tx, snap, root)
+          if (initial.state === 'review')
+            throw new InvoiceRecoveryError(initial.message)
+          if (initial.operation_id && !snap.get('initial_invoice_id'))
+            tx.update(receipt, { initial_invoice_id: initial.operation_id })
+          if (initial.state === 'supplied' || initial.state === 'issued')
+            return null
+          if (initial.operation_id) return initial.operation_id
+        }
+        const op = await current(tx, saved)
         if (op && input.action !== 'new') return
         if (input.action === 'new') {
           if (
@@ -119,7 +154,10 @@ export function createInvoiceRecoveryRepository(
           throw new InvoiceRecoveryError(
             'This order already has an invoice. Use the separate split/reissue action for a new invoice.'
           )
-        if (!sameInvoiceValue(invoiceExpected(saved), input.expected))
+        if (
+          !direct &&
+          !sameInvoiceValue(invoiceExpected(saved), input.expected)
+        )
           throw new InvoiceRecoveryError(
             'Save customer, currency and document-reference changes before raising the invoice, then reload if another editor changed them.'
           )
@@ -161,7 +199,16 @@ export function createInvoiceRecoveryRepository(
           order(id),
           referencePatch(saved, { invoice_allocation_id: operationId })
         )
+        if (direct) {
+          tx.update(receipt, { initial_invoice_id: operationId })
+          return operationId
+        }
       })
+      // A late first-issue retry must never switch to a newer split/reissue.
+      if (direct)
+        return {
+          operation: selected ? await this.operation(id, selected) : null
+        }
       return this.state(id)
     },
     async result(id, operationId, result) {

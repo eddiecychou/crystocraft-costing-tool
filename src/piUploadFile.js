@@ -1,4 +1,7 @@
+import { assertPiUploadSize } from './piUploadPolicy.js'
+
 export async function preparePiUploadFile(file) {
+  assertPiUploadSize(file)
   if (file.type === 'application/pdf') {
     return { image: await toBase64(file), mimeType: 'application/pdf' }
   }
