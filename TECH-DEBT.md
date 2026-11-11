@@ -12,23 +12,16 @@ proposed behaviour-preserving work; it does not override accepted owner decision
 or authorize fixing unrelated entries as part of another change. Resolved entries
 retain historical evidence and link their later release records.
 
-## Credit-note RPC privilege review — P1, separate from Shipping
+## Credit-note RPC privileges — P1 resolved
 
 12 November Shipping migration preflight: Supabase advisors flag the existing
 `public.allocate_credit_note(...)` and `public.void_credit_note(bigint,text)`.
-Read-only catalog checks confirm both are SECURITY DEFINER and effectively
-executable by `anon`, `authenticated` and `service_role`. Their bodies and caller
-migration need a bounded authorization review before changing grants; no function
-was invoked, no credit note was created/voided and no ACL was changed by this
-Shipping release. Prioritize identifying authorized callers and testing a
-service-only boundary with fictional records. Preserve legitimate credit-note
-workflows. [Function privilege guidance](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable).
-This is a pre-existing exposure to review, not a regression caused by the new
-Shipping receipt function, which has explicit service-only execution.
-
-12 November follow-up confirmed the sole tracked write gateway and validated
-the proposed grants, posting, filtered reads, void and audit with fictional data.
-[Credit-note permission review and proposed fix](docs/plans/V8.20-CREDIT-NOTE-PERMISSION-REVIEW.md).
+The follow-up confirmed inherited `PUBLIC` execution and the existing OC
+gateway's explicit server grant. The permission fix from `1880ac8` was applied
+on 12 November after both GitHub checks passed. Production readback confirms
+server access for posting and voiding, with the client grants removed and the
+audit trigger intact. Fictional workflow tests and fresh production gateway
+checks passed. [Credit-note review and release evidence](docs/plans/V8.20-CREDIT-NOTE-PERMISSION-REVIEW.md).
 
 ## Mobile form font specificity — P2, dashboard correction released
 
