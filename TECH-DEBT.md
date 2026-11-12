@@ -129,12 +129,11 @@ cross-scenario corruption. The original review made no historical repair, app
 change or deployment; subsequent authorized releases are linked above.
 [Ownership, exact fictional reproductions, limits and prioritized plan](docs/plans/V8.20-SHIPPING-HEALTH-OWNERSHIP-REVIEW-2026-11-06.md).
 
-**12 November invoice follow-up review.** A failed post-issuance accounting
-update persists until explicit Resume. The review also reproduced a delayed
-write to the original invoice after manual review and a deliberate split.
-The split stayed intact. The proposed fix coordinates stage closure and SQL
-writes before enabling background retries on issued, linked invoices.
-[Chrome evidence and proposal](docs/plans/V8.20-INVOICE-FOLLOWUP-BROWSER-CLOSURE-REVIEW.md).
+**12 November invoice follow-up correction released.** SQL now serializes
+manual review and delayed writes on the same invoice receipt. A scheduled
+worker retries pending follow-ups on newly linked invoices after the browser
+closes. Older pending operations still use Resume.
+[Release and fictional test evidence](docs/plans/V8.20-INVOICE-FOLLOWUP-RELEASE.md).
 
 Follow-up identity tests also reproduce a pre-existing ERP adoption unit warning:
 erpSoImport.lineFromErp omits unit, while ShipmentLineRow's controlled input reads

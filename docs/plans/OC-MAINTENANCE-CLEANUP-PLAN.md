@@ -1,12 +1,12 @@
 # OC maintenance and code cleanup plan
 
-**12 November — Invoice follow-up reviewed.** Fictional Chrome shutdown tests
-confirmed that failed follow-ups stay pending and that a delayed write can
-reach the original invoice after manual review and a split. Make the write and
-review coordinate at the SQL boundary before adding automatic retries. The
-proposed worker is limited to issued and linked invoices. Packing/Freight
-ownership remains the next separate review.
-[Findings and proposed fix](V8.20-INVOICE-FOLLOWUP-BROWSER-CLOSURE-REVIEW.md).
+**12 November — Invoice follow-up released as `e7e86b6`.** SQL now blocks
+delayed follow-up writes after manual review. The scheduled worker retries
+pending stages for newly linked invoices after browser closure. Older pending
+operations still use Resume. Fictional tests verified receipt counts for
+retries, repeat orders and split/reissued invoices. Packing/Freight ownership
+remains the next separate review.
+[Release and verification](V8.20-INVOICE-FOLLOWUP-RELEASE.md).
 
 **12 November — SH-07 released as `443173e`.** Direct Invoice follow-up recovery,
 manual/PI/copy requests and the 20 MB original-file limit are published after both
@@ -14,7 +14,7 @@ exact-SHA jobs and fresh candidate/production roles. Intentional repeats and
 split/reissued invoices remain independent; no historical backfill or test issuance
 in production. [Migration and evidence](V8.20-SHIPPING-RECOVERY-RELEASE.md).
 The subsequent [credit-note permission fix](V8.20-CREDIT-NOTE-PERMISSION-REVIEW.md)
-is applied and verified. The current invoice follow-up review is linked above.
+is applied and verified.
 
 **12 November — SH-07 release-readiness review complete; publication on hold.**
 Existing combined suites/build and 11 Chrome scenarios pass, including intentional
