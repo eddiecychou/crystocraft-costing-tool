@@ -1,5 +1,13 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
+## Check Chinese quotation remarks in the rendered PDF
+
+12 November 2026. An unspaced Chinese remark flowed from Description into the
+quantity and price columns. The quotation table now uses Unicode line-break
+positions as invisible wrap points. Keep the original text and verify the
+rendered line bounds as well as the text. The real one-page quotation and a
+fictional three-page quote with long Chinese item and tier remarks passed.
+
 ## An issued invoice number is not a completed recovery request
 
 12 November 2026: initial Direct Invoice status treated a linked SI as complete,

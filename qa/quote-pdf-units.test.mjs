@@ -87,8 +87,28 @@ test('blank tier remarks add no remark text, and quote notes stay separate',()=>
 })
 test('Chinese tier remarks select the existing Chinese fallback font',()=>{
  const remark='每對兩個玻璃杯，附禮盒'
- const node=nodes(QuotePDF({quote,items:[{...remarkedItem,tiers:[{quantity:10,price:800,remarks:remark}]}]})).find(n=>n.type===Text&&n.props.children===remark)
+ const node=nodes(QuotePDF({quote,items:[{...remarkedItem,tiers:[{quantity:10,price:800,remarks:remark}]}]})).find(n=>n.type===Text&&texts(n)[0]===remark)
  assert.ok(node);assert.ok(node.props.style.some(s=>s?.fontFamily==='Noto Sans TC'))
+})
+test('Chinese table text has invisible break opportunities without changing words or punctuation', () => {
+  const description = '可用於展示、包裝及零售。'
+  const itemRemark = '需要預留2個樣板作測試（包括印字測試）。\n請另備2-3個後補。'
+  const tierRemark = '單面UV打印公司標誌及獨立名字。'
+  const item = {
+    ...remarkedItem,
+    product_description: description,
+    item_remarks: itemRemark,
+    tiers: [{ quantity: 300, price: 40, remarks: tierRemark }],
+  }
+  const tree = QuotePDF({ quote, items: [item] })
+  for (const value of [description, itemRemark, tierRemark]) {
+    const node = nodes(tree).find(node => node.type === Text && texts(node)[0] === value)
+    assert.ok(node)
+    const breaks = node.props.children.filter(child => typeof child !== 'string')
+    assert.ok(breaks.length > 0)
+    assert.ok(breaks.every(child => child.props.children === ' ' && child.props.style.fontSize < 0.1))
+  }
+  for (const value of ['300 pair', '40.00', '12,000.00']) assert.ok(texts(tree).includes(value))
 })
 test('real PDF renderer wraps multiline and long tier remarks across a multipage quote',async()=>{
  const fixtures=Array.from({length:8},(_,i)=>({...remarkedItem,product_name:`Tier remark layout sample ${i+1}`,tiers:[remarkedItem.tiers[0],{...remarkedItem.tiers[1],remarks:remarkedItem.tiers[1].remarks+'\n'+ 'Packaging and customization details must remain attached to this price tier. '.repeat(3)}]}))

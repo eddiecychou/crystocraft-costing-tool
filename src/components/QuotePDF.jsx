@@ -6,6 +6,7 @@ import { asOcDate, formatOcDate } from '../ocTime.js'
 import {
   Document, Page, View, Text, Image, Font, StyleSheet,
 } from '@react-pdf/renderer'
+import LineBreaker from 'linebreak'
 import logoUrl from '../assets/logo.png'
 import { pdfFileTitle } from '../pdfFilename'
 import QuestrialRegular from '../assets/fonts/Questrial-Regular.ttf'
@@ -39,6 +40,24 @@ const C = {
 // CJK detection → swap content fields to the Traditional-Chinese face.
 const CJK = /[　-〿㐀-鿿豈-﫿＀-￯]/
 const contentFont = s => (CJK.test(String(s ?? '')) ? 'Noto Sans TC' : 'Questrial')
+
+function wrapTableText(value) {
+  if (!CJK.test(value)) return value
+  const breaker = new LineBreaker(value)
+  const parts = []
+  let start = 0
+  let point
+  while ((point = breaker.nextBreak()) && point.position < value.length) {
+    const end = point.position
+    if (/\s/u.test(value[end - 1]) || /\s/u.test(value[end])) continue
+    parts.push(value.slice(start, end))
+    // react-pdf wraps at spaces or adds a hyphen. A near-zero-width space
+    // lets it use Unicode break opportunities without visible gaps or hyphens.
+    parts.push(<Text key={end} style={{ fontSize: 0.01 }}>{' '}</Text>)
+    start = end
+  }
+  return parts.length ? [...parts, value.slice(start)] : value
+}
 
 const fmtMoney = v =>
   (Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -76,7 +95,7 @@ const s = StyleSheet.create({
   th: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 7.5, color: C.grayDark, letterSpacing: 0.8 },
 
   // Item rows
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 2, borderBottomWidth: 0.6, borderBottomColor: C.border },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 2, borderBottomWidth: 0.6, borderBottomColor: C.border },
   num: { width: W.num, fontSize: 8, color: C.grayMid, textAlign: 'center' },
   photoCell: { width: W.photo, alignItems: 'center', justifyContent: 'center' },
   // Dedicated spacer, not padding on photoCell — react-pdf/Yoga sizes a
@@ -117,7 +136,7 @@ const s = StyleSheet.create({
   terms: { fontSize: 7.5, color: C.grayMid, textAlign: 'center', marginBottom: 14 },
 
   // Signatures
-  signRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 26, marginBottom: 16 },
+  signRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, marginBottom: 12 },
   signBox: { width: 255, position: 'relative' },
   signSpace: { height: 96 },
   stampImg: { position: 'absolute', bottom: 0, left: 4, width: 247, height: 94, objectFit: 'contain' },
@@ -240,12 +259,12 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
               <View style={s.photoCell}>{img ? <Image src={img} style={s.img} /> : null}</View>
               <View style={s.photoGap} />
               <View style={s.productCell}>
-                <Text style={[s.productName, { fontFamily: contentFont(item.product_name) }]}>{item.product_name || ''}</Text>
+                <Text style={[s.productName, { fontFamily: contentFont(item.product_name) }]}>{wrapTableText(item.product_name || '')}</Text>
               </View>
               <View style={s.descCell}>
-                <Text style={[s.descText, { fontFamily: contentFont(item.product_description) }]}>{item.product_description || ''}</Text>
+                <Text style={[s.descText, { fontFamily: contentFont(item.product_description) }]}>{wrapTableText(item.product_description || '')}</Text>
                 {item.item_remarks ? (
-                  <Text style={[s.itemRemark, { fontFamily: contentFont(item.item_remarks) }]}>{item.item_remarks}</Text>
+                  <Text style={[s.itemRemark, { fontFamily: contentFont(item.item_remarks) }]}>{wrapTableText(item.item_remarks)}</Text>
                 ) : null}
               </View>
               <View style={s.tiersCell}>
@@ -263,7 +282,7 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
                       </View>
                     </View>
                     {t.remarks?.trim() ? (
-                      <Text style={[s.tierRemark, { fontFamily: contentFont(t.remarks) }]}>{t.remarks}</Text>
+                      <Text style={[s.tierRemark, { fontFamily: contentFont(t.remarks) }]}>{wrapTableText(t.remarks)}</Text>
                     ) : null}
                   </View>
                 ))}
