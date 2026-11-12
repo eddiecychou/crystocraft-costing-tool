@@ -63,6 +63,7 @@ beforeEach(async () => {
   await counter.set({ last: 100 })
   await sqlDb.reset()
   await sqlDb.pool.query(sqlDb.migration)
+  await sqlDb.pool.query(sqlDb.followupMigration)
   faults = {}
   invoices = directInvoiceFixture(db, sqlDb, faults)
 })

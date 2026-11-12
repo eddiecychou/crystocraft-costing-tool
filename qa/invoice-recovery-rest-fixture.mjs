@@ -27,15 +27,32 @@ export const invoiceTestRest =
           'select * from lookup_invoice_allocation($1::uuid)',
           [body.p_operation_id]
         )
-      else if (path === 'apply_invoice_allocation_followup') {
+      else if (path === 'review_invoice_allocation_followups') {
+        rows = await db.asRole(
+          'service_role',
+          'select * from review_invoice_allocation_followups($1::uuid,$2,$3,$4)',
+          [body.p_operation_id, body.p_order_id, body.p_by, body.p_reason]
+        )
+        if (faults.lostReviewAck) {
+          faults.lostReviewAck = false
+          throw Error('FICTIONAL review committed with lost response')
+        }
+      } else if (path === 'lookup_invoice_allocation_followups') {
+        rows = await db.asRole('service_role',
+          'select * from lookup_invoice_allocation_followups($1::uuid)', [body.p_operation_id])
+      } else if (path === 'apply_invoice_allocation_followup' || path === 'apply_claimed_invoice_followup') {
         if (faults.followup) {
           faults.followup = false
           throw Error('FICTIONAL follow-up unavailable')
         }
+        const claimed = path === 'apply_claimed_invoice_followup'
         rows = await db.asRole(
           'service_role',
-          'select * from apply_invoice_allocation_followup($1::uuid,$2,$3::jsonb,$4::jsonb)',
-          [body.p_operation_id, body.p_stage, body.p_expected, body.p_patch]
+          claimed
+            ? 'select * from apply_claimed_invoice_followup($1::uuid,$2,$3::jsonb,$4::jsonb,$5::timestamptz)'
+            : 'select * from apply_invoice_allocation_followup($1::uuid,$2,$3::jsonb,$4::jsonb)',
+          [body.p_operation_id, body.p_stage, body.p_expected, body.p_patch,
+            ...(claimed ? [body.p_deadline] : [])]
         )
         if (faults.lostFollowupAck) {
           faults.lostFollowupAck = false

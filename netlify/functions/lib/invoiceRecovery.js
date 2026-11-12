@@ -8,6 +8,8 @@ import {
 } from '../../../src/invoiceRecoveryModel.js'
 import { validRequestId } from '../../../src/orderCreateRequestModel.js'
 import { InvoiceRecoveryError } from './invoiceRecoveryRepository.js'
+import { runInvoiceFollowup } from './invoiceFollowup.js'
+import { followupStages } from './invoiceFollowupQueue.js'
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -185,14 +187,15 @@ export function createInvoiceRecoveryHandler({
           'Choose the reviewed invoice request.',
           400
         )
-      if (input.action === 'manual_followups')
-        await repo.manualFollowups(
-          id,
-          input.previous_operation_id,
-          identity,
-          input.reason
-        )
-      else {
+      if (input.action === 'manual_followups') {
+        const { operation } = await repo.state(id)
+        if (operation?.status !== 'linked')
+          throw new InvoiceRecoveryError('Link the issued invoice before reviewing follow-ups.')
+        if (operation.id !== input.previous_operation_id)
+          throw new InvoiceRecoveryError('Another invoice request has started. Reload before reviewing follow-ups.')
+        const outcome = await sql.review(id, operation.id, identity, input.reason)
+        await repo.finishFollowupReview(id, operation.id, outcome)
+      } else {
         let state = ['raise', 'new', 'initial_direct'].includes(input.action)
           ? await repo.begin(id, input, identity)
           : await repo.state(id)
@@ -278,28 +281,8 @@ export function createInvoiceRecoveryHandler({
           op = await repo.operation(id, operationId)
         }
         if (op.status === 'linked' && !invoiceFollowupsDone(op)) {
-          for (const stage of ['financial', 'woo']) {
-            if (
-              ['done', 'not_applicable', 'manual_review'].includes(
-                op.followups[stage]?.state
-              )
-            )
-              continue
-            try {
-              await sql[stage]({ repo, orderId: id, operation: op, identity })
-              await repo.followup(id, op.id, stage, {
-                state: 'done',
-                error: ''
-              })
-            } catch (error) {
-              await repo
-                .followup(id, op.id, stage, {
-                  state: 'pending',
-                  error: error.message || 'Follow-up needs retry.'
-                })
-                .catch(() => {})
-            }
-          }
+          for (const stage of followupStages)
+            await runInvoiceFollowup({ repo, sql, orderId: id, operationId: op.id, stage, identity })
         }
       }
       const state = await repo.state(id)

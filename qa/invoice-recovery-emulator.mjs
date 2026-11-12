@@ -25,6 +25,7 @@ import { createInvoiceRecoveryRepository } from '../netlify/functions/lib/invoic
 import { createInvoiceRecoveryHandler } from '../netlify/functions/lib/invoiceRecovery.js'
 import { createInvoiceRecoverySql } from '../netlify/functions/lib/invoiceRecoverySql.js'
 import { invoiceTestRest } from './invoice-recovery-rest-fixture.mjs'
+import { retryDueInvoiceFollowups } from '../netlify/functions/lib/invoiceFollowup.js'
 
 import {orderEditBase,orderEditPatch} from '../src/orderEditModel.js'
 import { invoiceExpected } from '../src/invoiceRecoveryModel.js'
@@ -91,8 +92,10 @@ before(
 beforeEach(
   async () => {
     await store.recursiveDelete(store.collection('orders'))
+    await store.recursiveDelete(store.collection('invoice_followup_jobs'))
     await db.reset()
     await db.pool.query(db.migration)
+    await db.pool.query(db.followupMigration)
     faults = {}
     queries = []
     await store.doc('orders/' + id).set(original)
@@ -149,6 +152,93 @@ const assertOne = async () =>
     receipts: 1
   })
 const raise = () => request('raise', { expected: expected() })
+const jobRef = (operationId, stage = 'financial') =>
+  store.doc('invoice_followup_jobs/' + operationId + '_' + stage)
+
+for (const fault of ['followup', 'lostFollowupAck']) {
+  test('automatic retries recover one linked invoice after ' + fault, async () => {
+    faults[fault] = true
+    const first = await raise()
+    assert.equal(first.status, 200)
+    const operationId = first.body.operation.id
+    const si = first.body.operation.result.si_no
+    const before = await db.counts()
+    const initialCalls = queries.filter(path => path === 'allocate_sales_invoice_once').length
+    await jobRef(operationId).update({ next_at: 0 })
+    await Promise.all([retryDueInvoiceFollowups(repo, sql), retryDueInvoiceFollowups(repo, sql), request('resume')])
+    const result = (await request('status')).body.operation
+    assert.equal(result.id, operationId)
+    assert.equal(result.result.si_no, si)
+    assert.equal(result.followups.financial.state, 'done')
+    const after = await db.counts()
+    assert.deepEqual(after, { ...before, audits: before.audits + Number(fault === 'followup') })
+    assert.equal(queries.filter(path => path === 'allocate_sales_invoice_once').length, initialCalls)
+    assert.equal((await jobRef(operationId).get()).exists, false)
+  })
+}
+
+test('review persisted in SQL survives a lost response and prevents delayed automatic writes', async () => {
+  faults.followup = true
+  const first = await raise()
+  const op = first.body.operation
+  const counts = await db.counts()
+  faults.lostReviewAck = true
+  const review = await request('manual_followups', {
+    previous_operation_id: op.id, reason: 'Fictional finance review'
+  })
+  assert.equal(review.status, 503)
+  assert.equal((await request('status')).body.operation.followups.financial.state, 'pending')
+  await jobRef(op.id).update({ next_at: 0 })
+  await retryDueInvoiceFollowups(repo, sql)
+  assert.equal((await request('status')).body.operation.followups.financial.state, 'manual_review')
+  assert.equal((await jobRef(op.id).get()).exists, false)
+  assert.deepEqual(await db.counts(), counts)
+  assert.equal((await repo.operation(id, op.id)).followups.financial.review.by, 'admin')
+})
+
+test('background retries stop on reference conflict and stop at the attempt budget', async () => {
+  faults.followup = true
+  const first = await raise()
+  const operationId = first.body.operation.id
+  const counts = await db.counts()
+  const job = jobRef(operationId)
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    await job.update({ next_at: 0 })
+    faults.followup = true
+    await retryDueInvoiceFollowups(repo, sql)
+    assert.equal((await job.get()).get('automatic_attempts'), attempt)
+  }
+  assert.match((await request('status')).body.operation.followups.financial.error, /Automatic retries ended/)
+  assert.equal((await repo.dueFollowups()).length, 0)
+  await store.doc('orders/' + id).update({ erp_si_no: 'SI-FICTIONAL-CHANGED' })
+  await job.update({ next_at: 0, automatic_attempts: 0, automatic_paused: false })
+  await retryDueInvoiceFollowups(repo, sql)
+  assert.match((await request('status')).body.operation.followups.financial.error, /references have changed/)
+  assert.equal((await repo.dueFollowups()).length, 0)
+  assert.deepEqual(await db.counts(), counts)
+})
+
+test('only server can read or alter the retry queue, and expired claims can be reclaimed', async () => {
+  faults.followup = true
+  const first = await raise()
+  const operationId = first.body.operation.id
+  const ref = jobRef(operationId)
+  for (const uid of ['admin', 'both', 'customer']) {
+    const clientRef = doc(env.authenticatedContext(uid).firestore(), ref.path)
+    await assertFails(getDoc(clientRef))
+    await assertFails(updateDoc(clientRef, { next_at: 0 }))
+  }
+  const lostWorker = await repo.claimFollowup(id, operationId, 'financial', false)
+  assert.ok(lostWorker.token)
+  assert.equal(await repo.claimFollowup(id, operationId, 'financial', false), null)
+  // Simulate a stopped worker after lease expiry without sleeping for a minute.
+  await ref.update({ lease_until: 0, next_at: 0 })
+  await retryDueInvoiceFollowups(repo, sql)
+  await repo.settleFollowup(id, operationId, 'financial', lostWorker,
+    { state: 'pending', error: 'Late fictional outcome' }, false)
+  assert.equal((await request('status')).body.operation.followups.financial.state, 'done')
+  await assertOne()
+})
 
 test(
   'simultaneous authorized workers claim one durable request, link once, preserve full source/lines and approved zero',

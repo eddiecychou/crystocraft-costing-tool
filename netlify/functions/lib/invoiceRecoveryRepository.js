@@ -1,5 +1,6 @@
 import { permitted } from './orderRequestAccess.js'
 import { readInitialDirectInvoice } from './initialDirectInvoice.js'
+import { createInvoiceFollowupQueue, followupStages } from './invoiceFollowupQueue.js'
 
 import { orderEditRevision } from '../../../src/orderEditModel.js'
 import { randomUUID } from 'node:crypto'
@@ -52,7 +53,9 @@ export function createInvoiceRecoveryRepository(
     edit_revision: orderEditRevision(saved) + 1,
     updatedAt: stamp()
   })
+  const { enqueue, remove, ...followupQueue } = createInvoiceFollowupQueue(db, stamp)
   return {
+    ...followupQueue,
     async state(id) {
       const saved = requireOrder(await order(id).get()),
         pointer = saved.invoice_allocation_id
@@ -282,6 +285,7 @@ export function createInvoiceRecoveryRepository(
           return
         }
         if (!sameResult) tx.update(order(id), referencePatch(saved, resultRefs))
+        if (!op.linked_at) enqueue(tx, op, orderEditRevision(saved) + Number(!sameResult))
         tx.update(request(id, operationId), {
           status: 'linked',
           error: null,
@@ -343,22 +347,28 @@ export function createInvoiceRecoveryRepository(
         })
       })
     },
-    async manualFollowups(id, operationId, identity, reason) {
-      const state = await this.state(id)
-      if (!state.operation || state.operation.status !== 'linked')
-        throw new InvoiceRecoveryError(
-          'Link the issued invoice before reviewing follow-ups.'
-        )
-      if (state.operation.id !== operationId)
-        throw new InvoiceRecoveryError(
-          'Another invoice request has started. Reload before reviewing follow-ups.'
-        )
-      for (const stage of ['financial', 'woo'])
-        await this.followup(id, state.operation.id, stage, {
-          state: 'manual_review',
-          error: '',
-          review: { by: identity.uid, reason, at: clock().toISOString() }
-        })
+    async finishFollowupReview(id, operationId, outcome) {
+      await db.runTransaction(async (tx) => {
+        const ref = request(id, operationId)
+        const op = value(await tx.get(ref))
+        if (op?.status !== 'linked' || op.order_id !== id)
+          throw new InvoiceRecoveryError('The reviewed invoice could not be confirmed.')
+        const updates = {}
+        for (const stage of followupStages) {
+          const followup = op.followups[stage]
+          if (['done', 'not_applicable', 'manual_review'].includes(followup.state))
+            continue
+          updates['followups.' + stage] = {
+            ...followup,
+            state: outcome.applied?.[stage] ? 'done' : 'manual_review',
+            error: '',
+            review: outcome.followup_review
+          }
+        }
+        if (Object.keys(updates).length)
+          tx.update(ref, { ...updates, updated_at: stamp() })
+        remove(tx, operationId)
+      })
     }
   }
 }

@@ -74,6 +74,10 @@ export async function createInvoiceTestDatabase() {
     migration = await readFile(
       'erp-sync/migrations/20261108013402_invoice_retry_recovery.sql',
       'utf8'
+    ),
+    followupMigration = await readFile(
+      'erp-sync/migrations/20261112011943_guard_invoice_followup_review.sql',
+      'utf8'
     )
   const reset = async () => {
     await pool.query(`drop schema if exists oc_invoice_private cascade;drop schema if exists raw cascade;drop schema public cascade;create schema public;grant usage on schema public to public;
@@ -114,6 +118,7 @@ export async function createInvoiceTestDatabase() {
     pool,
     setup,
     migration,
+    followupMigration,
     reset,
     asRole,
     counts,

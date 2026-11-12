@@ -274,6 +274,80 @@ const financialPatch = (receipt) => ({
   updated_at: '2026-11-08T12:00:00Z',
   updated_by: 'fictional-admin'
 })
+
+test('manual review commits ahead of a delayed write and prevents any ledger or audit change', async () => {
+  await db.pool.query(db.followupMigration)
+  const id = randomUUID()
+  const [receipt] = await once(id)
+  const before = await row('app_sales_invoice', receipt.o_invoice_id)
+  const counts = await db.counts()
+  const reviewer = await db.pool.connect()
+  const reviewSql = 'select * from public.review_invoice_allocation_followups($1,$2,$3,$4)'
+  const args = [id, 'fictional-order', 'finance', 'Reviewed original invoice']
+  try {
+    await reviewer.query('begin')
+    await reviewer.query('set local role service_role')
+    const [review] = (await reviewer.query(reviewSql, args)).rows
+    const delayedWrite = followup(id, 'financial', before, financialPatch(receipt))
+    await reviewer.query('commit')
+    assert.deepEqual(await delayedWrite, [review])
+    assert.deepEqual(await row('app_sales_invoice', receipt.o_invoice_id), before)
+    assert.deepEqual(await db.counts(), counts)
+    assert.deepEqual(await db.asRole('service_role', reviewSql,
+      [id, 'fictional-order', 'another-finance-user', 'Retry after lost response']), [review])
+    await assert.rejects(db.asRole('authenticated', reviewSql, args), e => e.code === '42501')
+    await assert.rejects(db.asRole('service_role', reviewSql,
+      [id, 'another-order', 'finance', 'Wrong order']), /matching saved invoice receipt/)
+    await assert.rejects(db.asRole('service_role',
+      'select * from oc_invoice_private.apply_invoice_allocation_followup($1,$2,$3,$4)',
+      [id, 'financial', before, financialPatch(receipt)]), e => e.code === '42501')
+  } finally {
+    await reviewer.query('rollback')
+    reviewer.release()
+  }
+})
+
+test('review sees a financial update that committed first and blocks a later stage', async () => {
+  await db.pool.query(db.followupMigration)
+  const id = randomUUID()
+  const [receipt] = await once(id)
+  const before = await row('app_sales_invoice', receipt.o_invoice_id)
+  const writer = await db.pool.connect()
+  try {
+    await writer.query('begin')
+    await writer.query('set local role service_role')
+    const [written] = (await writer.query(
+      'select * from public.apply_invoice_allocation_followup($1,$2,$3,$4)',
+      [id, 'financial', before, financialPatch(receipt)]
+    )).rows
+    const reviewing = db.asRole('service_role',
+      'select * from public.review_invoice_allocation_followups($1,$2,$3,$4)',
+      [id, 'fictional-order', 'finance', 'Reviewed after write'])
+    await writer.query('commit')
+    const [review] = await reviewing
+    assert.deepEqual(review.result.applied, { financial: true })
+    assert.deepEqual(await row('app_sales_invoice', receipt.o_invoice_id), written.result)
+    const uc = await row('uc_registry', receipt.o_uc_id)
+    assert.deepEqual(await followup(id, 'woo', uc, { total: 55 }), [review])
+    assert.deepEqual(await row('uc_registry', receipt.o_uc_id), uc)
+  } finally {
+    await writer.query('rollback')
+    writer.release()
+  }
+})
+
+test('SQL rejects expired claims without changing the receipt, financial row or audit history', async () => {
+  await db.pool.query(db.followupMigration)
+  const id = randomUUID()
+  const [receipt] = await once(id)
+  const before = await row('app_sales_invoice', receipt.o_invoice_id)
+  const counts = await db.counts()
+  await assert.rejects(db.asRole('service_role',
+    'select * from public.apply_claimed_invoice_followup($1,$2,$3,$4,$5)',
+    [id, 'financial', before, financialPatch(receipt), '2000-01-01T00:00:00Z']), /claim expired/)
+  assert.deepEqual(await row('app_sales_invoice', receipt.o_invoice_id), before)
+  assert.deepEqual(await db.counts(), counts)
+})
 test('receipt-bound financial follow-up preserves exact source/approved zero and lost acknowledgment is idempotent', async () => {
   const id = randomUUID(),
     [receipt] = await once(id),

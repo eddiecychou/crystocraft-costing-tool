@@ -9,6 +9,7 @@ export async function createDuplicateFixture() {
   try {
     await db.reset()
     await db.pool.query(db.migration)
+    await db.pool.query(db.followupMigration)
     await db.pool.query(
       await readFile(
         new URL(

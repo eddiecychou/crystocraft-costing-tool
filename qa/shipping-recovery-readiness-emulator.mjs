@@ -34,6 +34,7 @@ beforeEach(async () => {
   await db.doc('users/reviewer').set({ role: 'staff', modules: ['shipping', 'uc'] })
   await sqlDb.reset()
   await sqlDb.pool.query(sqlDb.migration)
+  await sqlDb.pool.query(sqlDb.followupMigration)
   faults = {}
   invoices = directInvoiceFixture(db, sqlDb, faults)
 })
