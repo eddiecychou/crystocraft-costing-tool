@@ -70,6 +70,20 @@ const remarkedItem={product_name:'Crystal Spinning Glass Bordeaux Edition',produ
  {quantity:10,price:800,remarks:'1 pair 2 glasses in a gift box'},
  {quantity:10,price:630,remarks:'1 pair 2 glasses in single gift box combined with paper sleeve'},
 ]}
+test('a single tier remark appears with the description, alongside any product remark', () => {
+  const [tier] = remarkedItem.tiers
+  const item = { ...remarkedItem, tiers: [tier] }
+  const tree = QuotePDF({ quote, items: [item] })
+  const description = nodes(tree).find(node => {
+    const content = texts(node)
+    return content.includes(item.product_description) && content.includes(tier.remarks) && !content.includes('10 pair')
+  })
+  assert.ok(description)
+  assert.deepEqual(texts(description), [item.product_description, item.item_remarks, tier.remarks])
+  assert.equal(texts(tree).filter(value => value === tier.remarks).length, 1)
+  const priceGroup = nodes(tree).find(node => node.props?.wrap === false && texts(node)[0] === '10 pair')
+  assert.deepEqual(texts(priceGroup), ['10 pair', '800.00', '8,000.00'])
+})
 test('each tier remark shares a group with its own quantity, price and amount',()=>{
  const tree=QuotePDF({quote,items:[remarkedItem]})
  for(const [remark,price,amount]of [[remarkedItem.tiers[0].remarks,'800.00','8,000.00'],[remarkedItem.tiers[1].remarks,'630.00','6,300.00']]){

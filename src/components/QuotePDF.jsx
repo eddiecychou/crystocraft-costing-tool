@@ -252,6 +252,7 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
         {/* Item rows */}
         {items.map((item, i) => {
           const tiers = item.tiers?.length ? item.tiers : [{ quantity: item.quantity ?? '', price: item.price ?? item.price_hkd ?? '' }]
+          const singleTierRemark = tiers.length === 1 ? tiers[0].remarks?.trim() : ''
           const img   = item._imageData || null
           return (
             <View key={i} style={[s.row, i % 2 === 1 ? { backgroundColor: C.rowAlt } : null]} wrap={false}>
@@ -265,6 +266,9 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
                 <Text style={[s.descText, { fontFamily: contentFont(item.product_description) }]}>{wrapTableText(item.product_description || '')}</Text>
                 {item.item_remarks ? (
                   <Text style={[s.itemRemark, { fontFamily: contentFont(item.item_remarks) }]}>{wrapTableText(item.item_remarks)}</Text>
+                ) : null}
+                {singleTierRemark ? (
+                  <Text style={[s.itemRemark, { fontFamily: contentFont(singleTierRemark) }]}>{wrapTableText(singleTierRemark)}</Text>
                 ) : null}
               </View>
               <View style={s.tiersCell}>
@@ -281,7 +285,7 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
                         <Text style={[s.amountText, s.tierLine]}>{fmtMoney(tierAmount(t))}</Text>
                       </View>
                     </View>
-                    {t.remarks?.trim() ? (
+                    {tiers.length > 1 && t.remarks?.trim() ? (
                       <Text style={[s.tierRemark, { fontFamily: contentFont(t.remarks) }]}>{wrapTableText(t.remarks)}</Text>
                     ) : null}
                   </View>
