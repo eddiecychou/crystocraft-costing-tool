@@ -1,15 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { authHeader } from '../firebase'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
   applyExtractedPiHeader,
   getOrder, getOrderLines, getOrderEditSnapshot, updateOrder, saveOrderWithLines, deleteOrder,
-  loadRangeProductsLite, autoMatchLines, lineClassificationPatch, rematchLines, validateOrder, computeOrderTotals,
+  loadRangeProductsLite, lineClassificationPatch, rematchLines, validateOrder, computeOrderTotals,
   orderCreateFields, orderSaveFields, invoiceRegistryFields, orderEditFields,
 } from '../shipping'
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
-import { adoptErpLineUnits, fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
 import { Trash2 } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -32,7 +30,7 @@ import {quoteSourceToken} from '../quoteConversionModel.js'
 import { orderStockStatus, stockStatusDetail } from '../orderStockStatus'
 import ShipmentPageHeader from '../components/shipping/ShipmentPageHeader'
 import ShipmentPiUpload from '../components/shipping/ShipmentPiUpload'
-import { preparePiUploadFile } from '../piUploadFile'
+import { useShipmentPiImport } from '../hooks/useShipmentPiImport'
 import ShipmentDocumentReferences from '../components/shipping/ShipmentDocumentReferences'
 import ShipmentScheduleTerms from '../components/shipping/ShipmentScheduleTerms'
 import { ShipmentDestination, ShipmentRemarks } from '../components/shipping/ShipmentOrderDetails'
@@ -189,17 +187,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
   const [customers, setCustomers] = useState([])
   const [rangeProducts, setRangeProducts] = useState([])
   const [sourceFile, setSourceFile] = useState(null)   // { url, name } existing
-  const [pendingFile, setPendingFile] = useState(null) // File belonging to the applied PI data
-  const [importingFileName, setImportingFileName] = useState(null)
-  // Each attempt owns its result, busy state and ERP comparison. A replacement
-  // does not replace the committed file until its parsed data can be applied.
-  const piImport = useRef({ id: 0, extracting: false, soNo: null })
-
-  const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState('')
-  // { soNo, erp, diff, adopted? } — result of checking the parse against
-  // the ERP's own sales order. null when there's nothing to say.
-  const [erpCheck, setErpCheck] = useState(null)
   const [dragOver, setDragOver] = useState(false)
   const [fetching, setFetching] = useState(isEdit)
   const [loadError, setLoadError] = useState('')
@@ -226,11 +214,19 @@ function ShipmentEditor({ uid, onCreateOrder }) {
   const mounted = useRef(false)
   useEffect(() => {
     mounted.current = true
-    return () => {
-      mounted.current = false
-      piImport.current = { id: piImport.current.id + 1, extracting: false, soNo: null }
-    }
+    return () => { mounted.current = false }
   }, [])
+  const { pendingFile, fileName, extracting, erpCheck, importFile, useErpLines,
+    invalidatePiComparison, resetPiImport, isExtracting } = useShipmentPiImport({
+    rangeProducts,
+    canImport: () => !saving && !saveInFlight.current,
+    onParsed: (data, matched) => {
+      setHeader(h => applyExtractedPiHeader(h, data, customers))
+      setLines(matched)
+    },
+    onAdopt: setLines,
+    onError: setExtractError,
+  })
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [tab, setTab] = useState('order')
 
@@ -241,7 +237,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
     setLoadError('')
     if (hasQuoteSource) setQuoteLoad({ status: 'loading', message: '' })
     if (hasQuoteSource) {setQuoteRecovery(null);setQuoteRecoveryError('');setQuoteAdditional(null);setQuoteDraftIssue('');quoteSource.current=null}
-    setPendingFile(null); setErpCheck(null); setExtractError(''); setSiError('')
+    resetPiImport(); setExtractError(''); setSiError('')
     if (!isEdit) {
       setHeader(preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader)
       setLines([]); setSourceFile(null); setTab('order')
@@ -339,7 +335,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
       })
       .finally(() => { if (alive) setFetching(false) })
     return () => { alive = false }
-  }, [id, isEdit, loadRevision])
+  }, [id, isEdit, loadRevision, resetPiImport])
 
   async function runQuoteRecovery(action='status',details={}) {
     if(recoveryInFlight.current||createInFlight.current)return
@@ -538,82 +534,6 @@ function ShipmentEditor({ uid, onCreateOrder }) {
     if (f) importFile(f)
   }
 
-  async function importFile(file) {
-    if (saving || saveInFlight.current || !mounted.current) return
-    const attempt = { id: piImport.current.id + 1, extracting: true, soNo: null }
-    piImport.current = attempt
-    setImportingFileName(file.name)
-    setErpCheck(null)
-    setExtracting(true); setExtractError('')
-    try {
-      const payload = await preparePiUploadFile(file)
-      const auth = await authHeader()
-      if (!mounted.current || piImport.current !== attempt) return
-      const res = await fetch('/api/extract-pi', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...auth },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) throw new Error('Extraction failed')
-      const data = await res.json()
-      if (!mounted.current || piImport.current !== attempt) return
-
-      const matched = autoMatchLines(data.lines || [], rangeProducts)
-      attempt.soNo = String(data.so_no || '').trim().toUpperCase()
-      setHeader(h => applyExtractedPiHeader(h, data, customers))
-      setLines(matched)
-      setPendingFile(file)
-      if (!matched.length) setExtractError('No line items found — check the file or add lines manually.')
-
-      // The PI is the JES sales order, so its lines already exist in the ERP
-      // mirror. Cross-check the parse against them — the ERP's version is the
-      // original, the parse is a reading of a picture of it.
-      checkAgainstErp(data.so_no, matched, attempt)
-    } catch (err) {
-      if (mounted.current && piImport.current === attempt) {
-        setExtractError(err.code === 'pi-file-too-large'
-          ? `${err.message} The existing fields and lines have been kept; this file was not attached.`
-          : `Could not read this PI (${file.name}) — the existing fields and lines have been kept. The failed file was not attached; try another file or continue manually.`)
-      }
-    } finally {
-      if (mounted.current && piImport.current === attempt) {
-        attempt.extracting = false
-        setExtracting(false)
-        setImportingFileName(null)
-      }
-    }
-  }
-
-  // ── ERP cross-check ────────────────────────────────────────────────────────
-  function invalidatePiComparison() {
-    piImport.current.soNo = null
-    setErpCheck(null)
-  }
-
-  async function checkAgainstErp(soNo, parsedLines, attempt) {
-    if (!soNo) return
-    try {
-      const erp = await fetchErpSoLines(soNo)
-      // Not in the mirror yet (raised since the last sync) — say nothing and
-      // leave the parsed lines alone. This must never block the workflow.
-      if (!erp) return
-      const checkedSo = String(soNo).trim().toUpperCase()
-      if (!mounted.current || piImport.current !== attempt || attempt.soNo !== checkedSo) return
-      setErpCheck({ importId: attempt.id, soNo: checkedSo, erp, diff: diffLines(parsedLines, erp) })
-    } catch (e) {
-      console.error('ERP SO cross-check failed', e)
-    }
-  }
-
-  function useErpLines() {
-    const current = piImport.current
-    if (!erpCheck || current.extracting || current.id !== erpCheck.importId
-        || current.soNo !== erpCheck.soNo
-        || String(header.erp_so_no || '').trim().toUpperCase() !== erpCheck.soNo) return
-    const adopted = adoptErpLineUnits(erpCheck.erp, lines)
-    setLines(autoMatchLines(adopted.lines, rangeProducts))
-    setErpCheck(c => ({ ...c, adopted: true, defaultedLineNumbers: adopted.defaultedLineNumbers }))
-  }
-
   // ── Line editing / reconciliation ────────────────────────────────────────────
   const setLine = (i, patch) => setLines(ls => ls.map((l, j) => j === i ? { ...l, ...patch } : l))
 
@@ -634,7 +554,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
   // ── Save ─────────────────────────────────────────────────────────────────────
   async function handleCreate(e) {
     e.preventDefault()
-    if (piImport.current.extracting || createInFlight.current || recoveryInFlight.current || !quoteReady || !showQuoteDraft) return
+    if (isExtracting() || createInFlight.current || recoveryInFlight.current || !quoteReady || !showQuoteDraft) return
     createInFlight.current=true
     setSaving(true)
     setExtractError('')
@@ -830,7 +750,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
         {!isEdit && !isDirect && !fromQuoteId && (
           <ShipmentPiUpload
             dragOver={dragOver}
-            fileName={importingFileName ?? pendingFile?.name}
+            fileName={fileName}
             extracting={extracting}
             error={extractError}
             erpCheck={erpCheck}
@@ -838,7 +758,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onFileChange={e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = '' }}
-            onUseErpLines={useErpLines}
+            onUseErpLines={() => useErpLines(header.erp_so_no, lines)}
           />
         )}
 
