@@ -84,7 +84,7 @@ const stubs = {
   ucRegistry:
     'const fail=()=>{throw Error("No financial calls allowed")};export{fail as upsertInvoice,fail as allocateOrderUc,fail as allocateInvoice,fail as updateUcInvoice};',
   erpSoImport:
-    'const fail=()=>{throw Error("No ERP calls allowed")};export{fail as fetchErpSoLines,fail as diffLines};'
+    'const fail=()=>{throw Error("No ERP calls allowed")};export{fail as fetchErpSoLines,fail as diffLines,fail as adoptErpLineUnits};'
 }
 const entry = `import React from'react';import{createRoot}from'react-dom/client';import{BrowserRouter,Routes,Route,Link}from'react-router-dom';import Page from'./src/pages/ShipmentForm.jsx';import Quote from'./src/pages/QuoteDetail.jsx';createRoot(document.getElementById('root')).render(<BrowserRouter future={{v7_startTransition:true,v7_relativeSplatPath:true}}><main className="p-4 max-w-6xl mx-auto"><p className="text-sm mb-4">FICTIONAL CONVERSION QA · isolated demo</p><Link className="btn-secondary mb-4" to="/elsewhere">Fictional other page</Link><Routes><Route path="/shipments/new" element={<Page/>}/><Route path="/shipments/:id" element={<Page/>}/><Route path="/quotes/:id" element={<Quote/>}/><Route path="/elsewhere" element={<p>Fictional other page</p>}/></Routes></main></BrowserRouter>);`
 await build({

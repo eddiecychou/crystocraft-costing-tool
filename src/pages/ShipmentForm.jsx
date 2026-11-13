@@ -9,7 +9,7 @@ import {
   orderCreateFields, orderSaveFields, invoiceRegistryFields, orderEditFields,
 } from '../shipping'
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
-import { fetchErpSoLines, diffLines } from '../erpSoImport'
+import { adoptErpLineUnits, fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
 import { Trash2 } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -609,8 +609,9 @@ function ShipmentEditor({ uid, onCreateOrder }) {
     if (!erpCheck || current.extracting || current.id !== erpCheck.importId
         || current.soNo !== erpCheck.soNo
         || String(header.erp_so_no || '').trim().toUpperCase() !== erpCheck.soNo) return
-    setLines(autoMatchLines(erpCheck.erp, rangeProducts))
-    setErpCheck(c => ({ ...c, adopted: true }))
+    const adopted = adoptErpLineUnits(erpCheck.erp, lines)
+    setLines(autoMatchLines(adopted.lines, rangeProducts))
+    setErpCheck(c => ({ ...c, adopted: true, defaultedLineNumbers: adopted.defaultedLineNumbers }))
   }
 
   // ── Line editing / reconciliation ────────────────────────────────────────────

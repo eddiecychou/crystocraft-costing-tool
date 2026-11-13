@@ -49,7 +49,7 @@ export default function ShipmentLineRow({ line: l, index: i, setLine, classify, 
             value={l.tier_remarks || ''} onChange={e => setLine(i, { tier_remarks: e.target.value })} />
           <div className="flex gap-2 items-center flex-wrap">
             <input className="input py-1.5 text-sm w-20 sm:w-24" type="number" value={l.qty_ordered ?? ''} onChange={e => setLine(i, { qty_ordered: e.target.value })} placeholder="Qty" />
-            <input className="input py-1.5 text-sm w-16 sm:w-20" value={l.unit} onChange={e => setLine(i, { unit: e.target.value })} placeholder="pcs" />
+            <input className="input py-1.5 text-sm w-16 sm:w-20" value={l.unit ?? ''} onChange={e => setLine(i, { unit: e.target.value })} placeholder="pcs" />
             <input className="input py-1.5 text-sm w-24 sm:w-28" type="number" step="0.01" value={l.unit_price ?? ''} onChange={e => setLine(i, { unit_price: e.target.value })} placeholder="Unit price" />
             {l.matched_product_ref && (
               <span className="inline-flex items-center gap-1 text-xs text-green-700 truncate max-w-full"

@@ -87,7 +87,8 @@ const stubs={
    if(!lookups)throw Error("No ERP extraction");
    lookups.push(soNo);
    return null;
- };export const diffLines=()=>null;`,
+ };export const diffLines=()=>null;
+ export const adoptErpLineUnits=()=>{throw Error('No ERP adoption')};`,
  soNumber:'import{ocYear}from"./src/ocTime.js";export const soYear=()=>String(ocYear(new Date())%100).padStart(2,"0");export const allocateSoNo=(...a)=>globalThis.__shipmentReferences.invoke("so",a);export const JES_SEED_BY_YEAR={};export const formatSoNo=()=>{throw Error("No order creation authorized")}',
  invoiceRecovery:'export const invoiceAction=(...a)=>globalThis.__shipmentReferences.invoiceAction(...a)',
  quoteConversion:'export const quoteConversionAction=(...a)=>globalThis.__shipmentReferences.quoteAction(...a)',

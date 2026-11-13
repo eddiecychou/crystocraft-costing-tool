@@ -10,6 +10,8 @@
 // raised today may not be there. That is why this AUGMENTS the parser rather
 // than replacing it — no match, no change, nothing breaks.
 import { erpLines } from './erpApi'
+import { numOrNull, str } from './domain/validation.js'
+import { DEFAULT_ORDER_LINE_UNIT } from './shippingModel.js'
 
 const num = (v) => {
   const n = Number(v)
@@ -35,6 +37,7 @@ export function lineFromErp(r, i) {
     item_code: (r.item_code || '').trim(),
     description: (r.description || '').trim(),
     qty_ordered: num(r.qty),
+    unit: str(r.unit),
     unit_price: num(r.unit_price),
   }
 }
@@ -47,6 +50,44 @@ export async function fetchErpSoLines(soNo) {
   const { rows } = await erpLines('sales_order', code.toUpperCase())
   if (!rows || !rows.length) return null
   return rows.map(lineFromErp)
+}
+
+function groupByItemCode(lines) {
+  const groups = new Map()
+  for (const line of lines) {
+    const code = normCode(line.item_code)
+    if (!code) continue
+    if (!groups.has(code)) groups.set(code, [])
+    groups.get(code).push(line)
+  }
+  return groups
+}
+
+// Repeated codes can identify different variants or charges. Use an exact,
+// one-to-one quantity and price match before carrying over any of their units.
+function matchingDraftLine(erpLine, erpGroup, draftGroup) {
+  if (!draftGroup.length) return null
+  if (erpGroup.length === 1 && draftGroup.length === 1) return draftGroup[0]
+  const qty = numOrNull(erpLine.qty_ordered)
+  const price = numOrNull(erpLine.unit_price)
+  if (qty == null || price == null) return null
+  const sameAmounts = line => numOrNull(line.qty_ordered) === qty && numOrNull(line.unit_price) === price
+  const candidates = draftGroup.filter(sameAmounts)
+  return candidates.length === 1 && erpGroup.filter(sameAmounts).length === 1 ? candidates[0] : null
+}
+
+export function adoptErpLineUnits(erpLines, draftLines) {
+  const erpByCode = groupByItemCode(erpLines)
+  const draftByCode = groupByItemCode(draftLines)
+  const defaultedLineNumbers = []
+  const lines = erpLines.map((line, index) => {
+    const code = normCode(line.item_code)
+    const draft = matchingDraftLine(line, erpByCode.get(code) || [], draftByCode.get(code) || [])
+    const unit = str(line.unit) || str(draft?.unit)
+    if (!unit) defaultedLineNumbers.push(line.line_no ?? index + 1)
+    return { ...line, unit: unit || DEFAULT_ORDER_LINE_UNIT }
+  })
+  return { lines, defaultedLineNumbers }
 }
 
 // Compare parsed lines against the ERP's, matched on item code.

@@ -70,7 +70,7 @@ const stubs = {
   ucRegistry:
     'const fail=()=>{throw Error("No financial calls allowed")};export{fail as upsertInvoice,fail as allocateOrderUc,fail as allocateInvoice,fail as updateUcInvoice};',
   erpSoImport:
-    'const fail=()=>{throw Error("No ERP calls allowed")};export{fail as fetchErpSoLines,fail as diffLines};'
+    'const fail=()=>{throw Error("No ERP calls allowed")};export{fail as fetchErpSoLines,fail as diffLines,fail as adoptErpLineUnits};'
 }
 if (process.env.QA_INVOICE_DATABASE_URL) delete stubs.invoiceRecovery
 stubs.ucRegistry +=

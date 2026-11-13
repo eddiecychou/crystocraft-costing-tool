@@ -47,7 +47,7 @@ const stubs={
  PackingListEditor:'export default ()=>null',FreightComparison:'export default ()=>null',OrderStockIssue:'export default ()=>null',OrderInventoryIssue:'export default ()=>null',
  crystals:'export const crystalInventory={}',packaging:'export const packagingInventory={}',orderStock:'export const metalOrderConfig={}',
  orderStockStatus:'export const orderStockStatus=()=>null;export const stockStatusDetail=()=>"";export const STOCK_STATUS_LABEL={},STOCK_STATUS_STYLE={}',
- erpSoImport:'export const fetchErpSoLines=async()=>{throw Error("No ERP requests")};export const diffLines=()=>null',
+ erpSoImport:'const fail=()=>{throw Error("No ERP requests")};export{fail as fetchErpSoLines,fail as diffLines,fail as adoptErpLineUnits}',
  ucRegistry:'export const allocateInvoice=async()=>{throw Error("No invoice allocation")};export const allocateOrderUc=async()=>{throw Error("No UC allocation")};export const updateUcInvoice=async()=>{throw Error("No UC changes")};export const upsertInvoice=async data=>globalThis.__invoiceFixture.accountingWrite=data',
  storage:'export const ref=()=>{};export const uploadBytes=async()=>{throw Error("No uploads")};export const getDownloadURL=async()=>{throw Error("No uploads")}',
 }

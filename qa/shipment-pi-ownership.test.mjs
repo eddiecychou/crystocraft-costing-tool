@@ -11,6 +11,8 @@ import { build } from 'esbuild'
 import { JSDOM } from 'jsdom'
 import React, { act } from 'react'
 import { MemoryRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import ExcelJS from 'exceljs'
+import { prepareSnapshot } from '../netlify/functions/lib/orderCreateRequests.js'
 
 const require = createRequire(import.meta.url)
 const dom = new JSDOM('<!doctype html><body></body>', { url: 'http://fictional.test' })
@@ -28,7 +30,7 @@ const piData = id => ({
   lines: [{ item_code: 'PI-ITEM-' + id, description: 'PI line ' + id, qty_ordered: id === 'A' ? 10 : 20, unit: 'pcs', unit_price: id === 'A' ? 1.111 : 2.222 }],
 })
 const erpRows = code => [{ seq: 1, item_code: 'ERP-' + code, description: 'Fictional ERP line', qty: 99, unit_price: 9.999 }]
-let scratch, Page, host, root, f, navigate, currentRoute, errors, originalError, originalFetch
+let scratch, Page, Proforma, SalesInvoice, host, root, f, navigate, currentRoute, errors, originalError, originalFetch
 const stubs = {
   firebase: 'export const db={},storage={};export const authHeader=async()=>({Authorization:"Bearer fictional-pi-test"});',
   firestore: `const f=()=>globalThis.__shipmentPiOwnership;
@@ -51,7 +53,8 @@ const stubs = {
       return callback({get:async()=>{throw Error('No real/fictional number allocation expected')},set:(path,data)=>state.created.push({path:[...path],data:structuredClone(data)})});
     };
     const fail=()=>{throw Error('Unexpected business mutation')};export{fail as updateDoc,fail as writeBatch,fail as addDoc,fail as deleteDoc,fail as setDoc,fail as increment};`,
-  customer: `const list=()=>globalThis.__shipmentPiOwnership.customers;export const loadCustomers=async()=>list();export const getCustomer=async id=>list().find(x=>x.id===id)||null;export const primaryContact=()=>null;export const saveCustomer=async()=>{throw Error('No customer writes')};`,
+  customer: `const list=()=>globalThis.__shipmentPiOwnership.customers;export const loadCustomers=async()=>list();export const getCustomer=async id=>list().find(x=>x.id===id)||null;export const primaryContact=()=>null;export const contactAddress=()=>'';export const saveCustomer=async()=>{throw Error('No customer writes')};`,
+  bankAccounts: 'export const listBankAccounts=async()=>[];export const accountForCurrency=()=>null;export const formatBankDetails=()=>"";',
   erpApi: 'export const erpLines=(kind,code)=>globalThis.__shipmentPiOwnership.erpRead(kind,code);',
   soNumber: 'export const JES_SEED_BY_YEAR={};export const soYear=()=>"26";const fail=()=>{throw Error("No number allocation")};export{fail as allocateSoNo,fail as formatSoNo};',
   ucRegistry: 'const fail=()=>{throw Error("No financial requests")};export{fail as allocateOrderUc,fail as allocateInvoice,fail as updateUcInvoice,fail as upsertInvoice};',
@@ -70,13 +73,17 @@ const stubs = {
 before(async () => {
   scratch = await mkdtemp(join(tmpdir(), 'oc-pi-ownership-'))
   const source = await readFile(process.env.SHIPMENT_PI_FORM_SOURCE || 'src/pages/ShipmentForm.jsx', 'utf8')
-  await build({ stdin: { contents: source, resolveDir: resolve('src/pages'), loader: 'jsx' }, outfile: join(scratch, 'page.mjs'), bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', plugins: [{ name: 'fictional-pi-io', setup(b) {
-    b.onResolve({ filter: /^(react(?:\/.*)?|react-dom(?:\/.*)?|react-router-dom|lucide-react)$/ }, a => ({ path: require.resolve(a.path), external: true }))
+  const pages = `${source}\nexport {default as Proforma} from './ProformaInvoicePrint.jsx'\nexport {default as SalesInvoice} from './SalesInvoicePrint.jsx'`
+  await build({ stdin: { contents: pages, resolveDir: resolve('src/pages'), loader: 'jsx' }, outfile: join(scratch, 'page.mjs'), bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', loader: { '.png': 'dataurl' }, plugins: [{ name: 'fictional-pi-io', setup(b) {
+    b.onResolve({ filter: /^(react(?:\/.*)?|react-dom(?:\/.*)?|react-router-dom|lucide-react|exceljs)$/ }, a => ({ path: require.resolve(a.path), external: true }))
     b.onResolve({ filter: /^firebase\/(firestore|storage)$/ }, a => ({ path: a.path.split('/')[1], namespace: 'fixture' }))
     b.onResolve({ filter: /^\.\.?\// }, a => { const name = basename(a.path).replace(/\.jsx?$/, ''); if (name in stubs) return { path: name, namespace: 'fixture' } })
     b.onLoad({ filter: /.*/, namespace: 'fixture' }, a => ({ contents: stubs[a.path], loader: 'js', resolveDir: process.cwd() }))
   } }] })
-  Page = (await import(pathToFileURL(join(scratch, 'page.mjs')))).default
+  const pagesModule = await import(pathToFileURL(join(scratch, 'page.mjs')))
+  Page = pagesModule.default
+  Proforma = pagesModule.Proforma
+  SalesInvoice = pagesModule.SalesInvoice
   originalFetch = globalThis.fetch
   globalThis.fetch = (path, options) => {
     if (path !== '/api/extract-pi') throw Error('Unexpected network request')
@@ -87,25 +94,18 @@ before(async () => {
   }
 })
 beforeEach(() => {
-  f = { customers: ['A', 'B'].map(id => ({ id: 'customer-' + id, company_name: 'Fictional ' + id })), requests: new Map(), started: new Map(), erpRequests: [], erpGates: new Map(), immediateErp: new Map(), created: [], uploads: [], createCalls: 0, allowCreate: false, knownErpUnitWarnings: [], allowKnownErpUnitWarning: false }
+  f = { customers: ['A', 'B'].map(id => ({ id: 'customer-' + id, company_name: 'Fictional ' + id })), requests: new Map(), started: new Map(), erpRequests: [], erpGates: new Map(), immediateErp: new Map(), created: [], uploads: [], createCalls: 0, allowCreate: false }
   f.erpRead = async (kind, code) => {
     f.erpRequests.push({ kind, code })
     const gate = f.erpGates.get(code)
     return gate ? gate.promise : { rows: f.immediateErp.get(code) || [] }
   }
   globalThis.__shipmentPiOwnership = f
-  errors = []; originalError = console.error; console.error = (...args) => {
-    // Real lineFromErp currently omits unit. Adopting it over parser unit "pcs"
-    // produces this one baseline-proven React warning, outside source identity
-    // repair. Keep the typical parser fixture and fail every other warning.
-    const unitWarning = 'Warning: A component is changing a controlled input to be uncontrolled. This is likely caused by the value changing from a defined to undefined, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://reactjs.org/link/controlled-components%s'
-    if (f.allowKnownErpUnitWarning && args.length === 2 && args[0] === unitWarning && String(args[1]).includes('at ShipmentLineRow')) f.knownErpUnitWarnings.push(args.map(String).join(' '))
-    else errors.push(args.map(String).join(' '))
-  }
+  errors = []; originalError = console.error; console.error = (...args) => errors.push(args.map(String).join(' '))
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 afterEach(async () => {
-  try { await act(async () => root.unmount()); assert.deepEqual(errors, []); assert.ok(f.knownErpUnitWarnings.length <= 1) }
+  try { await act(async () => root.unmount()); assert.deepEqual(errors, []) }
   finally { console.error = originalError; host.remove(); delete globalThis.__shipmentPiOwnership }
 })
 after(async () => { globalThis.fetch = originalFetch; dom.window.close(); if (scratch) await rm(scratch, { recursive: true, force: true }) })
@@ -117,10 +117,12 @@ function Bridge() {
 }
 async function createFixture(order, lines, file) {
   assert.ok(f.allowCreate)
+  const original = file && { name: file.name, size: file.size, type: file.type, sha256: 'a'.repeat(64) }
+  const { order: savedOrder, items } = prepareSnapshot({ order, lines, file: original })
   f.createCalls++
   if (file) f.uploads.push(file)
-  f.created.push({path:['orders'],data:{...order,source_file:file ? {name:file.name} : null}})
-  for (const line of lines) f.created.push({path:['lines'],data:line})
+  f.created.push({path:['orders'],data:{...savedOrder,source_file:file ? {name:file.name} : null}})
+  for (const line of items) f.created.push({path:['lines'],data:line})
   navigate('/shipments/created-order')
 }
 async function render() {
@@ -128,11 +130,14 @@ async function render() {
     React.createElement(Bridge), React.createElement(Routes, null,
       React.createElement(Route, { path: '/shipments/new', element: React.createElement(Page, {onCreateOrder:createFixture}) }),
       React.createElement(Route, { path: '/shipments/:id', element: React.createElement(Page) }),
+      React.createElement(Route, { path: '/shipments/:id/pi', element: React.createElement(Proforma) }),
+      React.createElement(Route, { path: '/shipments/:id/invoice', element: React.createElement(SalesInvoice) }),
     ))))
   await flush()
 }
 async function flush() { await act(async () => { await new Promise(done => setTimeout(done, 0)) }) }
 const input = placeholder => host.querySelector(`[placeholder="${placeholder}"]`)
+const values = placeholder => [...host.querySelectorAll(`[placeholder="${placeholder}"]`)].map(el => el.value)
 const code = () => input('Item code')?.value ?? null
 const uploadInput = () => host.querySelector('input[type=file]')
 const uploadCard = () => uploadInput()?.closest('.card')
@@ -143,10 +148,7 @@ const button = label => [...host.querySelectorAll('button')].find(el => el.textC
 const erpButton = () => [...host.querySelectorAll('button')].find(el => el.textContent.startsWith("Use the ERP's lines"))
 const extractionError = () => host.querySelector('#shipment-form-error')?.textContent || uploadCard()?.querySelector('.text-amber-600')?.textContent || ''
 async function click(el) { assert.ok(el, 'Expected button'); await act(async () => el.click()); await flush() }
-async function adoptCurrentErp() {
-  f.allowKnownErpUnitWarning = true
-  try { await click(erpButton()) } finally { f.allowKnownErpUnitWarning = false }
-}
+const adoptCurrentErp = () => click(erpButton())
 async function fill(el, value) { assert.ok(el, 'Expected input'); await act(async () => { el.value = value; Simulate.change(el, { target: { value } }) }); await flush() }
 async function start(id) {
   const started = deferred(); f.started.set(id, started)
@@ -281,6 +283,97 @@ test('current ERP comparison can be adopted explicitly for the same imported sou
   assert.match(host.textContent, /SO260001 found in the ERP/); await adoptCurrentErp()
   assert.equal(code(), 'ERP-SO260001'); assert.equal(input('e.g. SO260017').value, 'SO260001')
   assert.match(uploadCard().textContent, /Fictional-A\.pdf/)
+})
+
+test('adopted units, quantities and exact prices agree in the editor, saved snapshot and exports', async () => {
+  f.immediateErp.set('SO260001', [
+    { seq: 1, item_code: 'A-KG', qty: 1.25, unit_price: 1.125, unit: ' kg ' },
+    { seq: 2, item_code: 'B-SET', qty: 15, unit_price: 2.375 },
+    { seq: 3, item_code: 'C-NEW', qty: 4, unit_price: 3.125, unit: ' ' },
+    { seq: 4, item_code: 'D-MISSING', qty: 3, unit_price: 4.625 },
+  ])
+  await render(); await start('A')
+  await finish('A', { data: { ...piData('A'), lines: [
+    { item_code: 'A-KG', description: 'Parsed A', qty_ordered: 10, unit_price: 1, unit: 'box' },
+    { item_code: ' b - set ', description: 'Parsed B', qty_ordered: 10, unit_price: 2, unit: 'box' },
+    { item_code: 'UNRELATED', description: 'Parsed C', qty_ordered: 4, unit_price: 3.125, unit: 'kg' },
+    { item_code: 'D-MISSING', description: 'Parsed D', qty_ordered: 3, unit_price: 4.625, unit: null },
+  ] } })
+  await fill(host.querySelectorAll('[placeholder="pcs"]')[1], 'set')
+  await adoptCurrentErp()
+  const units = ['kg', 'set', 'pcs', 'pcs']
+  const quantities = [1.25, 15, 4, 3]
+  const prices = [1.125, 2.375, 3.125, 4.625]
+  assert.deepEqual(values('pcs'), units)
+  assert.deepEqual(values('Qty').map(Number), quantities)
+  assert.deepEqual(values('Unit price').map(Number), prices)
+  assert.match(uploadCard().textContent, /Review units for lines 3, 4\. The default unit is pcs/)
+  f.allowCreate = true
+  await click(submit())
+  assert.equal(f.createCalls, 1)
+  assert.equal(currentRoute, '/shipments/created-order')
+  const saved = f.created.filter(entry => entry.path.includes('lines')).map(entry => entry.data)
+  assert.deepEqual(saved.map(line => line.unit), units)
+  assert.deepEqual(saved.map(line => line.qty_ordered), quantities)
+  assert.deepEqual(saved.map(line => line.unit_price), prices)
+  assert.deepEqual(values('pcs'), units)
+  assert.deepEqual(values('Qty').map(Number), quantities)
+  assert.deepEqual(values('Unit price').map(Number), prices)
+
+  let download
+  const originalCreateObjectUrl = URL.createObjectURL
+  const originalRevokeObjectUrl = URL.revokeObjectURL
+  const originalAnchorClick = dom.window.HTMLAnchorElement.prototype.click
+  URL.createObjectURL = blob => { download = blob; return 'blob:fictional-erp-units' }
+  URL.revokeObjectURL = () => {}
+  dom.window.HTMLAnchorElement.prototype.click = () => {}
+  try {
+    for (const [route, table] of [['pi', '.pi-lines'], ['invoice', '.si-lines']]) {
+      await act(async () => navigate(`/shipments/created-order/${route}`)); await flush()
+      const rows = [...host.querySelectorAll(`${table} tbody tr`)]
+      assert.deepEqual(rows.map(row => row.cells[3].textContent.trim()), units.map((unit, i) => `${quantities[i]} ${unit}`))
+      download = null
+      await act(async () => {
+        const excel = button('Download Excel')
+        assert.ok(excel)
+        excel.click()
+        for (let i = 0; i < 100 && !download; i++) await new Promise(done => setTimeout(done, 10))
+      })
+      assert.ok(download)
+      const workbook = new ExcelJS.Workbook()
+      await workbook.xlsx.load(Buffer.from(await download.arrayBuffer()))
+      const sheet = workbook.getWorksheet('Invoice')
+      assert.deepEqual(units.map((_, i) => sheet.getCell(`D${7 + i}`).value), units)
+      assert.deepEqual(quantities.map((_, i) => sheet.getCell(`C${7 + i}`).value), quantities)
+      assert.deepEqual(prices.map((_, i) => sheet.getCell(`E${7 + i}`).value), prices)
+    }
+  } finally {
+    URL.createObjectURL = originalCreateObjectUrl
+    URL.revokeObjectURL = originalRevokeObjectUrl
+    dom.window.HTMLAnchorElement.prototype.click = originalAnchorClick
+  }
+})
+
+test('repeated item codes preserve units for distinct one-to-one amounts, with review for ambiguous rows', async () => {
+  f.immediateErp.set('SO260001', [
+    { seq: 1, item_code: 'REPEAT', qty: 2, unit_price: 4.625 },
+    { seq: 2, item_code: 'REPEAT', qty: 2, unit_price: 1.125 },
+    { seq: 3, item_code: 'AMBIGUOUS', qty: 6, unit_price: 2.375 },
+    { seq: 4, item_code: 'AMBIGUOUS', qty: 6, unit_price: 2.375 },
+    { seq: 5, item_code: 'ERP-REPEAT', qty: 8, unit_price: 3.125 },
+    { seq: 6, item_code: 'ERP-REPEAT', qty: 8, unit_price: 3.125 },
+  ])
+  await render(); await start('A')
+  await finish('A', { data: { ...piData('A'), lines: [
+    { item_code: 'REPEAT', description: 'Parsed 1', qty_ordered: 2, unit_price: 1.125, unit: 'box' },
+    { item_code: 'REPEAT', description: 'Parsed 2', qty_ordered: 2, unit_price: 4.625, unit: 'kg' },
+    { item_code: 'AMBIGUOUS', description: 'Parsed 3', qty_ordered: 6, unit_price: 2.375, unit: 'm' },
+    { item_code: 'AMBIGUOUS', description: 'Parsed 4', qty_ordered: 6, unit_price: 2.375, unit: 'set' },
+    { item_code: 'ERP-REPEAT', description: 'Parsed 5', qty_ordered: 8, unit_price: 3.125, unit: 'pair' },
+  ] } })
+  await adoptCurrentErp()
+  assert.deepEqual(values('pcs'), ['kg', 'box', 'pcs', 'pcs', 'pcs', 'pcs'])
+  assert.match(uploadCard().textContent, /Review units for lines 3, 4, 5, 6/)
 })
 
 test('an immediate ERP response belongs to the just-committed import without awaiting a render', async () => {

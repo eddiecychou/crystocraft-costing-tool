@@ -302,6 +302,8 @@ export const normOrder = (o) => ({
   pi_revision: numOrNull(o.pi_revision)
 })
 
+export const DEFAULT_ORDER_LINE_UNIT = 'pcs'
+
 export const normLine = (l) => {
   const type = LINE_TYPES.some((t) => t.value === l.line_type) ? l.line_type : null
   return {
@@ -310,7 +312,7 @@ export const normLine = (l) => {
     description: str(l.description),
     tier_remarks: str(l.tier_remarks),
     qty_ordered: numOrNull(l.qty_ordered),
-    unit: str(l.unit) || 'pcs',
+    unit: str(l.unit) || DEFAULT_ORDER_LINE_UNIT,
     unit_price: numOrNull(l.unit_price),
     line_type: type, // null until reconciled
     packable: type ? isPackable(type) : true,

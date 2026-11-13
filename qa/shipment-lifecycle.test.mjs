@@ -67,7 +67,7 @@ const stubs = {
   soNumber: 'export const JES_SEED_BY_YEAR={};export const soYear=()=>"26";const fail=()=>{throw Error("No number allocation")};export{fail as allocateSoNo,fail as formatSoNo}',
   ucRegistry: `export const upsertInvoice=async data=>globalThis.__shipmentLifecycle.accounting.push(structuredClone(data));const fail=()=>{throw Error('No financial allocation')};export{fail as allocateOrderUc,fail as allocateInvoice,fail as updateUcInvoice};`,
   storage: 'const fail=()=>{throw Error("No storage access")};export{fail as ref,fail as uploadBytes,fail as getDownloadURL}',
-  erpSoImport: 'const fail=()=>{throw Error("No ERP access")};export{fail as fetchErpSoLines,fail as diffLines}',
+  erpSoImport: 'const fail=()=>{throw Error("No ERP access")};export{fail as fetchErpSoLines,fail as diffLines,fail as adoptErpLineUnits}',
   crystals: 'export const crystalInventory={order:{reserved:"crystals_reserved",committed:"crystals_committed"}}',
   packaging: 'export const packagingInventory={order:{reserved:"packaging_reserved",committed:"packaging_committed"}}',
   orderStock: 'export const metalOrderConfig={order:{reserved:"metal_reserved",committed:"metal_committed"}}',

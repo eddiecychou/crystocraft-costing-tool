@@ -8,7 +8,7 @@ import { stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../..
 // importing knows which document they're holding.
 export function ErpCrossCheck({ check, onUse }) {
   if (!check) return null
-  const { soNo, erp, diff, adopted } = check
+  const { soNo, erp, diff, adopted, defaultedLineNumbers = [] } = check
   const clean = !diff.differing.length && !diff.onlyParsed.length && !diff.onlyErp.length
 
   return (
@@ -24,8 +24,8 @@ export function ErpCrossCheck({ check, onUse }) {
         <p className="text-green-800">The parsed lines match the ERP exactly.</p>
       ) : (
         <div className="text-amber-900 space-y-1">
-          {diff.differing.map((d) => (
-            <div key={d.item_code}>
+          {diff.differing.map((d, i) => (
+            <div key={`d${i}`}>
               <span className="font-mono">{d.item_code}</span>{' '}
               {d.fields.map((f) => (
                 <span key={f.field}>
@@ -41,8 +41,8 @@ export function ErpCrossCheck({ check, onUse }) {
               PDF but not in the ERP order
             </div>
           ))}
-          {diff.onlyErp.map((l) => (
-            <div key={l.item_code}>
+          {diff.onlyErp.map((l, i) => (
+            <div key={`e${i}`}>
               <span className="font-mono">{l.item_code}</span> — in the ERP order but missed
               by the parser
             </div>
@@ -51,7 +51,14 @@ export function ErpCrossCheck({ check, onUse }) {
       )}
 
       {adopted ? (
-        <p className="mt-2 text-green-800 font-medium">Using the ERP's lines.</p>
+        <div className="mt-2 space-y-1">
+          <p className="text-green-800 font-medium">Using the ERP's lines.</p>
+          {defaultedLineNumbers.length > 0 && (
+            <p className="text-amber-900">
+              Review units for {defaultedLineNumbers.length === 1 ? 'line' : 'lines'} {defaultedLineNumbers.join(', ')}. The default unit is pcs.
+            </p>
+          )}
+        </div>
       ) : (
         <button type="button" onClick={onUse}
                 className="mt-2 px-2.5 py-1 rounded-none border border-current text-xs font-medium hover:bg-white/60">
