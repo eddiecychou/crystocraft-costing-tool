@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Link,
   Navigate,
@@ -7,25 +7,8 @@ import {
   useSearchParams
 } from 'react-router-dom'
 import ShipmentForm from './ShipmentForm'
-import {
-  beginOrderCopy,
-  describePi,
-  finishOrderRequest,
-  orderRequestAction,
-  samePiOriginal
-} from '../orderCreateRequest'
-import {
-  ORDER_REQUEST_DRAFT_CONFLICT,
-  requestUrl,
-  validRequestId,
-  needsInitialInvoice
-} from '../orderCreateRequestModel.js'
-import {
-  readOrderCreateDraft,
-  removeOrderCreateDraft,
-  saveOrderCreateDraft,
-  separateOrderDraft
-} from '../orderCreateDrafts.js'
+import { useShipmentOrderRequest } from '../hooks/useShipmentOrderRequest'
+import { requestUrl, validRequestId, needsInitialInvoice } from '../orderCreateRequestModel.js'
 
 function StartRequest({ uid, params }) {
   const [id] = useState(() => crypto.randomUUID())
@@ -55,150 +38,25 @@ function RequestEditor({ operator, id, drafts }) {
   const separateOrder = new URLSearchParams(params)
   separateOrder.delete('request')
   separateOrder.delete('operator')
-  const [state, setState] = useState(null)
-  const [busy, setBusy] = useState(false)
   const location = useLocation()
-  const [error, setError] = useState(location.state?.requestError || '')
-  const active = useRef(false)
-  const inFlight = useRef(false)
-  const selectedFile = useRef(null)
-  const [openedForm, setOpenedForm] = useState(false)
-  const draftKey = operator + ':' + id
-  const [keptDraft, setKeptDraft] = useState(() =>
-    drafts.get(draftKey) || readOrderCreateDraft(operator, id))
-  const [originalFile, setOriginalFile] = useState(keptDraft?.file || null)
-  const [checkingOriginal, setCheckingOriginal] = useState(false)
-  const conflictDraft = keptDraft?.conflict ? keptDraft : null
-  const initialDraft = conflictDraft ? null : keptDraft
-  const needsOriginal = initialDraft?.original && !originalFile
-  const key = { operator, id }
+  const {
+    state, busy, error, openedForm, conflictDraft, initialDraft, originalFile,
+    needsOriginal, checkingOriginal, attachDraftOriginal, submit, useDraftForSeparateOrder,
+    checkSavedStatus, finishDirectInvoice, resumeOrder, selectOriginal, makeAnotherCopy,
+  } = useShipmentOrderRequest({
+    operator, id, drafts,
+    direct: params.get('direct') === '1',
+    initialError: location.state?.requestError || '',
+    openRequest: requestId => navigate(requestUrl(operator, requestId)),
+    openOrder: orderId => navigate('/shipments/' + orderId),
+    openSeparateDraft: (requestId, direct) => {
+      const query = new URLSearchParams(separateOrder)
+      if (direct) query.set('direct', '1')
+      else query.delete('direct')
+      navigate(requestUrl(operator, requestId, query))
+    },
+  })
   if (state?.direct) separateOrder.set('direct', '1')
-
-  async function check() {
-    const result = await orderRequestAction('status', key)
-    if (active.current) {
-      setState(result)
-      if (result.status === 'empty') setOpenedForm(true)
-    }
-    return result
-  }
-  useEffect(() => {
-    let alive = true
-    active.current = true
-    orderRequestAction('status', { operator, id })
-      .then((result) => {
-        if (alive) {
-          setState(result)
-          if (result.status === 'empty') setOpenedForm(true)
-        }
-      })
-      .catch((err) => {
-        if (alive) setError(err.message)
-      })
-    return () => {
-      alive = false
-      active.current = false
-    }
-  }, [operator, id])
-
-  async function run(action, navigateOnSuccess = true) {
-    if (inFlight.current) return
-    inFlight.current = true
-    setBusy(true)
-    setError('')
-    try {
-      const result = await action()
-      if (!active.current) return
-      setState(result)
-      if (result.id && result.id !== id)
-        navigate(requestUrl(operator, result.id))
-      else if (
-        navigateOnSuccess && result.status === 'committed' &&
-        (!result.direct ||
-          ['issued', 'supplied'].includes(result.invoice?.state))
-      )
-        navigate('/shipments/' + result.order_id)
-    } catch (err) {
-      if (!active.current) return
-      setError(err.message)
-      try {
-        await check()
-      } catch {
-        if (active.current) setState(null)
-      }
-    } finally {
-      inFlight.current = false
-      if (active.current) setBusy(false)
-    }
-  }
-  function keepDraft(requestId, draft) {
-    drafts.set(operator + ':' + requestId, draft)
-    const { file: _file, ...rest } = draft
-    saveOrderCreateDraft(operator, requestId, rest)
-  }
-
-  function useDraftForSeparateOrder() {
-    if (inFlight.current || !conflictDraft) return
-    const existingId = drafts.get(draftKey)?.separateId || conflictDraft.separateId
-    const separateId = existingId || crypto.randomUUID()
-    if (!existingId) {
-      const draft = { ...separateOrderDraft(conflictDraft), file: conflictDraft.file }
-      const source = { ...conflictDraft, separateId }
-      keepDraft(separateId, draft)
-      keepDraft(id, source)
-      setKeptDraft(source)
-    }
-    if (conflictDraft.direct) separateOrder.set('direct', '1')
-    else separateOrder.delete('direct')
-    navigate(requestUrl(operator, separateId, separateOrder))
-  }
-
-  async function attachDraftOriginal(file) {
-    if (!file || checkingOriginal) return
-    setCheckingOriginal(true)
-    setError('')
-    try {
-      if (!samePiOriginal(await describePi(file), initialDraft.original))
-        throw Error('Select the original PI named ' + initialDraft.original.name + '.')
-      if (active.current) setOriginalFile(file)
-    } catch (err) {
-      if (active.current) setError(err.message)
-    } finally {
-      if (active.current) setCheckingOriginal(false)
-    }
-  }
-
-  async function submit(order, lines, file, header) {
-    if (needsOriginal) return
-    selectedFile.current = file
-    return run(async () => {
-      const descriptor = await describePi(file)
-      const direct = params.get('direct') === '1'
-      let saved
-      try {
-        saved = await orderRequestAction('prepare', {
-          ...key, order, lines, file: descriptor, mode: direct ? 'direct' : undefined
-        })
-      } catch (err) {
-        if (err.code === ORDER_REQUEST_DRAFT_CONFLICT) {
-          const draft = { header, lines, original: descriptor, file, direct, conflict: true }
-          keepDraft(id, draft)
-          if (active.current) {
-            setKeptDraft(draft)
-            selectedFile.current = null
-          }
-        }
-        throw err
-      }
-      if (initialDraft) {
-        drafts.delete(draftKey)
-        removeOrderCreateDraft(operator, id)
-      }
-      if (saved.status === 'review') return saved
-      if (saved.status === 'committed' && !saved.direct) return saved
-      return finishOrderRequest(key, file, saved.file)
-    })
-  }
 
   return (
     <div>
@@ -251,7 +109,7 @@ function RequestEditor({ operator, id, drafts }) {
               <button
                 className="btn-secondary"
                 disabled={busy}
-                onClick={() => run(check, !conflictDraft)}
+                onClick={checkSavedStatus}
               >
                 Check saved status
               </button>
@@ -313,7 +171,7 @@ function RequestEditor({ operator, id, drafts }) {
                       type="button"
                       className="btn-primary"
                       disabled={busy}
-                      onClick={() => run(() => finishOrderRequest(key))}
+                      onClick={finishDirectInvoice}
                     >
                       {busy ? 'Checking…' : 'Finish Direct Invoice'}
                     </button>
@@ -356,24 +214,14 @@ function RequestEditor({ operator, id, drafts }) {
                         type="file"
                         className="block mt-1"
                         disabled={busy}
-                        onChange={(e) => {
-                          selectedFile.current = e.target.files[0] || null
-                        }}
+                        onChange={(e) => selectOriginal(e.target.files[0] || null)}
                       />
                     </label>
                   )}
                   <button
                     className="btn-primary"
                     disabled={busy}
-                    onClick={() =>
-                      run(() =>
-                        finishOrderRequest(
-                          key,
-                          selectedFile.current,
-                          state.file
-                        )
-                      )
-                    }
+                    onClick={resumeOrder}
                   >
                     {busy
                       ? 'Checking…'
@@ -395,9 +243,7 @@ function RequestEditor({ operator, id, drafts }) {
                 <button
                   className="btn-secondary block"
                   disabled={busy}
-                  onClick={() =>
-                    run(() => beginOrderCopy(operator, state.source_id, id))
-                  }
+                  onClick={makeAnotherCopy}
                 >
                   Make another copy
                 </button>
