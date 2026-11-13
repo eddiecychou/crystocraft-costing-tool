@@ -80,7 +80,7 @@ function OperatorOrderRequests({ uid }) {
               className="block text-brand-600"
               to={requestUrl(uid, row.id)}
             >
-              {row.status === 'prepared' ||
+              {row.status === 'review' ? 'Needs review' : row.status === 'prepared' ||
               needsInitialInvoice(row.invoice?.state)
                 ? 'Resume'
                 : 'Open'}

@@ -470,6 +470,32 @@ try {
   await p.getByRole('link', { name: /Open saved order/ }).waitFor()
   reports.push('Shipping list reopens the operator’s request')
   await p.close()
+
+  await reset()
+  p = await pageAt()
+  await add(p)
+  const reviewId = new URL(p.url()).searchParams.get('request')
+  await submit(p)
+  await saved(p)
+  const removed = (await orders()).docs[0]
+  const counterBefore = (await db.doc('counters/so_26').get()).get('last')
+  await removed.ref.delete()
+  await p.getByRole('link', { name: 'Shipping list' }).click()
+  await p.getByRole('button', { name: 'My saved order requests' }).click()
+  await p.getByRole('link', { name: /^Needs review ·/ }).click()
+  assert.equal(new URL(p.url()).searchParams.get('request'), reviewId)
+  for (let visit = 0; visit < 2; visit++) {
+    await p.getByRole('alert').filter({ hasText: /Needs review.*removed or replaced/ }).waitFor()
+    assert.equal(await p.getByRole('link', { name: /Open saved order/ }).count(), 0)
+    assert.equal(await p.getByRole('button', { name: /Resume saved request|Check saved status|Create Order/ }).count(), 0)
+    assert.equal((await orders()).size, 0)
+    assert.equal((await requests()).size, 1)
+    assert.equal((await db.doc('counters/so_26').get()).get('last'), counterBefore)
+    if (visit === 0) await p.reload()
+  }
+  reports.push('removed manual order shows Needs review in list and detail across reload without recreating the order or allocating an SO')
+  await p.close()
+
   await reset()
   failStatus = true
   p = await pageAt()

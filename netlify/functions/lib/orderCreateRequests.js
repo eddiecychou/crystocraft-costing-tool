@@ -168,16 +168,12 @@ export function createOrderRequests(db, verifyOriginal, getDuplicateUc) {
         !order.exists ||
         !order.get('createdAt')?.isEqual?.(snap.data().committed_at)
       ) {
-        const message =
-          'The order linked to this request was removed or replaced. Review it in Shipping.'
-        if (result.source_id || result.direct)
-          return {
-            ...result,
-            status: 'review',
-            order_id: null,
-            review_message: message
-          }
-        throw new OrderRequestError(message)
+        return {
+          ...result,
+          status: 'review',
+          order_id: null,
+          review_message: 'The order linked to this request was removed or replaced. Review it in Shipping.'
+        }
       }
     }
     if (result.status === 'prepared' && includeLines) {
@@ -206,11 +202,7 @@ export function createOrderRequests(db, verifyOriginal, getDuplicateUc) {
         const rows = page.docs.slice(0, 20)
         return {
           requests: await Promise.all(
-            rows.map((snap) =>
-              snap.get('order.source') === 'direct_invoice'
-                ? read(tx, snap.ref, false, snap)
-                : view(snap)
-            )
+            rows.map((snap) => read(tx, snap.ref, false, snap))
           ),
           next: page.size === 21 ? rows.at(-1).id : null
         }
@@ -305,7 +297,7 @@ export function createOrderRequests(db, verifyOriginal, getDuplicateUc) {
       })
       if (before.status === 'committed') return before
       if (before.status !== 'prepared')
-        throw new OrderRequestError('No saved order request was found.')
+        throw new OrderRequestError(before.review_message || 'No saved order request was found.')
       // SQL may commit even when the response is lost. The frozen request ID
       // is reused across both stores, including retries after a link failure.
       const uc = before.source_id
@@ -322,7 +314,11 @@ export function createOrderRequests(db, verifyOriginal, getDuplicateUc) {
         if (!snap.exists)
           throw new OrderRequestError('The saved request is missing.')
         const data = snap.data()
-        if (data.status === 'committed') return read(tx, ref)
+        if (data.status === 'committed') {
+          const result = await read(tx, ref, false, snap)
+          if (result.status === 'review') throw new OrderRequestError(result.review_message)
+          return result
+        }
         if (before.source_id || data.source_id) {
           requireCopyPermissions(profile)
           checkUcRequest(data, uid)

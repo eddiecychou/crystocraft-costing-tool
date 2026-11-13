@@ -131,6 +131,16 @@ test('a failed later page retries its cursor and retains the already loaded requ
   assert.match(host.textContent, /Fictional second buyer/)
 })
 
+test('removed or replaced requests link to their request detail with a Needs review label', { timeout: 5000 }, async () => {
+  await render('operator-a')
+  await click('My saved order requests')
+  await reply(0, [{ ...first, status: 'review', order_id: null, file: { name: 'Fictional PI.pdf' } }])
+  const link = host.querySelector('a')
+  assert.match(link.textContent, /^Needs review ·.*Fictional PI\.pdf/)
+  assert.equal(new URL(link.href).pathname, '/shipments/new')
+  assert.equal(new URL(link.href).searchParams.get('request'), first.id)
+})
+
 test('rapid pagination clicks start one read and append its page once', { timeout: 5000 }, async () => {
   await render('operator-a')
   await click('My saved order requests')

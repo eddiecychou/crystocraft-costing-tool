@@ -194,6 +194,7 @@ function RequestEditor({ operator, id, drafts }) {
         drafts.delete(draftKey)
         removeOrderCreateDraft(operator, id)
       }
+      if (saved.status === 'review') return saved
       if (saved.status === 'committed' && !saved.direct) return saved
       return finishOrderRequest(key, file, saved.file)
     })
@@ -338,7 +339,7 @@ function RequestEditor({ operator, id, drafts }) {
                 </details>
               )}
               {state.status === 'review' ? (
-                <p role="alert">{state.review_message}</p>
+                <p role="alert"><strong>Needs review</strong> · {state.review_message}</p>
               ) : state.status === 'committed' ? (
                 <Link
                   className="btn-primary inline-block"

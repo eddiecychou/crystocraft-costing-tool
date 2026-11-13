@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { randomUUID, createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { initializeApp, deleteApp } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
+import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import { getStorage } from 'firebase-admin/storage'
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing'
 import { getDoc, doc, setDoc } from 'firebase/firestore'
@@ -327,15 +327,78 @@ test('previously supported large orders keep original header, precision and all 
     normOrder(draft.order).customer_id
   )
 })
-test('a missing or replaced completed order requires review and is never recreated', async () => {
+for (const source of ['manual', 'PI']) test(`${source}: missing and replaced orders require review without recreating orders or SOs`, async () => {
   const id = randomUUID()
-  await prep(id)
+  const bytes = Buffer.from('%PDF-1.7 fictional review fixture')
+  const file = source === 'PI' ? {
+    name: 'Review fixture.pdf', size: bytes.length, type: 'application/pdf',
+    sha256: createHash('sha256').update(bytes).digest('hex')
+  } : null
+  assert.equal((await prep(id, { file })).code, 200)
+  if (file)
+    await uploadBytes(ref(storage('staff'), piObjectPath('staff', id, file.sha256)), bytes, { contentType: file.type })
   const saved = await call('staff', id, 'commit')
-  const ref = db.doc('orders/' + saved.body.order_id)
-  await ref.delete()
-  assert.equal((await call('staff', id, 'commit')).code, 409)
-  await ref.set({ source: 'manual' })
-  assert.equal((await call('staff', id, 'status')).code, 409)
+  assert.equal(saved.code, 200)
+  const target = db.doc('orders/' + saved.body.order_id)
+  const original = await target.get()
+  const receipt = db.doc('shipping_create_operators/staff/requests/' + id)
+  const before = (await receipt.get()).data()
+  const originalLines = (await target.collection('lines').get()).docs.map(doc => doc.data())
+  const checkReview = async (orderCount) => {
+    const assertReview = row => {
+      assert.equal(row.id, id)
+      assert.equal(row.status, 'review')
+      assert.equal(row.order_id, null)
+      assert.equal(row.so, saved.body.so)
+      assert.match(row.review_message, /removed or replaced/)
+    }
+    const [status, replay, retry, list] = await Promise.all([
+      call('staff', id, 'status'), prep(id, { file }),
+      call('staff', id, 'commit'), call('staff', null, 'list')
+    ])
+    assert.equal(status.code, 200)
+    assertReview(status.body)
+    assert.equal(replay.code, 200)
+    assertReview(replay.body)
+    assert.equal(retry.code, 409)
+    assert.match(retry.body.error, /removed or replaced/)
+    assert.equal(list.code, 200)
+    assertReview(list.body.requests.find(row => row.id === id))
+    assert.equal((await orders()).size, orderCount)
+    assert.equal((await counter.get()).data().last, 101)
+    assert.deepEqual((await receipt.get()).data(), before)
+    assert.deepEqual((await target.collection('lines').get()).docs.map(doc => doc.data()), originalLines)
+  }
+  await target.delete()
+  await checkReview(0)
+  await target.set({ ...original.data(), customer_name: 'Replacement', createdAt: FieldValue.serverTimestamp() })
+  const replacement = (await target.get()).data()
+  await checkReview(1)
+  assert.deepEqual((await target.get()).data(), replacement)
+  if (file) {
+    const [objects] = await bucket.getFiles({ prefix: 'shipping_pi_originals/staff/' + id + '/' })
+    assert.equal(objects.length, 1)
+    assert.equal(String((await objects[0].getMetadata())[0].generation), before.file_generation)
+  }
+})
+
+test('review rows retain their place in saved-request pagination', async () => {
+  const first = randomUUID()
+  await prep(first)
+  const saved = await call('staff', first, 'commit')
+  assert.equal(saved.code, 200)
+  await db.doc('orders/' + saved.body.order_id).delete()
+  const preparedIds = Array.from({ length: 20 }, () => randomUUID())
+  const prepared = await Promise.all(preparedIds.map(id => prep(id)))
+  assert.ok(prepared.every(result => result.code === 200))
+  const page = await call('staff', null, 'list')
+  assert.equal(page.code, 200)
+  assert.deepEqual(new Set(page.body.requests.map(row => row.id)), new Set(preparedIds))
+  const next = await call('staff', null, 'list', { cursor: page.body.next })
+  assert.equal(next.code, 200)
+  assert.equal(next.body.next, null)
+  assert.deepEqual(next.body.requests.map(row => [row.id, row.status]), [[first, 'review']])
+  assert.equal((await orders()).size, 0)
   assert.equal((await counter.get()).data().last, 101)
 })
 
