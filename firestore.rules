@@ -1236,7 +1236,29 @@ service cloud.firestore {
       allow read, write: if can('shipping');
     }
     match /freight_quotes/{quoteId} {
-      allow read, write: if can('shipping');
+      allow read, create: if can('shipping');
+      allow update: if can('shipping')
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['order_id', 'is_chosen']);
+      allow delete: if can('shipping') && canDeleteFreightQuote();
+      function canDeleteFreightQuote() {
+        let orderId = resource.data.get('order_id', null);
+        let decision = /databases/$(database)/documents/freight_decisions/$(orderId);
+        return orderId == null || !existsAfter(decision)
+          || getAfter(decision).data.quote_id != quoteId;
+      }
+    }
+    // Internal singleton keyed by order ID. A null choice is an explicit unmark.
+    match /freight_decisions/{orderId} {
+      function validFreightDecision(data) {
+        return data.keys().hasOnly(['quote_id', 'updated_at'])
+          && data.updated_at == request.time
+          && exists(/databases/$(database)/documents/orders/$(orderId))
+          && (data.quote_id == null
+            || (data.quote_id is string && data.quote_id.matches('^[^/]+$')
+              && getAfter(/databases/$(database)/documents/freight_quotes/$(data.quote_id)).data.order_id == orderId));
+      }
+      allow read: if can('shipping');
+      allow create, update: if can('shipping') && validFreightDecision(request.resource.data);
     }
     match /freight_rfqs/{rfqId} {
       allow read, write: if can('shipping');

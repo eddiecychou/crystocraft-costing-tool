@@ -148,7 +148,8 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 - `invoice_followup_jobs/{UUID}_{stage}` — server-only due time, claim, retry count and source revision for a linked invoice stage. Created with the link transaction, removed after completion or review, and paused on conflicts or exhausted retries. [Review guard and retry policy](../plans/V8.20-INVOICE-FOLLOWUP-RELEASE.md).
 - `packing_lists/{plId}` (+ subpaths) — admin only. Owned by `PackingListPrint.jsx`.
 - `logistics_vendors/{id}` — admin only.
-- `freight_quotes/{id}`, `freight_rfqs/{id}` — admin only.
+- `freight_quotes/{id}`, `freight_rfqs/{id}` — Shipping access. Freight quotes retain their saved currency, comparison amount, and cargo snapshot.
+- `freight_decisions/{orderId}` — Shipping-only choice for one order. `quote_id` points to that order's saved freight quote or is null for an explicit unmark. Until a decision exists, Freight Comparison reads the legacy quote flags.
 
 ## ERP / financial registry (admin only)
 

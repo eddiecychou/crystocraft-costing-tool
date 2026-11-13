@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, where, serverTimestamp,
+  collection, doc, getDoc, getDocs, getDocFromServer, getDocsFromServer, addDoc, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, where, serverTimestamp, runTransaction,
 } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -104,13 +104,8 @@ export const normVendor = v => ({
 const vendorFromDoc = d => ({ id: d.id, ...normVendor(d.data()) })
 
 export async function loadVendors() {
-  try {
-    const snap = await getDocs(query(VENDORS(), orderBy('name')))
-    return snap.docs.map(vendorFromDoc)
-  } catch (e) {
-    console.error('loadVendors failed', e)
-    return []
-  }
+  const snap = await getDocsFromServer(query(VENDORS(), orderBy('name')))
+  return snap.docs.map(vendorFromDoc)
 }
 
 export async function getVendor(id) {
@@ -147,6 +142,16 @@ export function useVendors() {
 // ── freight_quotes (cost history) ─────────────────────────────────────────────
 
 const QUOTES = () => collection(db, 'freight_quotes')
+const quoteRef = id => doc(QUOTES(), id)
+const decisionRef = orderId => doc(db, 'freight_decisions', orderId)
+
+export function freightScenarioCargo(scenario) {
+  return {
+    cbm: scenario?.totals?.cbm ?? '',
+    chargeable_weight_kg: scenario?.totals?.chargeable_weight_kg ?? '',
+    cartons: scenario?.totals?.carton_count ?? '',
+  }
+}
 
 export const normFreightQuote = (q, rates) => {
   const total = numOrNull(q.quoted_total)
@@ -189,42 +194,90 @@ export const normFreightQuote = (q, rates) => {
   }
 }
 
-const quoteFromDoc = d => ({ id: d.id, ...d.data() })
+const quoteFromDoc = d => ({ ...d.data(), id: d.id })
 
-export async function saveFreightQuote(id, data, rates) {
-  const payload = { ...normFreightQuote(data, rates), updatedAt: serverTimestamp() }
-  if (id) {
-    await updateDoc(doc(db, 'freight_quotes', id), payload)
-    return id
-  }
-  const ref = await addDoc(QUOTES(), { ...payload, createdAt: serverTimestamp() })
-  return ref.id
+export function newFreightQuoteId() {
+  return doc(QUOTES()).id
 }
 
-export async function deleteFreightQuote(id) {
-  await deleteDoc(doc(db, 'freight_quotes', id))
+export async function createOrderFreightQuote(id, data, rates, scenarioSnapshot) {
+  const ref = quoteRef(id)
+  const order = doc(db, 'orders', data.order_id)
+  return runTransaction(db, async tx => {
+    const existing = await tx.get(ref)
+    if (existing.exists()) {
+      if (existing.data().order_id !== data.order_id) throw Error('Freight quote belongs to another order.')
+      return quoteFromDoc(existing)
+    }
+    if (!(await tx.get(order)).exists()) throw Error('Order is no longer available.')
+    const scenario = data.scenario_id
+      ? (await tx.get(doc(db, 'packing_lists', data.scenario_id))).data()
+      : null
+    if (data.scenario_id && (
+      scenario?.order_id !== data.order_id ||
+      JSON.stringify(freightScenarioCargo(scenario)) !== JSON.stringify(freightScenarioCargo(scenarioSnapshot))
+    )) {
+      const error = Error('The packing scenario changed. Reload its totals before saving.')
+      error.code = 'freight/scenario-changed'
+      throw error
+    }
+
+    const payload = normFreightQuote({ ...data, scenario_label: scenario?.label || data.scenario_label, is_chosen: false }, rates)
+    tx.set(ref, { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    return { ...payload, id }
+  })
 }
 
-// All freight quotes for a specific order (feeds P-3 comparison matrix).
-// NOTE: `where` on order_id + `orderBy` on createdAt would need a COMPOSITE
-// index, which doesn't exist (indexes here are created by hand — there's no
-// firestore.indexes.json). That query throws failed-precondition, and the
-// catch below turned it into a silent empty list: quotes saved fine but the
-// tab always showed "No freight quotes yet". So sort client-side instead —
-// same approach getPackingScenariosByOrder() already uses, and these lists
-// are a handful of rows per order.
-export async function loadOrderQuotes(orderId) {
-  try {
-    const snap = await getDocs(query(QUOTES(), where('order_id', '==', orderId)))
-    return snap.docs
-      .map(quoteFromDoc)
-      // Newest first. A just-saved doc's serverTimestamp may still be pending
-      // (null) locally — treat that as newest so it doesn't jump to the bottom.
-      .sort((a, b) => (b.createdAt?.seconds ?? Infinity) - (a.createdAt?.seconds ?? Infinity))
-  } catch (e) {
-    console.error('loadOrderQuotes failed', e)
-    return []
-  }
+// Legacy choices are read until the first explicit decision. An ambiguous
+// legacy order is shown for review and is resolved by choosing a quote.
+export function freightChoice(quotes, decision) {
+  if (decision) return { chosenId: decision.quote_id, ambiguous: false }
+  const legacy = quotes.filter(quote => quote.is_chosen)
+  return { chosenId: legacy.length === 1 ? legacy[0].id : null, ambiguous: legacy.length > 1 }
+}
+
+export async function loadOrderFreight(orderId) {
+  const [snap, decision] = await Promise.all([
+    getDocsFromServer(query(QUOTES(), where('order_id', '==', orderId))),
+    getDocFromServer(decisionRef(orderId)),
+  ])
+  // Sort client-side to avoid a composite index.
+  const quotes = snap.docs.map(quoteFromDoc)
+    .sort((a, b) => (b.createdAt?.seconds ?? Infinity) - (a.createdAt?.seconds ?? Infinity))
+  return { quotes, choice: freightChoice(quotes, decision.data()) }
+}
+
+export async function setFreightChoice(orderId, id, choose) {
+  const ref = decisionRef(orderId)
+  return runTransaction(db, async tx => {
+    const current = (await tx.get(ref)).data()
+    const quote = (await tx.get(quoteRef(id))).data()
+    if (quote?.order_id !== orderId) throw Error('Freight quote is no longer available for this order.')
+    const chosenId = current ? current.quote_id : (quote.is_chosen ? id : null)
+    // A stale Unmark must never clear a different quote chosen in another tab.
+    if (!choose && chosenId !== id) return { chosenId, ambiguous: false }
+    const next = choose ? id : null
+    if (!current || chosenId !== next) tx.set(ref, { quote_id: next, updated_at: serverTimestamp() })
+    return { chosenId: next, ambiguous: false }
+  })
+}
+
+export async function deleteOrderFreightQuote(orderId, id) {
+  const ref = decisionRef(orderId)
+  return runTransaction(db, async tx => {
+    const current = (await tx.get(ref)).data()
+    const target = quoteRef(id)
+    const quote = (await tx.get(target)).data()
+    if (!quote) return current
+    if (quote.order_id !== orderId) throw Error('Freight quote belongs to another order.')
+    if (current?.quote_id === id) {
+      tx.set(ref, { quote_id: null, updated_at: serverTimestamp() })
+      tx.delete(target)
+      return { quote_id: null }
+    }
+    tx.delete(target)
+    return current
+  })
 }
 
 // Cost history for a vendor, or for a lane (dest country) — both feed routing.

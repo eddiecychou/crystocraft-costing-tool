@@ -1,9 +1,11 @@
 import { ocDateOnly } from '../ocTime.js'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { getDocsFromServer } from 'firebase/firestore'
 import { Plus, Trash2, ChevronDown, ChevronUp, Star, CheckCircle2 } from 'lucide-react'
 import {
   FREIGHT_MODES, FREIGHT_INCOTERMS, QUOTE_SOURCES, modeLabel,
-  loadVendors, loadOrderQuotes, saveFreightQuote, deleteFreightQuote,
+  loadVendors, loadOrderFreight, createOrderFreightQuote, deleteOrderFreightQuote,
+  freightScenarioCargo, newFreightQuoteId, freightChoice, setFreightChoice,
 } from '../logistics'
 import { getPackingScenariosByOrder } from '../packing'
 import { useRates } from '../currency'
@@ -21,41 +23,37 @@ function blankQuote(orderId, scenario) {
     incoterm: 'FOB',
     currency: 'HKD',
     quoted_total: '',
-    cargo_basis: {
-      cbm: scenario?.totals?.cbm ?? '',
-      chargeable_weight_kg: scenario?.totals?.chargeable_weight_kg ?? '',
-      cartons: scenario?.totals?.carton_count ?? '',
-    },
+    cargo_basis: freightScenarioCargo(scenario),
     breakdown: { freight: '', destination_charges: '', customs: '', duties_included: false },
     transit_days: '',
     quote_date: ocDateOnly(new Date()),
     source: 'manual',
     decision_notes: '',
-    is_chosen: false,
   }
 }
 
 // ── Add-quote inline form ─────────────────────────────────────────────────────
-function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel }) {
+function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel, reload }) {
   const selected = scenarios.find(s => s.selected) || scenarios[0] || null
   const [form, setForm] = useState(() => blankQuote(orderId, selected))
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [staleScenario, setStaleScenario] = useState(false)
+  const attempt = useRef(null)
+  const pending = useRef(false)
 
   const setF = patch => setForm(f => ({ ...f, ...patch }))
   const setCargo = patch => setForm(f => ({ ...f, cargo_basis: { ...f.cargo_basis, ...patch } }))
 
-  function onScenarioChange(scenarioId) {
-    const sc = scenarios.find(s => s.id === scenarioId) || null
+  function applyScenario(sc) {
     setForm(f => ({
       ...f,
       scenario_id: sc?.id || '',
       scenario_label: sc?.label || '',
-      cargo_basis: {
-        cbm: sc?.totals?.cbm ?? f.cargo_basis.cbm,
-        chargeable_weight_kg: sc?.totals?.chargeable_weight_kg ?? f.cargo_basis.chargeable_weight_kg,
-        cartons: sc?.totals?.carton_count ?? f.cargo_basis.cartons,
-      },
+      cargo_basis: freightScenarioCargo(sc),
     }))
+    setStaleScenario(false)
+    setError('')
   }
 
   function onVendorChange(vendorId) {
@@ -64,29 +62,47 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel })
   }
 
   async function handleSave() {
+    if (pending.current) return
     if (!form.vendor_name.trim() && !form.vendor_id) {
-      alert('Enter a vendor name or pick from the list.')
+      setError('Enter a vendor name or pick from the list.')
       return
     }
+    pending.current = true
+    setSaving(true)
+    setError('')
+    attempt.current ??= newFreightQuoteId()
+    try {
+      const scenario = scenarios.find(row => row.id === form.scenario_id)
+      const saved = await createOrderFreightQuote(attempt.current, form, rates, scenario)
+      onSaved(saved)
+    } catch (err) {
+      setError(err.message || 'Could not save this freight quote.')
+      setStaleScenario(err.code === 'freight/scenario-changed')
+    } finally {
+      pending.current = false
+      setSaving(false)
+    }
+  }
+
+  async function refreshScenario() {
+    if (pending.current) return
+    pending.current = true
     setSaving(true)
     try {
-      // rates: without this, quoted_total_hkd was never computed at all — every
-      // quote saved from this page had it stay null, so the comparison matrix
-      // (below) had nothing to compare across currencies with even after being
-      // fixed to prefer it (bug-fix pack B-05).
-      await saveFreightQuote(null, form, rates)
-      onSaved()
-    } catch (e) {
-      // Without this a failed write was silent too — the form just sat there.
-      console.error('saveFreightQuote failed', e)
-      alert(`Could not save the freight quote: ${e.message}`)
+      const rows = await reload()
+      const scenario = rows.find(row => row.id === form.scenario_id)
+      if (scenario) applyScenario(scenario)
+      else setError('This packing scenario is unavailable. Select another scenario or choose no scenario.')
+    } catch (err) {
+      setError(err.message || 'Could not reload packing scenarios.')
     } finally {
+      pending.current = false
       setSaving(false)
     }
   }
 
   return (
-    <div className="border border-brand-200 rounded-none bg-brand-50/30 p-5 space-y-4">
+    <fieldset disabled={saving} className="min-w-0 border border-brand-200 rounded-none bg-brand-50/30 p-5 space-y-4">
       <h3 className="text-sm text-ink">Add freight quote</h3>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -107,8 +123,12 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel })
         {/* Scenario */}
         <div>
           <label className="label">Packing scenario</label>
-          <select className="input" value={form.scenario_id} onChange={e => onScenarioChange(e.target.value)}>
+          <select className="input" value={form.scenario_id}
+            onChange={e => applyScenario(scenarios.find(row => row.id === e.target.value))}>
             <option value="">— no scenario —</option>
+            {form.scenario_id && !scenarios.some(row => row.id === form.scenario_id) && (
+              <option disabled value={form.scenario_id}>{form.scenario_label || 'Packing scenario'} (unavailable)</option>
+            )}
             {scenarios.map(s => (
               <option key={s.id} value={s.id}>{s.label}{s.selected ? ' ★' : ''}</option>
             ))}
@@ -163,7 +183,7 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel })
 
       {/* Cargo basis */}
       <div>
-        <p className="label mb-1">Cargo basis <span className="text-ink-60 font-normal">(prefilled from scenario totals — override if needed)</span></p>
+        <p className="label mb-1">Cargo basis <span className="text-ink-60 font-normal">(prefilled from this scenario. You can enter overrides for this quote.)</span></p>
         <div className="flex gap-3 flex-wrap">
           <div className="flex items-center gap-1">
             <span className="text-xs text-ink-60">CBM</span>
@@ -195,13 +215,15 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel })
           onChange={e => setF({ decision_notes: e.target.value })} />
       </div>
 
+      {error && <p role="alert" className="text-sm text-brand-700">{error}</p>}
       <div className="flex gap-2">
-        <button type="button" onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-40">
+        {staleScenario && <button type="button" onClick={refreshScenario} className="btn-secondary">Reload packing totals</button>}
+        <button type="button" onClick={handleSave} disabled={saving || staleScenario} className="btn-primary disabled:opacity-40">
           {saving ? 'Saving…' : 'Save quote'}
         </button>
         <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
       </div>
-    </div>
+    </fieldset>
   )
 }
 
@@ -331,23 +353,24 @@ function ComparisonMatrix({ quotes, scenarios }) {
 }
 
 // ── Quote list ────────────────────────────────────────────────────────────────
-function QuoteRow({ quote, scenarios, onDelete, onToggleChosen }) {
+function QuoteRow({ quote, scenarios, chosen, busy, onDelete, onChoose }) {
   const [expanded, setExpanded] = useState(false)
   const sc = scenarios.find(s => s.id === quote.scenario_id)
   const total = parseFloat(quote.quoted_total)
 
   return (
-    <div className={`border rounded-none overflow-hidden ${quote.is_chosen ? 'border-green-300' : 'border-warm-grey'}`}>
-      <div className={`flex items-center gap-3 px-4 py-3 ${quote.is_chosen ? 'bg-green-50/50' : 'bg-white'}`}>
+    <div className={`border rounded-none overflow-hidden ${chosen ? 'border-green-300' : 'border-warm-grey'}`}>
+      <div className={`flex items-center gap-3 px-4 py-3 ${chosen ? 'bg-green-50/50' : 'bg-white'}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-ink">{quote.vendor_name || '—'}</span>
-            {quote.is_chosen && (
+            {chosen && (
               <span className="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-none bg-green-100 text-green-700 font-medium">
                 <CheckCircle2 size={10} /> Chosen
               </span>
             )}
             {sc && <span className="text-2xs px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-100">{sc.label}</span>}
+            {quote.scenario_id && !sc && <span className="text-2xs text-ink-60">{quote.scenario_label || 'Packing scenario'} (unavailable)</span>}
             {!quote.scenario_id && <span className="text-2xs px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60">Unlinked</span>}
             <span className="text-xs text-ink-60">{modeLabel(quote.mode)}</span>
             <span className="text-xs text-ink-60">{quote.incoterm}</span>
@@ -366,15 +389,15 @@ function QuoteRow({ quote, scenarios, onDelete, onToggleChosen }) {
         <div className="flex items-center gap-1 shrink-0">
           {/* is_chosen had a data field and no way to set it (bug-fix pack
               B-05) — this is that missing control. */}
-          <button type="button" onClick={() => onToggleChosen(quote)}
-                  className={`text-xs px-2 py-1 rounded-none border ${quote.is_chosen ? 'border-green-300 text-green-700 hover:bg-green-50' : 'border-warm-grey text-ink-60 hover:border-brand-400'}`}
-                  title={quote.is_chosen ? 'Unmark as chosen' : 'Mark as the chosen freight quote'}>
-            {quote.is_chosen ? 'Chosen' : 'Choose'}
+          <button type="button" disabled={busy} onClick={() => onChoose(quote.id, !chosen)}
+                  className={`text-xs px-2 py-1 rounded-none border ${chosen ? 'border-green-300 text-green-700 hover:bg-green-50' : 'border-warm-grey text-ink-60 hover:border-brand-400'}`}
+                  title={chosen ? 'Unmark as chosen' : 'Mark as the chosen freight quote'}>
+            {chosen ? 'Chosen' : 'Choose'}
           </button>
           <button type="button" onClick={() => setExpanded(e => !e)} className="text-ink-60 hover:text-ink-70 p-1">
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-          <button type="button" onClick={() => onDelete(quote.id)} className="text-platinum hover:text-red-500 p-1">
+          <button type="button" disabled={busy} onClick={() => onDelete(quote.id)} className="text-platinum hover:text-red-500 p-1">
             <Trash2 size={14} />
           </button>
         </div>
@@ -404,55 +427,97 @@ function QuoteRow({ quote, scenarios, onDelete, onToggleChosen }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function FreightComparison({ orderId }) {
-  const [quotes, setQuotes]       = useState([])
-  const [scenarios, setScenarios] = useState([])
-  const [vendors, setVendors]     = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [showForm, setShowForm]   = useState(false)
+  const [data, setData] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [working, setWorking] = useState(false)
+  const request = useRef(0)
+  const busy = useRef(false)
   const rates = useRates()
 
   async function load() {
-    const [qs, ss, vs] = await Promise.all([
-      loadOrderQuotes(orderId),
-      getPackingScenariosByOrder(orderId),
-      loadVendors(),
-    ])
-    setQuotes(qs)
-    setScenarios(ss)
-    setVendors(vs)
-    setLoading(false)
+    const id = ++request.current
+    setLoading(true)
+    setLoadError('')
+    setActionError('')
+    try {
+      const [freight, scenarios, vendors] = await Promise.all([
+        loadOrderFreight(orderId), getPackingScenariosByOrder(orderId, getDocsFromServer), loadVendors(),
+      ])
+      if (id === request.current) setData({ ...freight, scenarios, vendors })
+    } catch (err) {
+      if (id === request.current) setLoadError(err.message || 'Could not load freight comparison.')
+    } finally {
+      if (id === request.current) setLoading(false)
+    }
   }
 
-  useEffect(() => { if (orderId) load() }, [orderId])
+  useEffect(() => {
+    if (orderId) void load()
+    return () => { request.current += 1 }
+  }, [orderId])
 
-  async function handleDelete(id) {
+  async function changeDecision(action, apply) {
+    if (busy.current) return
+    busy.current = true
+    setWorking(true)
+    setActionError('')
+    const id = request.current
+    try {
+      const result = await action()
+      if (id === request.current) setData(current => apply(current, result))
+    } catch (err) {
+      if (id === request.current) setActionError(err.message || 'Could not confirm the freight decision.')
+    } finally {
+      busy.current = false
+      if (id === request.current) setWorking(false)
+    }
+  }
+
+  function handleDelete(id) {
     if (!confirm('Delete this freight quote?')) return
-    await deleteFreightQuote(id)
-    setQuotes(prev => prev.filter(q => q.id !== id))
+    void changeDecision(() => deleteOrderFreightQuote(orderId, id), (current, decision) => {
+      const quotes = current.quotes.filter(quote => quote.id !== id)
+      return { ...current, quotes, choice: freightChoice(quotes, decision) }
+    })
   }
 
-  async function handleSaved() {
+  function handleSaved(quote) {
     setShowForm(false)
-    const qs = await loadOrderQuotes(orderId)
-    setQuotes(qs)
+    setData(current => ({ ...current, quotes: [quote, ...current.quotes.filter(row => row.id !== quote.id)] }))
   }
 
-  // "Chosen" is exclusive — one freight decision per order, not a multi-select.
-  // Picking a new one un-chooses whatever was chosen before.
-  async function handleToggleChosen(quote) {
-    const nextChosen = !quote.is_chosen
-    setQuotes(prev => prev.map(q => ({ ...q, is_chosen: q.id === quote.id ? nextChosen : false })))
-    await Promise.all([
-      saveFreightQuote(quote.id, { ...quote, is_chosen: nextChosen }, rates),
-      ...(nextChosen ? quotes.filter(q => q.id !== quote.id && q.is_chosen)
-        .map(q => saveFreightQuote(q.id, { ...q, is_chosen: false }, rates)) : []),
-    ])
+  async function reloadScenarios() {
+    const id = request.current
+    const scenarios = await getPackingScenariosByOrder(orderId, getDocsFromServer)
+    if (id === request.current) setData(current => ({ ...current, scenarios }))
+    return scenarios
   }
 
-  if (loading) return <div className="py-8 text-center text-sm text-ink-60">Loading freight quotes…</div>
+  function handleChoose(id, choose) {
+    void changeDecision(() => setFreightChoice(orderId, id, choose), (current, choice) => ({ ...current, choice }))
+  }
+
+  if (loading) return <p role="status" className="py-8 text-center text-sm text-ink-60">Loading freight quotes…</p>
+  if (loadError) return (
+    <div className="space-y-2">
+      <p role="alert" className="text-sm text-brand-700">{loadError}</p>
+      <button type="button" className="btn-secondary" onClick={load}>Retry</button>
+    </div>
+  )
+  if (!data) return null
+  const { quotes, scenarios, vendors, choice } = data
 
   return (
     <div className="space-y-6">
+      {working && <p role="status" className="text-sm text-ink-60">Saving freight decision…</p>}
+      {actionError && <div className="space-y-2">
+        <p role="alert" className="text-sm text-brand-700">{actionError}</p>
+        <button type="button" className="btn-secondary" onClick={load}>Reload comparison</button>
+      </div>}
+      {choice.ambiguous && <p role="alert" className="text-sm text-amber-800">This order has multiple previous choices. Choose the quote to use.</p>}
       {/* Matrix */}
       {quotes.length > 0 && (
         <div className="card p-5">
@@ -469,7 +534,7 @@ export default function FreightComparison({ orderId }) {
         <div className="space-y-2">
           <h3 className="text-sm text-ink-80">All quotes</h3>
           {quotes.map(q => (
-            <QuoteRow key={q.id} quote={q} scenarios={scenarios} onDelete={handleDelete} onToggleChosen={handleToggleChosen} />
+            <QuoteRow key={q.id} quote={q} scenarios={scenarios} chosen={q.id === choice.chosenId} busy={working || showForm || Boolean(actionError)} onDelete={handleDelete} onChoose={handleChoose} />
           ))}
         </div>
       )}
@@ -492,12 +557,13 @@ export default function FreightComparison({ orderId }) {
           vendors={vendors}
           rates={rates}
           onSaved={handleSaved}
+          reload={reloadScenarios}
           onCancel={() => setShowForm(false)}
         />
       ) : (
         <button
           type="button"
-          onClick={() => setShowForm(true)}
+          disabled={working || Boolean(actionError)} onClick={() => setShowForm(true)}
           className="flex items-center gap-2 text-sm text-brand-600 hover:text-brand-800"
         >
           <Plus size={15} /> Add freight quote

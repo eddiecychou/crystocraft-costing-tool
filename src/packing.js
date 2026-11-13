@@ -228,8 +228,8 @@ export async function loadRangeProductsWithPacking() {
 // used downstream for export/shipment).
 
 // All scenarios for an order, oldest first (stable switcher order).
-export async function getPackingScenariosByOrder(orderId) {
-  const snap = await getDocs(query(PL_COL(), where('order_id', '==', orderId)))
+export async function getPackingScenariosByOrder(orderId, read = getDocs) {
+  const snap = await read(query(PL_COL(), where('order_id', '==', orderId)))
   const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }))
   rows.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
   // Back-compat: a legacy list with no label/selected is the implicit Standard scenario.
