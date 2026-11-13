@@ -95,6 +95,7 @@ export function createInvoiceRecoveryRepository(
       const selected = await db.runTransaction(async (tx) => {
         const root = await tx.get(order(id))
         const saved = requireOrder(root)
+        if (saved.shipping_closed === true) throw new InvoiceRecoveryError('This order is closed.')
         let receipt
         if (direct) {
           const profile = (
@@ -236,6 +237,7 @@ export function createInvoiceRecoveryRepository(
       await db.runTransaction(async (tx) => {
         const saved = requireOrder(await tx.get(order(id))),
           op = value(await tx.get(request(id, operationId)))
+        if (saved.shipping_closed === true) throw new InvoiceRecoveryError('This order is closed.')
         if (!op?.result || op.order_id !== id)
           throw new InvoiceRecoveryError(
             'Confirm the existing allocation result before linking.'
@@ -355,8 +357,8 @@ export function createInvoiceRecoveryRepository(
           throw new InvoiceRecoveryError('The reviewed invoice could not be confirmed.')
         const updates = {}
         for (const stage of followupStages) {
-          const followup = op.followups[stage]
-          if (['done', 'not_applicable', 'manual_review'].includes(followup.state))
+          const followup = op.followups?.[stage]
+          if (['done', 'not_applicable', 'manual_review'].includes(followup?.state))
             continue
           updates['followups.' + stage] = {
             ...followup,

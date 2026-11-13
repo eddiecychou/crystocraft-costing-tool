@@ -140,7 +140,7 @@ export default function SalesInvoices({uid}) {
       // be invoiced here, so it buried the recent orders that actually need
       // acting on under two years of noise.
       awaiting: all
-        .filter((o) => !invoicedAlready(o) && AWAITING.has(o.status) && !o.no_invoice_reason)
+        .filter((o) => !o.shipping_closed && !invoicedAlready(o) && AWAITING.has(o.status) && !o.no_invoice_reason)
         .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || '')),
       // Dismissed, kept visible so the decision can be reviewed or undone.
       resolved: all.filter((o) => !invoicedAlready(o) && AWAITING.has(o.status) && o.no_invoice_reason),
@@ -552,9 +552,9 @@ export default function SalesInvoices({uid}) {
                           {o.no_invoice_at && <span className="text-2xs text-ink-60 ml-1.5">{o.no_invoice_at}</span>}
                         </td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
-                          <button type="button" onClick={() => setNoInvoice(o, '')}
+                          <button type="button" disabled={o.shipping_closed} onClick={() => setNoInvoice(o, '')}
                             className="text-xs text-ink-60 hover:text-brand-600 underline underline-offset-2"
-                            title="Put this order back in the needs-invoice list">
+                            title={o.shipping_closed ? 'Closed order' : 'Put this order back in the needs-invoice list'}>
                             Undo
                           </button>
                         </td>

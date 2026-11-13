@@ -29,7 +29,7 @@ const record = id => ({
 const stubs = {
   firebase: 'export const db={},storage={};export const authHeader=async()=>{throw Error("No network access")}',
   firestore: `const f=()=>globalThis.__shipmentNavigation;
-    export const doc=(...p)=>Object.assign(p,{id:p.at(-1)}),collection=(...p)=>p,query=(...p)=>p,orderBy=()=>{};
+    export const doc=(...p)=>Object.assign(p,{id:p.at(-1)}),collection=(...p)=>p,query=(...p)=>p,orderBy=()=>{},where=()=>{};
     export const getDoc=async p=>{if(!p.includes('orders'))throw Error('Unexpected document read');const id=p.at(-1);f().reads.push(id);return{id,exists:()=>true,data:()=>({...f().record(id),...f().overrides})}};
     export const getDocs=async raw=>{const p=raw.flat();if(p.includes('range_products'))return{docs:[]};if(!p.includes('orders'))throw Error('Unexpected collection read');const id=p[p.indexOf('orders')+1];return{docs:[{id:'line-'+id,data:()=>({line_no:1,item_code:'ITEM-'+id,description:'Fictional item '+id,qty_ordered:10,unit:'pcs',unit_price:1.222,line_type:'ad_hoc'})}]}};
     export {getDoc as getDocFromServer,getDocs as getDocsFromServer};

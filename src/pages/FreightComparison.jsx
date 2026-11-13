@@ -353,7 +353,7 @@ function ComparisonMatrix({ quotes, scenarios }) {
 }
 
 // ── Quote list ────────────────────────────────────────────────────────────────
-function QuoteRow({ quote, scenarios, chosen, busy, onDelete, onChoose }) {
+function QuoteRow({ quote, scenarios, chosen, busy, onDelete, onChoose, readOnly }) {
   const [expanded, setExpanded] = useState(false)
   const sc = scenarios.find(s => s.id === quote.scenario_id)
   const total = parseFloat(quote.quoted_total)
@@ -389,17 +389,18 @@ function QuoteRow({ quote, scenarios, chosen, busy, onDelete, onChoose }) {
         <div className="flex items-center gap-1 shrink-0">
           {/* is_chosen had a data field and no way to set it (bug-fix pack
               B-05) — this is that missing control. */}
-          <button type="button" disabled={busy} onClick={() => onChoose(quote.id, !chosen)}
+          {readOnly && chosen && <span className="text-xs text-green-700">Chosen</span>}
+          {!readOnly && <button type="button" disabled={busy} onClick={() => onChoose(quote.id, !chosen)}
                   className={`text-xs px-2 py-1 rounded-none border ${chosen ? 'border-green-300 text-green-700 hover:bg-green-50' : 'border-warm-grey text-ink-60 hover:border-brand-400'}`}
                   title={chosen ? 'Unmark as chosen' : 'Mark as the chosen freight quote'}>
             {chosen ? 'Chosen' : 'Choose'}
-          </button>
+          </button>}
           <button type="button" onClick={() => setExpanded(e => !e)} className="text-ink-60 hover:text-ink-70 p-1">
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-          <button type="button" disabled={busy} onClick={() => onDelete(quote.id)} className="text-platinum hover:text-red-500 p-1">
+          {!readOnly && <button type="button" disabled={busy} onClick={() => onDelete(quote.id)} className="text-platinum hover:text-red-500 p-1">
             <Trash2 size={14} />
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -426,7 +427,7 @@ function QuoteRow({ quote, scenarios, chosen, busy, onDelete, onChoose }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function FreightComparison({ orderId }) {
+export default function FreightComparison({ orderId, readOnly = false }) {
   const [data, setData] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -534,7 +535,7 @@ export default function FreightComparison({ orderId }) {
         <div className="space-y-2">
           <h3 className="text-sm text-ink-80">All quotes</h3>
           {quotes.map(q => (
-            <QuoteRow key={q.id} quote={q} scenarios={scenarios} chosen={q.id === choice.chosenId} busy={working || showForm || Boolean(actionError)} onDelete={handleDelete} onChoose={handleChoose} />
+            <QuoteRow readOnly={readOnly} key={q.id} quote={q} scenarios={scenarios} chosen={q.id === choice.chosenId} busy={working || showForm || Boolean(actionError)} onDelete={handleDelete} onChoose={handleChoose} />
           ))}
         </div>
       )}
@@ -550,7 +551,7 @@ export default function FreightComparison({ orderId }) {
       )}
 
       {/* Add form / button */}
-      {showForm ? (
+      {!readOnly && (showForm ? (
         <AddQuoteForm
           orderId={orderId}
           scenarios={scenarios}
@@ -568,7 +569,7 @@ export default function FreightComparison({ orderId }) {
         >
           <Plus size={15} /> Add freight quote
         </button>
-      )}
+      ))}
     </div>
   )
 }

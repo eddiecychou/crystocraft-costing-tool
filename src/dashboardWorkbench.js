@@ -43,7 +43,7 @@ export function dashboardTasks(customers, grouped, today, filter='all') {
 export function customerWorkRows({customers,grouped,quotes=[],orders=[],activity=[],days=30,now=Date.now()}) {
   const contacts=new Map(activity.map(c=>[c.customerId,c])), quoteMap=new Map(), orderMap=new Map()
   for (const [records,map,allowed] of [[quotes,quoteMap,['draft','sent']],[orders,orderMap,['confirmed','packing','ready']]]) {
-    for (const record of records) if (allowed.includes(String(record.status||'').toLowerCase()) && record.customer_id) {
+    for (const record of records) if (!record.shipping_closed && allowed.includes(String(record.status||'').toLowerCase()) && record.customer_id) {
       if (!map.has(record.customer_id)) map.set(record.customer_id,[])
       map.get(record.customer_id).push(record)
     }

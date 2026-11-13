@@ -107,8 +107,12 @@ export async function postMovement(colPath, id, opts) {
   const key = (opts.idempotencyKey || '').trim()
 
   return runTransaction(db, async tx => {
-    if (opts.order_id && !(await tx.get(doc(db, 'orders', opts.order_id))).exists())
-      throw new Error('Order no longer exists.')
+    if (opts.order_id) {
+      const order = (await tx.get(doc(db, 'orders', opts.order_id))).data()
+      if (!order) throw new Error('Order no longer exists.')
+      if (order.shipping_closed === true) throw new Error('This order is closed.')
+      if (opts.ownership && order[opts.ownership.field]?.attempt !== opts.ownership.attempt) return { deduped: true }
+    }
     // Firestore transactions require every read before any write — the
     // idempotency check has to happen up front, alongside the balance read.
     const movRef = key ? doc(MOVEMENTS(colPath, id), key) : doc(MOVEMENTS(colPath, id))

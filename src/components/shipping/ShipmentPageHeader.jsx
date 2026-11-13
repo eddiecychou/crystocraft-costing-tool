@@ -5,7 +5,7 @@ import { FileText, Receipt } from 'lucide-react'
 // in ShipmentForm; rendering this component never reads or writes business data.
 export default function ShipmentPageHeader({
   id, isEdit, isDirect, invoiceNo, ucNo, allocatingSi, saving, siError,
-  onRaiseInvoice, tab, onTabChange, fromQuote = false,
+  onRaiseInvoice, tab, onTabChange, fromQuote = false, closed = false,
 }) {
   return (
     <>
@@ -34,7 +34,7 @@ export default function ShipmentPageHeader({
                      className="btn-primary text-sm inline-flex items-center gap-1.5">
                     <Receipt size={14} /> Invoice {invoiceNo}
                   </a>
-                ) : (
+                ) : !closed && (
                   <button type="button" onClick={onRaiseInvoice} disabled={allocatingSi || saving}
                     className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
                     title="Allocate this order's invoice number (SI) and UC — turns the proforma into a sales invoice.">

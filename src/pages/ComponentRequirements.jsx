@@ -11,6 +11,7 @@ import { AlertTriangle, Download, Boxes, Calculator, Info, Gem } from 'lucide-re
 
 // Statuses that represent live demand — pre-selected in the picker.
 const DEMAND = ['confirmed', 'packing', 'ready']
+const isDemand = order => !order.shipping_closed && DEMAND.includes(order.status)
 
 const orderLabel = o => orderUc(o) || o.customer_name || o.id
 
@@ -55,20 +56,22 @@ export default function ComponentRequirements() {
   // Pre-select live-demand orders once, the first time orders arrive.
   useEffect(() => {
     if (seeded || loading || !orders.length) return
-    setSelected(new Set(orders.filter(o => DEMAND.includes(o.status)).map(o => o.id)))
+    setSelected(new Set(orders.filter(isDemand).map(o => o.id)))
     setSeeded(true)
   }, [orders, loading, seeded])
 
+  const activeOrders = useMemo(() => orders.filter(o => !o.shipping_closed), [orders])
+  const selectedCount = activeOrders.filter(o => selected.has(o.id)).length
   const sortedOrders = useMemo(
-    () => [...orders].sort((a, b) => (b.order_date || '').localeCompare(a.order_date || '')),
-    [orders],
+    () => [...activeOrders].sort((a, b) => (b.order_date || '').localeCompare(a.order_date || '')),
+    [activeOrders],
   )
   // Default view = live-demand orders only (Confirmed/Packing/Ready), so the
   // picker opens showing exactly the orders you'd plan against — not 11 already-
   // shipped/delivered ones buried in a scroll box. Toggle reveals everything.
-  const demandCount = useMemo(() => sortedOrders.filter(o => DEMAND.includes(o.status)).length, [sortedOrders])
+  const demandCount = useMemo(() => sortedOrders.filter(isDemand).length, [sortedOrders])
   const visibleOrders = useMemo(
-    () => (showAll ? sortedOrders : sortedOrders.filter(o => DEMAND.includes(o.status))),
+    () => (showAll ? sortedOrders : sortedOrders.filter(isDemand)),
     [sortedOrders, showAll],
   )
 
@@ -80,7 +83,7 @@ export default function ComponentRequirements() {
   async function compute() {
     setComputing(true); setResult(null)
     try {
-      const chosen = orders.filter(o => selected.has(o.id))
+      const chosen = activeOrders.filter(o => selected.has(o.id))
       const lines = []
       let reservedSkipped = 0
       for (const o of chosen) {
@@ -127,13 +130,13 @@ export default function ComponentRequirements() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-warm-grey">
           <h2 className="text-sm text-ink-80 inline-flex items-center gap-1.5">
             <Boxes size={15} /> Orders
-            <span className="font-normal text-ink-60">· {selected.size} selected · showing {visibleOrders.length} of {sortedOrders.length}</span>
+            <span className="font-normal text-ink-60">· {selectedCount} selected · showing {visibleOrders.length} of {sortedOrders.length}</span>
           </h2>
           <div className="flex gap-3 text-xs">
             <button onClick={() => setShowAll(s => !s)} className="text-brand-600 hover:underline">
               {showAll ? 'Confirmed + only' : `Show all (${sortedOrders.length})`}
             </button>
-            <button onClick={() => setSelected(new Set(orders.filter(o => DEMAND.includes(o.status)).map(o => o.id)))} className="text-brand-600 hover:underline">Select demand</button>
+            <button onClick={() => setSelected(new Set(orders.filter(isDemand).map(o => o.id)))} className="text-brand-600 hover:underline">Select demand</button>
             <button onClick={() => { setSelected(new Set()); setResult(null) }} className="text-ink-60 hover:underline">Clear</button>
           </div>
         </div>
@@ -161,7 +164,7 @@ export default function ComponentRequirements() {
           </div>
         )}
         <div className="px-4 py-3 border-t border-warm-grey">
-          <button onClick={compute} disabled={!ready || computing || selected.size === 0}
+          <button onClick={compute} disabled={!ready || computing || selectedCount === 0}
             className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
             <Calculator size={15} /> {computing ? 'Computing…' : 'Compute requirements'}
           </button>

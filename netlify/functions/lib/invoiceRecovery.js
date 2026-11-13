@@ -9,6 +9,8 @@ import {
 import { validRequestId } from '../../../src/orderCreateRequestModel.js'
 import { InvoiceRecoveryError } from './invoiceRecoveryRepository.js'
 import { runInvoiceFollowup } from './invoiceFollowup.js'
+import { reviewClosureInvoice } from './shippingClosure.js'
+import { OrderRequestError } from './orderRequestAccess.js'
 import { followupStages } from './invoiceFollowupQueue.js'
 
 const json = (body, status = 200) =>
@@ -92,7 +94,8 @@ export function createInvoiceRecoveryHandler({
           'resume',
           'new',
           'link_review',
-          'manual_followups'
+          'manual_followups',
+          'closure_review_followups'
         ].includes(input.action)
       )
         throw new InvoiceRecoveryError(
@@ -173,20 +176,24 @@ export function createInvoiceRecoveryHandler({
           400
         )
       if (
-        ['manual_followups', 'link_review'].includes(input.action) &&
+        ['manual_followups', 'closure_review_followups', 'link_review'].includes(input.action) &&
         (typeof input.reason !== 'string' ||
           !input.reason.trim() ||
           input.reason.length > 500)
       )
         throw new InvoiceRecoveryError('Give a short review reason.', 400)
       if (
-        ['manual_followups', 'link_review'].includes(input.action) &&
+        ['manual_followups', 'closure_review_followups', 'link_review'].includes(input.action) &&
         !validInvoiceOperationId(input.previous_operation_id)
       )
         throw new InvoiceRecoveryError(
           'Choose the reviewed invoice request.',
           400
         )
+      if (input.action === 'closure_review_followups') {
+        await reviewClosureInvoice(repo, sql, id, input.previous_operation_id, identity, input.reason.trim())
+        return json({ reviewed: true })
+      }
       if (input.action === 'manual_followups') {
         const { operation } = await repo.state(id)
         if (operation?.status !== 'linked')
@@ -199,6 +206,7 @@ export function createInvoiceRecoveryHandler({
         let state = ['raise', 'new', 'initial_direct'].includes(input.action)
           ? await repo.begin(id, input, identity)
           : await repo.state(id)
+        if (state.order?.shipping_closed === true) throw new InvoiceRecoveryError('This order is closed. Its invoices remain available for reference.')
         let op = state.operation
         if (!op && input.action === 'initial_direct')
           return json({ initial_complete: true })
@@ -295,11 +303,11 @@ export function createInvoiceRecoveryHandler({
       return json(
         {
           error:
-            error instanceof InvoiceRecoveryError
+            (error instanceof InvoiceRecoveryError || error instanceof OrderRequestError)
               ? error.message
               : 'Invoice recovery is temporarily unavailable. Reopen the saved order and resume the same request.'
         },
-        error instanceof InvoiceRecoveryError ? error.status : 503
+        error instanceof InvoiceRecoveryError || error instanceof OrderRequestError ? error.status : 503
       )
     }
   }

@@ -139,6 +139,7 @@ const ORDER_SOURCES = [
   'woocommerce'
 ]
 export const normOrder = (o) => ({
+  ...(o.shipping_closed === true ? { shipping_closed: true } : {}),
   ...(o.quote_conversion_id ? { quote_conversion_id: o.quote_conversion_id } : {}),
   ...(o.invoice_allocation_id
     ? {

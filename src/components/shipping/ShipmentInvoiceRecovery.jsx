@@ -11,7 +11,8 @@ export default function ShipmentInvoiceRecovery({
   busy,
   error,
   onAction,
-  hasInvoice
+  hasInvoice,
+  readOnly = false
 }) {
   const [mode, setMode] = useState(''),
     [reason, setReason] = useState(''),
@@ -42,7 +43,7 @@ export default function ShipmentInvoiceRecovery({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="eyebrow">Invoice status</h2>
-        {hasInvoice && state?.canStartNew && (
+        {!readOnly && hasInvoice && state?.canStartNew && (
           <button
             type="button"
             className="btn-secondary text-sm min-h-[44px]"
@@ -92,7 +93,7 @@ export default function ShipmentInvoiceRecovery({
                 {op.followups[k].error}
               </p>
             ))}
-          {needsResume && (
+          {!readOnly && needsResume && (
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
@@ -135,12 +136,12 @@ export default function ShipmentInvoiceRecovery({
         <p className="text-sm text-ink-60">
           {state
             ? hasInvoice
-              ? 'Existing invoice retained. Use the separate action above for a deliberate split or reissue.'
+              ? readOnly ? 'Existing invoice retained.' : 'Existing invoice retained. Use the separate action above for a deliberate split or reissue.'
               : 'Raise Invoice after saving the order details.'
             : 'Checking saved invoice status…'}
         </p>
       )}
-      {mode && (
+      {!readOnly && mode && (
         <div className="border-t border-warm-grey pt-4 space-y-3">
           <p className="text-sm">
             {mode === 'new'

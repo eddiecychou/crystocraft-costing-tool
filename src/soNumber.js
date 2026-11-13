@@ -68,8 +68,8 @@ export const formatSiNo = (yy, n) => `SI${yy}${String(n).padStart(4, '0')}`
 // Allocate the next SO number for the current year, atomically.
 // Returns e.g. "SO260028". The transaction makes concurrent allocation safe —
 // two people creating an order at once cannot receive the same number.
-export async function allocateSoNo() {
-  return allocate('so', JES_SEED_BY_YEAR, formatSoNo)
+export async function allocateSoNo(orderId) {
+  return allocate('so', JES_SEED_BY_YEAR, formatSoNo, orderId)
 }
 
 // ⚠️ DEPRECATED, and deliberately left unwired. Use allocateInvoice() in
@@ -83,12 +83,16 @@ export async function allocateSiNo() {
   return allocate('si', JES_SI_SEED_BY_YEAR, formatSiNo)
 }
 
-async function allocate(kind, seeds, format) {
+async function allocate(kind, seeds, format, orderId) {
   const yy = soYear()
   const seed = Number(seeds[yy]) || 0
   const ref = doc(db, 'counters', `${kind}_${yy}`)
 
   return runTransaction(db, async (tx) => {
+    if (orderId) {
+      const saved = (await tx.get(doc(db, 'orders', orderId))).data()
+      if (!saved || saved.shipping_closed === true) throw Error('This order is unavailable for number allocation.')
+    }
     const snap = await tx.get(ref)
     // First allocation of the year starts from JES's last number, not from 0 —
     // starting at 1 would re-issue numbers JES has already used.

@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, getDoc, updateDoc, serverTimestamp, runTransaction } from 'firebase/firestore'
+import { collection, getDocs, doc, serverTimestamp, runTransaction } from 'firebase/firestore'
 import { db } from './firebase'
 import { computeRequirements } from './mrp'
 import { loadComponents } from './criticalComponents'
@@ -102,6 +102,30 @@ export const metalOrderConfig = {
 // fresh generation and can never collide with the old, already-released one.
 const genField = order => `${order.reserved}_generation`
 
+// A durable per-class operation survives a lost response or a partially posted
+// ledger. Closure waits for the same operation to finish or for Supply review.
+async function beginStockWork(ref, config, action, details, validate) {
+  const field = `${config.reserved.replace(/_reserved$/, '')}_stock_pending`
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([action, details])))
+  const key = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+  const { work: pending, attempt } = await runTransaction(db, async tx => {
+    const data = (await tx.get(ref)).data()
+    if (!data) throw new Error('Order no longer exists.')
+    if (data.shipping_closed === true) throw new Error('This order is closed.')
+    if (data[field] && data[field].key !== key)
+      throw new Error('Another stock action needs to finish. Retry that action or ask Supply to review.')
+    const work = validate(data)
+    const attempt = data[field]?.attempt || crypto.randomUUID()
+    if (!data[field] && work !== null) tx.update(ref, { [field]: { key, attempt }, stock_activity: true })
+    return { work, attempt }
+  })
+  return { pending, ownership: { field, attempt }, finish: patch => runTransaction(db, async tx => {
+    const data = (await tx.get(ref)).data()
+    if (!data || data.shipping_closed === true) throw new Error('This order is unavailable for stock changes.')
+    if (data[field]?.attempt === attempt) tx.update(ref, { ...patch, [field]: null })
+  }) }
+}
+
 export async function reserveForOrder(cfg, orderId, orderLabel, lines, gaps) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
@@ -112,14 +136,8 @@ export async function reserveForOrder(cfg, orderId, orderLabel, lines, gaps) {
 
   const orderRef = doc(db, 'orders', orderId)
   const gf = genField(order)
-  const generation = await runTransaction(db, async tx => {
-    const snap = await tx.get(orderRef)
-    if (!snap.exists()) throw new Error('Order no longer exists.')
-    const d = snap.data()
+  const { pending: generation, ownership, finish } = await beginStockWork(orderRef, order, 'reserve', clean, d => {
     if (d[order.reserved] || d[order.committed] || d[order.legacyIssued]) throw new Error('Already reserved for this order.')
-    // Retain the order before the first movement. This also covers a failed
-    // or interrupted loop whose order reservation flags were never saved.
-    if (!d.stock_activity) tx.update(orderRef, { stock_activity: true })
     return (Number.isFinite(d[gf]) ? d[gf] : 0) + 1
   })
 
@@ -127,12 +145,12 @@ export async function reserveForOrder(cfg, orderId, orderLabel, lines, gaps) {
     await postMovement(collectionPath, l[idField], {
       type: 'reserve', qty: l.qty, order_id: orderId,
       note: `Reserved for order ${orderLabel || orderId}`,
-      idempotencyKey: `reserve_${orderId}_g${generation}_${l[idField]}`,
+      ownership, idempotencyKey: `reserve_${orderId}_g${generation}_${l[idField]}`,
     })
   }
   const patch = { [order.reserved]: true, [order.reservedAt]: serverTimestamp(), [order.lines]: clean, [gf]: generation }
   if (order.gaps) patch[order.gaps] = summariseGaps(gaps)
-  await updateDoc(orderRef, patch)
+  await finish(patch)
   return clean
 }
 
@@ -164,31 +182,30 @@ export async function adjustReservedLine(cfg, orderId, orderLabel, lineId, newQt
   if (!Number.isFinite(target) || target <= 0) throw new Error('Enter a quantity greater than zero.')
 
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data()
-  if (!d) throw new Error('Order no longer exists.')
-  if (!d[order.reserved]) throw new Error('Nothing is reserved for this order.')
-  if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
-
-  const lines = Array.isArray(d[order.lines]) ? d[order.lines] : []
-  const idx = lines.findIndex(l => l[idField] === lineId)
-  if (idx < 0) throw new Error('That line is not part of the reservation.')
-
-  const oldQty = Math.abs(Number(lines[idx].qty) || 0)
+  const { pending, ownership, finish } = await beginStockWork(orderRef, order, 'adjust', [lineId, target], d => {
+    if (!d[order.reserved]) throw new Error('Nothing is reserved for this order.')
+    if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
+    const lines = d[order.lines] || []
+    const idx = lines.findIndex(l => l[idField] === lineId)
+    if (idx < 0) throw new Error('That line is not part of the reservation.')
+    const oldQty = Math.abs(Number(lines[idx].qty) || 0)
+    const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
+    const adjSeq = (Number.isFinite(lines[idx].adj_seq) ? lines[idx].adj_seq : 0) + 1
+    return oldQty === target ? null : { lines, idx, oldQty, generation, adjSeq }
+  })
+  if (!pending) return { oldQty: target, newQty: target, delta: 0 }
+  const { lines, idx, oldQty, generation, adjSeq } = pending
   const delta = target - oldQty
-  if (delta === 0) return { oldQty, newQty: target, delta: 0 }
-
-  const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
-  const adjSeq = (Number.isFinite(lines[idx].adj_seq) ? lines[idx].adj_seq : 0) + 1
 
   await postMovement(collectionPath, lineId, {
     type: delta > 0 ? 'reserve' : 'release',
     qty: Math.abs(delta), order_id: orderId,
     note: `Adjusted reservation ${oldQty} → ${target} — order ${orderLabel || orderId}`,
-    idempotencyKey: `adjust_${orderId}_g${generation}_${lineId}_a${adjSeq}`,
+    ownership, idempotencyKey: `adjust_${orderId}_g${generation}_${lineId}_a${adjSeq}`,
   })
 
   const nextLines = lines.map((l, i) => (i === idx ? { ...l, qty: target, adj_seq: adjSeq } : l))
-  await updateDoc(orderRef, { [order.lines]: nextLines })
+  await finish({ [order.lines]: nextLines })
   return { oldQty, newQty: target, delta }
 }
 
@@ -214,6 +231,8 @@ export async function addReservedLine(cfg, orderId, orderLabel, { component_id, 
     const snap = await tx.get(orderRef)
     if (!snap.exists()) throw new Error('Order no longer exists.')
     const d = snap.data()
+    if (d.shipping_closed === true || d[`${order.reserved.replace(/_reserved$/, '')}_stock_pending`])
+      throw new Error('This order is closed or has an unfinished stock action.')
     if (!d[order.reserved]) throw new Error('Nothing is reserved for this order yet.')
     if (d[order.committed] || (order.legacyIssued && d[order.legacyIssued])) throw new Error('Already produced-in — reverse production-in before editing.')
 
@@ -258,14 +277,15 @@ export async function removeReservedLine(cfg, orderId, orderLabel, lineId) {
   if (!lineId) throw new Error('No line to remove.')
 
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data()
-  if (!d) throw new Error('Order no longer exists.')
-  if (!d[order.reserved]) throw new Error('Nothing is reserved for this order.')
-  if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
+  const { pending: d, ownership, finish } = await beginStockWork(orderRef, order, 'remove', lineId, d => {
+    if (!d[order.reserved]) throw new Error('Nothing is reserved for this order.')
+    if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
+    if (!(d[order.lines] || []).some(line => line[idField] === lineId)) throw new Error('That line is not part of the reservation.')
+    return d
+  })
 
   const lines = Array.isArray(d[order.lines]) ? d[order.lines] : []
   const idx = lines.findIndex(l => l[idField] === lineId)
-  if (idx < 0) throw new Error('That line is not part of the reservation.')
   const qty = Math.abs(Number(lines[idx].qty) || 0)
 
   const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
@@ -273,12 +293,12 @@ export async function removeReservedLine(cfg, orderId, orderLabel, lineId) {
     await postMovement(collectionPath, lineId, {
       type: 'release', qty, order_id: orderId,
       note: `Removed from reservation — order ${orderLabel || orderId}`,
-      idempotencyKey: `remove_${orderId}_g${generation}_${lineId}`,
+      ownership, idempotencyKey: `remove_${orderId}_g${generation}_${lineId}`,
     })
   }
 
   const nextLines = lines.filter((_, i) => i !== idx)
-  await updateDoc(orderRef, { [order.lines]: nextLines })
+  await finish({ [order.lines]: nextLines })
 }
 
 // Production-in: consume the reservation into finished goods (on-hand ↓, reserved ↓).
@@ -286,10 +306,11 @@ export async function produceForOrder(cfg, orderId, orderLabel) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data()
-  if (!d) throw new Error('Order no longer exists.')
-  if (!d[order.reserved]) throw new Error('Reserve the stock before production-in.')
-  if (d[order.committed]) throw new Error('Already produced-in for this order.')
+  const { pending: d, ownership, finish } = await beginStockWork(orderRef, order, 'produce', null, d => {
+    if (!d[order.reserved]) throw new Error('Reserve the stock before production-in.')
+    if (d[order.committed]) throw new Error('Already produced-in for this order.')
+    return d
+  })
 
   const lines = d[order.lines] || []
   const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
@@ -298,10 +319,10 @@ export async function produceForOrder(cfg, orderId, orderLabel) {
     await postMovement(collectionPath, l[idField], {
       type: 'produce', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
       note: `Production-in — order ${orderLabel || orderId}`,
-      idempotencyKey: `produce_${orderId}_g${generation}_${l[idField]}`,
+      ownership, idempotencyKey: `produce_${orderId}_g${generation}_${l[idField]}`,
     })
   }
-  await updateDoc(orderRef, { [order.committed]: true, [order.committedAt]: serverTimestamp() })
+  await finish({ [order.committed]: true, [order.committedAt]: serverTimestamp() })
   return lines
 }
 
@@ -310,8 +331,11 @@ export async function releaseForOrder(cfg, orderId, orderLabel) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data()
-  if (!d) throw new Error('Order no longer exists.')
+  const { pending: d, ownership, finish } = await beginStockWork(orderRef, order, 'release', null, d => {
+    if (d[order.committed] || d[order.legacyIssued]) throw new Error('Produced stock requires a confirmed return before reversal.')
+    return d[order.reserved] ? d : null
+  })
+  if (!d) return
   const lines = d[order.lines] || []
   const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
   for (const l of lines) {
@@ -319,7 +343,7 @@ export async function releaseForOrder(cfg, orderId, orderLabel) {
     await postMovement(collectionPath, l[idField], {
       type: 'release', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
       note: `Released reservation — order ${orderLabel || orderId}`,
-      idempotencyKey: `release_${orderId}_g${generation}_${l[idField]}`,
+      ownership, idempotencyKey: `release_${orderId}_g${generation}_${l[idField]}`,
     })
   }
   const patch = {
@@ -327,7 +351,7 @@ export async function releaseForOrder(cfg, orderId, orderLabel) {
     [order.committed]: false, [order.committedAt]: null, [order.lines]: [],
   }
   if (order.gaps) patch[order.gaps] = null   // the reservation is gone; so are its gaps
-  await updateDoc(orderRef, patch)
+  await finish(patch)
 }
 
 // Reverse a production-in: consumed stock returns to on-hand (order → open).
@@ -336,8 +360,10 @@ export async function reverseProduceForOrder(cfg, orderId, orderLabel) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data()
-  if (!d) throw new Error('Order no longer exists.')
+  const { pending: d, ownership, finish } = await beginStockWork(orderRef, order, 'reverse', null, d => {
+    if (!d[order.committed] && !d[order.legacyIssued]) throw new Error('No recorded production-in to reverse.')
+    return d
+  })
   const lines = (d[order.lines] && d[order.lines].length ? d[order.lines] : (order.legacyLines ? d[order.legacyLines] : null)) || []
   const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
   for (const l of lines) {
@@ -345,7 +371,7 @@ export async function reverseProduceForOrder(cfg, orderId, orderLabel) {
     await postMovement(collectionPath, l[idField], {
       type: 'adjustment', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
       note: `Reversed production-in — order ${orderLabel || orderId}`,
-      idempotencyKey: `reverse_produce_${orderId}_g${generation}_${l[idField]}`,
+      ownership, idempotencyKey: `reverse_produce_${orderId}_g${generation}_${l[idField]}`,
     })
   }
   const patch = {
@@ -354,5 +380,5 @@ export async function reverseProduceForOrder(cfg, orderId, orderLabel) {
   }
   if (order.legacyIssued) { patch[order.legacyIssued] = false; patch[order.legacyLines] = [] }
   if (order.gaps) patch[order.gaps] = null   // back to open — nothing reserved, nothing missing
-  await updateDoc(orderRef, patch)
+  await finish(patch)
 }

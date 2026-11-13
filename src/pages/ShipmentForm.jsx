@@ -29,6 +29,8 @@ import QuoteOrderRecovery from '../components/shipping/QuoteOrderRecovery'
 import {quoteConversionAction} from '../quoteConversion'
 import {quoteSourceToken} from '../quoteConversionModel.js'
 import { orderStockStatus, stockStatusDetail } from '../orderStockStatus'
+import OrderClosurePanel from '../components/shipping/OrderClosurePanel'
+import ClosedPackingList from '../components/shipping/ClosedPackingList'
 import ShipmentPageHeader from '../components/shipping/ShipmentPageHeader'
 import ShipmentPiUpload from '../components/shipping/ShipmentPiUpload'
 import { useShipmentPiImport } from '../hooks/useShipmentPiImport'
@@ -301,6 +303,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
         }
         if (!alive) return
         const { order: o, lines: orderLines, base } = snapshot
+        setClosed(o.shipping_closed === true)
         setDeletionBlock(snapshot.deletionBlock || '')
         editBase.current = base
         const pending = drafts.filter(draft => {
@@ -393,9 +396,14 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   // Live roll-up of what this order has actually consumed. Subscribed rather
   // than read once, so it tracks the three stock cards on the same page.
   const [stock, setStock] = useState(null)
+  const [closed, setClosed] = useState(false)
   useEffect(() => {
     if (!isEdit || !id) return
-    return onSnapshot(doc(db, 'orders', id), snap => setStock(orderStockStatus(snap.data() || {}, STOCK_CFGS)))
+    return onSnapshot(doc(db, 'orders', id), snap => {
+      const saved = snap.data() || {}
+      setStock(orderStockStatus(saved, STOCK_CFGS))
+      setClosed(saved.shipping_closed === true)
+    })
   }, [id, isEdit])
 
   // Allocate the next SO number in JES's own series. See soNumber.js — this
@@ -404,10 +412,10 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   const [allocatingSo, setAllocatingSo] = useState(false)
   const [soError, setSoError] = useState('')
   async function doAllocateSo() {
-    if (saveInFlight.current || invoiceLocked) return
+    if (closed || saveInFlight.current || invoiceLocked) return
     setAllocatingSo(true); setSoError('')
     try {
-      const no = await allocateSoNo()
+      const no = await allocateSoNo(id)
       invalidatePiComparison()
       setHeader(h => ({ ...h, erp_so_no: no }))
     } catch (e) {
@@ -425,9 +433,10 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   const [allocatingUc, setAllocatingUc] = useState(false)
   const [ucError, setUcError] = useState('')
   async function doAllocateUc() {
-    if (saveInFlight.current || invoiceLocked) return
+    if (closed || saveInFlight.current || invoiceLocked) return
     setAllocatingUc(true); setUcError('')
     try {
+      if (id && (await getOrder(id))?.shipping_closed) { setClosed(true); return }
       const uc = await allocateOrderUc({ customer_name: header.customer_name, currency: header.currency })
       setHeader(h => ({ ...h, uc_no: uc.full }))
     } catch (e) {
@@ -634,7 +643,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
 
   async function handleSave(e) {
     e.preventDefault()
-    if (editConflict || deleteInFlight.current || saveInFlight.current || fetching || loadError || allocatingSo || allocatingUc || allocatingSi || extracting) return
+    if (closed || editConflict || deleteInFlight.current || saveInFlight.current || fetching || loadError || allocatingSo || allocatingUc || allocatingSi || extracting) return
     saveInFlight.current = true
     setSaving(true)
     setSavePending(false)
@@ -730,15 +739,18 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <ShipmentPageHeader
-        id={id} isEdit={isEdit} isDirect={isDirect} fromQuote={hasQuoteSource}
+        id={id} isEdit={isEdit} isDirect={isDirect} closed={closed} fromQuote={hasQuoteSource}
         invoiceNo={header.erp_si_no} ucNo={header.uc_no}
         allocatingSi={allocatingSi} saving={saving || Boolean(editConflict)} siError={siError}
         onRaiseInvoice={doAllocateSi} tab={tab} onTabChange={setTab}
       />
 
+      {isEdit && <OrderClosurePanel orderId={id} closed={closed} onClosed={() => setClosed(true)}
+        disabled={saving || allocatingSi || allocatingSo || allocatingUc || deleting || Boolean(editConflict)} />}
+
       {isEdit&&(invoiceState||header.invoice_allocation_id||invoiceExpected(header).si||header.source==='direct_invoice')&&<ShipmentInvoiceRecovery
         state={invoiceState||(!header.invoice_allocation_id?{order:header,expected:invoiceExpected(header),history:[],operation:null,canStartNew:true}:null)}
-        busy={allocatingSi||saving||Boolean(editConflict)} error={siError} hasInvoice={!!invoiceExpected(header).si} onAction={runInvoiceAction}
+        readOnly={closed} busy={allocatingSi||saving||Boolean(editConflict)} error={siError} hasInvoice={!!invoiceExpected(header).si} onAction={runInvoiceAction}
       />}
 
       {hasQuoteSource&&<QuoteOrderRecovery state={quoteRecovery} busy={saving||quoteRecoveryBusy} error={quoteRecoveryError}
@@ -750,12 +762,12 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
 
       {/* Packing list tab */}
       {isEdit && tab === 'packing' && (
-        <PackingListEditor orderId={id} orderLines={lines} />
+        closed ? <ClosedPackingList orderId={id} /> : <PackingListEditor orderId={id} orderLines={lines} />
       )}
 
       {/* Freight comparison tab */}
       {isEdit && tab === 'freight' && (
-        <FreightComparison orderId={id} />
+        <FreightComparison orderId={id} readOnly={closed} />
       )}
 
       {/* Order tab (or new shipment form) */}
@@ -764,7 +776,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
       {isEdit && <OrderEditConflict conflict={editConflict} drafts={editDrafts} warning={draftWarning}
         busy={saving || checkingEdit} onCheck={checkLatestEdit} onLoadLatest={loadLatestEdit}
         onRestore={restoreEditDraft} onDiscard={discardEditDraft} />}
-      <fieldset disabled={saving || Boolean(editConflict)} className="space-y-5 min-w-0">
+      <fieldset disabled={closed || saving || Boolean(editConflict)} className="space-y-5 min-w-0">
         {hasQuoteSource && (
           quoteLoad.status === 'empty' ? (
             <p role="status" className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">{quoteLoad.message}</p>
@@ -971,7 +983,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Order'}
           </button>
           <button type="button" className="btn-secondary" onClick={() => navigate('/shipments')}>Cancel</button>
-          {isEdit && !header.quote_conversion_id && !deletionBlock && !editConflict && (
+          {isEdit && !closed && !header.quote_conversion_id && !deletionBlock && !editConflict && (
             <button type="button" disabled={saving || allocatingSo || allocatingUc || allocatingSi} onClick={() => { setDeleteError(''); setConfirmDelete(true) }} className="ml-auto inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
               <Trash2 size={15} /> Delete order
             </button>

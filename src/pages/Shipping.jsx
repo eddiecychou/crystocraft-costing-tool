@@ -76,13 +76,15 @@ function ShipmentsList({uid}) {
   const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
+  const [showClosed, setShowClosed] = useState(false)
   const [duplicatingId, setDuplicatingId] = useState(null)
   const [dupError, setDupError] = useState('')
 
   const filtered = orders
     .filter(o => {
+      if ((o.shipping_closed === true) !== showClosed) return false
       if (!search) return true
-      const hay = `${o.customer_name} ${orderUc(o)} ${o.erp_so_no} ${o.destination?.country} ${o.destination?.city}`.toLowerCase()
+      const hay = `${o.customer_name} ${orderUc(o)} ${o.erp_so_no} ${orderSi(o)} ${o.destination?.country} ${o.destination?.city}`.toLowerCase()
       return hay.includes(search.toLowerCase())
     })
     .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))   // newest order date first
@@ -105,8 +107,8 @@ function ShipmentsList({uid}) {
   // without hard-coding which years were imported.
   const merged = useMemo(() => {
     const app = filtered.map(o => ({ src: 'app', key: `app-${o.id}`, o }))
-    const appSo = new Set(filtered.map(o => (o.erp_so_no || '').trim().toUpperCase()).filter(Boolean))
-    const jes = (erp.rows || [])
+    const appSo = new Set(orders.map(o => (o.erp_so_no || '').trim().toUpperCase()).filter(Boolean))
+    const jes = (showClosed ? [] : erp.rows || [])
       .filter(r => !appSo.has((r.code || '').trim().toUpperCase()))
       .map(r => ({ src: 'jes', key: `erp-${r.code}`, r }))
     return [...app, ...jes].sort((a, b) => {
@@ -114,7 +116,7 @@ function ShipmentsList({uid}) {
       const db = b.src === 'app' ? (b.o.order_date || '') : (b.r.date || '')
       return String(db).localeCompare(String(da))
     })
-  }, [filtered, erp.rows])
+  }, [filtered, erp.rows, orders, showClosed])
 
   const jesOnly = merged.length - filtered.length
 
@@ -159,7 +161,7 @@ function ShipmentsList({uid}) {
         <p className="text-sm text-ink-60">
           {merged.length} order{merged.length === 1 ? '' : 's'}
           {jesOnly > 0 && <span className="text-ink-60"> · {filtered.length} in the app, {jesOnly} from JES</span>}
-          {erp.loading && <span className="text-ink-60"> · loading JES history…</span>}
+          {!showClosed && erp.loading && <span className="text-ink-60"> · loading JES history…</span>}
         </p>
         <div className="flex items-center gap-2">
           {/* An order can be entered directly now, not only imported from a PDF.
@@ -177,10 +179,14 @@ function ShipmentsList({uid}) {
         </div>
       </div>
 
-      <SavedOrderRequests uid={uid} />
-      <input type="text" placeholder="Search by customer, PI no, SO no, destination…"
+      {!showClosed && <SavedOrderRequests uid={uid} />}
+      <div className="flex gap-2 mb-3" aria-label="Order status filter">
+        <button type="button" className={showClosed ? 'btn-secondary' : 'btn-primary'} aria-pressed={!showClosed} onClick={() => setShowClosed(false)}>Active</button>
+        <button type="button" className={showClosed ? 'btn-primary' : 'btn-secondary'} aria-pressed={showClosed} onClick={() => setShowClosed(true)}>Closed</button>
+      </div>
+      <input type="text" placeholder="Search by customer, UC, SO, invoice or destination…"
         className="input w-full mb-4" value={search} onChange={e => setSearch(e.target.value)} />
-      {erp.error && (
+      {!showClosed && erp.error && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-3">
           JES history unavailable — {erp.error}
         </p>
@@ -188,9 +194,9 @@ function ShipmentsList({uid}) {
       {dupError && <p className="text-sm text-red-600 mb-3">{dupError}</p>}
       {erpDoc && <ErpDocModal of="sales_order" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
-      {merged.length === 0 && !loading && !erp.loading ? (
+      {merged.length === 0 && !loading && (showClosed || !erp.loading) ? (
         <div className="text-center py-20 text-ink-60">
-          {orders.length === 0
+          {showClosed ? 'No closed orders match your search.' : orders.length === 0
             ? <><Link to="/shipments/new" className="text-brand-600 hover:underline">Import a proforma invoice</Link> to get started.</>
             : 'No shipments match your search.'}
         </div>
@@ -248,6 +254,7 @@ function ShipmentsList({uid}) {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
+                        {o.shipping_closed && <span className="text-xs text-ink-60">Closed</span>}
                         {/* An order that has been invoiced is easy to mistake for
                             one still awaiting invoice — the two look identical in
                             this list otherwise, so an already-issued SI reads as a

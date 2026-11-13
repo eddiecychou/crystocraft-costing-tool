@@ -45,6 +45,7 @@ export function createInvoiceFollowupQueue(db, stamp) {
         const ref = jobRef(operationId, stage)
         const opRef = operationRef(orderId, operationId)
         const [jobSnap, opSnap, order] = await tx.getAll(ref, opRef, orderRef(orderId))
+        if (order.get('shipping_closed') === true) return null
         const job = jobSnap.data()
         const operation = opSnap.data()
         if (job && (job.order_id !== orderId || job.operation_id !== operationId || job.stage !== stage))

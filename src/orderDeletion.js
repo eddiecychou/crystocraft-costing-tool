@@ -10,6 +10,7 @@ const stockHistory = [
 const present = value => Array.isArray(value) ? value.length > 0 : Boolean(value)
 
 export function orderDeletionBlock(order) {
+  if (order.shipping_closed === true) return 'This order is closed and kept for history.'
   if ((order.status ?? 'draft') !== 'draft') return 'Only draft orders can be permanently deleted.'
   if (order.stock_activity || order.stock_reserved || order.metal_reserved || stockFlags.some(field => order[field]) ||
       stockHistory.some(field => present(order[field]))) {

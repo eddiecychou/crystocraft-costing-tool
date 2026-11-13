@@ -7,6 +7,7 @@ import { initAdminApp } from './lib/firebaseAdmin.js'
 import { PI_MAX_FILE_BYTES } from '../../src/piUploadPolicy.js'
 import { createOrderRequests } from './lib/orderCreateRequests.js'
 import { deleteShippingDraft, shippingDraftHasFinancialHistory } from './lib/deleteShippingDraft.js'
+import { createShippingClosure, validateClosureRequest } from './lib/shippingClosure.js'
 import { validInvoiceOrderId } from '../../src/invoiceRecoveryModel.js'
 import {
   OrderRequestError,
@@ -75,7 +76,7 @@ const json = (body, status = 200) =>
     }
   })
 
-export function orderRequestHandler({ verifyToken, getProfile, repo, deleteDraft }) {
+export function orderRequestHandler({ verifyToken, getProfile, repo, deleteDraft, closure }) {
   return async (req) => {
     if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
     const token = req.headers
@@ -104,6 +105,11 @@ export function orderRequestHandler({ verifyToken, getProfile, repo, deleteDraft
       }
       if (!body || typeof body !== 'object')
         return json({ error: 'Invalid order request' }, 400)
+      if (['closure_status', 'close_order'].includes(body.action)) {
+        if (!validInvoiceOrderId(body.order_id)) return json({ error: 'Choose a saved order.' }, 400)
+        validateClosureRequest(body)
+        return json(await closure(uid, body.order_id, body))
+      }
       if (body.action === 'delete_unused_draft') {
         if (!validInvoiceOrderId(body.order_id) || !body.base || typeof body.base !== 'object')
           return json({ error: 'Reload the saved draft before deleting.' }, 400)
@@ -156,6 +162,7 @@ export default async (req) => {
     verifyToken: (token) => getAuth().verifyIdToken(token, true),
     getProfile: async (uid) =>
       (await db.collection('users').doc(uid).get()).data(),
+    closure: createShippingClosure(db),
     deleteDraft: (uid, id, base) => deleteShippingDraft(db, uid, id, base, orderId =>
       shippingDraftHasFinancialHistory(orderId, {
         url: process.env.SUPABASE_URL,
