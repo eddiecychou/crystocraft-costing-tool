@@ -1,13 +1,13 @@
 import { packingItemUnit, packingItemTierRemarks } from '../packingUnits'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package, Star, Pencil, Copy, FileText, ChevronUp, ChevronDown } from 'lucide-react'
 import {
   PL_STATUSES, CARTON_MODES,
   buildFullCartonPlan, calcPackedVsOrdered, derivedCbm, effectiveGw,
   loadRangeProductsWithPacking,
-  getPackingScenariosByOrder, createPackingList, updatePackingList,
+  getPackingScenariosByOrder, newPackingScenario, updatePackingList,
   selectScenario, deleteScenario,
-  saveCartonsWithContents, getCartonsWithContents,
+  savePackingScenario, loadPackingScenario,
   PALLET_WEIGHT_KG, palletDimCbm, palletisedTotals,
 } from '../packing'
 
@@ -349,112 +349,164 @@ export default function PackingListEditor({ orderId, orderLines }) {
   const unclassified  = useMemo(() => (orderLines || []).filter(l => !l.line_type).length, [orderLines])
 
   const [scenarios, setScenarios] = useState([])
-  const [activeId, setActiveId]   = useState(null)
-  const [cartons, setCartons]     = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [saving, setSaving]       = useState(false)
-  const [saved, setSaved]         = useState(false)
+  const [activeId, setActiveId] = useState(null)
+  const [drafts, setDrafts] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [requestedId, setRequestedId] = useState(null)
+  const [loadError, setLoadError] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [savedId, setSavedId] = useState(null)
   const [rangeProducts, setRangeProducts] = useState([])
-  const [error, setError]         = useState('')
+  const [error, setError] = useState('')
+  const loadRequest = useRef(0)
+  const mounted = useRef(false)
+  const busy = useRef(false)
+  const saveAttempts = useRef(new Map())
 
-  // Per-scenario header fields
-  const [shippedPer, setShippedPer] = useState('')
-  const [caseMark, setCaseMark]     = useState('')
-  const [pallets, setPallets]       = useState([])   // [{ pallet_no, length_m, width_m, height_m }]
+  const draft = drafts[activeId]
+  const pl = scenarios.find(s => s.id === activeId)
+  const { cartons = [], shippedPer = '', caseMark = '', pallets = [] } = draft || {}
 
-  const pl = useMemo(() => scenarios.find(s => s.id === activeId) || null, [scenarios, activeId])
+  function editDraft(field, value) {
+    setSavedId(null)
+    setDrafts(current => {
+      const active = current[activeId]
+      if (!active) return current
+      return { ...current, [activeId]: { ...active, [field]: typeof value === 'function' ? value(active[field]) : value } }
+    })
+  }
+  const setCartons = value => editDraft('cartons', value)
+  const setShippedPer = value => editDraft('shippedPer', value)
+  const setCaseMark = value => editDraft('caseMark', value)
+  const setPallets = value => editDraft('pallets', value)
 
-  // Unique pallet numbers in use
   const palletNums = useMemo(() => {
     const nums = new Set(cartons.map(c => parseInt(c.pallet_no) || 1))
     return Array.from(nums).sort((a, b) => a - b)
   }, [cartons])
 
-  // Load all scenarios + range products
-  useEffect(() => {
-    if (!orderId) return
-    let alive = true
-    ;(async () => {
+  function openDraft(scenario, cartons, isNew = false) {
+    setDrafts(current => ({ ...current, [scenario.id]: {
+      scenario, previous: isNew ? [] : cartons, cartons, isNew,
+      shippedPer: scenario.shipped_per || '', caseMark: scenario.case_mark || '', pallets: scenario.pallets || [],
+    } }))
+    setActiveId(scenario.id)
+  }
+
+  async function loadInitial() {
+    const request = ++loadRequest.current
+    setLoading(true)
+    setLoadError(null)
+    try {
       const [rows, products] = await Promise.all([
-        getPackingScenariosByOrder(orderId),
-        loadRangeProductsWithPacking(),
+        getPackingScenariosByOrder(orderId), loadRangeProductsWithPacking(),
       ])
-      if (!alive) return
+      const first = rows.find(row => row.selected) || rows[0]
+      const loaded = first && await loadPackingScenario(first.id, orderId)
+      if (request !== loadRequest.current) return
       setRangeProducts(products)
       setScenarios(rows)
-      if (rows.length) {
-        const active = rows.find(r => r.selected) || rows[0]
-        setActiveId(active.id)
-        setShippedPer(active.shipped_per || '')
-        setCaseMark(active.case_mark || '')
-        setPallets(active.pallets || [])
-        setCartons(await getCartonsWithContents(active.id))
-      }
-      setLoading(false)
-    })()
-    return () => { alive = false }
+      if (loaded) openDraft(loaded.scenario, loaded.cartons)
+    } catch (err) {
+      if (request === loadRequest.current) setLoadError({ message: err.message || 'Could not load packing scenarios.' })
+    } finally {
+      if (request === loadRequest.current) setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    mounted.current = true
+    if (orderId) void loadInitial()
+    return () => {
+      mounted.current = false
+      loadRequest.current += 1
+    }
   }, [orderId])
 
-  async function switchScenario(id) {
-    if (id === activeId) return
-    setActiveId(id)
-    setError(''); setSaved(false)
-    const scenario = scenarios.find(s => s.id === id)
-    setShippedPer(scenario?.shipped_per || '')
-    setCaseMark(scenario?.case_mark || '')
-    setPallets(scenario?.pallets || [])
-    setCartons(await getCartonsWithContents(id))
+  async function switchScenario(id, allowDuringMutation = false) {
+    if (busy.current && !allowDuringMutation) return
+    const request = ++loadRequest.current
+    setError('')
+    setLoadError(null)
+    setSavedId(null)
+    if (drafts[id]) {
+      setActiveId(id)
+      setRequestedId(null)
+      return
+    }
+    setRequestedId(id)
+    try {
+      const loaded = await loadPackingScenario(id, orderId)
+      if (request === loadRequest.current) openDraft(loaded.scenario, loaded.cartons)
+    } catch (err) {
+      if (request === loadRequest.current) {
+        setLoadError({ id, message: err.message || 'Could not load this packing scenario.' })
+      }
+    } finally {
+      if (request === loadRequest.current) setRequestedId(null)
+    }
   }
 
-  async function createScenario(label, startCartons = []) {
-    const selected = scenarios.length === 0
-    const id = await createPackingList(orderId, { label, selected })
-    const rows = await getPackingScenariosByOrder(orderId)
-    setScenarios(rows)
-    setActiveId(id)
-    setShippedPer('')
-    setCaseMark('')
-    setPallets([])
-    setCartons(startCartons)
-    return id
+  function createScenario(label, startCartons) {
+    const scenario = newPackingScenario(orderId, label)
+    setScenarios(current => [...current, scenario])
+    setError('')
+    setSavedId(null)
+    openDraft(scenario, startCartons, true)
   }
 
-  async function duplicateScenario() {
-    if (!pl) return
+  function duplicateScenario() {
+    if (!pl || !draft) return
     const copyCartons = cartons.map(c => ({
       ...c, _localId: crypto.randomUUID(), id: null,
       contents: (c.contents || []).map(it => ({ ...it, _localId: crypto.randomUUID(), id: null })),
     }))
-    await createScenario(`${pl.label} copy`, copyCartons)
+    createScenario(`${pl.label} copy`, copyCartons)
   }
 
-  async function renameScenario(id, label) {
-    await updatePackingList(id, { label })
-    setScenarios(prev => prev.map(s => (s.id === id ? { ...s, label } : s)))
-  }
-
-  async function chooseScenario(id) {
-    await selectScenario(orderId, id)
-    setScenarios(prev => prev.map(s => ({ ...s, selected: s.id === id })))
-  }
-
-  async function removeScenario(id) {
-    if (!confirm('Delete this packing scenario and all its cartons? This cannot be undone.')) return
-    await deleteScenario(id)
-    const rows = await getPackingScenariosByOrder(orderId)
-    setScenarios(rows)
-    if (id === activeId) {
-      if (rows.length) {
-        setActiveId(rows[0].id)
-        setShippedPer(rows[0].shipped_per || '')
-        setCaseMark(rows[0].case_mark || '')
-        setPallets(rows[0].pallets || [])
-        setCartons(await getCartonsWithContents(rows[0].id))
-      } else {
-        setActiveId(null); setCartons([])
-        setShippedPer(''); setCaseMark(''); setPallets([])
-      }
+  async function runMutation(action) {
+    if (busy.current || requestedId) return
+    busy.current = true
+    setSaving(true)
+    setError('')
+    setSavedId(null)
+    try { await action() }
+    catch (err) { if (mounted.current) setError(err.message || 'Could not update the packing scenario.') }
+    finally {
+      busy.current = false
+      if (mounted.current) setSaving(false)
     }
+  }
+
+  function renameScenario(id, label) {
+    return runMutation(async () => {
+      if (!drafts[id]?.isNew) await updatePackingList(id, { label })
+      if (mounted.current) setScenarios(current => current.map(row => row.id === id ? { ...row, label } : row))
+    })
+  }
+
+  function chooseScenario(id) {
+    return runMutation(async () => {
+      await selectScenario(orderId, id)
+      if (mounted.current) setScenarios(current => current.map(row => ({ ...row, selected: row.id === id })))
+    })
+  }
+
+  function removeScenario(id) {
+    if (!confirm('Delete this packing scenario and all its cartons? This cannot be undone.')) return
+    return runMutation(async () => {
+      if (!drafts[id]?.isNew) await deleteScenario(id, orderId)
+      if (!mounted.current) return
+      const remaining = scenarios.filter(row => row.id !== id)
+      setScenarios(remaining)
+      setDrafts(current => Object.fromEntries(Object.entries(current).filter(([key]) => key !== id)))
+      saveAttempts.current.delete(id)
+      if (id !== activeId) return
+      setActiveId(null)
+      const next = remaining.find(row => row.selected) || remaining[0]
+      if (!next) return
+      await switchScenario(next.id, true)
+    })
   }
 
   function resequence(rows) {
@@ -492,9 +544,9 @@ export default function PackingListEditor({ orderId, orderLines }) {
     })
   }
 
-  async function generateFromStandard() {
+  function generateFromStandard() {
     const plan = buildFullCartonPlan(packableLines, rangeProducts).map(c => ({ ...c, pack_mode: 'single', pallet_no: 1 }))
-    if (!activeId) await createScenario('Standard carton', plan)
+    if (!activeId) createScenario('Standard carton', plan)
     else setCartons(plan)
   }
 
@@ -502,42 +554,30 @@ export default function PackingListEditor({ orderId, orderLines }) {
   const { update: updatePallet, get: getPallet } = PalletsEditor({ pallets, onChange: setPallets })
 
   // ── Save ──────────────────────────────────────────────────────────────────
-  async function handleSave(promoteToFinal = false) {
-    setError('')
-    if (promoteToFinal) {
-      const pvO = calcPackedVsOrdered(packableLines, cartons)
-      if (pvO.some(r => r.packed !== r.ordered)) {
-        setError('Cannot mark Final — quantity mismatch. Resolve packed vs ordered first.')
-        return
-      }
-      if (cartons.some(c => c.is_estimate)) {
-        setError('Cannot mark Final — some cartons still have estimated dimensions. Enter actual measurements.')
-        return
-      }
-    }
-    setSaving(true)
-    try {
-      let plId = activeId
-      if (!plId) plId = await createScenario(pl?.label || 'Standard carton', cartons)
-      const status = promoteToFinal ? 'final' : (pl?.status || 'estimate')
-      await updatePackingList(plId, {
-        status,
-        shipped_per: shippedPer,
-        case_mark: caseMark,
-        pallets,
-        totals: { carton_count: totals.totalCartons, cbm: totals.totalCbm, chargeable_weight_kg: totals.totalGw },
+  function handleSave(promoteToFinal = false) {
+    if (!draft || !cartons.length || (promoteToFinal && !canFinal)) return
+    return runMutation(async () => {
+      const previousAttempt = saveAttempts.current.get(activeId)
+      const attemptId = previousAttempt?.draft === draft && previousAttempt.promoteToFinal === promoteToFinal
+        ? previousAttempt.id : crypto.randomUUID()
+      saveAttempts.current.set(activeId, { id: attemptId, draft, promoteToFinal })
+      const result = await savePackingScenario({
+        scenario: draft.isNew
+          ? { ...pl, selected: scenarios.every(row => drafts[row.id]?.isNew) }
+          : draft.scenario,
+        previous: draft.previous, cartons, orderLines: packableLines, attemptId, isNew: draft.isNew,
+        patch: {
+          status: promoteToFinal ? 'final' : (draft.scenario.status || 'estimate'),
+          shipped_per: shippedPer, case_mark: caseMark, pallets,
+          totals: { carton_count: totals.totalCartons, cbm: totals.totalCbm, chargeable_weight_kg: totals.totalGw },
+        },
       })
-      await saveCartonsWithContents(plId, cartons, packableLines)
-      const [fresh, rows] = await Promise.all([getCartonsWithContents(plId), getPackingScenariosByOrder(orderId)])
-      setCartons(fresh)
-      setScenarios(rows)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    } catch (err) {
-      setError(err.message || 'Save failed.')
-    } finally {
-      setSaving(false)
-    }
+      if (!mounted.current) return
+      saveAttempts.current.delete(activeId)
+      setScenarios(current => current.map(row => row.id === activeId ? result.scenario : row))
+      openDraft(result.scenario, result.cartons)
+      setSavedId(activeId)
+    })
   }
 
   // ── Derived totals ────────────────────────────────────────────────────────
@@ -549,7 +589,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
   const pvORows   = useMemo(() => calcPackedVsOrdered(packableLines, cartons), [packableLines, cartons])
   const pvOAllOk  = pvORows.every(r => r.packed === r.ordered)
   const allActual = cartons.length > 0 && cartons.every(c => !c.is_estimate)
-  const canFinal  = pvOAllOk && allActual && cartons.length > 0
+  const canFinal  = pvOAllOk && allActual
 
   // ── Render ────────────────────────────────────────────────────────────────
   if (unclassified > 0) {
@@ -562,7 +602,13 @@ export default function PackingListEditor({ orderId, orderLines }) {
     )
   }
 
-  if (loading) return <div className="py-8 text-center text-sm text-ink-60">Loading packing list…</div>
+  if (loading) return <p role="status" className="py-8 text-center text-sm text-ink-60">Loading packing list…</p>
+  if (loadError && !scenarios.length) return (
+    <div className="space-y-2">
+      <p role="alert">{loadError.message}</p>
+      <button type="button" className="btn-secondary" onClick={loadInitial}>Retry</button>
+    </div>
+  )
 
   if (!scenarios.length && cartons.length === 0) {
     return (
@@ -595,41 +641,42 @@ export default function PackingListEditor({ orderId, orderLines }) {
   }
 
   const SOFT_CAP = 3
+  const actionsDisabled = saving || Boolean(requestedId)
 
   return (
     <div className="space-y-5">
       {/* Scenario switcher */}
       <div className="flex flex-wrap items-center gap-2">
         {scenarios.map(s => {
-          const isActive = s.id === activeId
+          const isActive = s.id === (requestedId || activeId)
           return (
             <div key={s.id}
               className={`flex items-center gap-1.5 rounded-none border px-2.5 py-1.5 text-sm transition-colors ${
  isActive ? 'border-ink bg-ink/5' : 'border-warm-grey hover:border-ink-60'}`}>
-              <button type="button" onClick={() => chooseScenario(s.id)}
-                title={s.selected ? 'Selected plan (used for export/shipment)' : 'Use this scenario as the selected plan'}
+              <button type="button" onClick={() => chooseScenario(s.id)} disabled={actionsDisabled || drafts[s.id]?.isNew}
+                title={drafts[s.id]?.isNew ? 'Save the scenario before selecting it' : s.selected ? 'Selected plan (used for export/shipment)' : 'Use this scenario as the selected plan'}
                 className={s.selected ? 'text-yellow-500' : 'text-platinum hover:text-yellow-500'}>
                 <Star size={14} className={s.selected ? 'fill-current' : ''} />
               </button>
-              <button type="button" onClick={() => switchScenario(s.id)} className="font-medium text-ink-80">
-                {s.label}
+              <button type="button" onClick={() => switchScenario(s.id)} disabled={saving} className="font-medium text-ink-80">
+                {s.label}{drafts[s.id]?.isNew ? ' (unsaved)' : ''}
               </button>
-              <button type="button" onClick={() => { const l = prompt('Rename scenario', s.label); if (l && l.trim()) renameScenario(s.id, l.trim()) }}
+              <button type="button" disabled={actionsDisabled} onClick={() => { const l = prompt('Rename scenario', s.label); if (l && l.trim()) renameScenario(s.id, l.trim()) }}
                 className="text-platinum hover:text-brand-600" title="Rename"><Pencil size={12} /></button>
               {scenarios.length > 1 && (
-                <button type="button" onClick={() => removeScenario(s.id)} className="text-platinum hover:text-red-500" title="Delete scenario"><Trash2 size={12} /></button>
+                <button type="button" onClick={() => removeScenario(s.id)} disabled={actionsDisabled} className="text-platinum hover:text-red-500" title="Delete scenario"><Trash2 size={12} /></button>
               )}
             </div>
           )
         })}
         {scenarios.length < SOFT_CAP && (
-          <button type="button" onClick={() => createScenario(`Scenario ${scenarios.length + 1}`, [newCarton(1)])}
+          <button type="button" disabled={actionsDisabled} onClick={() => createScenario(`Scenario ${scenarios.length + 1}`, [newCarton(1)])}
             className="flex items-center gap-1 rounded-none border border-dashed border-warm-grey px-2.5 py-1.5 text-sm text-ink-60 hover:border-brand-400 hover:text-brand-600">
             <Plus size={13} /> New scenario
           </button>
         )}
         {pl && (
-          <button type="button" onClick={duplicateScenario}
+          <button type="button" onClick={duplicateScenario} disabled={actionsDisabled}
             className="flex items-center gap-1 text-xs text-brand-600 hover:text-brand-800" title="Duplicate this scenario as a starting point">
             <Copy size={12} /> Duplicate
           </button>
@@ -639,6 +686,12 @@ export default function PackingListEditor({ orderId, orderLines }) {
         )}
       </div>
 
+      {requestedId && <p role="status" className="text-sm text-ink-60">Loading packing scenario…</p>}
+      {loadError && <div className="space-y-2">
+        <p role="alert">{loadError.message}</p>
+        <button type="button" className="btn-secondary" onClick={() => switchScenario(loadError.id)}>Retry</button>
+      </div>}
+      {draft && !requestedId && <fieldset disabled={saving} className="min-w-0 space-y-5">
       {/* Header bar */}
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -804,7 +857,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
         >
           Mark as Final
         </button>
-        {activeId && (
+        {activeId && !draft.isNew && (
           <button
             type="button"
             onClick={() => window.open(`/packing/${activeId}/print`, '_blank')}
@@ -814,13 +867,14 @@ export default function PackingListEditor({ orderId, orderLines }) {
             <FileText size={14} /> Export PDF
           </button>
         )}
-        {saved && <span className="text-xs text-green-600">Saved ✓</span>}
+        {savedId === activeId && <span className="text-xs text-green-600">Saved ✓</span>}
         {!canFinal && cartons.length > 0 && pl?.status !== 'final' && (
           <span className="text-xs text-ink-60">
             {!pvOAllOk ? 'Qty mismatch · ' : ''}{!allActual ? 'Enter actual dims to finalise' : ''}
           </span>
         )}
       </div>
+      </fieldset>}
     </div>
   )
 }

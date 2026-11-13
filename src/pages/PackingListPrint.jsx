@@ -2,17 +2,15 @@ import { asOcDate } from '../ocTime.js'
 import { formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore'
 import { withPackingUnits, packingQuantityLines, quantityUnitLabel } from '../packingUnits'
 import { downloadPackingExcel } from '../logisticsExcel'
 import { db } from '../firebase'
-import { derivedCbm, effectiveGw, palletisedTotals, palletDimCbm, palletWeight, isPalletised } from '../packing'
+import { derivedCbm, effectiveGw, palletisedTotals, palletDimCbm, palletWeight, isPalletised, loadPackingScenario } from '../packing'
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadPrintData(plId) {
-  const plSnap = await getDoc(doc(db, 'packing_lists', plId))
-  if (!plSnap.exists()) throw new Error('Packing list not found')
-  const pl = { id: plSnap.id, ...plSnap.data() }
+  const { scenario: pl, cartons } = await loadPackingScenario(plId)
 
   // Load order for PI / SO numbers
   let order = null
@@ -20,17 +18,6 @@ async function loadPrintData(plId) {
     const oSnap = await getDoc(doc(db, 'orders', pl.order_id))
     if (oSnap.exists()) order = { id: oSnap.id, ...oSnap.data() }
   }
-
-  // Load cartons with contents
-  const cSnap = await getDocs(query(
-    collection(db, 'packing_lists', plId, 'cartons'),
-    orderBy('carton_seq'),
-  ))
-  const cartons = await Promise.all(cSnap.docs.map(async cd => {
-    const contSnap = await getDocs(collection(db, 'packing_lists', plId, 'cartons', cd.id, 'contents'))
-    const contents = contSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-    return { id: cd.id, ...cd.data(), contents }
-  }))
 
   const lineSnap = pl.order_id ? await getDocs(collection(db, 'orders', pl.order_id, 'lines')) : null
   const orderLines = lineSnap?.docs.map(d => ({id:d.id, ...d.data()})) || []

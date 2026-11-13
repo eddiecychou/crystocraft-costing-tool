@@ -1,7 +1,7 @@
 import { packingItemUnit, packingItemTierRemarks } from './packingUnits'
 import { useState, useEffect } from 'react'
 import {
-  collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
+  collection, doc, getDocFromServer, getDocs, getDocsFromServer, updateDoc, runTransaction,
   writeBatch, serverTimestamp, query, orderBy, where,
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -247,22 +247,12 @@ export async function getPackingListByOrder(orderId) {
   return rows.find(r => r.selected) || rows[0]
 }
 
-export async function createPackingList(orderId, fields = {}) {
-  const ref = await addDoc(PL_COL(), {
-    order_id:       orderId,
-    label:          fields.label || 'Standard carton',
-    selected:       fields.selected ?? false,
-    status:         'estimate',
-    pallets_used:   false,
-    consignee_name: fields.consignee_name || '',
-    case_mark:      fields.case_mark || '',
-    pl_date:        null,
-    shipped_per:    fields.shipped_per || '',
-    pallets:        fields.pallets || [],
-    createdAt:      serverTimestamp(),
-    updatedAt:      serverTimestamp(),
-  })
-  return ref.id
+export function newPackingScenario(orderId, label) {
+  return {
+    id: doc(PL_COL()).id, order_id: orderId, label, selected: false,
+    status: 'estimate', pallets_used: false, consignee_name: '',
+    case_mark: '', pl_date: null, shipped_per: '', pallets: [],
+  }
 }
 
 export async function updatePackingList(plId, patch) {
@@ -277,24 +267,11 @@ export async function selectScenario(orderId, scenarioId) {
   await batch.commit()
 }
 
-// Delete a scenario and all its cartons/contents.
-export async function deleteScenario(plId) {
-  const cs = await getDocs(CTN_COL(plId))
-  for (const cd of cs.docs) {
-    const conts = await getDocs(CONT_COL(plId, cd.id))
-    const b = writeBatch(db)
-    conts.docs.forEach(d => b.delete(d.ref))
-    b.delete(cd.ref)
-    await b.commit()
-  }
-  await deleteDoc(PL_DOC(plId))
-}
-
 // ── Carton CRUD ───────────────────────────────────────────────────────────────
-export async function getCartonsWithContents(plId) {
-  const csnap = await getDocs(query(CTN_COL(plId), orderBy('carton_seq')))
+export async function getCartonsWithContents(plId, read = getDocs) {
+  const csnap = await read(query(CTN_COL(plId), orderBy('carton_seq')))
   return Promise.all(csnap.docs.map(async cd => {
-    const conts = await getDocs(CONT_COL(plId, cd.id))
+    const conts = await read(CONT_COL(plId, cd.id))
     const data = cd.data()
     const contents = conts.docs.map(d => ({ id: d.id, _localId: d.id, ...d.data() }))
     return {
@@ -309,24 +286,28 @@ export async function getCartonsWithContents(plId) {
   }))
 }
 
-// Full replace: delete all existing cartons+contents, then write fresh.
-// Returns the new Firestore carton IDs in order.
-export async function saveCartonsWithContents(plId, cartons, orderLines = []) {
-  // Delete existing
-  const existing = await getDocs(CTN_COL(plId))
-  for (const cd of existing.docs) {
-    const conts = await getDocs(CONT_COL(plId, cd.id))
-    const b = writeBatch(db)
-    conts.docs.forEach(d => b.delete(d.ref))
-    b.delete(cd.ref)
-    await b.commit()
+// Header and children are separate reads. Recheck the save identity so a
+// commit between those reads cannot produce a mixed plan in the editor or print.
+export async function loadPackingScenario(plId, orderId) {
+  const ref = PL_DOC(plId)
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const before = await getDocFromServer(ref)
+    const header = before.data()
+    if (!header || (orderId && header.order_id !== orderId)) throw Error('Packing scenario not found for this order.')
+    const cartons = await getCartonsWithContents(plId, getDocsFromServer)
+    const after = (await getDocFromServer(ref)).data()
+    if (after && after.order_id === header.order_id && after.packing_save_id === header.packing_save_id) {
+      return { scenario: { ...after, id: plId, label: after.label || 'Standard carton' }, cartons }
+    }
   }
+  throw Error('The packing scenario changed while loading. Please retry.')
+}
 
-  // Write new
-  const newIds = []
-  for (const c of cartons) {
-    const { contents, _localId, id: _id, ...rest } = c
-    const normRest = {
+function cartonWrites(plId, cartons, orderLines) {
+  return cartons.map(carton => {
+    const { contents = [], id, _localId, ...rest } = carton
+    const ref = CTN_DOC(plId, id || _localId)
+    const data = {
       carton_seq:     parseInt(rest.carton_seq) || 1,
       carton_count:   parseInt(rest.carton_count) || 1,
       pallet_no:      parseInt(rest.pallet_no) || 1,
@@ -341,27 +322,84 @@ export async function saveCartonsWithContents(plId, cartons, orderLines = []) {
       nw_kg:          parseFloat(rest.nw_kg) || null,
       is_estimate:    rest.is_estimate !== false,
       notes:          rest.notes || '',
-      updatedAt:      serverTimestamp(),
     }
-    const cRef = await addDoc(CTN_COL(plId), normRest)
-    newIds.push(cRef.id)
-    if ((contents || []).length) {
-      const b = writeBatch(db)
-      for (const item of contents) {
-        const { _localId: _li, id: _ii, ...iRest } = item
-        b.set(doc(CONT_COL(plId, cRef.id)), {
-          item_code:     iRest.item_code || '',
-          description:   iRest.description || '',
-          qty:           parseFloat(iRest.qty) || 0,
-          unit:          packingItemUnit(iRest, orderLines),
-          tier_remarks:  packingItemTierRemarks(iRest, orderLines),
-          order_line_id: iRest.order_line_id || '',
-        })
-      }
-      await b.commit()
-    }
+    const items = contents.map(item => ({
+      ref: doc(CONT_COL(plId, ref.id), item.id || item._localId),
+      data: {
+        item_code:     item.item_code || '',
+        description:   item.description || '',
+        qty:           parseFloat(item.qty) || 0,
+        unit:          packingItemUnit(item, orderLines),
+        tier_remarks:  packingItemTierRemarks(item, orderLines),
+        order_line_id: item.order_line_id || '',
+      },
+    }))
+    return { ref, data, items }
+  })
+}
+
+function removedPackingDocuments(plId, previous, next) {
+  const remaining = new Set(next.flatMap(carton => [carton.ref.path, ...carton.items.map(item => item.ref.path)]))
+  const refs = previous.flatMap(carton => [
+    CTN_DOC(plId, carton.id),
+    ...carton.contents.map(item => doc(CONT_COL(plId, carton.id), item.id)),
+  ])
+  return refs.filter(ref => !remaining.has(ref.path))
+}
+
+// Read the scenario header in the transaction to serialize competing saves.
+// The draft's saved identity also makes retrying the same commit idempotent.
+export async function savePackingScenario({ scenario, previous, cartons, patch, orderLines, attemptId, isNew }) {
+  const ref = PL_DOC(scenario.id)
+  const writes = cartonWrites(scenario.id, cartons, orderLines)
+  const removed = removedPackingDocuments(scenario.id, previous, writes)
+  const baseline = new Map()
+  for (const carton of previous) {
+    const cartonRef = CTN_DOC(scenario.id, carton.id)
+    baseline.set(cartonRef.path, carton)
+    for (const item of carton.contents) baseline.set(doc(CONT_COL(scenario.id, carton.id), item.id).path, item)
   }
-  return newIds
+  const changes = writes.flatMap(carton => [carton, ...carton.items]).filter(({ ref, data }) =>
+    Object.entries(data).some(([field, value]) => baseline.get(ref.path)?.[field] !== value))
+  const count = 1 + removed.length + changes.length
+  if (count > 500) throw Error('This packing plan is too large to save in one operation. Your draft is still open.')
+  const saved = { ...patch, packing_save_id: attemptId }
+  const current = await runTransaction(db, async tx => {
+    const existing = (await tx.get(ref)).data()
+    if (existing?.order_id === scenario.order_id && existing.packing_save_id === attemptId) return existing
+    if (isNew ? existing : !existing || existing.order_id !== scenario.order_id || existing.packing_save_id !== scenario.packing_save_id) {
+      throw Error('This packing scenario changed elsewhere. Your draft is still open.')
+    }
+    if (isNew) {
+      const { id, ...header } = scenario
+      tx.set(ref, { ...header, ...saved, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    } else {
+      tx.update(ref, { ...saved, updatedAt: serverTimestamp() })
+    }
+    for (const removedRef of removed) tx.delete(removedRef)
+    for (const change of changes) tx.set(change.ref, change.data, { merge: true })
+    return { ...(existing || scenario), ...saved }
+  })
+  const committedCartons = writes.map(({ ref, data, items }) => ({
+    ...data, id: ref.id, _localId: ref.id,
+    contents: items.map(item => ({ ...item.data, id: item.ref.id, _localId: item.ref.id })),
+  }))
+  return { scenario: { ...current, id: scenario.id, label: current.label || scenario.label }, cartons: committedCartons }
+}
+
+export async function deleteScenario(plId, orderId) {
+  const { scenario, cartons } = await loadPackingScenario(plId, orderId)
+  const ref = PL_DOC(plId)
+  const removed = removedPackingDocuments(plId, cartons, [])
+  if (removed.length >= 500) throw Error('This packing plan is too large to delete in one operation.')
+  await runTransaction(db, async tx => {
+    const latest = (await tx.get(ref)).data()
+    if (!latest || latest.order_id !== orderId || latest.packing_save_id !== scenario.packing_save_id) {
+      throw Error('This packing scenario changed elsewhere. Please retry.')
+    }
+    for (const child of removed) tx.delete(child)
+    tx.delete(ref)
+  })
 }
 
 // ── Live hook ─────────────────────────────────────────────────────────────────
@@ -377,8 +415,10 @@ export function usePackingList(orderId) {
       const found = await getPackingListByOrder(orderId)
       if (cancelled) return
       if (found) {
-        setPl(found)
-        setCartons(await getCartonsWithContents(found.id))
+        const loaded = await loadPackingScenario(found.id, orderId)
+        if (cancelled) return
+        setPl(loaded.scenario)
+        setCartons(loaded.cartons)
       } else {
         setPl(null)
         setCartons([])

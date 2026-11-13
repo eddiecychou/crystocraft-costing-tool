@@ -26,15 +26,28 @@ const fixture={pl:{id:'pl',order_id:'order',selected:true,pallets:[]},order:{erp
 globalThis.__packingFixture=fixture;globalThis.__packingWrites=[]
 let scratch,pages,downloaded,prints=0
 const origCreate=URL.createObjectURL,origRevoke=URL.revokeObjectURL
-const firestore=`const f=()=>globalThis.__packingFixture;const snap=(x)=>({id:x.id||'qa',ref:[],exists:()=>true,data:()=>x});
- export const doc=(...a)=>a;export const collection=(...a)=>a;export const query=(p)=>p;export const orderBy=()=>{};export const where=()=>{};
- export {getDoc as getDocFromServer,getDocs as getDocsFromServer};export const getDoc=async p=>snap(p.includes('purchase_orders')?f().po:p.includes('packing_lists')?f().pl:f().order);
- export const getDocs=async p=>({docs:(p.includes('contents')?f().cartons.find(c=>p.includes(c.id))?.contents||[]:p.includes('cartons')?f().cartons:p.includes('orders')?f().po.lines:p.includes('packing_lists')?[f().pl]:[]).map(snap)});
- export const addDoc=async()=>({id:'new-carton'});export const updateDoc=async()=>{};export const deleteDoc=async()=>{};export const serverTimestamp=()=>null;
- export const writeBatch=()=>({delete(){},set(ref,value){globalThis.__packingWrites.push(value)},update(){},async commit(){}});`
+const firestore=`const f=()=>globalThis.__packingFixture;
+ const ref=parts=>Object.assign(parts,{path:parts.filter(part=>typeof part==='string').join('/'),id:parts.at(-1)});
+ const snap=x=>({id:x.id||'qa',ref:ref([{},x.id]),exists:()=>true,data:()=>x});
+ let id=0;export const doc=(...a)=>ref(Array.isArray(a[0])?[...a[0],a[1]||'new-'+ ++id]:a);
+ export const collection=(...a)=>a;export const query=p=>p;export const orderBy=()=>{};export const where=()=>{};
+ export {getDoc as getDocFromServer,getDocs as getDocsFromServer};export const getDoc=async p=>snap(p.includes('purchase_orders')?f().po:p.includes('packing_lists')?(f().scenarios?.find(row=>row.id===p.at(-1))||f().pl):f().order);
+ export const getDocs=async p=>{
+  const rows=f().scenarioCartons?.[p[2]]||f().cartons;
+  if(p.at(-1)==='cartons')await f().beforeCartons?.(p[2]);
+  const found=p.includes('contents')?rows.find(c=>p.includes(c.id))?.contents||[]:p.includes('cartons')?rows:p.includes('orders')?f().po.lines:p.includes('packing_lists')?(f().scenarios||[f().pl]):[];
+  return {docs:found.map(snap)};
+ };
+ export const updateDoc=async()=>{};export const serverTimestamp=()=>null;
+ export const writeBatch=()=>({delete(){},set(){},update(){},async commit(){}});
+ export const runTransaction=async (_,write)=>write({
+  get:getDoc,update(){},delete(){},
+  set(ref,value){if(ref.path.includes('/contents/'))globalThis.__packingWrites.push(value)}
+ });`
+
 before(async()=>{
  scratch=await mkdtemp(join(tmpdir(),'oc-packing-po-'))
- await build({stdin:{contents:`export {default as packing} from './src/pages/PackingListPrint.jsx';export {default as po} from './src/pages/PurchaseOrderPrint.jsx';export {default as editor} from './src/pages/PackingListEditor.jsx';export {saveCartonsWithContents,buildFullCartonPlan,palletisedTotals} from './src/packing.js'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'packing-network',setup(b){
+ await build({stdin:{contents:`export {default as packing} from './src/pages/PackingListPrint.jsx';export {default as po} from './src/pages/PurchaseOrderPrint.jsx';export {default as editor} from './src/pages/PackingListEditor.jsx';export {savePackingScenario,buildFullCartonPlan,palletisedTotals} from './src/packing.js'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'packing-network',setup(b){
  b.onResolve({filter:/^(react(?:\/.*)?|exceljs|lucide-react)$/},a=>({path:require.resolve(a.path),external:true}))
  b.onResolve({filter:/^react-router-dom$/},()=>({path:'router',namespace:'mock'}))
  b.onResolve({filter:/^firebase\/firestore$/},()=>({path:'firestore',namespace:'mock'}))
@@ -86,13 +99,47 @@ test('packing editor displays recovered units and supports selecting a different
  await act(async()=>{selects[2].value='box';selects[2].dispatchEvent(new dom.window.Event('change',{bubbles:true}))})
  assert.equal(host.querySelectorAll('select[aria-label="Quantity unit"]')[2].value,'box')
 }))
+test('a late carton read cannot replace a newer scenario or expose the previous draft while loading', async () => {
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  fixture.scenarios = [fixture.pl, ...['B','C'].map(id => ({ id, label: 'Plan '+id, order_id: 'order', shipped_per: id }))]
+  fixture.scenarioCartons = Object.fromEntries(['B','C'].map(id => [id, [{
+    ...fixture.cartons[0], id: 'carton-'+id,
+    contents: [{ ...fixture.cartons[0].contents[0], description: 'Contents '+id }],
+  }]]))
+  fixture.beforeCartons = id => id === 'B' && pending
+  try {
+    await withPage('editor', async host => {
+      const click = name => act(async () => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === name).click())
+      await click('Plan B')
+      assert.match(host.textContent, /Loading packing scenario/)
+      assert.doesNotMatch(host.textContent, /Save packing list/)
+      await click('Plan C')
+      await act(async () => release())
+      assert.equal(host.querySelector('[placeholder="e.g. CMA CGM MARCO POLO"]').value, 'C')
+      assert.equal(host.querySelector('[placeholder="Description"]').value, 'Contents C')
+    })
+  } finally {
+    release()
+    delete fixture.scenarios
+    delete fixture.scenarioCartons
+    delete fixture.beforeCartons
+  }
+})
+
+async function saveFixture(cartons, orderLines) {
+  return pages.savePackingScenario({
+    scenario: fixture.pl, previous: [], cartons, orderLines,
+    patch: { status: 'estimate' }, attemptId: 'qa-save', isNew: false,
+  })
+}
 test('actual packing save retains recovered and explicit units; auto-packing propagates order units',async()=>{
  globalThis.__packingWrites=[]
- await pages.saveCartonsWithContents('pl',fixture.cartons,lines)
+ await saveFixture(fixture.cartons,lines)
  assert.deepEqual(globalThis.__packingWrites.map(x=>x.unit),units)
  globalThis.__packingWrites=[]
  const explicit=structuredClone(fixture.cartons);explicit[0].contents[2].unit='box'
- await pages.saveCartonsWithContents('pl',explicit,lines);assert.equal(globalThis.__packingWrites[2].unit,'box')
+ await saveFixture(explicit,lines);assert.equal(globalThis.__packingWrites[2].unit,'box')
  const plan=pages.buildFullCartonPlan(lines,[]);assert.deepEqual(plan.map(c=>c.contents[0].unit),units)
 })
 for(const lang of ['en','zh'])test(`purchase order PDF and Excel keep units, adjustments and deposit (${lang})`,async()=>withPage('po',async host=>{
@@ -138,9 +185,9 @@ test('packing remark recovery uses exact order-line identity and preserves blank
 test('quote-to-order auto-packing and actual carton save preserve the tier snapshot',async()=>{
  const orderLine={id:'quote-line',...quoteItemToOrderLine({product_name:'Glass',product_unit:'pair',tiers:[{quantity:10,price:800,remarks:tierNote},{quantity:20,price:630,remarks:'OTHER TIER'}]},0)}
  const plan=pages.buildFullCartonPlan([orderLine],[]);assert.equal(plan[0].contents[0].tier_remarks,tierNote)
- globalThis.__packingWrites=[];await pages.saveCartonsWithContents('pl',plan,[orderLine]);assert.equal(globalThis.__packingWrites[0].tier_remarks,tierNote)
- plan[0].contents[0].tier_remarks='';globalThis.__packingWrites=[];await pages.saveCartonsWithContents('pl',plan,[orderLine]);assert.equal(globalThis.__packingWrites[0].tier_remarks,'')
- globalThis.__packingWrites=[];await pages.saveCartonsWithContents('pl',[{contents:[{order_line_id:'quote-line',qty:2}]}],[orderLine]);assert.equal(globalThis.__packingWrites[0].tier_remarks,tierNote)
+ globalThis.__packingWrites=[];await saveFixture(plan,[orderLine]);assert.equal(globalThis.__packingWrites[0].tier_remarks,tierNote)
+ plan[0].contents[0].tier_remarks='';globalThis.__packingWrites=[];await saveFixture(plan,[orderLine]);assert.equal(globalThis.__packingWrites[0].tier_remarks,'')
+ globalThis.__packingWrites=[];await saveFixture([{_localId:'sample',contents:[{_localId:'line',order_line_id:'quote-line',qty:2}]}],[orderLine]);assert.equal(globalThis.__packingWrites[0].tier_remarks,tierNote)
 })
 for(const mixed of [false,true])test(`packing PDF/Excel show each tier remark with its correct carton quantities (mixed=${mixed})`,async()=>{
  const original=fixture.cartons
