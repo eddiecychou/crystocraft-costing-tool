@@ -3,10 +3,11 @@ import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
   applyExtractedPiHeader,
-  getOrder, getOrderLines, getOrderEditSnapshot, updateOrder, saveOrderWithLines, deleteOrder,
+  getOrder, getOrderLines, getOrderEditSnapshot, updateOrder, saveOrderWithLines,
   loadRangeProductsLite, lineClassificationPatch, rematchLines, validateOrder, computeOrderTotals,
   orderCreateFields, orderSaveFields, invoiceRegistryFields, orderEditFields,
 } from '../shipping'
+import { deleteOrder } from '../shippingOrderApi'
 import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
 import { CURRENCIES } from '../constants'
 import { Trash2 } from 'lucide-react'
@@ -154,6 +155,8 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
     const draft = { ...saveAttempt.current, header, lines, base: editBase.current,
       savedAt: new Date().toISOString() }
     if (draft.id) keepDraft(draft)
+    setDeletionBlock(latest.deletionBlock || '')
+    setDeleteError('')
     const next = orderEditFields(latest.order, blankHeader.destination)
     editBase.current = latest.base
     referenceBase.current = next
@@ -231,6 +234,28 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
     onError: setExtractError,
   })
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deletionBlock, setDeletionBlock] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const deleteInFlight = useRef(false)
+
+  async function confirmOrderDeletion() {
+    if (deleteInFlight.current || saveInFlight.current || !editBase.current) return
+    deleteInFlight.current = true
+    setDeleting(true)
+    try {
+      await deleteOrder(id, editBase.current)
+      if (mounted.current) navigate('/shipments')
+    } catch (error) {
+      if (!mounted.current) return
+      setConfirmDelete(false)
+      setDeleteError(error.message || 'Could not confirm deletion. Reload the order before retrying.')
+      if (error.code === 'order-delete-blocked') setDeletionBlock(error.message)
+    } finally {
+      deleteInFlight.current = false
+      if (mounted.current) setDeleting(false)
+    }
+  }
   const [tab, setTab] = useState('order')
 
   useEffect(() => {
@@ -238,6 +263,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
     const preCustomerId = searchParams.get('customer_id')
     setFetching(isEdit)
     setLoadError('')
+    setConfirmDelete(false); setDeletionBlock(''); setDeleteError('')
     if (hasQuoteSource) setQuoteLoad({ status: 'loading', message: '' })
     if (hasQuoteSource) {setQuoteRecovery(null);setQuoteRecoveryError('');setQuoteAdditional(null);setQuoteDraftIssue('');quoteSource.current=null}
     resetPiImport(); setExtractError(''); setSiError('')
@@ -275,6 +301,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
         }
         if (!alive) return
         const { order: o, lines: orderLines, base } = snapshot
+        setDeletionBlock(snapshot.deletionBlock || '')
         editBase.current = base
         const pending = drafts.filter(draft => {
           if (snapshot.lastEditId === draft.id && base.revision === draft.base.revision + 1) {
@@ -607,7 +634,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
 
   async function handleSave(e) {
     e.preventDefault()
-    if (editConflict || saveInFlight.current || fetching || loadError || allocatingSo || allocatingUc || allocatingSi || extracting) return
+    if (editConflict || deleteInFlight.current || saveInFlight.current || fetching || loadError || allocatingSo || allocatingUc || allocatingSi || extracting) return
     saveInFlight.current = true
     setSaving(true)
     setSavePending(false)
@@ -944,17 +971,19 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Order'}
           </button>
           <button type="button" className="btn-secondary" onClick={() => navigate('/shipments')}>Cancel</button>
-          {isEdit && !header.quote_conversion_id && (
-            <button type="button" onClick={() => setConfirmDelete(true)} className="ml-auto inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
+          {isEdit && !header.quote_conversion_id && !deletionBlock && !editConflict && (
+            <button type="button" disabled={saving || allocatingSo || allocatingUc || allocatingSi} onClick={() => { setDeleteError(''); setConfirmDelete(true) }} className="ml-auto inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
               <Trash2 size={15} /> Delete order
             </button>
           )}
         </div>
+        {deleteError && <p role="alert" className="text-sm text-brand-600">{deleteError}</p>}
+        {!deleteError && deletionBlock && !header.quote_conversion_id && <p className="text-sm text-ink-60">{deletionBlock}</p>}
         {isEdit&&header.quote_conversion_id&&<p className="text-sm text-ink-60">This order has a saved quote conversion receipt. Deletion is blocked to preserve its order and numbering history.</p>}
 
       {confirmDelete && (
-        <ConfirmDialog title="Delete order" message="Delete this order and all its lines? This cannot be undone."
-          onConfirm={async () => { await deleteOrder(id); navigate('/shipments') }}
+        <ConfirmDialog title="Delete order" message="Permanently delete this unused draft and all its lines?"
+          busy={deleting} onConfirm={confirmOrderDeletion}
           onCancel={() => setConfirmDelete(false)} />
       )}
       </fieldset>

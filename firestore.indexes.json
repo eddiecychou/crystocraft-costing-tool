@@ -2,6 +2,15 @@
   "indexes": [],
   "fieldOverrides": [
     {
+      "collectionGroup": "movements",
+      "fieldPath": "order_id",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" }
+      ]
+    },
+    {
       "collectionGroup": "email_threads",
       "fieldPath": "synced_at",
       "indexes": [

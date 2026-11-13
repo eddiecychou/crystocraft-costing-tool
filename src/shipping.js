@@ -4,13 +4,14 @@ export {wooRegistryAutofillFields,invoiceRegistryFields,savedInvoiceRegistryFiel
 import { useState, useEffect } from 'react'
 import { orderEditBase, sameOrderEditBase, orderEditPatch, orderEditConflict } from './orderEditModel.js'
 import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
+  collection, doc, getDoc, getDocs, updateDoc,
   onSnapshot, query, orderBy, serverTimestamp, writeBatch, runTransaction, getDocFromServer, getDocsFromServer,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { numOrNull } from './domain/validation'
 import { invoiceReferenceRevision } from './invoiceRecoveryModel.js'
 import { buildProductIndex, matchProductCode } from './criticalComponents'
+import { orderDeletionBlock } from './orderDeletion'
 import { JES_SEED_BY_YEAR, soYear, formatSoNo } from './soNumber'
 
 // Shipping module — Phase 12.0. An `order` is the commercial anchor for a
@@ -173,6 +174,7 @@ export async function getOrderEditSnapshot(orderId) {
       const lines = items.docs.map(d => ({ id: d.id, ...normLine(d.data()) }))
       lines.sort((a,b) => (a.line_no ?? Number.MAX_SAFE_INTEGER) - (b.line_no ?? Number.MAX_SAFE_INTEGER) || a.id.localeCompare(b.id))
       return { order: { id: orderId, ...normOrder(after.data()) }, lines, base,
+        deletionBlock: orderDeletionBlock(after.data()),
         lastEditId: after.data().last_edit_id || '' }
     }
   }
@@ -220,14 +222,6 @@ function reconcileOrderLines(batch, orderId, lines, existing) {
   for (const d of existing.docs) {
     if (!keep.has(d.id)) batch.delete(d.ref)
   }
-}
-
-export async function deleteOrder(id) {
-  const lines = await getDocs(LINES(id))
-  const batch = writeBatch(db)
-  lines.docs.forEach(d => batch.delete(d.ref))
-  batch.delete(doc(db, 'orders', id))
-  await batch.commit()
 }
 
 // Live order list.

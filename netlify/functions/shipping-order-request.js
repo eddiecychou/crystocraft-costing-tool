@@ -6,6 +6,8 @@ import { duplicateOrderUc } from './lib/duplicateOrderUc.js'
 import { initAdminApp } from './lib/firebaseAdmin.js'
 import { PI_MAX_FILE_BYTES } from '../../src/piUploadPolicy.js'
 import { createOrderRequests } from './lib/orderCreateRequests.js'
+import { deleteShippingDraft, shippingDraftHasFinancialHistory } from './lib/deleteShippingDraft.js'
+import { validInvoiceOrderId } from '../../src/invoiceRecoveryModel.js'
 import {
   OrderRequestError,
   requirePermission
@@ -73,7 +75,7 @@ const json = (body, status = 200) =>
     }
   })
 
-export function orderRequestHandler({ verifyToken, getProfile, repo }) {
+export function orderRequestHandler({ verifyToken, getProfile, repo, deleteDraft }) {
   return async (req) => {
     if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
     const token = req.headers
@@ -102,6 +104,16 @@ export function orderRequestHandler({ verifyToken, getProfile, repo }) {
       }
       if (!body || typeof body !== 'object')
         return json({ error: 'Invalid order request' }, 400)
+      if (body.action === 'delete_unused_draft') {
+        if (!validInvoiceOrderId(body.order_id) || !body.base || typeof body.base !== 'object')
+          return json({ error: 'Reload the saved draft before deleting.' }, 400)
+        try {
+          return json(await deleteDraft(uid, body.order_id, body.base))
+        } catch (err) {
+          if (err instanceof OrderRequestError) throw err
+          return json({ error: 'Could not confirm that this draft can be deleted. Reload the order before retrying.' }, 503)
+        }
+      }
       if (body.action === 'list') {
         if (body.cursor && !validRequestId(body.cursor))
           return json({ error: 'Invalid cursor' }, 400)
@@ -144,6 +156,11 @@ export default async (req) => {
     verifyToken: (token) => getAuth().verifyIdToken(token, true),
     getProfile: async (uid) =>
       (await db.collection('users').doc(uid).get()).data(),
+    deleteDraft: (uid, id, base) => deleteShippingDraft(db, uid, id, base, orderId =>
+      shippingDraftHasFinancialHistory(orderId, {
+        url: process.env.SUPABASE_URL,
+        key: process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
+      })),
     repo: createOrderRequests(
       db,
       (uid, id, file) =>

@@ -682,7 +682,10 @@ service cloud.firestore {
     // Credit Notes — goods-return + accounting doc. The posted financial fact
     // lives in Postgres app_credit_note, reachable only via /api/credit-note.
     match /credit_notes/{cnId} {
-      allow read, write: if can('credit_notes');
+      allow read, delete: if can('credit_notes');
+      allow create: if can('credit_notes') && optionalOrderAfter(request.resource.data.get('order_id', null));
+      allow update: if can('credit_notes') && (request.resource.data.get('order_id', null) == resource.data.get('order_id', null)
+        || optionalOrderAfter(request.resource.data.get('order_id', null)));
     }
 
     // SU-07A portal invitations — the claim/approve/resend/revoke logic runs
@@ -915,6 +918,17 @@ service cloud.firestore {
         allow read, write: if can('catalogues');
       }
     }
+    function existingOrderAfter(orderId) {
+      return orderId is string && orderId.size() > 0 && orderId.matches('^[^/]+$')
+        && existsAfter(/databases/$(database)/documents/orders/$(orderId));
+    }
+    function optionalOrderAfter(orderId) {
+      return orderId == null || orderId == '' || existingOrderAfter(orderId);
+    }
+    function validStockMovementCreate(data) {
+      return optionalOrderAfter(data.get('order_id', null));
+    }
+
     // Critical components master (metal parts) — supply-side.
     match /range_components/{componentId} {
       // One owner-selected reuse record. No list-all or write grant.
@@ -942,7 +956,8 @@ service cloud.firestore {
         allow update, delete: if can('supply');
       }
       match /movements/{movementId} {
-        allow read, write: if can('supply');
+        allow read, update, delete: if can('supply');
+        allow create: if can('supply') && validStockMovementCreate(request.resource.data);
       }
     }
 
@@ -950,7 +965,8 @@ service cloud.firestore {
     match /crystals/{crystalId} {
       allow read, write: if can('supply');
       match /movements/{movementId} {
-        allow read, write: if can('supply');
+        allow read, update, delete: if can('supply');
+        allow create: if can('supply') && validStockMovementCreate(request.resource.data);
       }
     }
 
@@ -1117,7 +1133,8 @@ service cloud.firestore {
     match /packaging/{packagingId} {
       allow read, write: if can('supply');
       match /movements/{movementId} {
-        allow read, write: if can('supply');
+        allow read, update, delete: if can('supply');
+        allow create: if can('supply') && validStockMovementCreate(request.resource.data);
       }
     }
 
@@ -1197,9 +1214,12 @@ service cloud.firestore {
             && profile().get('customer_id', '') != ''
             && resource.data.get('customer_id', '') == profile().get('customer_id', ''));
       allow create: if can('shipping') && validOrderEditCreate(request.resource.data) && validQuoteConversionCreate() && !request.resource.data.keys().hasAny(['invoice_allocation_id','invoice_reference_revision']);
-      allow update: if can('shipping') && validOrderEditUpdate(resource.data, request.resource.data) && validQuoteConversionUpdate() && safeInvoiceSave();
-      allow delete: if can('shipping') && resource.data.get('quote_conversion_id','') == ''
-        && (resource.data.get('invoice_allocation_id','') == '' || linkedInvoice());
+      allow update: if can('shipping') && validOrderEditUpdate(resource.data, request.resource.data)
+        && validQuoteConversionUpdate() && safeInvoiceSave()
+        && (request.resource.data.get('stock_activity', false) == resource.data.get('stock_activity', false)
+          || (can('supply') && request.resource.data.get('stock_activity', false) == true));
+      // Only the Shipping draft-deletion service can verify linked history.
+      allow delete: if false;
       match /invoice_allocations/{operationId} {
         allow read: if can('shipping');
         allow write: if false;
@@ -1208,8 +1228,7 @@ service cloud.firestore {
         function validLineEdit() {
           let root = /databases/$(database)/documents/orders/$(orderId);
           return !exists(root) ? existsAfter(root)
-            : (!existsAfter(root) ? request.method == 'delete'
-              : validOrderEditTransition(get(root).data, getAfter(root).data));
+            : existsAfter(root) && validOrderEditTransition(get(root).data, getAfter(root).data);
         }
         allow read: if can('shipping')
           || (isApprovedCustomer() && profile().get('customer_id','') != ''
@@ -1223,12 +1242,14 @@ service cloud.firestore {
           || (isApprovedCustomer()
               && profile().get('customer_id', '') != ''
               && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id', '') == profile().get('customer_id', '')));
-        allow write: if subcollection != 'invoice_allocations' && subcollection != 'lines' && can('shipping');
+        allow write: if subcollection != 'invoice_allocations' && subcollection != 'lines' && can('shipping') && existingOrderAfter(orderId);
       }
     }
     match /packing_lists/{plId} {
-      allow read, write: if can('shipping');
-      match /{allPaths=**} {
+      allow read, delete: if can('shipping');
+      allow create: if can('shipping') && existingOrderAfter(request.resource.data.get('order_id', null));
+      allow update: if can('shipping') && request.resource.data.get('order_id', null) == resource.data.get('order_id', null);
+      match /{subcollection}/{childId}/{descendants=**} {
         allow read, write: if can('shipping');
       }
     }
@@ -1236,7 +1257,8 @@ service cloud.firestore {
       allow read, write: if can('shipping');
     }
     match /freight_quotes/{quoteId} {
-      allow read, create: if can('shipping');
+      allow read: if can('shipping');
+      allow create: if can('shipping') && optionalOrderAfter(request.resource.data.get('order_id', null));
       allow update: if can('shipping')
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['order_id', 'is_chosen']);
       allow delete: if can('shipping') && canDeleteFreightQuote();
@@ -1252,7 +1274,7 @@ service cloud.firestore {
       function validFreightDecision(data) {
         return data.keys().hasOnly(['quote_id', 'updated_at'])
           && data.updated_at == request.time
-          && exists(/databases/$(database)/documents/orders/$(orderId))
+          && existingOrderAfter(orderId)
           && (data.quote_id == null
             || (data.quote_id is string && data.quote_id.matches('^[^/]+$')
               && getAfter(/databases/$(database)/documents/freight_quotes/$(data.quote_id)).data.order_id == orderId));
@@ -1261,7 +1283,10 @@ service cloud.firestore {
       allow create, update: if can('shipping') && validFreightDecision(request.resource.data);
     }
     match /freight_rfqs/{rfqId} {
-      allow read, write: if can('shipping');
+      allow read, delete: if can('shipping');
+      allow create: if can('shipping') && optionalOrderAfter(request.resource.data.get('order_id', null));
+      allow update: if can('shipping') && (request.resource.data.get('order_id', null) == resource.data.get('order_id', null)
+        || optionalOrderAfter(request.resource.data.get('order_id', null)));
     }
 
     // ---- UC# invoice registry — `uc` module ------------------------------

@@ -31,6 +31,7 @@ before(async () => {
     batch.set(doc(db, 'users', 'pack-admin'), { role: 'admin' })
     batch.set(doc(db, 'users', 'pack-staff'), { role: 'staff', modules: ['shipping'] })
     batch.set(doc(db, 'users', 'pack-customer'), { role: 'customer', status: 'approved' })
+    batch.set(doc(db, 'orders', orderId), { status: 'draft', source: 'manual' })
     await batch.commit()
   })
   await mkdir('qa/out', { recursive: true })

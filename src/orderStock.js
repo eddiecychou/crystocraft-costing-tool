@@ -111,10 +111,17 @@ export async function reserveForOrder(cfg, orderId, orderLabel, lines, gaps) {
   if (!clean.length) throw new Error('Nothing to reserve — add at least one line with a quantity.')
 
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data() || {}
-  if (d[order.reserved] || d[order.committed]) throw new Error('Already reserved for this order.')
   const gf = genField(order)
-  const generation = (Number.isFinite(d[gf]) ? d[gf] : 0) + 1
+  const generation = await runTransaction(db, async tx => {
+    const snap = await tx.get(orderRef)
+    if (!snap.exists()) throw new Error('Order no longer exists.')
+    const d = snap.data()
+    if (d[order.reserved] || d[order.committed] || d[order.legacyIssued]) throw new Error('Already reserved for this order.')
+    // Retain the order before the first movement. This also covers a failed
+    // or interrupted loop whose order reservation flags were never saved.
+    if (!d.stock_activity) tx.update(orderRef, { stock_activity: true })
+    return (Number.isFinite(d[gf]) ? d[gf] : 0) + 1
+  })
 
   for (const l of clean) {
     await postMovement(collectionPath, l[idField], {
@@ -157,7 +164,8 @@ export async function adjustReservedLine(cfg, orderId, orderLabel, lineId, newQt
   if (!Number.isFinite(target) || target <= 0) throw new Error('Enter a quantity greater than zero.')
 
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data() || {}
+  const d = (await getDoc(orderRef)).data()
+  if (!d) throw new Error('Order no longer exists.')
   if (!d[order.reserved]) throw new Error('Nothing is reserved for this order.')
   if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
 
@@ -250,7 +258,8 @@ export async function removeReservedLine(cfg, orderId, orderLabel, lineId) {
   if (!lineId) throw new Error('No line to remove.')
 
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data() || {}
+  const d = (await getDoc(orderRef)).data()
+  if (!d) throw new Error('Order no longer exists.')
   if (!d[order.reserved]) throw new Error('Nothing is reserved for this order.')
   if (d[order.committed]) throw new Error('Already produced-in — reverse production-in before editing.')
 
@@ -277,7 +286,8 @@ export async function produceForOrder(cfg, orderId, orderLabel) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data() || {}
+  const d = (await getDoc(orderRef)).data()
+  if (!d) throw new Error('Order no longer exists.')
   if (!d[order.reserved]) throw new Error('Reserve the stock before production-in.')
   if (d[order.committed]) throw new Error('Already produced-in for this order.')
 
@@ -300,7 +310,8 @@ export async function releaseForOrder(cfg, orderId, orderLabel) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data() || {}
+  const d = (await getDoc(orderRef)).data()
+  if (!d) throw new Error('Order no longer exists.')
   const lines = d[order.lines] || []
   const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
   for (const l of lines) {
@@ -325,7 +336,8 @@ export async function reverseProduceForOrder(cfg, orderId, orderLabel) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
   const orderRef = doc(db, 'orders', orderId)
-  const d = (await getDoc(orderRef)).data() || {}
+  const d = (await getDoc(orderRef)).data()
+  if (!d) throw new Error('Order no longer exists.')
   const lines = (d[order.lines] && d[order.lines].length ? d[order.lines] : (order.legacyLines ? d[order.legacyLines] : null)) || []
   const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
   for (const l of lines) {

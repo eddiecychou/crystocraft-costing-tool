@@ -256,14 +256,17 @@ test('old clients and standalone line writes are denied; stock and narrow review
   assert.equal(actual.metal_reserved,true);assert.equal(actual.no_invoice_reason,'Awaiting paperwork')
 })
 
-test('new root plus lines creation and whole-order deletion remain atomic', {timeout:20000},async()=>{
+test('new root plus lines creation remains atomic and direct client deletion is denied', {timeout:20000},async()=>{
   const batch=writeBatch(db)
   batch.set(doc(db,'orders','new-fictional'),{customer_id:'fictional-customer',source:'manual'})
   batch.set(doc(db,'orders','new-fictional','lines','new-line'),{qty_ordered:1,unit_price:1.222})
   await batch.commit()
-  await engine.deleteOrder('new-fictional')
-  assert.equal((await getDocFromServer(doc(db,'orders','new-fictional'))).exists(),false)
-  assert.equal((await getDocFromServer(doc(db,'orders','new-fictional','lines','new-line'))).exists(),false)
+  const deletion = writeBatch(db)
+  deletion.delete(doc(db,'orders','new-fictional'))
+  deletion.delete(doc(db,'orders','new-fictional','lines','new-line'))
+  await assert.rejects(deletion.commit(), {code:'permission-denied'})
+  assert.equal((await getDocFromServer(doc(db,'orders','new-fictional'))).exists(),true)
+  assert.equal((await getDocFromServer(doc(db,'orders','new-fictional','lines','new-line'))).exists(),true)
 })
 
 test('atomic batch limit accepts 499 lines and rejects an oversized edit before any write', {timeout:30000},async()=>{
@@ -279,7 +282,12 @@ test('atomic batch limit accepts 499 lines and rejects an oversized edit before 
 test('a deleted and recreated legacy order cannot accept the prior record draft', {timeout:20000},async()=>{
   await withDisabled(async ctx=>updateDoc(doc(ctx.firestore(),'orders',id),{createdAt:Timestamp.fromMillis(1000)}))
   const original=await snapshot(engine)
-  await otherEngine.deleteOrder(id)
+  await withDisabled(async ctx => {
+    const seedDb = ctx.firestore(), deletion = writeBatch(seedDb)
+    for (const line of (await getDocs(collection(seedDb, 'orders', id, 'lines'))).docs) deletion.delete(line.ref)
+    deletion.delete(doc(seedDb, 'orders', id))
+    await deletion.commit()
+  })
   const batch=writeBatch(otherDb)
   batch.set(doc(otherDb,'orders',id),{customer_name:'Replacement company',createdAt:Timestamp.fromMillis(2000)})
   batch.set(doc(otherDb,'orders',id,'lines','replacement'),{item_code:'REPLACEMENT',qty_ordered:1,unit_price:1})
