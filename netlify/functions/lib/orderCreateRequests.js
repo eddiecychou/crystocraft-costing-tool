@@ -26,6 +26,7 @@ import {
 } from './orderRequestAccess.js'
 import { conversionCanonical } from '../../../src/quoteConversionModel.js'
 import { PI_MAX_FILE_BYTES } from '../../../src/piUploadPolicy.js'
+import { ORDER_REQUEST_DRAFT_CONFLICT } from '../../../src/orderCreateRequestModel.js'
 
 function originalFile(value) {
   if (value == null) return null
@@ -257,7 +258,9 @@ export function createOrderRequests(db, verifyOriginal, getDuplicateUc) {
         if (snap.exists) {
           if (snap.data().source_id || snap.data().fingerprint !== fingerprint)
             throw new OrderRequestError(
-              'This request already contains different order details. Review the saved request.'
+              'This request already contains different order details. Review the saved request.',
+              409,
+              ORDER_REQUEST_DRAFT_CONFLICT
             )
           return
         }

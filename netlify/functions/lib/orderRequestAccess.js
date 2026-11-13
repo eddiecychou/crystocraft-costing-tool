@@ -1,7 +1,8 @@
 export class OrderRequestError extends Error {
-  constructor(message, status = 409) {
+  constructor(message, status = 409, code) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 

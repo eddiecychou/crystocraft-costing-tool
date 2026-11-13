@@ -13,8 +13,9 @@ export async function orderRequestAction(action, details = {}) {
   })
   const result = await response.json().catch(() => null)
   if (!response.ok || !result || result.error)
-    throw Error(
-      result?.error || 'Could not confirm the order. Check the saved request.'
+    throw Object.assign(
+      Error(result?.error || 'Could not confirm the order. Check the saved request.'),
+      { code: result?.code }
     )
   return result
 }
@@ -34,6 +35,11 @@ export async function describePi(file) {
   }
 }
 
+export function samePiOriginal(actual, expected) {
+  return Boolean(actual && expected && actual.sha256 === expected.sha256 &&
+    actual.size === expected.size && actual.name === expected.name)
+}
+
 export async function finishOrderRequest(key, file, expected) {
   const commit = () => orderRequestAction('commit', key)
   const result = await commit()
@@ -45,12 +51,7 @@ export async function finishOrderRequest(key, file, expected) {
   }
   if (!result.needs_file || !file) return result
   const actual = await describePi(file)
-  if (
-    !expected ||
-    actual.sha256 !== expected.sha256 ||
-    actual.size !== expected.size ||
-    actual.name !== expected.name
-  )
+  if (!samePiOriginal(actual, expected))
     throw Error('Select the original PI named ' + expected?.name + '.')
   const object = ref(
     storage,

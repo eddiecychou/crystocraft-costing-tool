@@ -125,7 +125,7 @@ export function orderRequestHandler({ verifyToken, getProfile, repo }) {
       }
     } catch (err) {
       return err instanceof OrderRequestError
-        ? json({ error: err.message }, err.status)
+        ? json({ error: err.message, code: err.code }, err.status)
         : json(
             {
               error:

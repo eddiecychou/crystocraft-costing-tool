@@ -14,7 +14,7 @@ import {
   verifyPiOriginal,
   orderRequestHandler
 } from '../netlify/functions/shipping-order-request.js'
-import { piObjectPath } from '../src/orderCreateRequestModel.js'
+import { ORDER_REQUEST_DRAFT_CONFLICT, piObjectPath } from '../src/orderCreateRequestModel.js'
 import { soYear } from '../src/soNumberModel.js'
 import { normOrder, normLine } from '../src/shippingModel.js'
 import { PI_MAX_FILE_BYTES } from '../src/piUploadPolicy.js'
@@ -168,6 +168,9 @@ test('concurrent prepare and commit, then Replay after discarded confirmation, k
     order: { ...draft.order, notes: 'other tab edit' }
   })
   assert.equal(conflict.code, 409)
+  assert.equal(conflict.body.code, ORDER_REQUEST_DRAFT_CONFLICT)
+  assert.equal((await orders()).size, 1)
+  assert.equal((await counter.get()).data().last, 101)
   const repeat = randomUUID()
   await prep(repeat)
   assert.equal((await call('staff', repeat, 'commit')).code, 200)

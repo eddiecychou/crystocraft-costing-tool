@@ -1,3 +1,5 @@
+export const ORDER_REQUEST_DRAFT_CONFLICT = 'order-request-draft-conflict'
+
 export const validRequestId = (id) =>
   typeof id === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(

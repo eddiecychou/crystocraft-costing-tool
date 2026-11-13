@@ -11,13 +11,21 @@ import {
   beginOrderCopy,
   describePi,
   finishOrderRequest,
-  orderRequestAction
+  orderRequestAction,
+  samePiOriginal
 } from '../orderCreateRequest'
 import {
+  ORDER_REQUEST_DRAFT_CONFLICT,
   requestUrl,
   validRequestId,
   needsInitialInvoice
 } from '../orderCreateRequestModel.js'
+import {
+  readOrderCreateDraft,
+  removeOrderCreateDraft,
+  saveOrderCreateDraft,
+  separateOrderDraft
+} from '../orderCreateDrafts.js'
 
 function StartRequest({ uid, params }) {
   const [id] = useState(() => crypto.randomUUID())
@@ -26,6 +34,7 @@ function StartRequest({ uid, params }) {
 
 export default function NewShipmentEntry({ uid }) {
   const [params] = useSearchParams()
+  const drafts = useRef(new Map())
   if (params.get('from_quote')) return <ShipmentForm />
   if (!params.has('request') && !params.has('operator'))
     return <StartRequest uid={uid} params={params} />
@@ -37,10 +46,10 @@ export default function NewShipmentEntry({ uid }) {
         <Link to="/shipping">Back to Shipping</Link>
       </div>
     )
-  return <RequestEditor key={uid + ':' + id} operator={uid} id={id} />
+  return <RequestEditor key={uid + ':' + id} operator={uid} id={id} drafts={drafts.current} />
 }
 
-function RequestEditor({ operator, id }) {
+function RequestEditor({ operator, id, drafts }) {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const separateOrder = new URLSearchParams(params)
@@ -54,6 +63,14 @@ function RequestEditor({ operator, id }) {
   const inFlight = useRef(false)
   const selectedFile = useRef(null)
   const [openedForm, setOpenedForm] = useState(false)
+  const draftKey = operator + ':' + id
+  const [keptDraft, setKeptDraft] = useState(() =>
+    drafts.get(draftKey) || readOrderCreateDraft(operator, id))
+  const [originalFile, setOriginalFile] = useState(keptDraft?.file || null)
+  const [checkingOriginal, setCheckingOriginal] = useState(false)
+  const conflictDraft = keptDraft?.conflict ? keptDraft : null
+  const initialDraft = conflictDraft ? null : keptDraft
+  const needsOriginal = initialDraft?.original && !originalFile
   const key = { operator, id }
   if (state?.direct) separateOrder.set('direct', '1')
 
@@ -84,7 +101,7 @@ function RequestEditor({ operator, id }) {
     }
   }, [operator, id])
 
-  async function run(action) {
+  async function run(action, navigateOnSuccess = true) {
     if (inFlight.current) return
     inFlight.current = true
     setBusy(true)
@@ -96,7 +113,7 @@ function RequestEditor({ operator, id }) {
       if (result.id && result.id !== id)
         navigate(requestUrl(operator, result.id))
       else if (
-        result.status === 'committed' &&
+        navigateOnSuccess && result.status === 'committed' &&
         (!result.direct ||
           ['issued', 'supplied'].includes(result.invoice?.state))
       )
@@ -114,17 +131,69 @@ function RequestEditor({ operator, id }) {
       if (active.current) setBusy(false)
     }
   }
-  async function submit(order, lines, file) {
+  function keepDraft(requestId, draft) {
+    drafts.set(operator + ':' + requestId, draft)
+    const { file: _file, ...rest } = draft
+    saveOrderCreateDraft(operator, requestId, rest)
+  }
+
+  function useDraftForSeparateOrder() {
+    if (inFlight.current || !conflictDraft) return
+    const existingId = drafts.get(draftKey)?.separateId || conflictDraft.separateId
+    const separateId = existingId || crypto.randomUUID()
+    if (!existingId) {
+      const draft = { ...separateOrderDraft(conflictDraft), file: conflictDraft.file }
+      const source = { ...conflictDraft, separateId }
+      keepDraft(separateId, draft)
+      keepDraft(id, source)
+      setKeptDraft(source)
+    }
+    if (conflictDraft.direct) separateOrder.set('direct', '1')
+    else separateOrder.delete('direct')
+    navigate(requestUrl(operator, separateId, separateOrder))
+  }
+
+  async function attachDraftOriginal(file) {
+    if (!file || checkingOriginal) return
+    setCheckingOriginal(true)
+    setError('')
+    try {
+      if (!samePiOriginal(await describePi(file), initialDraft.original))
+        throw Error('Select the original PI named ' + initialDraft.original.name + '.')
+      if (active.current) setOriginalFile(file)
+    } catch (err) {
+      if (active.current) setError(err.message)
+    } finally {
+      if (active.current) setCheckingOriginal(false)
+    }
+  }
+
+  async function submit(order, lines, file, header) {
+    if (needsOriginal) return
     selectedFile.current = file
     return run(async () => {
       const descriptor = await describePi(file)
-      const saved = await orderRequestAction('prepare', {
-        ...key,
-        order,
-        lines,
-        file: descriptor,
-        mode: params.get('direct') === '1' ? 'direct' : undefined
-      })
+      const direct = params.get('direct') === '1'
+      let saved
+      try {
+        saved = await orderRequestAction('prepare', {
+          ...key, order, lines, file: descriptor, mode: direct ? 'direct' : undefined
+        })
+      } catch (err) {
+        if (err.code === ORDER_REQUEST_DRAFT_CONFLICT) {
+          const draft = { header, lines, original: descriptor, file, direct, conflict: true }
+          keepDraft(id, draft)
+          if (active.current) {
+            setKeptDraft(draft)
+            selectedFile.current = null
+          }
+        }
+        throw err
+      }
+      if (initialDraft) {
+        drafts.delete(draftKey)
+        removeOrderCreateDraft(operator, id)
+      }
       if (saved.status === 'committed' && !saved.direct) return saved
       return finishOrderRequest(key, file, saved.file)
     })
@@ -140,9 +209,25 @@ function RequestEditor({ operator, id }) {
           {error}
         </p>
       )}
-      {openedForm && (!state || state.status === 'empty') && (
+      {openedForm && !conflictDraft && (!state || state.status === 'empty') && (
         <div hidden={!state}>
-          <ShipmentForm onCreateOrder={submit} />
+          {initialDraft && (
+            <div className="m-4 md:m-6 card p-4 space-y-2">
+              <p>Review your draft for this separate order. Enter any applicable order, UC or invoice references.</p>
+              {needsOriginal && (
+                <label className="block">
+                  Reattach the original PI ({initialDraft.original.name}) to create this order
+                  <input type="file" accept="image/*,.pdf" className="block mt-1"
+                    disabled={checkingOriginal} onChange={(e) => {
+                      attachDraftOriginal(e.target.files[0])
+                      e.target.value = ''
+                    }} />
+                </label>
+              )}
+            </div>
+          )}
+          <ShipmentForm onCreateOrder={submit} initialDraft={initialDraft}
+            originalFile={originalFile} createBlocked={Boolean(needsOriginal)} />
         </div>
       )}
       {state?.status !== 'empty' && (
@@ -165,7 +250,7 @@ function RequestEditor({ operator, id }) {
               <button
                 className="btn-secondary"
                 disabled={busy}
-                onClick={() => run(check)}
+                onClick={() => run(check, !conflictDraft)}
               >
                 Check saved status
               </button>
@@ -297,7 +382,15 @@ function RequestEditor({ operator, id }) {
                   </button>
                 </div>
               )}
-              {state.source_id ? (
+              {conflictDraft ? (
+                <div className="space-y-2 border-t border-warm-grey pt-3">
+                  <p>Your unsaved changes are available for a separate order.</p>
+                  <button type="button" className="btn-secondary" disabled={busy}
+                    onClick={useDraftForSeparateOrder}>
+                    {conflictDraft.separateId ? 'Open separate request' : 'Use my draft for a separate order'}
+                  </button>
+                </div>
+              ) : state.source_id ? (
                 <button
                   className="btn-secondary block"
                   disabled={busy}

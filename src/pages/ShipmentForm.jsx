@@ -90,16 +90,17 @@ const blankHeader = {
   pi_revision: '',
 }
 
-export default function ShipmentForm({ uid, onCreateOrder }) {
+export default function ShipmentForm({ uid, onCreateOrder, initialDraft, originalFile, createBlocked }) {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   // A route change must never reuse another order's editable state, pending
   // reads, stock subscription or async allocation/import state.
   const newContext = ['customer_id', 'from_quote', 'direct'].map(k => searchParams.get(k) || '')
-  return <ShipmentEditor onCreateOrder={onCreateOrder} uid={uid} key={id ? `order:${uid || ''}:${id}` : `new:${uid || ''}:${JSON.stringify(newContext)}`} />
+  return <ShipmentEditor onCreateOrder={onCreateOrder} initialDraft={initialDraft} originalFile={originalFile} createBlocked={createBlocked}
+    uid={uid} key={id ? `order:${uid || ''}:${id}` : `new:${uid || ''}:${JSON.stringify(newContext)}`} />
 }
 
-function ShipmentEditor({ uid, onCreateOrder }) {
+function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, createBlocked }) {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
@@ -119,10 +120,11 @@ function ShipmentEditor({ uid, onCreateOrder }) {
   const invoiceFieldRef = useRef(null)
 
   const [header, setHeader]   = useState(() => {
+    if (initialDraft) return initialDraft.header
     const preCustomerId = searchParams.get('customer_id')
     return preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader
   })
-  const [lines, setLines]     = useState([])
+  const [lines, setLines]     = useState(() => initialDraft?.lines || [])
   const editBase = useRef(null)
   const saveAttempt = useRef(null)
   const [editConflict, setEditConflict] = useState(null)
@@ -219,7 +221,8 @@ function ShipmentEditor({ uid, onCreateOrder }) {
   const { pendingFile, fileName, extracting, erpCheck, importFile, useErpLines,
     invalidatePiComparison, resetPiImport, isExtracting } = useShipmentPiImport({
     rangeProducts,
-    canImport: () => !saving && !saveInFlight.current,
+    originalFile,
+    canImport: () => !createBlocked && !saving && !saveInFlight.current,
     onParsed: (data, matched) => {
       setHeader(h => applyExtractedPiHeader(h, data, customers))
       setLines(matched)
@@ -239,15 +242,15 @@ function ShipmentEditor({ uid, onCreateOrder }) {
     if (hasQuoteSource) {setQuoteRecovery(null);setQuoteRecoveryError('');setQuoteAdditional(null);setQuoteDraftIssue('');quoteSource.current=null}
     resetPiImport(); setExtractError(''); setSiError('')
     if (!isEdit) {
-      setHeader(preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader)
-      setLines([]); setSourceFile(null); setTab('order')
+      setHeader(initialDraft?.header || (preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader))
+      setLines(initialDraft?.lines || []); setSourceFile(null); setTab('order')
     }
     const loads = [
       loadCustomers().then(list => {
         if (!alive) return
         setCustomers(list)
         // Resolve customer name when pre-filled from URL
-        if (preCustomerId && !isEdit) {
+        if (preCustomerId && !isEdit && !initialDraft) {
           const c = list.find(x => x.id === preCustomerId)
           if (c) setHeader(h => ({ ...h, customer_name: c.company_name }))
         }
@@ -554,7 +557,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
   // ── Save ─────────────────────────────────────────────────────────────────────
   async function handleCreate(e) {
     e.preventDefault()
-    if (isExtracting() || createInFlight.current || recoveryInFlight.current || !quoteReady || !showQuoteDraft) return
+    if (createBlocked || isExtracting() || createInFlight.current || recoveryInFlight.current || !quoteReady || !showQuoteDraft) return
     createInFlight.current=true
     setSaving(true)
     setExtractError('')
@@ -591,7 +594,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
         return
       }
 
-      await onCreateOrder(orderData, lines, pendingFile)
+      await onCreateOrder(orderData, lines, pendingFile, header)
     } catch (err) {
       setExtractError(err.message || 'Could not create order.')
     } finally {
@@ -747,7 +750,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
         {/* PI upload (import only). Hidden for a direct invoice — a retail sale
             has no proforma to import, so offering the dropzone would suggest a
             step that does not exist. */}
-        {!isEdit && !isDirect && !fromQuoteId && (
+        {!isEdit && !isDirect && !fromQuoteId && !createBlocked && (
           <ShipmentPiUpload
             dragOver={dragOver}
             fileName={fileName}
@@ -937,7 +940,7 @@ function ShipmentEditor({ uid, onCreateOrder }) {
         {extractError && <p id="shipment-form-error" role="alert" className="text-sm text-brand-600 break-words">{extractError}</p>}
         {savePending && <p role="status" className="text-sm text-ink-60 break-words">Save is still pending confirmation. Keep this page open; if you are offline, reconnect to finish. Please do not submit again.</p>}
         <div className="flex items-center gap-3 pt-1">
-          <button type="submit" className="btn-primary" disabled={Boolean(editConflict) || saving || allocatingSo || allocatingUc || allocatingSi || extracting || (!isEdit && lines.length === 0)}>
+          <button type="submit" className="btn-primary" disabled={createBlocked || Boolean(editConflict) || saving || allocatingSo || allocatingUc || allocatingSi || extracting || (!isEdit && lines.length === 0)}>
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Order'}
           </button>
           <button type="button" className="btn-secondary" onClick={() => navigate('/shipments')}>Cancel</button>

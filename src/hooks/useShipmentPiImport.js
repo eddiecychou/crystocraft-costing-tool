@@ -6,7 +6,7 @@ import { autoMatchLines } from '../shipping'
 
 const soKey = value => String(value || '').trim().toUpperCase()
 
-export function useShipmentPiImport({ rangeProducts, canImport, onParsed, onAdopt, onError }) {
+export function useShipmentPiImport({ rangeProducts, canImport, onParsed, onAdopt, onError, originalFile }) {
   const [pendingFile, setPendingFile] = useState(null)
   const [importingFileName, setImportingFileName] = useState(null)
   const [extracting, setExtracting] = useState(false)
@@ -99,8 +99,9 @@ export function useShipmentPiImport({ rangeProducts, canImport, onParsed, onAdop
     setErpCheck({ ...erpCheck, adopted: true, defaultedLineNumbers: adopted.defaultedLineNumbers })
   }
 
+  const attachedFile = pendingFile ?? originalFile
   return {
-    pendingFile, fileName: importingFileName ?? pendingFile?.name,
+    pendingFile: attachedFile, fileName: importingFileName ?? attachedFile?.name,
     extracting, erpCheck, importFile, useErpLines, invalidatePiComparison, resetPiImport,
     isExtracting: () => Boolean(attemptRef.current?.extracting),
   }
