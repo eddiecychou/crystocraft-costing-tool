@@ -3,10 +3,11 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { getDocsFromServer } from 'firebase/firestore'
 import { Plus, Trash2, ChevronDown, ChevronUp, Star, CheckCircle2 } from 'lucide-react'
 import {
-  FREIGHT_MODES, FREIGHT_INCOTERMS, QUOTE_SOURCES, modeLabel,
+  FREIGHT_MODES, FREIGHT_INCOTERMS, modeLabel,
   loadVendors, loadOrderFreight, createOrderFreightQuote, deleteOrderFreightQuote,
   freightScenarioCargo, newFreightQuoteId, freightChoice, setFreightChoice,
 } from '../logistics'
+import { freightPackingStatus } from '../freightQuoteModel.js'
 import { getPackingScenariosByOrder } from '../packing'
 import { useRates } from '../currency'
 
@@ -36,6 +37,7 @@ function blankQuote(orderId, scenario) {
 function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel, reload }) {
   const selected = scenarios.find(s => s.selected) || scenarios[0] || null
   const [form, setForm] = useState(() => blankQuote(orderId, selected))
+  const [scenarioBasis, setScenarioBasis] = useState(selected)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [staleScenario, setStaleScenario] = useState(false)
@@ -46,6 +48,7 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel, r
   const setCargo = patch => setForm(f => ({ ...f, cargo_basis: { ...f.cargo_basis, ...patch } }))
 
   function applyScenario(sc) {
+    setScenarioBasis(sc)
     setForm(f => ({
       ...f,
       scenario_id: sc?.id || '',
@@ -72,8 +75,7 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel, r
     setError('')
     attempt.current ??= newFreightQuoteId()
     try {
-      const scenario = scenarios.find(row => row.id === form.scenario_id)
-      const saved = await createOrderFreightQuote(attempt.current, form, rates, scenario)
+      const saved = await createOrderFreightQuote(attempt.current, form, rates, scenarioBasis)
       onSaved(saved)
     } catch (err) {
       setError(err.message || 'Could not save this freight quote.')
@@ -228,8 +230,13 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel, r
 }
 
 // ── Comparison matrix ─────────────────────────────────────────────────────────
-// Rows = unique vendors (by vendor_name). Columns = scenarios + an "Unlinked" column.
-// Cell = cheapest quote for that vendor × scenario.
+// Rows group vendors. Each column represents current, historical or unlinked cargo.
+const historyLabels = {
+  changed: 'Packing changed',
+  unknown: 'Quoted revision unknown',
+  unavailable: 'Packing scenario unavailable',
+}
+
 function ComparisonMatrix({ quotes, scenarios }) {
   // Collect all unique vendors (by name, case-insensitive)
   const vendorNames = useMemo(() => {
@@ -242,9 +249,29 @@ function ComparisonMatrix({ quotes, scenarios }) {
     return out.sort((a, b) => a.localeCompare(b))
   }, [quotes])
 
-  // Columns: each scenario + an "Unlinked" column for quotes with no scenario_id
-  const hasUnlinked = quotes.some(q => !q.scenario_id)
-  const cols = [...scenarios, ...(hasUnlinked ? [{ id: null, label: 'Unlinked' }] : [])]
+  const { cols, keys } = useMemo(() => {
+    const byId = new Map(scenarios.map(row => [row.id, row]))
+    const columns = new Map(scenarios.map(row => [row.id, row]))
+    const keys = new Map()
+    for (const quote of quotes) {
+      const scenario = byId.get(quote.scenario_id)
+      const status = freightPackingStatus(quote, scenario)
+      if (status === 'current') {
+        keys.set(quote.id, scenario.id)
+      } else if (status === 'unlinked') {
+        columns.set('unlinked:', { id: 'unlinked:', label: 'Unlinked' })
+        keys.set(quote.id, 'unlinked:')
+      } else {
+        const id = JSON.stringify([quote.scenario_id, status, quote.scenario_revision, quote.scenario_legacy_stamp])
+        if (!columns.has(id)) columns.set(id, {
+          id, label: quote.scenario_label || scenario?.label || 'Packing scenario',
+          history: historyLabels[status],
+        })
+        keys.set(quote.id, id)
+      }
+    }
+    return { cols: [...columns.values()], keys }
+  }, [quotes, scenarios])
 
   // "Cheapest" comparisons below all use quoted_total_hkd (normalised), never
   // the raw quoted_total — quotes are legitimately in different currencies
@@ -259,36 +286,37 @@ function ComparisonMatrix({ quotes, scenarios }) {
 
   // Build lookup: vendorKey → scenarioId → cheapest quote (by HKD total)
   const lookup = useMemo(() => {
-    const map = {}
+    const map = new Map()
     for (const q of quotes) {
       const vk = (q.vendor_name || '').trim().toLowerCase()
-      const sk = q.scenario_id || null
-      if (!map[vk]) map[vk] = {}
-      const existing = map[vk][sk]
+      const sk = keys.get(q.id)
+      if (!map.has(vk)) map.set(vk, new Map())
+      const row = map.get(vk)
+      const existing = row.get(sk)
       const qTotal = hkd(q) ?? Infinity
       const eTotal = hkd(existing) ?? Infinity
-      if (!existing || qTotal < eTotal) map[vk][sk] = q
+      if (!existing || qTotal < eTotal) row.set(sk, q)
     }
     return map
-  }, [quotes])
+  }, [quotes, keys])
 
   // Find cheapest HKD total per scenario column (for highlighting)
   const colMin = useMemo(() => {
-    const out = {}
+    const out = new Map()
     for (const col of cols) {
       let min = Infinity
       for (const vk of vendorNames.map(n => n.toLowerCase())) {
-        const t = hkd(lookup[vk]?.[col.id]) ?? Infinity
+        const t = hkd(lookup.get(vk)?.get(col.id)) ?? Infinity
         if (t < min) min = t
       }
-      out[col.id] = min
+      out.set(col.id, min)
     }
     return out
   }, [cols, vendorNames, lookup])
 
   if (!vendorNames.length) return null
 
-  const fmt = (n, cur) => n != null ? `${cur || 'HKD'} ${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'
+  const fmt = (n, cur) => n != null ? `${cur || 'HKD'} ${Number(n).toLocaleString('en-US', { maximumFractionDigits: 6 })}` : '—'
 
   return (
     <div className="overflow-x-auto">
@@ -297,9 +325,10 @@ function ComparisonMatrix({ quotes, scenarios }) {
           <tr>
             <th className="text-left py-2 pr-4 text-xs font-semibold text-ink-60 uppercase tracking-wide whitespace-nowrap">Vendor</th>
             {cols.map(col => (
-              <th key={col.id ?? '__unlinked'} className="py-2 px-3 text-left text-xs font-semibold text-ink-60 uppercase tracking-wide whitespace-nowrap">
+              <th key={col.id} className="py-2 px-3 text-left text-xs font-semibold text-ink-60 uppercase tracking-wide whitespace-nowrap">
                 {col.label}
                 {col.selected && <Star size={10} className="inline ml-1 text-yellow-500 fill-current" />}
+                {col.history && <span className="block normal-case font-normal text-amber-700">{col.history}</span>}
               </th>
             ))}
           </tr>
@@ -311,12 +340,12 @@ function ComparisonMatrix({ quotes, scenarios }) {
               <tr key={vendor} className="border-t border-warm-grey">
                 <td className="py-2.5 pr-4 font-medium text-ink-80 whitespace-nowrap">{vendor}</td>
                 {cols.map(col => {
-                  const q = lookup[vk]?.[col.id]
+                  const q = lookup.get(vk)?.get(col.id)
                   const total = hkd(q)
-                  const isBest = q && total != null && total === colMin[col.id]
+                  const isBest = q && !col.history && total != null && total === colMin.get(col.id)
                   const needsRate = q && total == null
                   return (
-                    <td key={col.id ?? '__unlinked'} className="py-2.5 px-3">
+                    <td key={col.id} className="py-2.5 px-3">
                       {q ? (
                         <div className={`rounded-none px-3 py-2 ${isBest ? 'bg-green-50 border border-green-200' : 'bg-ivory'}`}>
                           <div className={`font-semibold ${isBest ? 'text-green-700' : 'text-ink'}`}>
@@ -356,6 +385,7 @@ function ComparisonMatrix({ quotes, scenarios }) {
 function QuoteRow({ quote, scenarios, chosen, busy, onDelete, onChoose, readOnly }) {
   const [expanded, setExpanded] = useState(false)
   const sc = scenarios.find(s => s.id === quote.scenario_id)
+  const packingStatus = freightPackingStatus(quote, sc)
   const total = parseFloat(quote.quoted_total)
 
   return (
@@ -369,8 +399,10 @@ function QuoteRow({ quote, scenarios, chosen, busy, onDelete, onChoose, readOnly
                 <CheckCircle2 size={10} /> Chosen
               </span>
             )}
-            {sc && <span className="text-2xs px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-100">{sc.label}</span>}
-            {quote.scenario_id && !sc && <span className="text-2xs text-ink-60">{quote.scenario_label || 'Packing scenario'} (unavailable)</span>}
+            {packingStatus === 'current' && <span className="text-2xs px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-100">{sc.label}</span>}
+            {historyLabels[packingStatus] && (
+              <span className="text-2xs text-amber-700">{quote.scenario_label || sc?.label || 'Packing scenario'} · {historyLabels[packingStatus]}</span>
+            )}
             {!quote.scenario_id && <span className="text-2xs px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60">Unlinked</span>}
             <span className="text-xs text-ink-60">{modeLabel(quote.mode)}</span>
             <span className="text-xs text-ink-60">{quote.incoterm}</span>

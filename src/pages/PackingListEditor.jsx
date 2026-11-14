@@ -495,7 +495,8 @@ export default function PackingListEditor({ orderId, orderLines }) {
   function removeScenario(id) {
     if (!confirm('Delete this packing scenario and all its cartons? This cannot be undone.')) return
     return runMutation(async () => {
-      if (!drafts[id]?.isNew) await deleteScenario(id, orderId)
+      const draft = drafts[id]
+      if (!draft?.isNew) await deleteScenario(draft?.scenario || scenarios.find(row => row.id === id))
       if (!mounted.current) return
       const remaining = scenarios.filter(row => row.id !== id)
       setScenarios(remaining)

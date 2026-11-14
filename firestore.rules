@@ -1276,16 +1276,26 @@ service cloud.firestore {
       }
     }
     match /packing_lists/{plId} {
+      function packingRevisionChanged(before, after) {
+        return after.get('packing_save_id', null) is string
+          && after.packing_save_id.size() > 0
+          && after.packing_save_id != before.get('packing_save_id', null);
+      }
       allow read: if can('shipping');
-      allow delete: if can('shipping') && linkedOrderEditable(resource.data);
-      allow create: if can('shipping') && orderOpenAfter(request.resource.data.get('order_id', null));
+      // Permanent deletion and linked Freight creation share a server transaction.
+      allow delete: if false;
+      allow create: if can('shipping') && orderOpenAfter(request.resource.data.get('order_id', null))
+        && !request.resource.data.keys().hasAny(['freight_link_revision']);
       allow update: if can('shipping') && linkedOrderEditable(resource.data)
-        && request.resource.data.get('order_id', null) == resource.data.get('order_id', null);
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['order_id', 'freight_link_revision'])
+        && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['label', 'selected', 'updatedAt'])
+          || packingRevisionChanged(resource.data, request.resource.data));
       match /{subcollection}/{childId}/{descendants=**} {
         function packingChildWritable() {
           let scenario = /databases/$(database)/documents/packing_lists/$(plId);
-          return existsAfter(scenario) ? linkedOrderEditable(getAfter(scenario).data)
-            : request.method == 'delete' && exists(scenario) && linkedOrderEditable(get(scenario).data);
+          let after = getAfter(scenario).data;
+          return linkedOrderEditable(after)
+            && packingRevisionChanged(exists(scenario) ? get(scenario).data : {}, after);
         }
         allow read: if can('shipping');
         allow write: if can('shipping') && packingChildWritable();
@@ -1296,9 +1306,12 @@ service cloud.firestore {
     }
     match /freight_quotes/{quoteId} {
       allow read: if can('shipping');
-      allow create: if can('shipping') && optionalOpenOrderAfter(request.resource.data.get('order_id', null));
+      allow create: if can('shipping') && optionalOpenOrderAfter(request.resource.data.get('order_id', null))
+        && request.resource.data.get('scenario_id', null) in [null, '']
+        && !request.resource.data.keys().hasAny(['scenario_revision', 'scenario_legacy_stamp']);
       allow update: if can('shipping') && linkedOrderEditable(resource.data)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['order_id', 'is_chosen']);
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
+          ['order_id', 'is_chosen', 'scenario_id', 'scenario_revision', 'scenario_legacy_stamp']);
       allow delete: if can('shipping') && linkedOrderEditable(resource.data) && canDeleteFreightQuote();
       function canDeleteFreightQuote() {
         let orderId = resource.data.get('order_id', null);

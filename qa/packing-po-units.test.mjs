@@ -52,7 +52,7 @@ before(async()=>{
  b.onResolve({filter:/^react-router-dom$/},()=>({path:'router',namespace:'mock'}))
  b.onResolve({filter:/^firebase\/firestore$/},()=>({path:'firestore',namespace:'mock'}))
  b.onResolve({filter:/^\.\.?\//},a=>{const n=basename(a.path);if(['firebase','i18n'].includes(n))return{path:n,namespace:'mock'}})
- b.onLoad({filter:/.*/,namespace:'mock'},a=>({contents:a.path==='firestore'?firestore:a.path==='router'?'export const useParams=()=>({id:"po",plId:"pl"})':a.path==='firebase'?'export const db={}':'export const useUiLang=()=>"en"',loader:'js'}))
+ b.onLoad({filter:/.*/,namespace:'mock'},a=>({contents:a.path==='firestore'?firestore:a.path==='router'?'export const useParams=()=>({id:"po",plId:"pl"})':a.path==='firebase'?'export const db={}; export const authHeader=async()=>({})':'export const useUiLang=()=>"en"',loader:'js'}))
  }}]})
  pages=await import(pathToFileURL(join(scratch,'pages.mjs')))
  URL.createObjectURL=blob=>{downloaded=blob;return'blob:packing'};URL.revokeObjectURL=()=>{}

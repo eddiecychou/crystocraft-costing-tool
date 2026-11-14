@@ -5,6 +5,8 @@ import {
   writeBatch, serverTimestamp, query, orderBy, where,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { orderRequestAction } from './shippingOrderApi.js'
+import { packingRevision } from './freightQuoteModel.js'
 
 // ── Firestore refs ────────────────────────────────────────────────────────────
 // packing_lists is top-level (matching existing Firestore rules)
@@ -387,18 +389,11 @@ export async function savePackingScenario({ scenario, previous, cartons, patch, 
   return { scenario: { ...current, id: scenario.id, label: current.label || scenario.label }, cartons: committedCartons }
 }
 
-export async function deleteScenario(plId, orderId) {
-  const { scenario, cartons } = await loadPackingScenario(plId, orderId)
-  const ref = PL_DOC(plId)
-  const removed = removedPackingDocuments(plId, cartons, [])
-  if (removed.length >= 500) throw Error('This packing plan is too large to delete in one operation.')
-  await runTransaction(db, async tx => {
-    const latest = (await tx.get(ref)).data()
-    if (!latest || latest.order_id !== orderId || latest.packing_save_id !== scenario.packing_save_id) {
-      throw Error('This packing scenario changed elsewhere. Please retry.')
-    }
-    for (const child of removed) tx.delete(child)
-    tx.delete(ref)
+export function deleteScenario(scenario) {
+  return orderRequestAction('delete_packing_scenario', {
+    order_id: scenario.order_id,
+    id: scenario.id,
+    revision: packingRevision(scenario),
   })
 }
 

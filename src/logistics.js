@@ -4,6 +4,10 @@ import {
   onSnapshot, query, orderBy, where, serverTimestamp, runTransaction,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { orderRequestAction } from './shippingOrderApi.js'
+import { FREIGHT_INCOTERMS, freightPackingBasis, normFreightQuote } from './freightQuoteModel.js'
+
+export { FREIGHT_INCOTERMS, QUOTE_SOURCES, freightScenarioCargo, normFreightQuote } from './freightQuoteModel.js'
 
 // Logistics & Freight — vendor knowledge base + freight-quote cost history.
 // Phase 13.x of the Shipping module. Deliberately NO standing rate cards
@@ -37,36 +41,9 @@ export const COVERAGE_STRENGTH = [
 ]
 export const strengthOf = v => COVERAGE_STRENGTH.find(s => s.value === v) || COVERAGE_STRENGTH[1]
 
-// Incoterms a forwarder can quote on (subset relevant to freight; the full
-// commercial set lives on the order).
-export const FREIGHT_INCOTERMS = ['FOB', 'DAP', 'DDP']
-
-export const QUOTE_SOURCES = [
-  { value: 'rfq',              label: 'RFQ reply' },
-  { value: 'wechat_bootstrap', label: 'WeChat history' },
-  { value: 'manual',           label: 'Manual entry' },
-]
-
 const numOrNull = v =>
   v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v)
 const str = v => (v == null ? '' : String(v)).trim()
-
-// HKD per 1 unit of currency (same convention as currency.js / rangeCosting.js).
-// CNY is aliased to the RMB rate — same currency, and the rates table (settings/
-// exchange_rates) only carries one entry for it; FreightComparison.jsx's own
-// currency picker offers both codes.
-//
-// `rates?.[currency] || 1` used to silently treat ANY currency missing from the
-// rates table as 1:1 with HKD — comparing a USD quote against an RMB quote as
-// if both were HKD. Returns null now instead (bug-fix pack B-05), so a caller
-// can show "rate unavailable" rather than a wrong number that looks legitimate.
-const toHKD = (amount, currency, rates) => {
-  const a = numOrNull(amount)
-  if (a == null) return null
-  if (currency === 'HKD') return a
-  const rate = rates?.[currency === 'CNY' ? 'RMB' : currency]
-  return Number.isFinite(rate) ? a * rate : null
-}
 
 // ── logistics_vendors ─────────────────────────────────────────────────────────
 
@@ -145,55 +122,6 @@ const QUOTES = () => collection(db, 'freight_quotes')
 const quoteRef = id => doc(QUOTES(), id)
 const decisionRef = orderId => doc(db, 'freight_decisions', orderId)
 
-export function freightScenarioCargo(scenario) {
-  return {
-    cbm: scenario?.totals?.cbm ?? '',
-    chargeable_weight_kg: scenario?.totals?.chargeable_weight_kg ?? '',
-    cartons: scenario?.totals?.carton_count ?? '',
-  }
-}
-
-export const normFreightQuote = (q, rates) => {
-  const total = numOrNull(q.quoted_total)
-  const currency = str(q.currency) || 'USD'
-  return {
-    vendor_id: str(q.vendor_id),
-    vendor_name: str(q.vendor_name),
-    order_id: q.order_id || null,
-    scenario_id: q.scenario_id || null,
-    scenario_label: str(q.scenario_label),
-    lane: {
-      origin: str(q.lane?.origin) || 'Shenzhen',
-      dest_country: str(q.lane?.dest_country),
-      dest_city: str(q.lane?.dest_city),
-    },
-    mode: str(q.mode),
-    incoterm: FREIGHT_INCOTERMS.includes(q.incoterm) ? q.incoterm : 'FOB',
-    cargo_basis: {
-      chargeable_weight_kg: numOrNull(q.cargo_basis?.chargeable_weight_kg),
-      cbm: numOrNull(q.cargo_basis?.cbm),
-      cartons: numOrNull(q.cargo_basis?.cartons),
-    },
-    quoted_total: total,
-    currency,
-    // Normalised to HKD so quotes across currencies are comparable in history.
-    quoted_total_hkd: rates ? toHKD(total, currency, rates) : numOrNull(q.quoted_total_hkd),
-    breakdown: {
-      freight: numOrNull(q.breakdown?.freight),
-      destination_charges: numOrNull(q.breakdown?.destination_charges),
-      customs: numOrNull(q.breakdown?.customs),
-      duties_included: !!q.breakdown?.duties_included,
-    },
-    transit_days: numOrNull(q.transit_days),
-    valid_until: q.valid_until || null,
-    source: QUOTE_SOURCES.some(s => s.value === q.source) ? q.source : 'manual',
-    source_file: q.source_file || null,
-    quote_date: q.quote_date || null,
-    is_chosen: !!q.is_chosen,
-    decision_notes: str(q.decision_notes),
-  }
-}
-
 const quoteFromDoc = d => ({ ...d.data(), id: d.id })
 
 export function newFreightQuoteId() {
@@ -201,30 +129,12 @@ export function newFreightQuoteId() {
 }
 
 export async function createOrderFreightQuote(id, data, rates, scenarioSnapshot) {
-  const ref = quoteRef(id)
-  const order = doc(db, 'orders', data.order_id)
-  return runTransaction(db, async tx => {
-    const existing = await tx.get(ref)
-    if (existing.exists()) {
-      if (existing.data().order_id !== data.order_id) throw Error('Freight quote belongs to another order.')
-      return quoteFromDoc(existing)
-    }
-    if (!(await tx.get(order)).exists()) throw Error('Order is no longer available.')
-    const scenario = data.scenario_id
-      ? (await tx.get(doc(db, 'packing_lists', data.scenario_id))).data()
-      : null
-    if (data.scenario_id && (
-      scenario?.order_id !== data.order_id ||
-      JSON.stringify(freightScenarioCargo(scenario)) !== JSON.stringify(freightScenarioCargo(scenarioSnapshot))
-    )) {
-      const error = Error('The packing scenario changed. Reload its totals before saving.')
-      error.code = 'freight/scenario-changed'
-      throw error
-    }
-
-    const payload = normFreightQuote({ ...data, scenario_label: scenario?.label || data.scenario_label, is_chosen: false }, rates)
-    tx.set(ref, { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
-    return { ...payload, id }
+  const quote = normFreightQuote({ ...data, is_chosen: false }, rates)
+  return orderRequestAction('create_freight_quote', {
+    order_id: quote.order_id,
+    id,
+    quote,
+    basis: scenarioSnapshot ? freightPackingBasis(scenarioSnapshot) : null,
   })
 }
 

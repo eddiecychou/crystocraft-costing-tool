@@ -45,7 +45,7 @@ before(async () => {
       plugin.onResolve({ filter: /^react$/ }, args => ({ path: args.path, external: true }))
       plugin.onResolve({ filter: /^\.\/firebase$/ }, () => ({ path: 'db', namespace: 'packing-db' }))
       plugin.onLoad({ filter: /.*/, namespace: 'packing-db' }, () => ({
-        contents: 'export const db = globalThis.__packingTestDb;', loader: 'js',
+        contents: 'export const db = globalThis.__packingTestDb; export const authHeader = async () => ({});', loader: 'js',
       }))
       plugin.onLoad({ filter: /.*/, namespace: 'packing-sdk' }, () => ({
         contents: `
@@ -89,12 +89,15 @@ after(async () => {
 
 async function legacy(id) {
   const scenario = { id, order_id: orderId, status: 'estimate', selected: true, label: 'Fictional plan', retain: 'legacy value' }
-  const ref = doc(adminDb, 'packing_lists', id)
-  const batch = writeBatch(adminDb)
-  batch.set(ref, scenario)
-  batch.set(doc(ref, 'cartons', 'old'), { carton_seq: 1, carton_count: 1, notes: 'Prior carton' })
-  batch.set(doc(ref, 'cartons', 'old', 'contents', 'old-item'), { description: 'Prior content' })
-  await batch.commit()
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore()
+    const ref = doc(db, 'packing_lists', id)
+    const batch = writeBatch(db)
+    batch.set(ref, scenario)
+    batch.set(doc(ref, 'cartons', 'old'), { carton_seq: 1, carton_count: 1, notes: 'Prior carton' })
+    batch.set(doc(ref, 'cartons', 'old', 'contents', 'old-item'), { description: 'Prior content' })
+    await batch.commit()
+  })
   return admin.loadPackingScenario(id, orderId)
 }
 function options(loaded, attemptId, changes = {}) {

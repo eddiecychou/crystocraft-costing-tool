@@ -8,6 +8,7 @@ import { PI_MAX_FILE_BYTES } from '../../src/piUploadPolicy.js'
 import { createOrderRequests } from './lib/orderCreateRequests.js'
 import { deleteShippingDraft, shippingDraftHasFinancialHistory } from './lib/deleteShippingDraft.js'
 import { createShippingClosure, validateClosureRequest } from './lib/shippingClosure.js'
+import { createPackingFreight } from './lib/packingFreight.js'
 import { validInvoiceOrderId } from '../../src/invoiceRecoveryModel.js'
 import {
   OrderRequestError,
@@ -76,7 +77,7 @@ const json = (body, status = 200) =>
     }
   })
 
-export function orderRequestHandler({ verifyToken, getProfile, repo, deleteDraft, closure }) {
+export function orderRequestHandler({ verifyToken, getProfile, repo, deleteDraft, closure, packingFreight }) {
   return async (req) => {
     if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
     const token = req.headers
@@ -105,6 +106,16 @@ export function orderRequestHandler({ verifyToken, getProfile, repo, deleteDraft
       }
       if (!body || typeof body !== 'object')
         return json({ error: 'Invalid order request' }, 400)
+      if (['create_freight_quote', 'delete_packing_scenario'].includes(body.action)) {
+        try {
+          return json(await packingFreight(uid, body))
+        } catch (err) {
+          if (err instanceof OrderRequestError) throw err
+          return json({ error: body.action === 'create_freight_quote'
+            ? 'Could not confirm the freight quote. Retry from this form to recover the same quote.'
+            : 'Could not confirm the deletion. Retry or reload the packing scenarios.' }, 503)
+        }
+      }
       if (['closure_status', 'close_order'].includes(body.action)) {
         if (!validInvoiceOrderId(body.order_id)) return json({ error: 'Choose a saved order.' }, 400)
         validateClosureRequest(body)
@@ -163,6 +174,7 @@ export default async (req) => {
     getProfile: async (uid) =>
       (await db.collection('users').doc(uid).get()).data(),
     closure: createShippingClosure(db),
+    packingFreight: createPackingFreight(db),
     deleteDraft: (uid, id, base) => deleteShippingDraft(db, uid, id, base, orderId =>
       shippingDraftHasFinancialHistory(orderId, {
         url: process.env.SUPABASE_URL,
