@@ -70,9 +70,7 @@ const Enquiries = lazy(() => import('./pages/Enquiries'))
 const CreditNotes = lazy(() => import('./pages/CreditNotes'))
 const CreditNoteForm = lazy(() => import('./pages/CreditNoteForm'))
 const CreditNotePrint = lazy(() => import('./pages/CreditNotePrint'))
-const Logistics = lazy(() => import('./pages/Logistics'))
 const LogisticsVendorForm = lazy(() => import('./pages/LogisticsVendorForm'))
-const Shipments = lazy(() => import('./pages/Shipments'))
 const NewShipmentEntry = lazy(() => import('./pages/NewShipmentEntry'))
 const ShipmentForm = lazy(() => import('./pages/ShipmentForm'))
 const Shipping = lazy(() => import('./pages/Shipping'))
@@ -337,7 +335,7 @@ function AdminApp({ user, profile, role }) {
                 <Route path="/portal/accounts/:id" element={role === 'admin' ? <AccountEdit /> : <Navigate to="/dashboard" replace />} />
                 {/* Legacy redirects */}
                 <Route path="/shipments" element={<Navigate to="/shipping" replace />} />
-                <Route path="/logistics" element={<Navigate to="/shipping" replace />} />
+                <Route path="/logistics" element={<Navigate to="/shipping?tab=logistics" replace />} />
                 <Route path="/customer-accounts" element={<Navigate to="/portal" replace />} />
                 <Route path="/enquiries" element={<Navigate to="/portal" replace />} />
                 <Route path="/catalogue-band" element={<Navigate to="/settings" replace />} />

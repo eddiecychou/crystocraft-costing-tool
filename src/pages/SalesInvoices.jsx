@@ -74,6 +74,7 @@ function useErpInvoices(search) {
 
 export default function SalesInvoices({uid}) {
   const can = useCan()
+  const canOpenShipping = can('shipping')
   const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
@@ -353,20 +354,22 @@ export default function SalesInvoices({uid}) {
           {/* A direct invoice needs its own front door. Smaller retail sales are
               invoiced without a sales order at all, so routing them through
               "Production → Import PI" would be both wrong and confusing. */}
-          <Link to="/shipments/new?direct=1" className="btn-primary text-sm whitespace-nowrap inline-flex items-center gap-1.5">
-            <Receipt size={15} /> Direct Invoice
-          </Link>
+          {canOpenShipping && (
+            <Link to="/shipments/new?direct=1" className="btn-primary text-sm whitespace-nowrap inline-flex items-center gap-1.5">
+              <Receipt size={15} /> Direct Invoice
+            </Link>
+          )}
         </div>
-        <p className="text-sm text-ink-60 mt-1">
+        {canOpenShipping && <p className="text-sm text-ink-60 mt-1">
           Two paths: a <strong>wholesale</strong> invoice is raised from its sales order once the goods are
           ready to ship — open the order below and allocate its number. A <strong>retail</strong> sale
           (Amazon, web, small Alibaba) skips the sales order and is invoiced directly.
           Either way the invoice needs a UC number.
-        </p>
+        </p>}
       </div>
 
       <div className="p-4 md:p-6">
-        {uid && can('shipping') && <SavedOrderRequests key={uid} uid={uid} />}
+        {uid && canOpenShipping && <SavedOrderRequests key={uid} uid={uid} />}
         {loading && <LoadingBar />}
         {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 

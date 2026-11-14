@@ -1,6 +1,6 @@
 import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { useOrders, orderStatusOf, orderUc, orderSi, orderSoDisplay } from '../shipping'
 import { beginOrderCopy, orderRequestAction } from '../orderCreateRequest'
@@ -47,7 +47,18 @@ function useErpOrders(search) {
 }
 
 export default function Shipping({uid}) {
-  const [tab, setTab] = useState('shipments')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = TABS.find(({ v }) => v === searchParams.get('tab'))?.v ?? 'shipments'
+
+  function selectTab(value) {
+    if (value === tab) return
+    setSearchParams(current => {
+      const next = new URLSearchParams(current)
+      if (value === 'shipments') next.delete('tab')
+      else next.set('tab', value)
+      return next
+    })
+  }
 
   return (
     <div>
@@ -55,7 +66,7 @@ export default function Shipping({uid}) {
         <h1 className="text-xl md:text-2xl mb-4">Production</h1>
         <div className="flex gap-0">
           {TABS.map(t => (
-            <button key={t.v} onClick={() => setTab(t.v)}
+            <button key={t.v} type="button" aria-pressed={tab === t.v} onClick={() => selectTab(t.v)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
  tab === t.v ? 'border-brand-600 text-brand-600' : 'border-transparent text-ink-60 hover:text-ink'
               }`}>
