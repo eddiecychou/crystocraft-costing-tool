@@ -82,6 +82,8 @@ after(async () => {
 
 test('only Shipping can delete an unused draft with its lines, using a safe replay', async () => {
   const id = 'plain-draft', base = await order(id)
+  const formerPacking = admin.doc('packing_selections/' + id)
+  await formerPacking.set({ scenario_id: null })
   for (const actor of ['supply', 'customer']) assert.equal((await request(id, base, actor)).status, 403)
   await assertFails(deleteDoc(doc(shipping, 'orders', id)))
   await intact(id)
@@ -89,6 +91,7 @@ test('only Shipping can delete an unused draft with its lines, using a safe repl
   assert.deepEqual(await (await request(id, base)).json(), { deleted: false })
   assert.equal((await root(id).get()).exists, false)
   assert.equal((await root(id).collection('lines').get()).empty, true)
+  assert.equal((await formerPacking.get()).exists, false)
 })
 
 test('current revision and order identity are checked before deleting', async () => {

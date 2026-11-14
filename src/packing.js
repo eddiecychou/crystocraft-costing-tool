@@ -2,16 +2,19 @@ import { packingItemUnit, packingItemTierRemarks } from './packingUnits'
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDocFromServer, getDocs, getDocsFromServer, updateDoc, runTransaction,
-  writeBatch, serverTimestamp, query, orderBy, where,
+  onSnapshot, serverTimestamp, query, orderBy, where,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { orderRequestAction } from './shippingOrderApi.js'
 import { packingRevision } from './freightQuoteModel.js'
+import { resolvePackingSelection, sortPackingScenarios } from './packingSelection.js'
 
 // ── Firestore refs ────────────────────────────────────────────────────────────
 // packing_lists is top-level (matching existing Firestore rules)
 const PL_COL   = () => collection(db, 'packing_lists')
 const PL_DOC   = id => doc(db, 'packing_lists', id)
+const selectionRef = orderId => doc(db, 'packing_selections', orderId)
+const scenariosQuery = orderId => query(PL_COL(), where('order_id', '==', orderId))
 const CTN_COL  = plId => collection(db, 'packing_lists', plId, 'cartons')
 const CTN_DOC  = (plId, cId) => doc(db, 'packing_lists', plId, 'cartons', cId)
 const CONT_COL = (plId, cId) => collection(db, 'packing_lists', plId, 'cartons', cId, 'contents')
@@ -229,17 +232,38 @@ export async function loadRangeProductsWithPacking() {
 // "Standard carton", "Flat pack"). Exactly one is `selected` (the working plan
 // used downstream for export/shipment).
 
-// All scenarios for an order, oldest first (stable switcher order).
-export async function getPackingScenariosByOrder(orderId, read = getDocs) {
-  const snap = await read(query(PL_COL(), where('order_id', '==', orderId)))
-  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-  rows.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
-  // Back-compat: a legacy list with no label/selected is the implicit Standard scenario.
-  return rows.map((r, i) => ({
-    ...r,
-    label: r.label || 'Standard carton',
-    selected: r.selected ?? (rows.every(x => !x.selected) && i === 0),
-  }))
+async function readPackingScenarios(orderId) {
+  const snap = await getDocsFromServer(scenariosQuery(orderId))
+  return sortPackingScenarios(snap.docs.map(d => ({ ...d.data(), id: d.id })))
+}
+
+export async function loadPackingSelection(orderId) {
+  const ref = selectionRef(orderId)
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const before = (await getDocFromServer(ref)).data()
+    const rows = await readPackingScenarios(orderId)
+    const after = (await getDocFromServer(ref)).data()
+    if (before?.scenario_id !== after?.scenario_id) continue
+    const state = resolvePackingSelection(rows, after)
+    return {
+      ...state,
+      scenarios: rows.map(row => ({ ...row, label: row.label || 'Standard carton', selected: row.id === state.selectedId })),
+    }
+  }
+  throw Error('The working packing plan changed while loading. Please retry.')
+}
+
+export async function getPackingScenariosByOrder(orderId) {
+  return (await loadPackingSelection(orderId)).scenarios
+}
+
+export function watchPackingSelection(orderId, onChange) {
+  return onSnapshot(selectionRef(orderId), { includeMetadataChanges: true }, snapshot => {
+    if (!snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites && snapshot.exists())
+      onChange(snapshot.data().scenario_id)
+  }, () => {
+    // Explicit reload remains available if the listener cannot reconnect.
+  })
 }
 
 // Kept for any single-list callers — returns the selected (or first) scenario.
@@ -251,7 +275,7 @@ export async function getPackingListByOrder(orderId) {
 
 export function newPackingScenario(orderId, label) {
   return {
-    id: doc(PL_COL()).id, order_id: orderId, label, selected: false,
+    id: doc(PL_COL()).id, order_id: orderId, label,
     status: 'estimate', pallets_used: false, consignee_name: '',
     case_mark: '', pl_date: null, shipped_per: '', pallets: [],
   }
@@ -261,12 +285,23 @@ export async function updatePackingList(plId, patch) {
   await updateDoc(PL_DOC(plId), { ...patch, updatedAt: serverTimestamp() })
 }
 
-// Mark one scenario selected and clear the rest (exactly-one invariant).
 export async function selectScenario(orderId, scenarioId) {
-  const snap = await getDocs(query(PL_COL(), where('order_id', '==', orderId)))
-  const batch = writeBatch(db)
-  snap.docs.forEach(d => batch.update(d.ref, { selected: d.id === scenarioId, updatedAt: serverTimestamp() }))
-  await batch.commit()
+  const ref = selectionRef(orderId)
+  const target = PL_DOC(scenarioId)
+  const unavailable = () => Error('This packing scenario is unavailable. Reload packing plans to see the working plan.')
+  try {
+    await runTransaction(db, async tx => {
+      const [plan, current] = await Promise.all([tx.get(target), tx.get(ref)])
+      if (plan.data()?.order_id !== orderId) throw unavailable()
+      if (current.data()?.scenario_id !== scenarioId)
+        tx.set(ref, { scenario_id: scenarioId, updated_at: serverTimestamp() })
+    })
+  } catch (err) {
+    // Rules may reject the write before the SDK retries a concurrent deletion.
+    const latest = await getDocFromServer(target).catch(() => null)
+    if (latest && latest.data()?.order_id !== orderId) throw unavailable()
+    throw err
+  }
 }
 
 // ── Carton CRUD ───────────────────────────────────────────────────────────────
@@ -363,30 +398,44 @@ export async function savePackingScenario({ scenario, previous, cartons, patch, 
   }
   const changes = writes.flatMap(carton => [carton, ...carton.items]).filter(({ ref, data }) =>
     Object.entries(data).some(([field, value]) => baseline.get(ref.path)?.[field] !== value))
-  const count = 1 + removed.length + changes.length
+  const count = (isNew ? 2 : 1) + removed.length + changes.length
   if (count > 500) throw Error('This packing plan is too large to save in one operation. Your draft is still open.')
   const saved = { ...patch, packing_save_id: attemptId }
-  const current = await runTransaction(db, async tx => {
+  const working = selectionRef(scenario.order_id)
+  // Existing plans can predate the shared selection. Read their fallback once;
+  // any concurrent create, star or delete will initialize the shared record.
+  const legacyId = isNew && !(await getDocFromServer(working)).data()?.scenario_id
+    ? resolvePackingSelection(await readPackingScenarios(scenario.order_id)).selectedId : null
+  const result = await runTransaction(db, async tx => {
     const existing = (await tx.get(ref)).data()
-    if (existing?.order_id === scenario.order_id && existing.packing_save_id === attemptId) return existing
+    const choice = isNew ? (await tx.get(working)).data() : null
+    if (existing?.order_id === scenario.order_id && existing.packing_save_id === attemptId)
+      return { current: existing, selectedId: choice?.scenario_id }
     if (isNew ? existing : !existing || existing.order_id !== scenario.order_id || existing.packing_save_id !== scenario.packing_save_id) {
       throw Error('This packing scenario changed elsewhere. Your draft is still open.')
     }
+    let selectedId = choice?.scenario_id
     if (isNew) {
-      const { id, ...header } = scenario
+      const { id, selected, ...header } = scenario
+      if (!selectedId) {
+        const fallback = legacyId && (await tx.get(PL_DOC(legacyId))).data()
+        selectedId = fallback?.order_id === scenario.order_id ? legacyId : id
+        tx.set(working, { scenario_id: selectedId, updated_at: serverTimestamp() })
+      }
       tx.set(ref, { ...header, ...saved, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
     } else {
       tx.update(ref, { ...saved, updatedAt: serverTimestamp() })
     }
     for (const removedRef of removed) tx.delete(removedRef)
     for (const change of changes) tx.set(change.ref, change.data, { merge: true })
-    return { ...(existing || scenario), ...saved }
+    return { current: { ...(existing || scenario), ...saved }, selectedId }
   })
   const committedCartons = writes.map(({ ref, data, items }) => ({
     ...data, id: ref.id, _localId: ref.id,
     contents: items.map(item => ({ ...item.data, id: item.ref.id, _localId: item.ref.id })),
   }))
-  return { scenario: { ...current, id: scenario.id, label: current.label || scenario.label }, cartons: committedCartons }
+  const { current, selectedId } = result
+  return { scenario: { ...current, id: scenario.id, label: current.label || scenario.label }, cartons: committedCartons, selectedId }
 }
 
 export function deleteScenario(scenario) {

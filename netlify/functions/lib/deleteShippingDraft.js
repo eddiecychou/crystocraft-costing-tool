@@ -37,8 +37,10 @@ export async function deleteShippingDraft(db, uid, id, base, hasFinancialHistory
     }
 
     const lines = await tx.get(order.collection('lines').limit(500))
-    if (lines.size >= 500) throw blocked('This draft has too many lines to delete in one operation.')
+    const packingSelection = await tx.get(db.collection('packing_selections').doc(id))
+    if (lines.size + Number(packingSelection.exists) >= 500) throw blocked('This draft has too many lines to delete in one operation.')
     for (const line of lines.docs) tx.delete(line.ref)
+    if (packingSelection.exists) tx.delete(packingSelection.ref)
     tx.delete(order)
     return { deleted: true }
   })

@@ -1,6 +1,5 @@
 import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getDocsFromServer } from 'firebase/firestore'
 import { Plus, Trash2, ChevronDown, ChevronUp, Star, CheckCircle2 } from 'lucide-react'
 import {
   FREIGHT_MODES, FREIGHT_INCOTERMS, modeLabel,
@@ -466,6 +465,7 @@ export default function FreightComparison({ orderId, readOnly = false }) {
   const [loadError, setLoadError] = useState('')
   const [actionError, setActionError] = useState('')
   const [working, setWorking] = useState(false)
+  const [openingQuote, setOpeningQuote] = useState(false)
   const request = useRef(0)
   const busy = useRef(false)
   const rates = useRates()
@@ -477,7 +477,7 @@ export default function FreightComparison({ orderId, readOnly = false }) {
     setActionError('')
     try {
       const [freight, scenarios, vendors] = await Promise.all([
-        loadOrderFreight(orderId), getPackingScenariosByOrder(orderId, getDocsFromServer), loadVendors(),
+        loadOrderFreight(orderId), getPackingScenariosByOrder(orderId), loadVendors(),
       ])
       if (id === request.current) setData({ ...freight, scenarios, vendors })
     } catch (err) {
@@ -524,9 +524,26 @@ export default function FreightComparison({ orderId, readOnly = false }) {
 
   async function reloadScenarios() {
     const id = request.current
-    const scenarios = await getPackingScenariosByOrder(orderId, getDocsFromServer)
+    const scenarios = await getPackingScenariosByOrder(orderId)
     if (id === request.current) setData(current => ({ ...current, scenarios }))
     return scenarios
+  }
+
+  async function openQuoteForm() {
+    if (busy.current) return
+    busy.current = true
+    setOpeningQuote(true)
+    setActionError('')
+    const id = request.current
+    try {
+      await reloadScenarios()
+      if (id === request.current) setShowForm(true)
+    } catch (err) {
+      if (id === request.current) setActionError(err.message || 'Could not load the working packing plan.')
+    } finally {
+      busy.current = false
+      if (id === request.current) setOpeningQuote(false)
+    }
   }
 
   function handleChoose(id, choose) {
@@ -546,6 +563,7 @@ export default function FreightComparison({ orderId, readOnly = false }) {
   return (
     <div className="space-y-6">
       {working && <p role="status" className="text-sm text-ink-60">Saving freight decision…</p>}
+      {openingQuote && <p role="status" className="text-sm text-ink-60">Loading working packing plan…</p>}
       {actionError && <div className="space-y-2">
         <p role="alert" className="text-sm text-brand-700">{actionError}</p>
         <button type="button" className="btn-secondary" onClick={load}>Reload comparison</button>
@@ -596,7 +614,7 @@ export default function FreightComparison({ orderId, readOnly = false }) {
       ) : (
         <button
           type="button"
-          disabled={working || Boolean(actionError)} onClick={() => setShowForm(true)}
+          disabled={working || openingQuote || Boolean(actionError)} onClick={openQuoteForm}
           className="flex items-center gap-2 text-sm text-brand-600 hover:text-brand-800"
         >
           <Plus size={15} /> Add freight quote

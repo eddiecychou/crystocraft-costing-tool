@@ -41,7 +41,7 @@ before(async () => {
   scratch = await mkdtemp(resolve('qa/out/freight-emulator-'))
   await build({
     stdin: {
-      contents: "export * from './src/logistics.js'; export { deleteScenario, savePackingScenario, loadPackingScenario } from './src/packing.js';",
+      contents: "export * from './src/logistics.js'; export { deleteScenario, savePackingScenario, loadPackingScenario, newPackingScenario, selectScenario, loadPackingSelection } from './src/packing.js';",
       resolveDir: resolve('.'),
     },
     outfile: join(scratch, 'logistics.mjs'),
@@ -407,7 +407,7 @@ test('legacy snapshot stamps detect changed headers for both APIs', async () => 
   const order = 'packing-legacy-stamp'
   const scenario = await packingFixture(order, null)
   const ref = packingDoc(admin.db, scenario)
-  await updateDoc(ref, { updatedAt: serverTimestamp() })
+  await serverDb.doc('packing_lists/' + scenario.id).update({ updatedAt: new Date() })
   const old = { ...(await read(ref)), id: scenario.id }
   const id = staff.model.newFreightQuoteId()
   const data = fixtureQuote(old)
@@ -441,4 +441,92 @@ test('Shipping roles and direct legacy writes cannot bypass the guarded operatio
   await serverDb.doc('orders/' + order).update({ shipping_closed: true })
   await assert.rejects(staff.model.deleteScenario(scenario), /closed/)
   await assert.rejects(staff.model.createOrderFreightQuote('closed-quote', data, { USD: 8 }, scenario), /closed/)
+})
+
+test('concurrent first saves share one working plan and replay preserves a later star', async () => {
+  const order = 'working-first'
+  await serverDb.doc('orders/' + order).set({ status: 'draft' })
+  const make = client => {
+    const scenario = client.model.newPackingScenario(order, 'Fictional plan')
+    return {
+      scenario, previous: [], isNew: true, orderLines: [],
+      cartons: [{ _localId: 'carton', contents: [{ _localId: 'item', qty: 7 }] }],
+      patch: { totals: { carton_count: 1 } }, attemptId: 'save-' + scenario.id,
+    }
+  }
+  const one = make(admin), two = make(staff)
+  const results = await Promise.all([admin.model.savePackingScenario(one), staff.model.savePackingScenario(two)])
+  assert.equal(results[0].selectedId, results[1].selectedId)
+  const { scenarios, selectedId } = await admin.model.loadPackingSelection(order)
+  assert.equal(scenarios.length, 2)
+  assert.equal(scenarios.filter(row => row.selected).length, 1)
+  const other = scenarios.find(row => row.id !== selectedId)
+  await staff.model.selectScenario(order, other.id)
+  await admin.model.savePackingScenario(one)
+  await staff.model.savePackingScenario(two)
+  assert.equal((await admin.model.loadPackingSelection(order)).selectedId, other.id)
+  for (const { id } of scenarios)
+    assert.equal((await admin.model.loadPackingScenario(id, order)).cartons[0].contents[0].qty, 7)
+})
+
+test('starring and deleting an unused plan preserve the existing quote and timestamp-only revision', async () => {
+  const first = await packingFixture('working-delete', null)
+  const order = first.order_id
+  const quotes = await staff.model.createOrderFreightQuote('working-quote', fixtureQuote(first), { USD: 8 }, first)
+  await staff.model.setFreightChoice(order, quotes.id, true)
+  const prior = await staff.model.loadOrderFreight(order)
+  const before = await read(packingDoc(admin.db, first))
+  const next = staff.model.newPackingScenario(order, 'Fictional unused')
+  const save = await staff.model.savePackingScenario({
+    scenario: next, previous: [], isNew: true, orderLines: [], cartons: [],
+    patch: { totals: { carton_count: 1 } }, attemptId: 'next-save',
+  })
+  assert.equal(save.selectedId, first.id)
+  await staff.model.selectScenario(order, next.id)
+  assert.deepEqual(await read(packingDoc(admin.db, first)), before)
+  assert.equal((await admin.model.loadPackingSelection(order)).selectedId, next.id)
+  await admin.model.deleteScenario(save.scenario)
+  await assert.rejects(staff.model.selectScenario(order, next.id), /unavailable/)
+  assert.equal((await admin.model.loadPackingSelection(order)).selectedId, first.id)
+  assert.deepEqual(await staff.model.loadOrderFreight(order), prior)
+})
+
+test('rules reject legacy star writes, foreign targets, and customer access, while preserving valid staff actions', async () => {
+  const a = await packingFixture('working-rules-a')
+  const b = await packingFixture('working-rules-b')
+  const order = a.order_id
+  const selection = db => doc(db, 'packing_selections', order)
+  await assertFails(updateDoc(packingDoc(staff.db, a), { selected: true }))
+  await assertFails(updateDoc(packingDoc(staff.db, a), { updatedAt: serverTimestamp() }))
+  await assertFails(setDoc(doc(staff.db, 'packing_lists', 'working-bypass'), { order_id: order, selected: true }))
+  await assertFails(setDoc(doc(staff.db, 'packing_lists', 'working-no-pointer'), { order_id: order }))
+  await assertFails(setDoc(selection(staff.db), { scenario_id: b.id, updated_at: serverTimestamp() }))
+  await assertFails(setDoc(selection(staff.db), { scenario_id: a.id, updated_at: serverTimestamp(), price: 100 }))
+  await staff.model.selectScenario(order, a.id)
+  await assertFails(deleteDoc(selection(staff.db)))
+  for (const client of [customer, unauthenticated, missingPermission]) {
+    await assertFails(getDocFromServer(selection(client.db)))
+    await assertFails(setDoc(selection(client.db), { scenario_id: a.id, updated_at: serverTimestamp() }))
+  }
+  await serverDb.doc('orders/' + order).update({ shipping_closed: true })
+  await assertFails(setDoc(selection(staff.db), { scenario_id: a.id, updated_at: serverTimestamp() }))
+  assert.equal((await staff.model.loadPackingSelection(order)).selectedId, a.id)
+})
+
+test('legacy defaults are read-only and deleting the last plan clears the working selection', async () => {
+  const scenario = await packingFixture('working-legacy')
+  const order = scenario.order_id
+  const working = serverDb.doc('packing_selections/' + order)
+  const other = { ...scenario, id: 'older-legacy-plan', selected: true }
+  await serverDb.doc('packing_lists/' + other.id).set(other)
+  await serverDb.doc('packing_lists/' + scenario.id).update({ selected: true })
+  const state = await admin.model.loadPackingSelection(order)
+  assert.equal(state.needsReview, true)
+  assert.equal(state.selectedId, other.id)
+  assert.equal((await working.get()).exists, false)
+  await admin.model.deleteScenario(other)
+  assert.equal((await working.get()).data().scenario_id, scenario.id)
+  await admin.model.deleteScenario(scenario)
+  assert.equal((await working.get()).data().scenario_id, null)
+  assert.deepEqual(await admin.model.loadPackingSelection(order), { selectedId: null, needsReview: false, scenarios: [] })
 })

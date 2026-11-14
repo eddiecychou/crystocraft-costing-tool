@@ -31,7 +31,8 @@ const firestore=`const f=()=>globalThis.__packingFixture;
  const snap=x=>({id:x.id||'qa',ref:ref([{},x.id]),exists:()=>true,data:()=>x});
  let id=0;export const doc=(...a)=>ref(Array.isArray(a[0])?[...a[0],a[1]||'new-'+ ++id]:a);
  export const collection=(...a)=>a;export const query=p=>p;export const orderBy=()=>{};export const where=()=>{};
- export {getDoc as getDocFromServer,getDocs as getDocsFromServer};export const getDoc=async p=>snap(p.includes('purchase_orders')?f().po:p.includes('packing_lists')?(f().scenarios?.find(row=>row.id===p.at(-1))||f().pl):f().order);
+ export {getDoc as getDocFromServer,getDocs as getDocsFromServer};export const getDoc=async p=>p.includes('packing_selections')?{data:()=>undefined}:snap(p.includes('purchase_orders')?f().po:p.includes('packing_lists')?(f().scenarios?.find(row=>row.id===p.at(-1))||f().pl):f().order);
+ export const onSnapshot=()=>()=>{};
  export const getDocs=async p=>{
   const rows=f().scenarioCartons?.[p[2]]||f().cartons;
   if(p.at(-1)==='cartons')await f().beforeCartons?.(p[2]);

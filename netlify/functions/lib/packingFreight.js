@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util'
 import { FieldValue } from 'firebase-admin/firestore'
 import { freightPackingBasis, normFreightQuote, packingRevision } from '../../../src/freightQuoteModel.js'
 import { validInvoiceOrderId } from '../../../src/invoiceRecoveryModel.js'
+import { resolvePackingSelection, sortPackingScenarios } from '../../../src/packingSelection.js'
 import { OrderRequestError, shippingProfile } from './orderRequestAccess.js'
 
 const validId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value)
@@ -65,8 +66,21 @@ export function createPackingFreight(db) {
       if (!linked.empty)
         throw new OrderRequestError('This packing scenario has a saved freight quote and cannot be deleted.', 409, 'packing/freight-linked')
 
+      const selectionRef = db.collection('packing_selections').doc(orderId)
+      const selection = (await tx.get(selectionRef)).data()
+      const working = selection?.scenario_id && selection.scenario_id !== id
+        ? (await tx.get(scenarios.doc(selection.scenario_id))).data() : null
+      let selectedId = selection?.scenario_id ?? null
+      const updateSelection = working?.order_id !== orderId
+      if (updateSelection) {
+        const siblings = await tx.get(scenarios.where('order_id', '==', orderId))
+        const rows = sortPackingScenarios(siblings.docs.filter(d => d.id !== id).map(d => ({ ...d.data(), id: d.id })))
+        const previous = resolvePackingSelection(sortPackingScenarios([...rows, { ...scenario, id }]), selection)
+        selectedId = previous.selectedId !== id ? previous.selectedId : rows[0]?.id ?? null
+      }
+
       const cartons = await tx.get(ref.collection('cartons').limit(500))
-      let writesLeft = 499 - cartons.size
+      let writesLeft = 499 - cartons.size - Number(updateSelection)
       const children = cartons.docs.map(carton => carton.ref)
       for (const carton of cartons.docs) {
         if (writesLeft < 0) break
@@ -77,6 +91,7 @@ export function createPackingFreight(db) {
       if (writesLeft < 0) throw new OrderRequestError('This packing plan is too large to delete in one operation.')
       for (const child of children) tx.delete(child)
       tx.delete(ref)
+      if (updateSelection) tx.set(selectionRef, { scenario_id: selectedId, updated_at: FieldValue.serverTimestamp() })
       return { deleted: true }
     })
   }

@@ -5,8 +5,8 @@ import {
   PL_STATUSES, CARTON_MODES,
   buildFullCartonPlan, calcPackedVsOrdered, derivedCbm, effectiveGw,
   loadRangeProductsWithPacking,
-  getPackingScenariosByOrder, newPackingScenario, updatePackingList,
-  selectScenario, deleteScenario,
+  loadPackingSelection, newPackingScenario, updatePackingList,
+  selectScenario, deleteScenario, watchPackingSelection,
   savePackingScenario, loadPackingScenario,
   PALLET_WEIGHT_KG, palletDimCbm, palletisedTotals,
 } from '../packing'
@@ -349,6 +349,8 @@ export default function PackingListEditor({ orderId, orderLines }) {
   const unclassified  = useMemo(() => (orderLines || []).filter(l => !l.line_type).length, [orderLines])
 
   const [scenarios, setScenarios] = useState([])
+  const [workingId, setWorkingId] = useState(null)
+  const [selectionNeedsReview, setSelectionNeedsReview] = useState(false)
   const [activeId, setActiveId] = useState(null)
   const [drafts, setDrafts] = useState({})
   const [loading, setLoading] = useState(true)
@@ -362,6 +364,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
   const mounted = useRef(false)
   const busy = useRef(false)
   const saveAttempts = useRef(new Map())
+  const lastWorkingId = useRef(undefined)
 
   const draft = drafts[activeId]
   const pl = scenarios.find(s => s.id === activeId)
@@ -393,19 +396,41 @@ export default function PackingListEditor({ orderId, orderLines }) {
     setActiveId(scenario.id)
   }
 
+  function applySelection(id, needsReview = false) {
+    setWorkingId(id)
+    setSelectionNeedsReview(needsReview)
+  }
+
+  function applyPackingList(result) {
+    setScenarios(current => [
+      ...result.scenarios,
+      ...current.filter(row => drafts[row.id]?.isNew && !result.scenarios.some(saved => saved.id === row.id)),
+    ])
+    if (lastWorkingId.current === undefined) applySelection(result.selectedId, result.needsReview)
+    else applySelection(lastWorkingId.current)
+  }
+
+  function reloadWorkingPlan() {
+    return runMutation(async () => {
+      const result = await loadPackingSelection(orderId)
+      if (mounted.current) applyPackingList(result)
+    })
+  }
+
   async function loadInitial() {
     const request = ++loadRequest.current
     setLoading(true)
     setLoadError(null)
     try {
-      const [rows, products] = await Promise.all([
-        getPackingScenariosByOrder(orderId), loadRangeProductsWithPacking(),
+      const [result, products] = await Promise.all([
+        loadPackingSelection(orderId), loadRangeProductsWithPacking(),
       ])
-      const first = rows.find(row => row.selected) || rows[0]
-      const loaded = first && await loadPackingScenario(first.id, orderId)
+      const loaded = result.selectedId && await loadPackingScenario(result.selectedId, orderId)
       if (request !== loadRequest.current) return
       setRangeProducts(products)
-      setScenarios(rows)
+      setScenarios(result.scenarios)
+      if (lastWorkingId.current === undefined) applySelection(result.selectedId, result.needsReview)
+      else applySelection(lastWorkingId.current)
       if (loaded) openDraft(loaded.scenario, loaded.cartons)
     } catch (err) {
       if (request === loadRequest.current) setLoadError({ message: err.message || 'Could not load packing scenarios.' })
@@ -416,8 +441,15 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
   useEffect(() => {
     mounted.current = true
-    if (orderId) void loadInitial()
+    lastWorkingId.current = undefined
+    if (!orderId) return
+    void loadInitial()
+    const unsubscribe = watchPackingSelection(orderId, id => {
+      lastWorkingId.current = id
+      applySelection(id)
+    })
     return () => {
+      unsubscribe()
       mounted.current = false
       loadRequest.current += 1
     }
@@ -479,6 +511,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
   }
 
   function renameScenario(id, label) {
+    if (scenarios.find(row => row.id === id)?.label === label) return
     return runMutation(async () => {
       if (!drafts[id]?.isNew) await updatePackingList(id, { label })
       if (mounted.current) setScenarios(current => current.map(row => row.id === id ? { ...row, label } : row))
@@ -487,8 +520,19 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
   function chooseScenario(id) {
     return runMutation(async () => {
-      await selectScenario(orderId, id)
-      if (mounted.current) setScenarios(current => current.map(row => ({ ...row, selected: row.id === id })))
+      try {
+        await selectScenario(orderId, id)
+        if (!mounted.current) return
+        const latest = await loadPackingSelection(orderId).catch(() => null)
+        if (latest && mounted.current) applyPackingList(latest)
+        else if (mounted.current) setError('Working plan saved. Reload the working plan to confirm it here.')
+      } catch (err) {
+        if (mounted.current) {
+          const latest = await loadPackingSelection(orderId).catch(() => null)
+          if (latest && mounted.current) applyPackingList(latest)
+        }
+        throw err
+      }
     })
   }
 
@@ -502,11 +546,21 @@ export default function PackingListEditor({ orderId, orderLines }) {
       setScenarios(remaining)
       setDrafts(current => Object.fromEntries(Object.entries(current).filter(([key]) => key !== id)))
       saveAttempts.current.delete(id)
-      if (id !== activeId) return
-      setActiveId(null)
-      const next = remaining.find(row => row.selected) || remaining[0]
-      if (!next) return
-      await switchScenario(next.id, true)
+      if (id === activeId) setActiveId(null)
+      let nextId = workingId
+      if (!draft?.isNew) {
+        const latest = await loadPackingSelection(orderId).catch(() => null)
+        if (!mounted.current) return
+        if (latest) {
+          applyPackingList(latest)
+          nextId = latest.selectedId
+        } else {
+          nextId = null
+          setError('Packing plan deleted. Reload the working plan to confirm the selection.')
+        }
+      }
+      const next = nextId === id ? remaining[0]?.id : nextId || remaining[0]?.id
+      if (id === activeId && next) await switchScenario(next, true)
     })
   }
 
@@ -563,9 +617,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
         ? previousAttempt.id : crypto.randomUUID()
       saveAttempts.current.set(activeId, { id: attemptId, draft, promoteToFinal })
       const result = await savePackingScenario({
-        scenario: draft.isNew
-          ? { ...pl, selected: scenarios.every(row => drafts[row.id]?.isNew) }
-          : draft.scenario,
+        scenario: draft.isNew ? pl : draft.scenario,
         previous: draft.previous, cartons, orderLines: packableLines, attemptId, isNew: draft.isNew,
         patch: {
           status: promoteToFinal ? 'final' : (draft.scenario.status || 'estimate'),
@@ -575,6 +627,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
       })
       if (!mounted.current) return
       saveAttempts.current.delete(activeId)
+      if (result.selectedId !== undefined && lastWorkingId.current === undefined) applySelection(result.selectedId)
       setScenarios(current => current.map(row => row.id === activeId ? result.scenario : row))
       openDraft(result.scenario, result.cartons)
       setSavedId(activeId)
@@ -643,6 +696,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
   const SOFT_CAP = 3
   const actionsDisabled = saving || Boolean(requestedId)
+  const workingListOutdated = workingId && !scenarios.some(row => row.id === workingId)
 
   return (
     <div className="space-y-5">
@@ -650,14 +704,15 @@ export default function PackingListEditor({ orderId, orderLines }) {
       <div className="flex flex-wrap items-center gap-2">
         {scenarios.map(s => {
           const isActive = s.id === (requestedId || activeId)
+          const selected = s.id === workingId
           return (
             <div key={s.id}
               className={`flex items-center gap-1.5 rounded-none border px-2.5 py-1.5 text-sm transition-colors ${
  isActive ? 'border-ink bg-ink/5' : 'border-warm-grey hover:border-ink-60'}`}>
               <button type="button" onClick={() => chooseScenario(s.id)} disabled={actionsDisabled || drafts[s.id]?.isNew}
-                title={drafts[s.id]?.isNew ? 'Save the scenario before selecting it' : s.selected ? 'Selected plan (used for export/shipment)' : 'Use this scenario as the selected plan'}
-                className={s.selected ? 'text-yellow-500' : 'text-platinum hover:text-yellow-500'}>
-                <Star size={14} className={s.selected ? 'fill-current' : ''} />
+                title={drafts[s.id]?.isNew ? 'Save the scenario before selecting it' : selected ? 'Selected plan (used for export/shipment)' : 'Use this scenario as the selected plan'}
+                className={selected ? 'text-yellow-500' : 'text-platinum hover:text-yellow-500'}>
+                <Star size={14} className={selected ? 'fill-current' : ''} />
               </button>
               <button type="button" onClick={() => switchScenario(s.id)} disabled={saving} className="font-medium text-ink-80">
                 {s.label}{drafts[s.id]?.isNew ? ' (unsaved)' : ''}
@@ -686,6 +741,15 @@ export default function PackingListEditor({ orderId, orderLines }) {
           <span className="text-2xs text-ink-60">Keep scenarios to a few for a clean comparison.</span>
         )}
       </div>
+
+      {(selectionNeedsReview || workingListOutdated) && (
+        <p className="text-sm text-amber-800">
+          {workingListOutdated ? 'The working plan changed in another tab.' : 'Confirm the working plan by clicking its star.'}
+        </p>
+      )}
+      <button type="button" disabled={actionsDisabled} onClick={reloadWorkingPlan} className="text-xs text-brand-600">
+        Reload working plan
+      </button>
 
       {requestedId && <p role="status" className="text-sm text-ink-60">Loading packing scenario…</p>}
       {loadError && <div className="space-y-2">

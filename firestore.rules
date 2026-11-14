@@ -1285,10 +1285,12 @@ service cloud.firestore {
       // Permanent deletion and linked Freight creation share a server transaction.
       allow delete: if false;
       allow create: if can('shipping') && orderOpenAfter(request.resource.data.get('order_id', null))
-        && !request.resource.data.keys().hasAny(['freight_link_revision']);
+        && !request.resource.data.keys().hasAny(['freight_link_revision', 'selected'])
+        && validPackingSelectionAfter(request.resource.data.order_id);
       allow update: if can('shipping') && linkedOrderEditable(resource.data)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['order_id', 'freight_link_revision'])
-        && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['label', 'selected', 'updatedAt'])
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['order_id', 'freight_link_revision', 'selected'])
+        && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['label', 'updatedAt'])
+            && request.resource.data.get('label', null) != resource.data.get('label', null))
           || packingRevisionChanged(resource.data, request.resource.data));
       match /{subcollection}/{childId}/{descendants=**} {
         function packingChildWritable() {
@@ -1300,6 +1302,19 @@ service cloud.firestore {
         allow read: if can('shipping');
         allow write: if can('shipping') && packingChildWritable();
       }
+    }
+    function validPackingSelectionAfter(orderId) {
+      let selection = getAfter(/databases/$(database)/documents/packing_selections/$(orderId)).data;
+      let id = selection.scenario_id;
+      return id is string && id.matches('^[^/]+$')
+        && getAfter(/databases/$(database)/documents/packing_lists/$(id)).data.order_id == orderId;
+    }
+    match /packing_selections/{orderId} {
+      allow get: if can('shipping');
+      allow create, update: if can('shipping') && orderOpenAfter(orderId)
+        && request.resource.data.keys().hasOnly(['scenario_id', 'updated_at'])
+        && request.resource.data.updated_at == request.time
+        && validPackingSelectionAfter(orderId);
     }
     match /logistics_vendors/{vendorId} {
       allow read, write: if can('shipping');
