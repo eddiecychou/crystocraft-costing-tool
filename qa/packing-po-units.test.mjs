@@ -34,6 +34,7 @@ const firestore=`const f=()=>globalThis.__packingFixture;
  export {getDoc as getDocFromServer,getDocs as getDocsFromServer};export const getDoc=async p=>p.includes('packing_selections')?{data:()=>undefined}:snap(p.includes('purchase_orders')?f().po:p.includes('packing_lists')?(f().scenarios?.find(row=>row.id===p.at(-1))||f().pl):f().order);
  export const onSnapshot=()=>()=>{};
  export const getDocs=async p=>{
+  if(p.includes('range_products'))return {docs:(await f().readStandardPacking?.() || []).map(snap)};
   const rows=f().scenarioCartons?.[p[2]]||f().cartons;
   if(p.at(-1)==='cartons')await f().beforeCartons?.(p[2]);
   const found=p.includes('contents')?rows.find(c=>p.includes(c.id))?.contents||[]:p.includes('cartons')?rows:p.includes('orders')?f().po.lines:p.includes('packing_lists')?(f().scenarios||[f().pl]):[];
@@ -100,6 +101,29 @@ test('packing editor displays recovered units and supports selecting a different
  await act(async()=>{selects[2].value='box';selects[2].dispatchEvent(new dom.window.Event('change',{bubbles:true}))})
  assert.equal(host.querySelectorAll('select[aria-label="Quantity unit"]')[2].value,'box')
 }))
+test('a pending or failed standard lookup leaves saved packing editing available', async () => {
+  let rejectInitial
+  const initial = new Promise((_, reject) => { rejectInitial = reject })
+  let calls = 0
+  fixture.readStandardPacking = () => ++calls === 1 ? initial : Promise.resolve([])
+  try {
+    await withPage('editor', async host => {
+      const button = name => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === name)
+      assert.match(host.textContent, /Loading standard packing/)
+      assert.equal(button('Save packing list').disabled, false)
+      assert.equal(button('Export PDF').disabled, false)
+      assert.equal(button('Re-generate from standard').disabled, true)
+      await act(async () => rejectInitial(Error('Fictional temporary catalogue failure')))
+      assert.match(host.textContent, /Standard packing could not load/)
+      assert.equal(host.querySelector('[role="alert"]'), null)
+      await act(async () => button('Retry standard packing').click())
+      assert.equal(button('Re-generate from standard').disabled, false)
+      assert.equal(host.querySelector('[placeholder="Description"]').value, 'Sample pcs')
+    })
+  } finally {
+    delete fixture.readStandardPacking
+  }
+})
 test('a late carton read cannot replace a newer scenario or expose the previous draft while loading', async () => {
   let release
   const pending = new Promise(resolve => { release = resolve })

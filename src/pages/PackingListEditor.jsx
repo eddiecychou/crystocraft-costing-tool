@@ -358,7 +358,8 @@ export default function PackingListEditor({ orderId, orderLines }) {
   const [loadError, setLoadError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState(null)
-  const [rangeProducts, setRangeProducts] = useState([])
+  const [standardPacking, setStandardPacking] = useState({ status: 'loading' })
+  const [standardPackingAttempt, setStandardPackingAttempt] = useState(0)
   const [error, setError] = useState('')
   const loadRequest = useRef(0)
   const mounted = useRef(false)
@@ -422,12 +423,9 @@ export default function PackingListEditor({ orderId, orderLines }) {
     setLoading(true)
     setLoadError(null)
     try {
-      const [result, products] = await Promise.all([
-        loadPackingSelection(orderId), loadRangeProductsWithPacking(),
-      ])
+      const result = await loadPackingSelection(orderId)
       const loaded = result.selectedId && await loadPackingScenario(result.selectedId, orderId)
       if (request !== loadRequest.current) return
-      setRangeProducts(products)
       setScenarios(result.scenarios)
       if (lastWorkingId.current === undefined) applySelection(result.selectedId, result.needsReview)
       else applySelection(lastWorkingId.current)
@@ -454,6 +452,18 @@ export default function PackingListEditor({ orderId, orderLines }) {
       loadRequest.current += 1
     }
   }, [orderId])
+
+  useEffect(() => {
+    if (!orderId) return
+    let active = true
+    setStandardPacking({ status: 'loading' })
+    loadRangeProductsWithPacking().then(products => {
+      if (active) setStandardPacking({ status: 'ready', products })
+    }).catch(err => {
+      if (active) setStandardPacking({ status: err.code === 'permission-denied' ? 'restricted' : 'error' })
+    })
+    return () => { active = false }
+  }, [orderId, standardPackingAttempt])
 
   async function switchScenario(id, allowDuringMutation = false) {
     if (busy.current && !allowDuringMutation) return
@@ -600,7 +610,8 @@ export default function PackingListEditor({ orderId, orderLines }) {
   }
 
   function generateFromStandard() {
-    const plan = buildFullCartonPlan(packableLines, rangeProducts).map(c => ({ ...c, pack_mode: 'single', pallet_no: 1 }))
+    if (standardPacking.status !== 'ready') return
+    const plan = buildFullCartonPlan(packableLines, standardPacking.products).map(c => ({ ...c, pack_mode: 'single', pallet_no: 1 }))
     if (!activeId) createScenario('Standard carton', plan)
     else setCartons(plan)
   }
@@ -664,6 +675,23 @@ export default function PackingListEditor({ orderId, orderLines }) {
     </div>
   )
 
+  const canGenerate = standardPacking.status === 'ready'
+  const standardPackingStatus = !canGenerate && (
+    <div role="status" className="flex flex-wrap items-center gap-2 text-xs text-ink-60">
+      {standardPacking.status === 'loading' && 'Loading standard packing…'}
+      {standardPacking.status === 'restricted' && 'Standard packing requires catalogue access. You can enter cartons manually.'}
+      {standardPacking.status === 'error' && (
+        <>
+          <span>Standard packing could not load. You can enter cartons manually.</span>
+          <button type="button" className="text-brand-600 hover:text-brand-800"
+            onClick={() => setStandardPackingAttempt(attempt => attempt + 1)}>
+            Retry standard packing
+          </button>
+        </>
+      )}
+    </div>
+  )
+
   if (!scenarios.length && cartons.length === 0) {
     return (
       <div className="rounded-none border border-dashed border-warm-grey p-10 text-center">
@@ -678,7 +706,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
             type="button"
             onClick={generateFromStandard}
             className="btn-primary"
-            disabled={!packableLines.length}
+            disabled={!packableLines.length || !canGenerate}
           >
             Generate from standard packing
           </button>
@@ -690,6 +718,9 @@ export default function PackingListEditor({ orderId, orderLines }) {
             Start manually (mixed carton)
           </button>
         </div>
+        {packableLines.length > 0 && standardPackingStatus && (
+          <div className="mt-3 flex justify-center">{standardPackingStatus}</div>
+        )}
       </div>
     )
   }
@@ -762,7 +793,8 @@ export default function PackingListEditor({ orderId, orderLines }) {
         <button
           type="button"
           onClick={generateFromStandard}
-          className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-800"
+          disabled={!canGenerate}
+          className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50"
           title="Replace current cartons with standard-packing pre-fill"
         >
           <RefreshCw size={13} /> Re-generate from standard
@@ -777,6 +809,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
           </span>
         </div>
       </div>
+      {standardPackingStatus}
 
       {/* Shipped Per (vessel / carrier) */}
       <div className="flex items-center gap-2">
