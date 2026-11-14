@@ -582,7 +582,11 @@ export default function UcRegistry() {
   // though the invoice exists and the app can print it (owner, 2026-08-04).
   function openInvoice(r) {
     if (r.invoice_location === 'app') {
-      if (r.app_order_id) { window.open(`/shipments/${r.app_order_id}/invoice`, '_blank', 'noopener'); return }
+      if (r.app_order_id) {
+        const query = new URLSearchParams({ si: r.jes_si })
+        window.open(`/shipments/${encodeURIComponent(r.app_order_id)}/invoice?${query}`, '_blank', 'noopener')
+        return
+      }
       // Allocated in the app but never attached to an order — nothing to open.
       // Say so plainly instead of showing an ERP "not found" that implies the
       // number is wrong.

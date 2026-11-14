@@ -1,7 +1,7 @@
 import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
-import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { getOrder, getOrderLines, getOrderEditSnapshot, computeOrderTotals, orderSi, orderSoDisplay, orderUc } from '../shipping'
 import { loadCustomers, primaryContact, contactAddress } from '../domain/customer'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -39,6 +39,12 @@ const fmtDate = (s) => {
 
 export default function SalesInvoicePrint() {
   const { id } = useParams()
+  const [search] = useSearchParams()
+  const requestedSi = search.get('si')
+  return <InvoiceDocument key={JSON.stringify([id, requestedSi])} id={id} requestedSi={requestedSi} />
+}
+
+function InvoiceDocument({ id, requestedSi }) {
   const [order, setOrder] = useState(null)
   const [lines, setLines] = useState([])
   const [customer, setCustomer] = useState(null)
@@ -52,11 +58,16 @@ export default function SalesInvoicePrint() {
 
   useEffect(() => {
     let alive = true
+    const historicalMessage = `The original invoice${requestedSi ? ` ${requestedSi}` : ''} is unavailable from this order. Use the original issued document or ask Finance for a copy.`
     ;(async () => {
       try {
-        const o = await getOrder(id)
+        // Registry links name a specific SI. Read a single server-confirmed
+        // order/line version before offering that document for export.
+        const snapshot = requestedSi === null ? null : await getOrderEditSnapshot(id)
+        const o = snapshot ? snapshot.order : await getOrder(id)
         if (!o) throw new Error('Order not found.')
-        const [ls, customers] = await Promise.all([getOrderLines(id), loadCustomers()])
+        if (requestedSi !== null && (!requestedSi || orderSi(o) !== requestedSi)) throw new Error(historicalMessage)
+        const [ls, customers] = await Promise.all([snapshot ? snapshot.lines : getOrderLines(id), loadCustomers()])
         if (!alive) return
         setOrder(o)
         setLines(ls)
@@ -71,13 +82,16 @@ export default function SalesInvoicePrint() {
           if (alive && snap.exists()) setStampUrl(snap.data().stamp_url || '')
         } catch { /* unstamped */ }
       } catch (e) {
-        if (alive) setError(e.message || 'Could not load this order.')
+        if (alive) setError(requestedSi !== null && e.code === 'not-found' ? historicalMessage : e.message || 'Could not load this order.')
       } finally {
         if (alive) setLoading(false)
       }
     })()
     return () => { alive = false }
-  }, [id])
+  }, [id, requestedSi])
+
+  const invoiceNo = orderSi(order)
+  const salesOrderNo = orderSoDisplay(order)
 
   // Drive the browser's "Save as PDF" default filename (see pdfFilename.js) —
   // restore the previous title on unmount so navigating elsewhere in the app
@@ -86,15 +100,15 @@ export default function SalesInvoicePrint() {
     if (!order) return
     const prev = document.title
     document.title = pdfFileTitle([
-      order.erp_si_no || 'SI',
+      invoiceNo || 'SI',
       orderUc(order) || null,
       order.customer_name || customer?.company_name,
     ])
     return () => { document.title = prev }
-  }, [order, customer])
+  }, [order, customer, invoiceNo])
 
   if (loading) return <p style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading…</p>
-  if (error) return <p style={{ padding: 40, textAlign: 'center', color: '#c00' }}>{error}</p>
+  if (error) return <p role="alert" style={{ padding: 40, textAlign: 'center', color: '#c00' }}>{error}</p>
 
   const cur = order.currency || 'USD'
   const { subtotal, chargesTotal, discountAmount, total } = computeOrderTotals(order, lines)
@@ -230,7 +244,7 @@ export default function SalesInvoicePrint() {
 
       {/* An invoice with no number is not an invoice — say so before it is sent,
           not after the customer asks what to quote on the remittance. */}
-      {!order.erp_si_no && (
+      {!invoiceNo && (
         <div className="si-warn red">
           This order has <strong>no invoice number</strong>. Allocate one on the order before sending this.
         </div>
@@ -284,11 +298,11 @@ export default function SalesInvoicePrint() {
           })()}
         </div>
         <div className="si-box">
-          <div className="si-kv"><span className="k">Invoice No.</span><span className="v big si-code">{order.erp_si_no || '—'}</span></div>
+          <div className="si-kv"><span className="k">Invoice No.</span><span className="v big si-code">{invoiceNo || '—'}</span></div>
           {/* invoice_date is the editable accounting date; invoiced_at (the
               allocation timestamp) is the fallback — see normOrder. */}
           <div className="si-kv"><span className="k">Date</span><span className="v">{fmtDate(order.invoice_date || order.invoiced_at || order.order_date)}</span></div>
-          {order.erp_so_no && <div className="si-kv"><span className="k">{/^SO/i.test(order.erp_so_no) ? 'SO No.' : 'Doc No.'}</span><span className="v si-code">{order.erp_so_no}</span></div>}
+          {salesOrderNo && <div className="si-kv"><span className="k">{/^SO/i.test(salesOrderNo) ? 'SO No.' : 'Doc No.'}</span><span className="v si-code">{salesOrderNo}</span></div>}
           {orderUc(order) && <div className="si-kv"><span className="k">UC#</span><span className="v si-code">{orderUc(order)}</span></div>}
           {order.customer_po && <div className="si-kv"><span className="k">Customer PO</span><span className="v">{order.customer_po}</span></div>}
           {order.pi_revision > 0 && <div className="si-kv"><span className="k">Revision</span><span className="v">Rev {order.pi_revision}</span></div>}

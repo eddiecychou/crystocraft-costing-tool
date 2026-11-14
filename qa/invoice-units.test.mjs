@@ -17,7 +17,7 @@ Object.defineProperty(globalThis,'navigator',{value:dom.window.navigator,configu
 globalThis.IS_REACT_ACT_ENVIRONMENT=true
 const {createRoot}=await import('react-dom/client')
 const {Simulate}=await import('react-dom/test-utils')
-let scratch,pages,downloaded,printed=0
+let scratch,pages,downloaded,downloadName,printed=0
 const originalCreate=URL.createObjectURL,originalRevoke=URL.revokeObjectURL
 const units=['pcs','set','pair','box','kg','g','m']
 const fixture={order:{customer_id:'qa-customer',customer_name:'QA invoice units',erp_so_no:'SO-QA',erp_si_no:'SI-QA',uc_no:'UC-QA',currency:'HKD',order_date:'2026-10-15',discount_amount:10},lines:[
@@ -29,7 +29,9 @@ globalThis.__invoiceFixture=fixture
 const stubs={
  firebase:'export const db={},storage={};export const authHeader=async()=>{throw Error("No live requests")}',
  firestore:`const f=()=>globalThis.__invoiceFixture;export const doc=(...a)=>Object.assign(a,{id:typeof a.at(-1)==='string'?a.at(-1):'qa-new-line'});export const collection=(...a)=>a;export const query=(...a)=>a;export const orderBy=()=>{};export const where=()=>{};
- export {getDoc as getDocFromServer,getDocs as getDocsFromServer};export const getDoc=async p=>({id:'qa-order',exists:()=>p.includes('orders'),data:()=>f().order});export const getDocs=async p=>({docs:JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
+ export {getDocs as getDocsFromServer};export const getDoc=async p=>({id:'qa-order',exists:()=>p.includes('orders')&&!f().missingOrder,data:()=>f().order});
+ export const getDocFromServer=async p=>{const snap=await getDoc(p);const value=f().serverOrders?.length?f().serverOrders.shift():snap.data();return{...snap,data:()=>value}};
+ export const getDocs=async p=>({docs:JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
  const fail=()=>{throw Error('Forbidden database write')};export {fail as addDoc,fail as deleteDoc,fail as runTransaction};
  export const onSnapshot=()=>()=>{};export const serverTimestamp=()=> 'QA timestamp';
  export const updateDoc=async(p,data)=>{if(!f().allowSave)fail();f().writes.push(structuredClone(data));f().order={...f().order,...data}};
@@ -38,22 +40,24 @@ const stubs={
    set(){if(!f().allowSave)fail()},delete:fail,
    commit:async()=>{for(const data of headers){f().writes.push(data);f().order={...f().order,...data}}}
  }};`,
- customer:'export const loadCustomers=async()=>[];export const primaryContact=()=>null;export const contactAddress=()=>"";export const saveCustomer=async()=>{throw Error("No customer creation")}',
+ customer:'export const loadCustomers=async()=>[];export const useCustomers=()=>({customers:[]});export const primaryContact=()=>null;export const contactAddress=()=>"";export const saveCustomer=async()=>{throw Error("No customer creation")}',
  bankAccounts:'export const listBankAccounts=async()=>[];export const accountForCurrency=()=>null;export const formatBankDetails=()=>""',
  criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
  customerOrderHistoryApi:'export const myInvoiceDetail=async code=>({header:{code:"ERP-QA",currency:"USD"},lines:[{item_code:"ERP",description:"Historical unit unavailable",qty:code==="RETURN"?-5:5,unit_price:2,amount:code==="RETURN"?-10:10}]})',
- router:`import React from 'react';export const useParams=()=>globalThis.__invoiceParams;export const useNavigate=()=>to=>globalThis.__invoiceFixture.destination=to;export const useSearchParams=()=>[new URLSearchParams()];export const Link=({to,children,...props})=>React.createElement('a',{href:to,...props},children)`,
+ router:`import React from 'react';export const useParams=()=>globalThis.__invoiceParams;export const useNavigate=()=>to=>globalThis.__invoiceFixture.destination=to;export const useSearchParams=()=>[new URLSearchParams(globalThis.__invoiceParams.search)];export const Link=({to,children,...props})=>React.createElement('a',{href:to,...props},children)`,
+ CustomerAccounts:'export const CustomerPicker=()=>null',
+ erpApi:'export const erpLines=async()=>({rows:[]});export const erpLookup=async()=>[]',
  ContactPicker:'export default ()=>null',ConfirmDialog:'export default ()=>null',LineImagePicker:'export default ()=>null',
  PackingListEditor:'export default ()=>null',FreightComparison:'export default ()=>null',OrderStockIssue:'export default ()=>null',OrderInventoryIssue:'export default ()=>null',
  crystals:'export const crystalInventory={}',packaging:'export const packagingInventory={}',orderStock:'export const metalOrderConfig={}',
  orderStockStatus:'export const orderStockStatus=()=>null;export const stockStatusDetail=()=>"";export const STOCK_STATUS_LABEL={},STOCK_STATUS_STYLE={}',
  erpSoImport:'const fail=()=>{throw Error("No ERP requests")};export{fail as fetchErpSoLines,fail as diffLines,fail as adoptErpLineUnits}',
- ucRegistry:'export const allocateInvoice=async()=>{throw Error("No invoice allocation")};export const allocateOrderUc=async()=>{throw Error("No UC allocation")};export const updateUcInvoice=async()=>{throw Error("No UC changes")};export const upsertInvoice=async data=>globalThis.__invoiceFixture.accountingWrite=data',
+ ucRegistry:'export const allocateInvoice=async()=>{throw Error("No invoice allocation")};export const allocateOrderUc=async()=>{throw Error("No UC allocation")};export const updateUcInvoice=async()=>{throw Error("No UC changes")};export const upsertInvoice=async data=>globalThis.__invoiceFixture.accountingWrite=data;export const UC_SOURCES=["Wholesale"],UC_CURRENCIES=["HKD"],ucSource=s=>s||"";export const useUcList=()=>({rows:globalThis.__invoiceFixture.registry||[],loading:false});export const listUc=async()=>[],listAppInvoices=async()=>[],createUcInvoice=allocateInvoice',
  storage:'export const ref=()=>{};export const uploadBytes=async()=>{throw Error("No uploads")};export const getDownloadURL=async()=>{throw Error("No uploads")}',
 }
 before(async()=>{
  scratch=await mkdtemp(join(tmpdir(),'oc-invoice-units-'))
- await build({stdin:{contents:`export {default as pi} from './src/pages/ProformaInvoicePrint.jsx';export {default as sales} from './src/pages/SalesInvoicePrint.jsx';export {default as customer} from './src/customer/CustomerInvoicePrint.jsx';export {default as form} from './src/pages/ShipmentForm.jsx';export {LINE_TYPES,lineTypeOf,isPackable,normOrder,validateOrder,computeOrderTotals} from './src/shipping.js';export {invoicePaymentTotals} from './src/invoicePayments.js'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'invoice-network-boundaries',setup(b){
+ await build({stdin:{contents:`export {default as pi} from './src/pages/ProformaInvoicePrint.jsx';export {default as sales} from './src/pages/SalesInvoicePrint.jsx';export {default as registry} from './src/pages/UcRegistry.jsx';export {default as customer} from './src/customer/CustomerInvoicePrint.jsx';export {default as form} from './src/pages/ShipmentForm.jsx';export {LINE_TYPES,lineTypeOf,isPackable,normOrder,validateOrder,computeOrderTotals} from './src/shipping.js';export {invoicePaymentTotals} from './src/invoicePayments.js'`,resolveDir:rootDir},outfile:join(scratch,'pages.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{name:'invoice-network-boundaries',setup(b){
   b.onResolve({filter:/^(react(?:\/.*)?|exceljs|lucide-react)$/},a=>({path:require.resolve(a.path),external:true}))
   b.onResolve({filter:/react-router-dom/},()=>({path:'router',namespace:'mock'}))
   b.onResolve({filter:/firebase\/firestore/},()=>({path:'firestore',namespace:'mock'}))
@@ -65,12 +69,12 @@ before(async()=>{
  }}]})
  pages=await import(pathToFileURL(join(scratch,'pages.mjs')))
  URL.createObjectURL=blob=>{downloaded=blob;return'blob:invoice-test'};URL.revokeObjectURL=()=>{}
- dom.window.HTMLAnchorElement.prototype.click=function(){}
+ dom.window.HTMLAnchorElement.prototype.click=function(){downloadName=this.download}
  dom.window.print=()=>{printed++}
 })
 after(async()=>{URL.createObjectURL=originalCreate;URL.revokeObjectURL=originalRevoke;delete globalThis.__invoiceFixture;dom.window.close();await rm(scratch,{recursive:true,force:true})})
-async function withPage(kind,fn,{customer='qa-customer',key='app-qa-order'}={}){
- globalThis.__invoiceParams={id:'qa-order',key};downloaded=null
+async function withPage(kind,fn,{customer='qa-customer',key='app-qa-order',search=''}={}){
+ globalThis.__invoiceParams={id:'qa-order',key,search};downloaded=null;downloadName=null
  const host=document.createElement('div');document.body.append(host);const root=createRoot(host)
  try{
   await act(async()=>root.render(React.createElement(pages[kind],{profile:{customer_id:customer,company_name:'QA fixture'}})))
@@ -114,6 +118,97 @@ test('customer cannot export another customer invoice',async()=>withPage('custom
 test('legacy ERP invoices without unit evidence remain unspecified rather than inventing pcs',async()=>withPage('customer',async host=>{
  const {ws}=await workbook(host);assert.equal(ws.getCell('C7').value,5);assert.equal(ws.getCell('D7').value,'')
 },{key:'erp-ERP-QA'}))
+
+test('legacy SI in the SO field identifies the staff print and Excel document', async () => {
+ const original = fixture.order
+ fixture.order = { ...original, erp_si_no: '', erp_so_no: 'SI260071', source: 'imported_pi' }
+ try {
+  await withPage('sales', async host => {
+   assert.equal(host.querySelector('.si-kv .big').textContent, 'SI260071')
+   assert.doesNotMatch(host.textContent, /no invoice number|Doc No\./)
+   assert.match(document.title, /^SI260071\b/)
+   assert.equal((await workbook(host)).ws.getCell('B1').value, 'SI260071')
+   assert.match(downloadName, /^SI260071\b.*\.xlsx$/)
+  }, { search: 'si=SI260071' })
+  await withPage('pi', async host => assert.equal((await workbook(host)).ws.getCell('B1').value, 'SI260071'))
+ } finally { fixture.order = original }
+})
+
+for (const [purpose, earlier, current] of [['split', 'SI260071', 'SI260099'], ['reissue', 'SI260099', 'SI260100']]) {
+ test(`UC Registry links after a ${purpose} distinguish historical and current invoice numbers`, async () => {
+  const original = fixture.order
+  const originalOpen = window.open
+  fixture.order = { ...original, erp_si_no: current, erp_so_no: 'SO260050' }
+  fixture.registry = [earlier, current].map(jes_si => ({ id: jes_si, jes_si, invoice_location: 'app', app_order_id: 'qa-order' }))
+  const registryBefore = structuredClone(fixture.registry)
+  const orderBefore = structuredClone(fixture.order)
+  const destinations = []
+  window.open = (...params) => destinations.push(params)
+  try {
+   await withPage('registry', async host => {
+    for (const si of [earlier, current]) {
+     const button = [...host.querySelectorAll('button')].find(el => el.textContent === si)
+     assert.ok(button)
+     await act(async () => button.click())
+    }
+   })
+   assert.deepEqual(destinations, [earlier, current].map(si => [`/shipments/qa-order/invoice?si=${si}`, '_blank', 'noopener']))
+   await withPage('sales', async host => {
+    assert.match(host.querySelector('[role=alert]').textContent, new RegExp(`original invoice ${earlier} is unavailable`))
+    assert.doesNotMatch(host.textContent, new RegExp(current))
+    assert.equal(host.querySelector('button, table'), null)
+   }, { search: destinations[0][0].split('?')[1] })
+   for (const search of [destinations[1][0].split('?')[1], '']) {
+    await withPage('sales', async host => {
+     assert.equal(host.querySelector('.si-kv .big').textContent, current)
+     assert.match(host.textContent, /SO No\.SO260050/)
+     assert.equal((await workbook(host)).ws.getCell('B1').value, current)
+    }, { search })
+   }
+   assert.deepEqual(fixture.registry, registryBefore)
+   assert.deepEqual(fixture.order, orderBefore)
+  } finally { window.open = originalOpen; fixture.order = original; delete fixture.registry }
+ })
+}
+
+test('a missing order cannot render a Registry invoice or export its contents', async () => {
+ fixture.missingOrder = true
+ try {
+  await withPage('sales', async host => {
+   assert.match(host.querySelector('[role=alert]').textContent, /original invoice SI260071 is unavailable/)
+   assert.equal(host.querySelector('button, table'), null)
+  }, { search: 'si=SI260071' })
+  await withPage('sales', async host => assert.match(host.textContent, /Order not found/))
+ } finally { delete fixture.missingOrder }
+})
+
+test('a Registry link checks the server version if a reissue lands during loading', async () => {
+ const old = { ...fixture.order, erp_si_no: 'SI260071' }
+ const current = { ...old, erp_si_no: 'SI260099' }
+ fixture.serverOrders = [old, current, current, current]
+ try {
+  await withPage('sales', async host => {
+   assert.match(host.querySelector('[role=alert]').textContent, /original invoice SI260071 is unavailable/)
+   assert.equal(host.querySelector('button, table'), null)
+   assert.equal(fixture.serverOrders.length, 0)
+  }, { search: 'si=SI260071' })
+ } finally { delete fixture.serverOrders }
+})
+
+test('an order with an SO but no invoice still warns and never uses its SO as the Excel SI', async () => {
+ const original = fixture.order
+ fixture.order = { ...original, erp_si_no: '', erp_so_no: 'SO260050' }
+ try {
+  await withPage('sales', async host => {
+   assert.match(host.textContent, /no invoice number/)
+   assert.equal((await workbook(host)).ws.getCell('B1').value || '', '')
+  })
+  await withPage('sales', async host => {
+   assert.match(host.querySelector('[role=alert]').textContent, /original invoice is unavailable/)
+   assert.equal(host.querySelector('button, table'), null)
+  }, { search: 'si=' })
+ } finally { fixture.order = original }
+})
 
 for(const priced of [true,false])test(`PI CSV keeps units with prices=${priced}`,async()=>withPage('pi',async host=>{
  const label=priced?'Export CSV':'Export CSV — no prices'
