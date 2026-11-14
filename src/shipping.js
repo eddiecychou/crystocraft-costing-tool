@@ -78,30 +78,37 @@ export function createOrderWithLines(orderData, lines) {
   return { id: orderRef.id, commit: batch.commit() }
 }
 
-// Same as createOrderWithLines, but the order lands at a CALLER-CHOSEN doc
-// ID rather than an auto-generated one, and refuses to create a second order
-// there if one already exists. This is the actual idempotency mechanism for
-// the WooCommerce importer (docs/specs/WooCommerce_B2C_Sync_Spec.md §2.3/§2.4): the doc
-// ID is derived from the WooCommerce order id (wooOrderDocId in wooImport.js),
-// so re-running an import for an order already brought in is a no-op instead
-// of a duplicate order — the check-then-create happens inside one
-// transaction, so two overlapping imports of the same order cannot both pass
-// the check and both write (a plain getDoc-then-set has exactly that race).
-// Returns { id, created: bool } — created:false means it already existed and
-// nothing was written.
-export async function createOrderWithLinesAtId(id, orderData, lines) {
+// Woo imports use a stable ID. The transaction guards the missing header and
+// writes it with its lines. The Web SDK only supports document reads in a
+// transaction, so inspect the line collection separately before staging writes.
+// The rules require an open header for client line writes.
+export async function createOrderWithLinesAtId(id, orderData, lines, hasSavedOrderLines) {
   const orderRef = doc(db, 'orders', id)
-  return runTransaction(db, async (tx) => {
-    const existing = await tx.get(orderRef)
-    if (existing.exists()) return { id, created: false }
-    tx.set(orderRef, { ...newOrderFields(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
-    ;(lines || []).forEach((l, i) => {
-      const n = normLine(l)
-      if (n.line_no == null) n.line_no = i + 1
-      tx.set(doc(LINES(id)), n)
+  try {
+    return await runTransaction(db, async (tx) => {
+      const existing = await tx.get(orderRef)
+      if (existing.exists()) return { id, created: false }
+      if (await hasSavedOrderLines(id)) {
+        // Another import might have committed its header and lines while we read.
+        if ((await tx.get(orderRef)).exists()) return { id, created: false }
+        return { id, created: false, needsReview: true }
+      }
+      tx.set(orderRef, { ...newOrderFields(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+      ;(lines || []).forEach((l, i) => {
+        const n = normLine(l)
+        if (n.line_no == null) n.line_no = i + 1
+        tx.set(doc(LINES(id)), n)
+      })
+      return { id, created: true }
     })
-    return { id, created: true }
-  })
+  } catch (error) {
+    // A competing import can change the rules outcome before the transaction
+    // retries. Only a confirmed header turns that outcome into a no-op.
+    if (error.code === 'permission-denied' && (await getDocFromServer(orderRef).catch(() => null))?.exists()) {
+      return { id, created: false }
+    }
+    throw error
+  }
 }
 
 // Same as createOrderWithLines, but optionally allocates the order's SO

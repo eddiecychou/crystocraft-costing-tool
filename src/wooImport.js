@@ -7,7 +7,7 @@
 // read-only): it creates a draft/confirmed order. It does NOT allocate an
 // invoice number or a UC# — that stays a manual step Cindy takes from the
 // existing Sales Invoices page, same as any other order (Phase 3).
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, getDocFromServer, getDocsFromServer, limit, query, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { createOrderWithLinesAtId, ORDER_CURRENCIES } from './shipping'
 
@@ -169,24 +169,33 @@ export function mapWooOrderToOrder(o) {
   return { header, lines: [...productLines, ...chargeLines] }
 }
 
-// Imports one WooCommerce order. Returns { id, created }. created:false means
-// it was already imported (re-running a sync is always safe — spec §9).
+// Returns { id, created } for new or existing orders, with needsReview:true
+// when a missing header still has saved lines.
 export async function importWooOrder(o) {
   const { header, lines } = mapWooOrderToOrder(o)
-  return createOrderWithLinesAtId(wooOrderDocId(o.id), header, lines)
+  return createOrderWithLinesAtId(wooOrderDocId(o.id), header, lines, hasSavedOrderLines)
 }
 
-// Which of these WooCommerce order IDs already have an imported order doc —
-// used by the sync page to show "Imported" instead of an active button. One
-// direct-by-ID read per order (not a query): the doc ID IS the answer, so
-// this is exactly as cheap as it looks, no index or collection scan involved.
-export async function checkImportedWooOrders(wooOrderIds) {
-  const found = new Set()
-  await Promise.all((wooOrderIds || []).map(async (id) => {
-    const snap = await getDoc(doc(db, 'orders', wooOrderDocId(id)))
-    if (snap.exists()) found.add(id)
-  }))
-  return found
+async function hasSavedOrderLines(id) {
+  const snapshot = await getDocsFromServer(query(collection(db, 'orders', id, 'lines'), limit(1)))
+  return !snapshot.empty
+}
+
+// Limit concurrent reads for broad date ranges. The importer repeats the check
+// on click, so a failed or stale list read cannot authorize a write.
+export async function checkWooOrderImports(wooOrderIds) {
+  const states = new Map()
+  for (let i = 0; i < wooOrderIds.length; i += 24) {
+    await Promise.allSettled(wooOrderIds.slice(i, i + 24).map(async (id) => {
+      const orderId = wooOrderDocId(id)
+      const ref = doc(db, 'orders', orderId)
+      if ((await getDocFromServer(ref)).exists()) states.set(id, 'imported')
+      else if (await hasSavedOrderLines(orderId)) {
+        states.set(id, (await getDocFromServer(ref)).exists() ? 'imported' : 'review')
+      }
+    }))
+  }
+  return states
 }
 
 // Retail Customer segment (2026-08-22) — links an EXISTING `customers/{id}`

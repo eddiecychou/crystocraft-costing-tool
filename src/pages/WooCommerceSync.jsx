@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { listWooOrders, searchWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
 import { loadWooOrdersCache, saveWooOrdersCache, loadWooCustomerScanCache, saveWooCustomerScanCache } from '../wooCache'
-import { importWooOrder, checkImportedWooOrders, linkCustomerToWoo } from '../wooImport'
+import { importWooOrder, checkWooOrderImports, linkCustomerToWoo } from '../wooImport'
 import { importWooRefund, checkImportedWooRefunds } from '../wooRefundImport'
 import { downloadCsv, exportStem } from '../exportCsv'
 import { loadCustomers } from '../domain/customer'
@@ -62,12 +62,20 @@ export default function WooCommerceSync() {
     }
   }
 
-  // Which WooCommerce order IDs are already imported (order doc exists) —
-  // rechecked whenever the result set changes so "Import" flips to
-  // "Imported" the moment it's known, without a page reload.
-  const [importedIds, setImportedIds] = useState(new Set())
-  const [importing, setImporting] = useState(null) // order id currently importing, or null
+  const [orderImportStates, setOrderImportStates] = useState(new Map())
+  const [importing, setImporting] = useState(new Set())
   const [importError, setImportError] = useState('')
+
+  useEffect(() => {
+    let live = true
+    setOrderImportStates(new Map())
+    if (result?.rows.length) {
+      checkWooOrderImports(result.rows.map(o => o.id)).then(states => {
+        if (live) setOrderImportStates(current => new Map([...states, ...current]))
+      })
+    }
+    return () => { live = false }
+  }, [result])
 
   // Same pattern, for refund → draft Credit Note imports (Phase 4). Kept as
   // separate state from the order import above — a refund's id space and an
@@ -189,7 +197,6 @@ export default function WooCommerceSync() {
       setResult({ rows: c.rows, refunds: c.refunds || [], skipped_unpaid: c.skipped_unpaid ?? 0, total_fetched: c.total_fetched ?? 0 })
       if (c.from && c.to) setRange({ from: c.from, to: c.to })
       setCachedAt(c.fetchedAt); setResultIsCached(true)
-      if (c.rows.length) checkImportedWooOrders(c.rows.map(o => o.id)).then(setImportedIds)
       if ((c.refunds || []).length) checkImportedWooRefunds(c.refunds.map(rf => rf.id)).then(setImportedRefundIds)
     })
     loadWooCustomerScanCache().then((c) => {
@@ -200,13 +207,12 @@ export default function WooCommerceSync() {
   }, [])
 
   async function fetchOrders() {
-    setLoading(true); setError(''); setResult(null); setImportedIds(new Set()); setImportedRefundIds(new Set())
+    setLoading(true); setError(''); setResult(null); setImportedRefundIds(new Set())
     try {
       const r = await listWooOrders(from, to)
       setResult(r)
       setResultIsCached(false); setCachedAt(new Date())
       saveWooOrdersCache(from, to, r)
-      if (r.rows.length) checkImportedWooOrders(r.rows.map(o => o.id)).then(setImportedIds)
       if (r.refunds.length) checkImportedWooRefunds(r.refunds.map(rf => rf.id)).then(setImportedRefundIds)
       // Live rates for the "By item" report's turnover-in-HKD conversion
       // (owner, 2026-08-22) — fetched once and cached; this is a REPORTING
@@ -229,14 +235,18 @@ export default function WooCommerceSync() {
   }
 
   async function doImport(o) {
-    setImporting(o.id); setImportError('')
+    setImporting(ids => new Set(ids).add(o.id)); setImportError('')
     try {
-      await importWooOrder(o)
-      setImportedIds((s) => new Set(s).add(o.id))
+      const outcome = await importWooOrder(o)
+      setOrderImportStates(states => new Map(states).set(o.id, outcome.needsReview ? 'review' : 'imported'))
     } catch (e) {
       setImportError(`#${o.number}: ${e.message || 'Import failed.'}`)
     } finally {
-      setImporting(null)
+      setImporting(ids => {
+        const next = new Set(ids)
+        next.delete(o.id)
+        return next
+      })
     }
   }
 
@@ -754,17 +764,22 @@ export default function WooCommerceSync() {
                             {fmtDate(o.payout_date)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right">
-                            {importedIds.has(o.id) ? (
+                            {orderImportStates.get(o.id) === 'review' ? (
+                              <span className="inline-block whitespace-normal max-w-44 text-xs text-amber-800" role="status">
+                                <strong className="block">Needs review</strong>
+                                Saved lines exist and the order header is missing.
+                              </span>
+                            ) : orderImportStates.get(o.id) === 'imported' ? (
                               <Link to={`/shipments/woo-${o.id}`} target="_blank" rel="noreferrer"
                                 className="text-xs text-green-700 hover:text-green-800 inline-flex items-center gap-1"
                                 title="Open the imported order">
                                 <CheckCircle2 size={12} /> Imported
                               </Link>
                             ) : (
-                              <button type="button" onClick={() => doImport(o)} disabled={importing === o.id}
+                              <button type="button" onClick={() => doImport(o)} disabled={importing.has(o.id)}
                                 className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1 disabled:opacity-50"
                                 title="Create an order from this WooCommerce order — lands in Sales Invoices' awaiting-invoice list, no invoice/UC# allocated yet">
-                                <Download size={12} /> {importing === o.id ? 'Importing…' : 'Import'}
+                                <Download size={12} /> {importing.has(o.id) ? 'Importing…' : 'Import'}
                               </button>
                             )}
                           </td>
