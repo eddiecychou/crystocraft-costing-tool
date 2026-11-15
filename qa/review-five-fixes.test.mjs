@@ -37,13 +37,41 @@ test('ERP history never trusts mirrored profile code and blocks arbitrary invoic
  const urls=[];const deps={...context,SUPABASE_URL:'https://erp.test',SERVICE_KEY:'fictional',fetcher:async url=>{urls.push(url);return Response.json(url.includes('code=eq.')&&!url.includes('customer_code')?[{customer_code:'OTHER'}]:[])}}
  const history=await createCustomerOrderHistoryHandler(deps)(req('POST'));assert.equal(history.status,200);assert.match(urls[0],/customer_code=eq.OUR_CODE/);assert.doesNotMatch(urls[0],/ATTACK/)
  urls.length=0
- const lines=await createCustomerOrderHistoryHandler({...deps,fetcher:async url=>{urls.push(url);return Response.json([{customer_code:'OTHER'}])}})(req('POST',{action:'lines',code:'FOREIGN'}))
+ const lines=await createCustomerOrderHistoryHandler({...deps,fetcher:async url=>{urls.push(url);return Response.json([{code:'FOREIGN',status:'CONFIRMED',customer_code:'OTHER'}])}})(req('POST',{action:'lines',code:'FOREIGN'}))
  assert.equal(lines.status,404);assert.equal(urls.length,1)
  for(const customer of [null,{}, {erp_code:'SHARED',erp_code_shared:true}]){
   const result=await createCustomerOrderHistoryHandler({...deps,getCustomer:async()=>customer,fetcher:()=>assert.fail('Unlinked/shared must not query ERP')})(req('POST'))
   assert.equal(result.status,200);assert.deepEqual((await result.json()).rows,[])
  }
  const fail=await createCustomerOrderHistoryHandler({...deps,fetcher:async()=>new Response('private',{status:500})})(req('POST'));assert.equal(fail.status,503)
+})
+test('JES invoice detail reads lines only for the owner of an exact confirmed invoice',async()=>{
+ const code='SI250900'
+ const request=req('POST',{action:'lines',code})
+ for(const [header,status] of [
+  [{code,status:'VOID',customer_code:'OUR_CODE'},404],
+  [{code,status:'DRAFT',customer_code:'OUR_CODE'},404],
+  [{code,status:null,customer_code:'OUR_CODE'},404],
+  [{code:'SI250901',status:'CONFIRMED',customer_code:'OUR_CODE'},404],
+  [{code,status:' confirmed ',customer_code:'OUR_CODE'},200],
+ ]){
+  const urls=[]
+  const deps={...context,SUPABASE_URL:'https://erp.test',SERVICE_KEY:'fictional',fetcher:async url=>{
+   urls.push(url)
+   const line=url.includes('erp_sales_invoice_line?')
+   return Response.json(line?[{description:'Fictional historic item',qty:2,unit_price:4,amount:8}]:[header])
+  }}
+  const response=await createCustomerOrderHistoryHandler(deps)(request.clone())
+  assert.equal(response.status,status)
+  assert.equal(urls.length,status===200?2:1)
+  assert.match(response.headers.get('cache-control'),/no-store/)
+  if(status===200){
+   const data=await response.json()
+   assert.equal(data.header.code,code)
+   assert.equal(Object.hasOwn(data.header,'customer_code'),false)
+   assert.equal(data.lines[0].amount,8)
+  }
+ }
 })
 test('changed-field product save preserves gallery/publication updates and refuses same-field conflicts without modifying draft',()=>{
  const original={...product,active:true,name:'Original',status:'concept',video_url:'https://youtu.be/abcdef'}

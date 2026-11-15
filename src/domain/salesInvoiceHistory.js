@@ -1,3 +1,5 @@
+import { orderSi, orderStatusOf } from '../shippingModel.js'
+
 // Shared "Sales Invoice History" merge — one Sales Invoice number is either
 // raised by the app (an order given an invoice number, per SalesInvoices.jsx's
 // header comment: "An invoice is not a separate record here — it is an order
@@ -11,6 +13,19 @@
 // own erp_si_no field, or (for JES-imported orders) in the doc-number field,
 // where the SI sometimes landed instead of an SO/QU.
 export const invoicedAlready = o => !!o.erp_si_no || /^SI/i.test(o.erp_so_no || '')
+
+// The portal exposes issued invoices only, using the same check for the list
+// and direct document links. Legacy OC imports may carry the SI in the SO field.
+export function customerAppInvoiceNo(order, customerId) {
+  if (!customerId || order?.customer_id !== customerId || orderStatusOf(order.status).value === 'draft') return ''
+  const number = orderSi({
+    erp_si_no: typeof order.erp_si_no === 'string' ? order.erp_si_no.trim() : '',
+    erp_so_no: typeof order.erp_so_no === 'string' ? order.erp_so_no.trim() : '',
+  })
+  return /^SI(?:\d|[-/][A-Z0-9])/i.test(number) ? number : ''
+}
+
+export const isConfirmedErpInvoice = invoice => String(invoice?.status || '').trim().toUpperCase() === 'CONFIRMED'
 
 // `orders`: app orders (already filtered to invoicedAlready by the caller, or
 // not — this re-filters defensively). `erpRows`: erp_sales_invoice rows

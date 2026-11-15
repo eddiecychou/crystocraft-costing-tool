@@ -20,7 +20,7 @@ const {Simulate}=await import('react-dom/test-utils')
 let scratch,pages,downloaded,downloadName,printed=0
 const originalCreate=URL.createObjectURL,originalRevoke=URL.revokeObjectURL
 const units=['pcs','set','pair','box','kg','g','m']
-const fixture={order:{customer_id:'qa-customer',customer_name:'QA invoice units',erp_so_no:'SO-QA',erp_si_no:'SI-QA',uc_no:'UC-QA',currency:'HKD',order_date:'2026-10-15',discount_amount:10},lines:[
+const fixture={order:{customer_id:'qa-customer',customer_name:'QA invoice units',erp_so_no:'SO-QA',erp_si_no:'SI-QA',uc_no:'UC-QA',currency:'HKD',status:'confirmed',order_date:'2026-10-15',discount_amount:10},lines:[
  ...units.map((unit,i)=>({id:`line${i}`,line_no:i+1,item_code:`QA-${i}`,description:`Unit ${unit}`,qty_ordered:i===4?1.25:80+i,unit,unit_price:10,line_type:'ad_hoc',supplier_name:'PRIVATE-SUPPLIER',unit_cost_hkd:999})),
  {id:'legacy',line_no:8,item_code:'LEGACY',description:'Legacy default',qty_ordered:25,unit_price:2},
  {id:'freight',line_no:9,item_code:'FREIGHT',description:'Freight',qty_ordered:null,unit_price:30,line_type:'charge'},
@@ -31,7 +31,7 @@ const stubs={
  firestore:`const f=()=>globalThis.__invoiceFixture;export const doc=(...a)=>Object.assign(a,{id:typeof a.at(-1)==='string'?a.at(-1):'qa-new-line'});export const collection=(...a)=>a;export const query=(...a)=>a;export const orderBy=()=>{};export const where=()=>{};
  export {getDocs as getDocsFromServer};export const getDoc=async p=>({id:'qa-order',exists:()=>p.includes('orders')&&!f().missingOrder,data:()=>f().order});
  export const getDocFromServer=async p=>{const snap=await getDoc(p);const value=f().serverOrders?.length?f().serverOrders.shift():snap.data();return{...snap,data:()=>value}};
- export const getDocs=async p=>({docs:JSON.stringify(p).includes('"orders"')?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]});
+ export const getDocs=async p=>{const lines=JSON.stringify(p).includes('"orders"');if(lines&&f().orderLineReads!=null)f().orderLineReads++;return {docs:lines?f().lines.map(l=>({id:l.id,ref:l.id,data:()=>l})):[]}};
  const fail=()=>{throw Error('Forbidden database write')};export {fail as addDoc,fail as deleteDoc,fail as runTransaction};
  export const onSnapshot=()=>()=>{};export const serverTimestamp=()=> 'QA timestamp';
  export const updateDoc=async(p,data)=>{if(!f().allowSave)fail();f().writes.push(structuredClone(data));f().order={...f().order,...data}};
@@ -43,7 +43,7 @@ const stubs={
  customer:'export const loadCustomers=async()=>[];export const useCustomers=()=>({customers:[]});export const primaryContact=()=>null;export const contactAddress=()=>"";export const saveCustomer=async()=>{throw Error("No customer creation")}',
  bankAccounts:'export const listBankAccounts=async()=>[];export const accountForCurrency=()=>null;export const formatBankDetails=()=>""',
  criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
- customerOrderHistoryApi:'export const myInvoiceDetail=async code=>({header:{code:"ERP-QA",currency:"USD"},lines:[{item_code:"ERP",description:"Historical unit unavailable",qty:code==="RETURN"?-5:5,unit_price:2,amount:code==="RETURN"?-10:10}]})',
+ customerOrderHistoryApi:'export const myInvoiceDetail=async code=>({header:{code,currency:"USD",status:code==="VOID"?"VOID":"CONFIRMED"},lines:[{item_code:"ERP",description:"Historical unit unavailable",qty:code==="RETURN"?-5:5,unit_price:2,amount:code==="RETURN"?-10:10}]})',
  router:`import React from 'react';export const useParams=()=>globalThis.__invoiceParams;export const useNavigate=()=>to=>globalThis.__invoiceFixture.destination=to;export const useSearchParams=()=>[new URLSearchParams(globalThis.__invoiceParams.search)];export const Link=({to,children,...props})=>React.createElement('a',{href:to,...props},children)`,
  CustomerAccounts:'export const CustomerPicker=()=>null',
  erpApi:'export const erpLines=async()=>({rows:[]});export const erpLookup=async()=>[]',
@@ -115,6 +115,44 @@ test('quote conversion preserves selected units into order lines',()=>{
  for(const unit of units)assert.equal(quoteItemToOrderLine({product_unit:unit,tiers:[{quantity:80,price:10}]},0).unit,unit)
 })
 test('customer cannot export another customer invoice',async()=>withPage('customer',async host=>{assert.match(host.textContent,/Invoice not found/);assert.equal(host.querySelectorAll('button').length,0)},{customer:'other-customer'}))
+
+test('customer draft and uninvoiced links stop before reading commercial lines',async()=>{
+ const original=fixture.order
+ fixture.orderLineReads=0
+ try {
+  for(const patch of [{status:'draft'},{erp_si_no:'',erp_so_no:'SO260050'},{erp_si_no:'SO260050'},{status:undefined}]){
+   fixture.order={...original,...patch}
+   await withPage('customer',host=>{assert.match(host.textContent,/Invoice not found/);assert.equal(host.querySelectorAll('button').length,0)})
+  }
+  assert.equal(fixture.orderLineReads,0)
+ } finally {fixture.order=original;delete fixture.orderLineReads}
+})
+
+test('customer invoice removed from issuance during line load stays unavailable',async()=>{
+ fixture.serverOrders=[fixture.order,{...fixture.order,status:'draft'}]
+ try {
+  await withPage('customer',host=>{assert.match(host.textContent,/Invoice not found/);assert.equal(host.querySelectorAll('button').length,0)})
+ } finally {delete fixture.serverOrders}
+})
+
+test('own issued legacy SI in the SO field prints and downloads with the same number',async()=>{
+ const original=fixture.order
+ fixture.order={...original,erp_si_no:'',erp_so_no:' SI260071 '}
+ try {
+  await withPage('customer',async host=>{
+   assert.equal(host.querySelector('.si-code').textContent,'SI260071')
+   const before=printed
+   ;[...host.querySelectorAll('button')].find(x=>x.textContent==='Print / Save as PDF').click()
+   assert.equal(printed,before+1)
+   assert.match(String((await workbook(host)).ws.getCell('B1').value),/SI260071/)
+  })
+ } finally {fixture.order=original}
+})
+
+test('void legacy ERP response cannot offer print or Excel',async()=>withPage('customer',host=>{
+ assert.match(host.textContent,/Invoice not found/)
+ assert.equal(host.querySelectorAll('button').length,0)
+},{key:'erp-VOID'}))
 test('legacy ERP invoices without unit evidence remain unspecified rather than inventing pcs',async()=>withPage('customer',async host=>{
  const {ws}=await workbook(host);assert.equal(ws.getCell('C7').value,5);assert.equal(ws.getCell('D7').value,'')
 },{key:'erp-ERP-QA'}))
@@ -421,7 +459,7 @@ const expectedWords={0:'ZERO',1000:'ONE THOUSAND',1022:'ONE THOUSAND TWENTY TWO'
 for(const kind of ['sales','customer'])for(const c of payableCases)test(`${kind}: approved payable PDF/words/Excel parity for ${c.name}`,async()=>{
  const original=fixture.order,originalLines=fixture.lines
  const invoice=c.accounting==null||c.accounting===''?1222:c.accounting,hasDeposit=Number(c.deposit)>0,outstanding=invoice-(Number(c.deposit)||0)
- fixture.order={customer_id:'qa-customer',customer_name:'Fictional accounting export',erp_so_no:'SO-SH03-QA',erp_si_no:'SI-SH03-QA',uc_no:'UC-SH03-QA',currency:'USD',order_date:'2026-11-07',total_amount:1222,accounting_total:c.accounting,adjustment:invoice-1222,adjustment_reason:'PRIVATE-ADJUSTMENT-REASON',deposit_paid:c.deposit}
+ fixture.order={customer_id:'qa-customer',customer_name:'Fictional accounting export',erp_so_no:'SO-SH03-QA',erp_si_no:'SI-SH03-QA',uc_no:'UC-SH03-QA',currency:'USD',status:'confirmed',order_date:'2026-11-07',total_amount:1222,accounting_total:c.accounting,adjustment:invoice-1222,adjustment_reason:'PRIVATE-ADJUSTMENT-REASON',deposit_paid:c.deposit}
  fixture.lines=[{id:'qa-line',line_no:1,item_code:'SH03-QA',description:'Fictional product',qty_ordered:1000,unit:'pcs',unit_price:1.222,line_type:'ad_hoc',supplier_name:'PRIVATE-SUPPLIER',unit_cost_hkd:999}]
  const before=structuredClone(fixture)
  try{await withPage(kind,async host=>{

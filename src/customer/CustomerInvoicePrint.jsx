@@ -2,7 +2,8 @@ import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { downloadInvoiceExcel, orderInvoiceLines } from '../invoiceExcel'
-import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
+import { getOrderEditSnapshot, computeOrderTotals, orderUc } from '../shipping'
+import { customerAppInvoiceNo, isConfirmedErpInvoice } from '../domain/salesInvoiceHistory'
 import { myInvoiceDetail } from '../customerOrderHistoryApi'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -19,9 +20,8 @@ import logoUrl from '../assets/logo.png'
 // same document family, so a customer's copy looks identical to the one
 // Cindy would print internally — but sourced safely for a customer's own
 // browser session:
-//  - App invoices (key "app-<orderId>"): getOrder/getOrderLines read
-//    orders/{id} + its lines subcollection directly — already permitted for
-//    this customer's own order by firestore.rules' customer-scoped branch.
+//  - App invoices (key "app-<orderId>"): check the server order for ownership
+//    and issuance before reading lines, then verify the saved version again.
 //  - JES invoices (key "erp-<code>"): header + lines come from the
 //    customer-scoped /api/customer-order-history 'lines' action, which
 //    re-verifies server-side that the invoice belongs to the caller before
@@ -32,9 +32,14 @@ import logoUrl from '../assets/logo.png'
 // customers/{id}, admin-only; profile.company_name/contact_name substitute).
 export default function CustomerInvoicePrint({ profile }) {
   const { key } = useParams()
-  const isApp = key?.startsWith('app-')
-  const orderId = isApp ? key.slice(4) : null
-  const code = !isApp ? (key || '').replace(/^erp-/, '') : null
+  return <InvoiceDocument key={JSON.stringify([key, profile?.id, profile?.customer_id])} invoiceKey={key} profile={profile} />
+}
+
+function InvoiceDocument({ invoiceKey, profile }) {
+  const isApp = invoiceKey?.startsWith('app-')
+  const orderId = isApp ? invoiceKey.slice(4) : null
+  const code = isApp ? null : (invoiceKey || '').replace(/^erp-/, '').trim()
+  const customerId = profile?.customer_id
 
   const [header, setHeader] = useState(null)   // normalized: { no, uc, date, currency, customer_po, status }
   const [lines, setLines] = useState([])
@@ -47,38 +52,41 @@ export default function CustomerInvoicePrint({ profile }) {
     let alive = true
     ;(async () => {
       try {
-        if (isApp) {
-          const o = await getOrder(orderId)
-          if (!o) throw new Error('Invoice not found.')
-          if (o.customer_id !== profile?.customer_id) throw new Error('Invoice not found.')
-          const ls = await getOrderLines(orderId)
+        if (orderId && customerId) {
+          const { order: o, lines: ls } = await getOrderEditSnapshot(orderId, {
+            checkOrder: candidate => {
+              if (!customerAppInvoiceNo(candidate, customerId)) throw new Error('Invoice not found.')
+            },
+          })
           if (!alive) return
           setHeader({
-            no: o.erp_si_no || o.erp_so_no, uc: orderUc(o), date: o.invoice_date || o.invoiced_at || o.order_date,
+            no: customerAppInvoiceNo(o, customerId), uc: orderUc(o), date: o.invoice_date || o.invoiced_at || o.order_date,
             currency: o.currency || 'USD', customer_po: o.customer_po, status: null,
             deposit_paid: o.deposit_paid, accounting_total: o.accounting_total,
           })
           setLines(orderInvoiceLines(ls))
           setTotals(computeOrderTotals(o, ls))
-        } else {
+        } else if (code && customerId) {
           const { header: h, lines: ls } = await myInvoiceDetail(code)
-          if (!h) throw new Error('Invoice not found.')
+          if (h?.code !== code || !isConfirmedErpInvoice(h)) throw new Error('Invoice not found.')
           if (!alive) return
           setHeader({ no: h.code, uc: h.ref, date: h.date, currency: h.currency || 'USD', customer_po: h.customer_po, status: h.status })
           setLines(ls)
+        } else {
+          throw new Error('Invoice not found.')
         }
         try {
           const snap = await getDoc(doc(db, 'settings', 'quote_branding'))
           if (alive && snap.exists()) setStampUrl(snap.data().stamp_url || '')
         } catch { /* unstamped */ }
       } catch (e) {
-        if (alive) setError(e.message || 'Could not load this invoice.')
+        if (alive) setError(['permission-denied', 'not-found'].includes(e.code) ? 'Invoice not found.' : e.message || 'Could not load this invoice.')
       } finally {
         if (alive) setLoading(false)
       }
     })()
     return () => { alive = false }
-  }, [isApp, orderId, code, profile?.customer_id])
+  }, [orderId, code, customerId])
 
   useEffect(() => {
     if (!header) return
@@ -96,11 +104,11 @@ export default function CustomerInvoicePrint({ profile }) {
   }
 
   const lineSum = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0)
-  const total = isApp ? totals?.total : lineSum
-  const subtotal = isApp ? totals?.subtotal : lineSum
-  const discountAmount = isApp ? totals?.discountAmount : 0
-  const chargesTotal = isApp ? totals?.chargesTotal : 0
-  const payment = invoicePaymentTotals(isApp ? header : null, total)
+  const total = orderId ? totals?.total : lineSum
+  const subtotal = orderId ? totals?.subtotal : lineSum
+  const discountAmount = orderId ? totals?.discountAmount : 0
+  const chargesTotal = orderId ? totals?.chargesTotal : 0
+  const payment = invoicePaymentTotals(orderId ? header : null, total)
 
   function downloadExcel() {
     const summary = [['Subtotal', subtotal]]

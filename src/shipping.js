@@ -114,14 +114,16 @@ export async function updateOrder(id, patch) {
 // up matching the form, whatever state it was in before.
 // Server-confirmed header/line snapshot. Versioned line writes also advance the
 // root, so equal versions around this query establish one editable baseline.
-export async function getOrderEditSnapshot(orderId) {
+export async function getOrderEditSnapshot(orderId, { checkOrder } = {}) {
   const ref = doc(db, 'orders', orderId)
   for (let attempt = 0; attempt < 3; attempt++) {
     const before = await getDocFromServer(ref)
     if (!before.exists()) throw Object.assign(Error('This order could not be found.'), { code: 'not-found' })
+    checkOrder?.(before.data())
     const items = await getDocsFromServer(LINES(orderId))
     const after = await getDocFromServer(ref)
     if (!after.exists()) throw Object.assign(Error('This order could not be found.'), { code: 'not-found' })
+    checkOrder?.(after.data())
     const base = orderEditBase(after.data())
     if (sameOrderEditBase(orderEditBase(before.data()), base)) {
       const lines = items.docs.map(d => ({ id: d.id, ...normLine(d.data()) }))

@@ -1,4 +1,5 @@
 import { customerContext, privateJson as json } from './customerAccess.js'
+import { isConfirmedErpInvoice } from '../../../src/domain/salesInvoiceHistory.js'
 async function sb(SUPABASE_URL, SERVICE_KEY, path, fetcher) {
   const r = await fetcher(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' },
@@ -35,12 +36,14 @@ export function createCustomerOrderHistoryHandler(deps) {
     // everything in one round trip.
     const header = await sb(SUPABASE_URL, SERVICE_KEY,
       `erp_sales_invoice?select=${HEADER_COLS},customer_code&code=eq.${encodeURIComponent(code)}&limit=1`, deps.fetcher || fetch)
-    if (!header?.length || String(header[0].customer_code || '').toUpperCase() !== customer?.erp_code.toUpperCase()) {
+    const invoice = header?.[0]
+    if (invoice?.code !== code || !isConfirmedErpInvoice(invoice) ||
+        String(invoice.customer_code || '').toUpperCase() !== customer.erp_code.toUpperCase()) {
       return json({ error: 'Not found' }, 404)
     }
     const lines = await sb(SUPABASE_URL, SERVICE_KEY,
       `erp_sales_invoice_line?select=${LINE_COLS}&invoice_no=eq.${encodeURIComponent(code)}&order=seq.asc`, deps.fetcher || fetch)
-    const { customer_code, ...safeHeader } = header[0]
+    const { customer_code, ...safeHeader } = invoice
     return json({ header: safeHeader, lines: lines || [] })
   }
 
