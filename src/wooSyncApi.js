@@ -4,12 +4,13 @@
 // WooCommerce Consumer Key/Secret and does the actual fetch.
 import { authedUser } from './firebase'
 
-async function wooSync(op, extra) {
+async function wooSync(op, extra, signal) {
   const user = await authedUser()
   if (!user) throw new Error('Please sign in.')
   const token = await user.getIdToken()
   const res = await fetch('/api/woo-sync', {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ op, ...extra }),
   })
@@ -21,6 +22,17 @@ async function wooSync(op, extra) {
 
 // Returns { rows, refunds, skipped_unpaid, total_fetched }.
 export const listWooOrders = (from, to) => wooSync('list_orders', { from, to })
+
+export async function verifyWooOrderImport(orderId) {
+  try {
+    const data = await wooSync('verify_order_import', { order_id: String(orderId) }, AbortSignal.timeout(15000))
+    if (data?.status === 'clear' && !Object.hasOwn(data, 'reason')) return null
+    if (data?.status === 'review' && (data.reason === 'invoice' || data.reason === 'uc')) return data.reason
+  } catch (error) {
+    throw new Error('Could not verify invoice and UC history. Please try again.', { cause: error })
+  }
+  throw new Error('Could not verify invoice and UC history. Please try again.')
+}
 
 // Full order history (any status, no date bound) for one person — email or
 // name — used to check whether an existing customer record actually has

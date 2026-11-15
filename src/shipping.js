@@ -80,18 +80,19 @@ export function createOrderWithLines(orderData, lines) {
 
 // Woo imports use a stable ID. The transaction guards the missing header and
 // writes it with its lines. The Web SDK only supports document reads in a
-// transaction, so inspect the line collection separately before staging writes.
+// transaction, so the caller checks saved lines and financial history before staging writes.
 // The rules require an open header for client line writes.
-export async function createOrderWithLinesAtId(id, orderData, lines, hasSavedOrderLines) {
+export async function createOrderWithLinesAtId(id, orderData, lines, getImportReviewReason) {
   const orderRef = doc(db, 'orders', id)
   try {
     return await runTransaction(db, async (tx) => {
       const existing = await tx.get(orderRef)
       if (existing.exists()) return { id, created: false }
-      if (await hasSavedOrderLines(id)) {
+      const reviewReason = await getImportReviewReason(id)
+      if (reviewReason) {
         // Another import might have committed its header and lines while we read.
         if ((await tx.get(orderRef)).exists()) return { id, created: false }
-        return { id, created: false, needsReview: true }
+        return { id, created: false, reviewReason }
       }
       tx.set(orderRef, { ...newOrderFields(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
       ;(lines || []).forEach((l, i) => {

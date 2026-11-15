@@ -32,6 +32,12 @@ const fmtMoney = (v) => {
   return Number.isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
 }
 
+const importReviewMessages = {
+  saved_lines: 'Saved lines exist and the order header is missing.',
+  invoice: 'A matching sales invoice exists. Review it before importing.',
+  uc: 'A matching UC Registry entry exists. Review it before importing.',
+}
+
 // Default range: the previous calendar month, matching the spec's §6 monthly
 // procedure ("on the 7th, sync the previous month's paid orders") — so
 // opening this page during a normal review already shows the right window.
@@ -238,7 +244,7 @@ export default function WooCommerceSync() {
     setImporting(ids => new Set(ids).add(o.id)); setImportError('')
     try {
       const outcome = await importWooOrder(o)
-      setOrderImportStates(states => new Map(states).set(o.id, outcome.needsReview ? 'review' : 'imported'))
+      setOrderImportStates(states => new Map(states).set(o.id, outcome.reviewReason || 'imported'))
     } catch (e) {
       setImportError(`#${o.number}: ${e.message || 'Import failed.'}`)
     } finally {
@@ -681,7 +687,7 @@ export default function WooCommerceSync() {
         )}
 
         {importError && (
-          <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-4 inline-flex items-start gap-2">
+          <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-4 inline-flex items-start gap-2">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" />
             Import failed for {importError}
           </p>
@@ -764,10 +770,10 @@ export default function WooCommerceSync() {
                             {fmtDate(o.payout_date)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right">
-                            {orderImportStates.get(o.id) === 'review' ? (
+                            {importReviewMessages[orderImportStates.get(o.id)] ? (
                               <span className="inline-block whitespace-normal max-w-44 text-xs text-amber-800" role="status">
                                 <strong className="block">Needs review</strong>
-                                Saved lines exist and the order header is missing.
+                                {importReviewMessages[orderImportStates.get(o.id)]}
                               </span>
                             ) : orderImportStates.get(o.id) === 'imported' ? (
                               <Link to={`/shipments/woo-${o.id}`} target="_blank" rel="noreferrer"

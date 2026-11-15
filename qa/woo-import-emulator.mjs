@@ -14,6 +14,13 @@ const projectId = 'demo-woo-import'
 assert.match(process.env.FIRESTORE_EMULATOR_HOST ?? '', /^127\.0\.0\.1:\d+$/)
 let env, db, scratch, app
 const fixture = globalThis.__wooImportFixture = {}
+const ledgerIds = []
+const ledgerHistory = new Map([[900102, 'invoice'], [900103, 'uc'], [900105, 'invoice']])
+fixture.verify = id => {
+  ledgerIds.push(id)
+  if (fixture.failLedgerRead) throw Error('Could not verify invoice and UC history. Please try again.')
+  return ledgerHistory.get(id) ?? null
+}
 const woo = id => ({
   id, number: String(id), customer_name: 'Fictional buyer ' + id,
   currency: 'USD', date_created: '2026-11-14T13:00:00', subtotal: 20, total: 20,
@@ -53,6 +60,7 @@ before(async () => {
     wooCache: `export const loadWooOrdersCache=async()=>globalThis.__wooImportFixture.cache;
       export const saveWooOrdersCache=()=>{},loadWooCustomerScanCache=async()=>null,saveWooCustomerScanCache=()=>{}`,
     wooSyncApi: `const fail=()=>{throw Error('Live WooCommerce is disabled')};
+      export const verifyWooOrderImport=(...args)=>globalThis.__wooImportFixture.verify(...args);
       export {fail as listWooOrders,fail as searchWooOrders,fail as wooOrderMeta,fail as wooProbePayout}`,
     customer: 'export const loadCustomers=async()=>[]',
     CustomerAccounts: 'export const CustomerPicker=()=>null',
@@ -101,17 +109,32 @@ test('fresh Woo import creates one draft and retry preserves its exact header an
   assert.deepEqual(await app.importWooOrder({ ...woo(id), total: 100, line_items: [] }), { id: 'woo-901111', created: false })
   assert.deepEqual((await readHeader(id)).data(), first)
   assert.deepEqual(await readLines(id), lines)
+  assert.deepEqual(ledgerIds.filter(n => n === id), [id])
 })
 
 test('missing header with unnumbered historical lines gets Needs review on every retry', async () => {
   const id = 901112
   await seedSurvivor(id)
   for (let attempt = 0; attempt < 2; attempt++) {
-    assert.deepEqual(await app.importWooOrder(woo(id)), { id: 'woo-901112', created: false, needsReview: true })
+    assert.deepEqual(await app.importWooOrder(woo(id)), { id: 'woo-901112', created: false, reviewReason: 'saved_lines' })
     assert.equal((await readHeader(id)).exists(), false)
     assert.deepEqual(await readLines(id), [{ id: 'original', ...historicLine }])
   }
-  assert.deepEqual(await app.checkWooOrderImports([id, 901111, 901115]), new Map([[id, 'review'], [901111, 'imported']]))
+  assert.deepEqual(await app.checkWooOrderImports([id, 901111, 901115]), new Map([[id, 'saved_lines'], [901111, 'imported']]))
+  assert.equal(ledgerIds.includes(id), false)
+})
+
+test('ledger-only, UC-only and split/reissued histories block order and line writes on every retry', async () => {
+  for (const [id, reviewReason] of ledgerHistory) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      assert.deepEqual(await app.importWooOrder({ ...woo(id), number: 'different display number' }), {
+        id: 'woo-' + id, created: false, reviewReason,
+      })
+      assert.equal((await readHeader(id)).exists(), false)
+      assert.deepEqual(await readLines(id), [])
+    }
+    assert.deepEqual(ledgerIds.filter(n => n === id), [id, id])
+  }
 })
 
 test('overlapping imports from two sessions create and acknowledge one order and one line', async () => {
@@ -142,10 +165,11 @@ test('failed line preflight writes nothing and staff without Shipping remain den
   assert.equal((await readHeader(id)).exists(), false)
 })
 
-test('real Woo table marks known and newly discovered orphan lines Needs review', async () => {
+test('real Woo table shows the review reason and allows retry after a failed verification', async () => {
   const known = 901116, stale = 901117, fresh = 901118
+  const invoice = 900102, uc = 900103
   await seedSurvivor(known)
-  fixture.cache = { rows: [woo(known), woo(stale), woo(fresh)], refunds: [] }
+  fixture.cache = { rows: [known, stale, fresh, invoice, uc].map(woo), refunds: [] }
   const dom = new JSDOM('<div id="woo"></div>', { url: 'https://fictional.invalid/woo-sync' })
   globalThis.window = dom.window
   globalThis.document = dom.window.document
@@ -172,10 +196,23 @@ test('real Woo table marks known and newly discovered orphan lines Needs review'
     assert.equal(findImport(stale), undefined)
     assert.equal((await readHeader(stale)).exists(), false)
     assert.deepEqual(await readLines(stale), [{ id: 'original', ...historicLine }])
+    for (const [id, message] of [[invoice, 'matching sales invoice'], [uc, 'matching UC Registry entry']]) {
+      await act(async () => findImport(id).click())
+      await waitFor(() => row(id).querySelector('[role=status]')?.textContent.includes(message))
+      assert.equal(findImport(id), undefined)
+    }
+    fixture.failLedgerRead = true
+    await act(async () => findImport(fresh).click())
+    await waitFor(() => host.querySelector('[role=alert]')?.textContent.includes('Please try again.'))
+    assert.ok(findImport(fresh))
+    assert.equal((await readHeader(fresh)).exists(), false)
+    assert.deepEqual(await readLines(fresh), [])
+    delete fixture.failLedgerRead
     await act(async () => findImport(fresh).click())
     await waitFor(() => row(fresh).querySelector(`a[href="/shipments/woo-${fresh}"]`)?.textContent.includes('Imported'))
     assert.equal((await readLines(fresh)).length, 1)
   } finally {
+    delete fixture.failLedgerRead
     await act(async () => root.unmount())
     dom.window.close()
     delete globalThis.window

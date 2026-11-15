@@ -10,6 +10,7 @@
 import { collection, doc, getDocFromServer, getDocsFromServer, limit, query, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { createOrderWithLinesAtId, ORDER_CURRENCIES } from './shipping'
+import { verifyWooOrderImport } from './wooSyncApi'
 
 // Deterministic Firestore doc ID from the WooCommerce order id — the actual
 // idempotency mechanism (spec §2.3/§9): re-importing the same WooCommerce
@@ -169,11 +170,13 @@ export function mapWooOrderToOrder(o) {
   return { header, lines: [...productLines, ...chargeLines] }
 }
 
-// Returns { id, created } for new or existing orders, with needsReview:true
-// when a missing header still has saved lines.
+// Review stops a new draft when saved lines or financial history already exist.
 export async function importWooOrder(o) {
   const { header, lines } = mapWooOrderToOrder(o)
-  return createOrderWithLinesAtId(wooOrderDocId(o.id), header, lines, hasSavedOrderLines)
+  return createOrderWithLinesAtId(wooOrderDocId(o.id), header, lines, async id => {
+    if (await hasSavedOrderLines(id)) return 'saved_lines'
+    return verifyWooOrderImport(o.id)
+  })
 }
 
 async function hasSavedOrderLines(id) {
@@ -191,7 +194,7 @@ export async function checkWooOrderImports(wooOrderIds) {
       const ref = doc(db, 'orders', orderId)
       if ((await getDocFromServer(ref)).exists()) states.set(id, 'imported')
       else if (await hasSavedOrderLines(orderId)) {
-        states.set(id, (await getDocFromServer(ref)).exists() ? 'imported' : 'review')
+        states.set(id, (await getDocFromServer(ref)).exists() ? 'imported' : 'saved_lines')
       }
     }))
   }

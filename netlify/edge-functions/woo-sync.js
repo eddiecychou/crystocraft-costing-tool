@@ -20,6 +20,7 @@
 //           POST { op: 'search_orders', q }         -- email/name, no date bound
 //           POST { op: 'search_orders', customer_id }  -- exact WC customer ID
 //           POST { op: 'orders_page', page }        -- lightweight, client-paginated, all-time
+//           POST { op: 'verify_order_import', order_id } -- exact, read-only ledger check for Woo + Shipping
 //           POST { op: 'products_page', page }       -- catalogue + per-variation stock, client-paginated
 //           POST { op: 'catalogue_page', page }       -- product-shaped rows + SEO fields, client-paginated
 //           POST { op: 'probe_i18n_seo' }             -- diagnostic: WPML/Polylang + Yoast over REST?
@@ -28,9 +29,10 @@
 //           POST { op: 'probe_payout', order_id? }   -- diagnostic, see below
 // Response: { rows: [...] }  (list_orders)  /  { rows: [...] }  (order_refunds)
 import { requireModule } from './lib/auth.js'
+import { findWooImportReview } from './lib/wooImportReview.js'
 
-const json = (body, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+const json = (body, status = 200, headers) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } })
 
 // "Paid" per the spec's §2.1: inspect the actual payment field, not just
 // status === 'processing' || 'completed'. WooCommerce sets date_paid the
@@ -191,10 +193,27 @@ export default async function handler(req) {
   // for HTTPS stores (the alternative, OAuth1 query-string signing, is only
   // required over plain HTTP).
   const wcAuthHeader = { Authorization: `Basic ${btoa(`${WC_KEY}:${WC_SECRET}`)}` }
-  const wc = (path, params) => {
+  const wc = (path, params, init) => {
     const url = new URL(`${WC_BASE_URL.replace(/\/$/, '')}/wp-json/wc/v3/${path}`)
     for (const [k, v] of Object.entries(params || {})) if (v != null && v !== '') url.searchParams.set(k, v)
-    return fetch(url, { headers: wcAuthHeader })
+    return fetch(url, { ...init, headers: wcAuthHeader })
+  }
+
+  if (body?.op === 'verify_order_import') {
+    const headers = { 'Cache-Control': 'no-store' }
+    if (auth.role !== 'admin' && (auth.role !== 'staff' || !auth.modules.includes('shipping'))) {
+      return json({ error: 'Access denied' }, 403, headers)
+    }
+    const id = body.order_id
+    if (typeof id !== 'string' || id.length > 20 || !/^[1-9]\d*$/.test(id) || /\s/.test(id)) {
+      return json({ error: 'Invalid WooCommerce order ID' }, 400, headers)
+    }
+    try {
+      const reason = await findWooImportReview(id, wc)
+      return json(reason ? { status: 'review', reason } : { status: 'clear' }, 200, headers)
+    } catch {
+      return json({ error: 'Could not verify invoice and UC history. Please try again.' }, 503, headers)
+    }
   }
   // Same auth, arbitrary wp-json path — for probing where payout/deposit date
   // actually lives (see 'probe_payout' below). Not every REST namespace a
