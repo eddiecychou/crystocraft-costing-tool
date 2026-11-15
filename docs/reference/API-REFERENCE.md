@@ -88,6 +88,7 @@ functions/customer-workbench.js and functions/lib/customerWorkbench.js. See
 - `bank.js` (`/api/bank`) — Read/write for Crystocraft's own receiving bank accounts (Supabase `bank_accounts`). Auth: module `invoices` — admin gets all ops; a `staff` holder of `invoices` is restricted to `list`/`audit`. Called from `src/bankAccounts.js`, `src/customer/CustomerInvoicePrint.jsx`.
 - `fx-rates.js` (`/api/fx-rates`) — Proxies exchangerate-api.com for CNY/USD/EUR/GBP vs HKD. **Never use these for the books** — see CLAUDE.md's exchange-rate warning; this is for UI convenience only. Auth: public. Called from `src/pages/WooCommerceSync.jsx`, `src/pages/Settings.jsx`.
 - `credit-note.js` (`/api/credit-note`) — Read/write/void for posted Sales Return / Credit Note records (Supabase `app_credit_note`); Firestore `credit_notes/{id}` is the editable working doc, this is the posted financial fact. Auth: module `credit_notes`. Called from `src/creditNotes.js`, `src/pages/CreditNoteForm.jsx`.
+- `oc-invoice-summaries.js` (`GET /api/oc-invoice-summaries`) — Private summary of OC invoice identities and original availability. Firebase admin or staff with `invoices`. Verifies modern ledger entries against their linked receipts and supports verified legacy summary sources. The response contains only invoice number, date, customer name, currency, total, status, source and document status. Used by Sales Invoices for staff without Shipping. [Review and scope](../plans/V8.20-INVOICE-ONLY-STAFF-REVIEW.md).
 
 ## Customer Portal & Auth
 

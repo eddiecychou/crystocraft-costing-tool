@@ -13,6 +13,7 @@ import { useCustomers } from '../domain/customer'
 import { erpLookup } from '../erpApi'
 import { Receipt, AlertTriangle, FileText, Database } from 'lucide-react'
 import ErpDocModal from '../components/ErpDocModal'
+import useOcInvoiceSummaries from '../hooks/useOcInvoiceSummaries'
 
 // Sales Invoices. An invoice is not a separate record here — it is an order
 // that has been given an invoice number, which mirrors how CuiLing actually
@@ -45,6 +46,16 @@ const AWAITING = new Set(['confirmed', 'packing', 'ready', 'shipped', 'delivered
 // invoice list — the point of the page — entirely below the fold.
 const AWAITING_PREVIEW = 5
 const EMPTY_ROWS = []
+const SUMMARY_COLUMNS = [
+  { label: 'Invoice no.', value: r => r.no, text: true },
+  { label: 'Invoice date', value: r => r.date },
+  { label: 'Customer', value: r => r.customer },
+  { label: 'Currency', value: r => r.currency },
+  { label: 'Total', value: r => r.amount },
+  { label: 'Status', value: r => r.status },
+  { label: 'Source', value: r => r.src === 'app' ? 'OC' : 'JES' },
+  { label: 'Original document', value: r => r.documentStatus || '' },
+]
 
 // Historical invoices are READ from the ERP mirror, never imported. Copying
 // 5,455 JES invoices into Firestore would duplicate the system of record and
@@ -89,17 +100,22 @@ export default function SalesInvoices({uid}) {
   const canOpenShipping = can('shipping')
   const canReadErp = can('erp')
   const canCheckFinancial = canOpenShipping && can('uc')
+  const summaryMode = !canOpenShipping
   const navigate = useNavigate()
   const oc = useOrders({ enabled: canOpenShipping, serverOnly: true })
-  const ocReady = canOpenShipping && !oc.loading && !oc.error && !oc.fromCache
-  const orders = ocReady ? oc.orders : EMPTY_ROWS
+  const summaries = useOcInvoiceSummaries(summaryMode, uid)
+  const ocSource = summaryMode ? summaries : oc
+  const ocReady = !ocSource.loading && !ocSource.error && (summaryMode ? Array.isArray(summaries.rows) : !oc.fromCache)
+  const orders = !summaryMode && ocReady ? oc.orders : EMPTY_ROWS
   const [search, setSearch] = useState('')
   const [showAllAwaiting, setShowAllAwaiting] = useState(false)
   const [showResolved, setShowResolved] = useState(false)
   const [erpDoc, setErpDoc] = useState(null)   // JES invoice being viewed, read-only
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const [srcFilter, setSrcFilter] = useState('')   // '' | 'app' | 'jes'
+  const [sourceSelection, setSrcFilter] = useState('')
+  const ocSummaryOnly = summaryMode && !canReadErp
+  const srcFilter = ocSummaryOnly ? 'app' : sourceSelection
   const [ledger, setLedger] = useState(null)      // Postgres rows, or null while loading
   const [ledgerKey, setLedgerKey] = useState('')
   const [ledgerLoading, setLedgerLoading] = useState(true)
@@ -206,7 +222,10 @@ export default function SalesInvoices({uid}) {
   // but each row says where it came from, because what you can DO with it
   // differs. App rows print; JES rows are history.
   const merged = useMemo(() => {
-    const app = invoiced.map((o) => ({
+    const query = search.trim().toLowerCase()
+    const app = summaryMode ? (summaries.rows || EMPTY_ROWS)
+      .filter(row => `${row.no} ${row.customer}`.toLowerCase().includes(query))
+      .map(row => ({ ...row, key: `app-${row.no}`, src: 'app' })) : invoiced.map((o) => ({
       key: `app-${o.id}`, src: 'app', id: o.id,
       // Falls back to erp_so_no for the rare JES-imported order where the SI
       // landed there instead — see invoicedAlready() above. Without this an
@@ -234,7 +253,7 @@ export default function SalesInvoices({uid}) {
         raw: r,
       }))
     return [...app, ...jes].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
-  }, [invoiced, erp.rows, erpCodeByCustomerId])
+  }, [summaryMode, summaries.rows, search, invoiced, erp.rows, erpCodeByCustomerId])
 
   // Compare the complete source-owned financial projection. A failed/partial
   // read is unknown, never an empty ledger that licenses recovery writes.
@@ -307,6 +326,7 @@ export default function SalesInvoices({uid}) {
   const selectedSource = srcFilter || (exportReady && (ocCount > 0) !== (jesCount > 0) ? (ocCount ? 'app' : 'jes') : '')
   const csvSource = { app: 'OC', jes: 'JES', '': 'OC + JES' }[selectedSource]
   const csvType = csvSource === 'OC + JES' ? 'oc-and-jes' : csvSource.toLowerCase()
+  const summaryCsv = summaryMode && ocCount > 0
 
   // JES rows are read from the mirror, so an export mixing both sources is
   // only as current as the last sync — the Source column says which is which.
@@ -332,7 +352,8 @@ export default function SalesInvoices({uid}) {
 
   const exportInvoices = () => {
     if (exportReady && exportable.length) downloadCsv(
-      exportStem('sales-invoices', { from, to, type: csvType }), INVOICE_COLUMNS, exportable,
+      exportStem(summaryCsv ? 'sales-invoices-summary' : 'sales-invoices', { from, to, type: csvType }),
+      summaryCsv ? SUMMARY_COLUMNS : INVOICE_COLUMNS, exportable,
     )
   }
 
@@ -395,7 +416,7 @@ export default function SalesInvoices({uid}) {
 
       <div className="p-4 md:p-6">
         {uid && canOpenShipping && <SavedOrderRequests key={uid} uid={uid} />}
-        {oc.loading && <LoadingBar />}
+        {ocSource.loading && <LoadingBar />}
         {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
         {/* A failed check stays visible and cannot license a recovery write. */}
@@ -453,9 +474,9 @@ export default function SalesInvoices({uid}) {
         )}
 
         <div className="grid gap-2 mb-3">
-          <InvoiceSourceNotice title="OC invoices" access={canOpenShipping} loading={oc.loading}
-            error={oc.error ? 'Unavailable. The order records could not load.' : oc.fromCache ? 'Unavailable until the server reconnects.' : ''}
-            accessRequired="Unavailable with this account. Shipping access is required." retry={oc.retry} />
+          <InvoiceSourceNotice title={summaryMode ? 'OC invoice summaries' : 'OC invoices'} access loading={ocSource.loading}
+            error={ocSource.error ? 'Unavailable. The OC invoice records could not load.' : oc.fromCache ? 'Unavailable until the server reconnects.' : ''}
+            retry={ocSource.retry} />
           <InvoiceSourceNotice title="JES history" access={canReadErp} loading={erp.loading}
             error={erp.error ? 'Unavailable. The archive could not load.' : ''}
             accessRequired="Unavailable with this account. ERP access is required." retry={erp.retry} />
@@ -465,9 +486,9 @@ export default function SalesInvoices({uid}) {
         )}
         <ExportFilterBar
           from={from} to={to} onFrom={setFrom} onTo={setTo}
-          typeLabel="Source" typeValue={srcFilter} onType={setSrcFilter}
-          allLabel="OC + JES" exportLabel={`Export ${csvSource} CSV`}
-          typeOptions={[{ value: 'app', label: 'OC invoices' }, { value: 'jes', label: 'JES history' }]}
+          typeLabel="Source" typeValue={sourceSelection} onType={setSrcFilter}
+          allLabel="OC + JES" exportLabel={`Export ${csvSource}${summaryCsv ? ' summary' : ''} CSV`}
+          typeOptions={ocSummaryOnly ? undefined : [{ value: 'app', label: 'OC invoices' }, { value: 'jes', label: 'JES history' }]}
           count={exportable.length} total={merged.length} noun="invoices"
           showCount={exportReady || exportable.length > 0}
           onExport={exportInvoices} disabled={!exportReady}
@@ -483,7 +504,7 @@ export default function SalesInvoices({uid}) {
           </p>
         )}
 
-        <input type="text" placeholder="Search by customer, invoice no, SO no, UC#…"
+        <input type="text" placeholder={summaryMode ? 'Search by customer or invoice no…' : 'Search by customer, invoice no, SO no, UC#…'}
           className="input w-full mb-4" value={search} onChange={(e) => setSearch(e.target.value)} />
 
         {awaiting.length > 0 && (
@@ -628,29 +649,32 @@ export default function SalesInvoices({uid}) {
                 <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                   <th className="px-4 py-2.5 font-medium whitespace-nowrap">Invoice No</th>
                   <th className="px-4 py-2.5 font-medium whitespace-nowrap">Date</th>
-                  <th className="px-4 py-2.5 font-medium whitespace-nowrap">SO No</th>
-                  <th className="px-4 py-2.5 font-medium whitespace-nowrap">UC#</th>
+                  {!summaryMode && <th className="px-4 py-2.5 font-medium whitespace-nowrap">SO No</th>}
+                  {(!summaryMode || canReadErp) && <th className="px-4 py-2.5 font-medium whitespace-nowrap">UC#</th>}
                   <th className="px-4 py-2.5 font-medium">Customer</th>
                   <th className="px-4 py-2.5 font-medium whitespace-nowrap">Cur</th>
                   <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Total</th>
-                  <th className="px-4 py-2.5 font-medium" />
+                  <th className="px-4 py-2.5 font-medium">{summaryMode ? 'Document' : ''}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-warm-grey">
                 {exportable.map((r) => {
                   const isApp = r.src === 'app'
+                  const readOnlySummary = summaryMode && isApp
                   // App rows open the order; JES rows open a read-only viewer.
                   // Both are clickable — read-only should not mean opaque.
-                  const open = () => isApp ? navigate(`/shipments/${r.id}`) : setErpDoc(r.raw)
+                  const open = readOnlySummary ? undefined : () => isApp ? navigate(`/shipments/${r.id}`) : setErpDoc(r.raw)
+                  const cursor = open ? 'cursor-pointer' : ''
                   // A voided JES invoice is not a live document — it is excluded
                   // from the PBIS import, so it must not read as a normal row.
                   const void_ = r.status === 'VOID'
                   return (
                     <tr key={r.key} className={`transition-colors hover:bg-ivory ${void_ ? 'opacity-60' : ''}`}>
-                      <td className={`px-4 py-3 whitespace-nowrap font-mono text-xs font-medium cursor-pointer ${isApp ? 'text-ink' : 'text-ink-70'}`}
+                      <td className={`px-4 py-3 whitespace-nowrap font-mono text-xs font-medium ${cursor} ${isApp ? 'text-ink' : 'text-ink-70'}`}
                           onClick={open}>
                         {r.no || '—'}
                         {void_ && <span className="ml-1.5 text-2xs font-sans font-medium text-red-600">VOID</span>}
+                        {readOnlySummary && !void_ && <span className="ml-1.5 text-2xs font-sans text-ink-60">Issued</span>}
                         {r.channel === 'woocommerce' && (
                           <span className="ml-1.5 text-2xs font-sans font-medium text-teal-700 bg-teal-50 rounded-none px-1 py-0.5"
                                 title={`WooCommerce order #${r.externalOrderNo}`}>
@@ -658,16 +682,16 @@ export default function SalesInvoices({uid}) {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-ink-70 cursor-pointer" onClick={open}>{fmtDate(r.date)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-ink-60 font-mono text-xs">{r.so || '—'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-ink-60 font-mono text-xs">{r.uc || '—'}</td>
-                      <td className="px-4 py-3 font-medium text-ink min-w-0 cursor-pointer" onClick={open}>
+                      <td className={`px-4 py-3 whitespace-nowrap text-ink-70 ${cursor}`} onClick={open}>{fmtDate(r.date)}</td>
+                      {!summaryMode && <td className="px-4 py-3 whitespace-nowrap text-ink-60 font-mono text-xs">{r.so || '—'}</td>}
+                      {(!summaryMode || canReadErp) && <td className="px-4 py-3 whitespace-nowrap text-ink-60 font-mono text-xs">{r.uc || '—'}</td>}
+                      <td className={`px-4 py-3 font-medium text-ink min-w-0 ${cursor}`} onClick={open}>
                         <span className="truncate">{r.customer || 'Unnamed customer'}</span>
                         {r.code && <span className="ml-1.5 text-xs font-mono font-normal text-ink-60">· {r.code}</span>}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-ink-60">{r.currency}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink">
-                        {fmtValue(r.amount)}
+                        {readOnlySummary && r.amount == null ? '—' : fmtValue(r.amount)}
                         {/* Accounting adjustment on this invoice — an amber flag
                             pointing to the accounting total, not a rewrite of the
                             calculated amount shown here (SR-05). */}
@@ -679,7 +703,9 @@ export default function SalesInvoices({uid}) {
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
-                        {isApp ? (
+                        {readOnlySummary ? (
+                          <span className="text-xs text-ink-70">{r.documentStatus}</span>
+                        ) : isApp ? (
                           <Link to={`/shipments/${r.id}/invoice`} target="_blank" rel="noreferrer"
                                 className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
                             <FileText size={12} /> Print

@@ -39,6 +39,7 @@ const stubs = {
   ucRegistry: `export const listAppInvoicesForReconciliation=async()=>[],upsertInvoiceStrict=${fail}`,
   logistics: `export const useVendors=()=>({vendors:globalThis.fixture.vendor?[globalThis.fixture.vendor]:[],loading:false}), getVendor=async id=>{globalThis.fixture.calls.push('vendor:'+id);return globalThis.fixture.vendor}, saveVendor=${fail},deleteVendor=async id=>{const f=globalThis.fixture;if(id!==f.vendor?.id)throw Error('Expected fictional vendor');f.calls.push('delete:'+id);f.vendor=null}, FREIGHT_MODES=[],COVERAGE_STRENGTH=[],FREIGHT_INCOTERMS=[],modeLabel=v=>v,strengthOf=()=>({})`,
   orderCreateRequest: `export const beginOrderCopy=${fail},orderRequestAction=${fail}`,
+  useOcInvoiceSummaries: `export default enabled=>{const f=globalThis.fixture;return {rows:enabled?f.summaries:undefined,error:enabled&&f.summaryError,retry:()=>{}}}`,
   customer: 'export const useCustomers=()=>({customers:[]})',
   erpApi: `export const erpLookup=async(entity,filters)=>{const f=globalThis.fixture;f.calls.push([entity,filters.q]);if(f.erpFailure)throw Error('Fictional archive failure');return f[entity]};export const erpLines=async(of,id)=>{globalThis.fixture.calls.push([of,id]);return {rows:[{seq:1,item_code:'FICT-ARCHIVE-ITEM',description:'Fictional ERP line',qty:7,unit:'pcs',unit_price:3}],surcharges:[]}}`,
 }
@@ -191,13 +192,13 @@ test('invoice-only staff cannot see Direct Invoice or open the Shipping form by 
     assert.equal(h1(), 'Sales Invoices')
     assert.equal(link('Direct Invoice'), undefined)
     assert.equal(host.querySelector('a[href="/shipments/new?direct=1"]'), null)
-    assert.match(host.textContent, /OC invoicesUnavailable with this account\. Shipping access is required/)
+    assert.match(host.textContent, /OC invoice summariesUnavailable/)
     assert.match(host.textContent, /JES historyUnavailable with this account\. ERP access is required/)
     assert.ok(!host.textContent.includes('No invoices match'))
-    assert.ok(buttons('Export OC + JES CSV').disabled)
+    assert.ok(buttons('Export OC CSV').disabled)
     assert.equal(buttons('Refresh financial check'), undefined)
     assert.deepEqual(calls, [])
-  })
+  }, { summaryError: new Error('Fictional summary read failed') })
   await withPage('/shipments/new?direct=1', invoiceOnly, () => {
     pathIs('/dashboard')
     route('Dashboard', {})
@@ -241,7 +242,28 @@ test('Invoices and ERP staff must select JES and the CSV identifies the only inc
     assert.match(csv.text, /"Source"/)
     assert.match(csv.text, /SI250100/)
     assert.doesNotMatch(csv.text, /Fictional OC buyer/)
-  })
+  }, { summaryError: new Error('Fictional summary read failed') })
+})
+
+test('invoice-only staff see read-only OC summaries and export only the displayed minimum fields', async () => {
+  const summary = { no:'SI260052', date:'2026-10-09', customer:'Fictional summary buyer', currency:'USD',
+    status:'ISSUED', amount:null, documentStatus:'Original unavailable' }
+  await withPage('/sales-invoices', profile('staff', ['invoices']), async () => {
+    assert.match(host.textContent, /Original unavailable/)
+    assert.match(host.textContent, /Fictional summary buyer/)
+    assert.ok(!host.textContent.includes('Fictional OC buyer'))
+    assert.equal(host.querySelector('td a'), null)
+    assert.equal(link('Direct Invoice'), undefined)
+    assert.equal(buttons('Refresh financial check'), undefined)
+    assert.equal(host.querySelector('tr td:nth-last-child(2)').textContent, '—')
+    const csv = await downloadedCsv('Export OC summary CSV')
+    assert.equal(csv.name, 'sales-invoices-summary_oc.csv')
+    const [header, line] = csv.text.trim().split('\r\n')
+    assert.equal(header, '"Invoice no.","Invoice date","Customer","Currency","Total","Status","Source","Original document"')
+    assert.match(line, /SI260052/)
+    assert.match(line, /"USD","","ISSUED","OC","Original unavailable"/)
+    assert.deepEqual(calls, [])
+  }, { summaries:[summary] })
 })
 
 test('Shipping and Invoices staff can choose OC without ERP or UC and export their visible rows', async () => {
