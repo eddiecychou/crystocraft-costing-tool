@@ -12,7 +12,6 @@ import { numOrNull } from './domain/validation'
 import { invoiceReferenceRevision } from './invoiceRecoveryModel.js'
 import { buildProductIndex, matchProductCode } from './criticalComponents'
 import { orderDeletionBlock } from './orderDeletion'
-import { JES_SEED_BY_YEAR, soYear, formatSoNo } from './soNumber'
 
 // Shipping module — Phase 12.0. An `order` is the commercial anchor for a
 // shipment, sourced from an in-app won quote (Path A) or an imported ERP
@@ -54,28 +53,11 @@ export async function getOrderLines(orderId) {
   return snap.docs.map(d => ({ id: d.id, ...normLine(d.data()) }))
 }
 
-// Create an order with its lines in one batch. Returns the new order id.
-// Returns the new order id synchronously (available before the write lands) plus
-// the commit promise. With persistentLocalCache the write is durable in the
-// local cache immediately and syncs in the background, so callers can navigate
-// optimistically instead of blocking on the server ack (which can hang if the
-// network stalls — the doc is already "saved" locally either way).
+// A new order cannot inherit invoice ownership from its source draft.
 function newOrderFields(data) {
   const clean={...data}
   delete clean.invoice_allocation_id;delete clean.invoice_reference_revision
   return normOrder(clean)
-}
-
-export function createOrderWithLines(orderData, lines) {
-  const orderRef = doc(ORDERS())
-  const batch = writeBatch(db)
-  batch.set(orderRef, { ...newOrderFields(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
-  ;(lines || []).forEach((l, i) => {
-    const n = normLine(l)
-    if (n.line_no == null) n.line_no = i + 1
-    batch.set(doc(LINES(orderRef.id)), n)
-  })
-  return { id: orderRef.id, commit: batch.commit() }
 }
 
 // Woo imports use a stable ID. The transaction guards the missing header and
@@ -110,43 +92,6 @@ export async function createOrderWithLinesAtId(id, orderData, lines, getImportRe
     }
     throw error
   }
-}
-
-// Same as createOrderWithLines, but optionally allocates the order's SO
-// number INSIDE the same Firestore transaction, so the two either both land
-// or neither does.
-//
-// Before this (bug-fix pack B-02), ShipmentForm.jsx allocated the SO number
-// first (its own runTransaction against counters/so_<yy>, see soNumber.js)
-// and only THEN wrote the order in a separate batch. If that second write
-// failed — a network hiccup, a rules rejection, anything after the number
-// was already burned — the SO series got a real, permanent gap: the number
-// is gone and no order exists to explain why. Reads the SAME counter doc and
-// seed table soNumber.js's own allocateSoNo() uses, so the two paths can
-// never issue conflicting numbers.
-export async function createOrderWithLinesAllocatingSo(orderData, lines, { allocateSo } = {}) {
-  return runTransaction(db, async (tx) => {
-    let so = orderData.erp_so_no || ''
-    if (allocateSo && !so) {
-      const yy = soYear()
-      const seed = Number(JES_SEED_BY_YEAR[yy]) || 0
-      const counterRef = doc(db, 'counters', `so_${yy}`)
-      // Firestore transactions require every read before any write.
-      const snap = await tx.get(counterRef)
-      const last = snap.exists() ? (Number(snap.data().last) || 0) : seed
-      const next = last + 1
-      so = formatSoNo(yy, next)
-      tx.set(counterRef, { last: next, year: yy, kind: 'so', updated_at: new Date().toISOString() }, { merge: true })
-    }
-    const orderRef = doc(ORDERS())
-    tx.set(orderRef, { ...newOrderFields({ ...orderData, erp_so_no: so }), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
-    ;(lines || []).forEach((l, i) => {
-      const n = normLine(l)
-      if (n.line_no == null) n.line_no = i + 1
-      tx.set(doc(LINES(orderRef.id)), n)
-    })
-    return { id: orderRef.id, so }
-  })
 }
 
 export async function updateOrder(id, patch) {
@@ -235,7 +180,7 @@ function reconcileOrderLines(batch, orderId, lines, existing) {
 // Live order list.
 // No orderBy('createdAt') here — Firestore's orderBy is a FILTER as well as a
 // sort: any doc missing that field (or, transiently, one whose serverTimestamp()
-// hasn't resolved from a pending write yet — e.g. right after createOrderWithLines)
+// hasn't resolved from a pending write yet)
 // is silently excluded from the query results entirely, not just left unsorted.
 // That's exactly why a newly-created PI could vanish from every screen that reads
 // useOrders() (Orders list, MRP Requirements picker, Dashboard). Fetch everything,
