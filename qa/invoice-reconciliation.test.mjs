@@ -47,7 +47,8 @@ const stubs = {
   firebase: 'export const db={};export const authedUser=async()=>({getIdToken:async()=>"FICTIONAL"});',
   firestore: `const f=()=>globalThis.__invoiceReconciliation;
     export const collection=(...p)=>p,doc=(...p)=>p,query=(...p)=>p,orderBy=()=>{},where=()=>{},limit=()=>{};
-    export const onSnapshot=(path,next)=>{
+    export const onSnapshot=(path,options,next)=>{
+      if(!options.includeMetadataChanges)throw Error('Expected server-only invoice listener');
       if(path.flat(Infinity).join('/')!=='[object Object]/orders')throw Error('Unexpected Firestore subscription');
       const emit=()=>next({docs:f().orders.map(order=>({id:order.id,data:()=>{const{id,...data}=order;return data}}))});
       f().orderListeners.add(emit);emit();return()=>f().orderListeners.delete(emit);

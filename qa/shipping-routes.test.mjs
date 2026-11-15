@@ -31,15 +31,18 @@ const stubs = {
   firestore: `export const doc=(...args)=>args; export const onSnapshot=(_path,next)=>{next({id:'fictional',exists:()=>true,data:()=>globalThis.fixture.profile});return()=>{}}`,
   Layout: pass, CustomerLayout: pass, ErrorBoundary: pass,
   store: `export const CartProvider=${pass.split('default ')[1]}, FavouritesProvider=CartProvider`,
-  shipping: `import{orderStatusOf,orderUc,orderSi,orderSoDisplay,NO_INVOICE_REASONS,noInvoiceReasonOf}from './src/shippingModel.js';export{orderStatusOf,orderUc,orderSi,orderSoDisplay,NO_INVOICE_REASONS,noInvoiceReasonOf};export const useOrders=()=>({orders:globalThis.fixture.app,loading:false}),updateOrder=${fail}`,
+  shipping: `import{useState}from 'react';import{orderStatusOf,orderUc,orderSi,orderSoDisplay,NO_INVOICE_REASONS,noInvoiceReasonOf}from './src/shippingModel.js';export{orderStatusOf,orderUc,orderSi,orderSoDisplay,NO_INVOICE_REASONS,noInvoiceReasonOf};
+  export function useOrders({enabled=true}={}){const[attempt,setAttempt]=useState(0);const f=globalThis.fixture;
+    return {orders:enabled?f.app:[],loading:!!f.appLoading,error:!attempt&&f.appError,fromCache:!attempt&&f.fromCache,retry:()=>setAttempt(n=>n+1)};
+  }export const updateOrder=${fail}`,
   invoiceReconciliation: `export const getOrderForInvoiceSync=${fail}, invoiceReconciliation=()=>null, isFinancialInvoiceNo=()=>false, financialOrderSource=()=>''`,
   ucRegistry: `export const listAppInvoicesForReconciliation=async()=>[],upsertInvoiceStrict=${fail}`,
   logistics: `export const useVendors=()=>({vendors:globalThis.fixture.vendor?[globalThis.fixture.vendor]:[],loading:false}), getVendor=async id=>{globalThis.fixture.calls.push('vendor:'+id);return globalThis.fixture.vendor}, saveVendor=${fail},deleteVendor=async id=>{const f=globalThis.fixture;if(id!==f.vendor?.id)throw Error('Expected fictional vendor');f.calls.push('delete:'+id);f.vendor=null}, FREIGHT_MODES=[],COVERAGE_STRENGTH=[],FREIGHT_INCOTERMS=[],modeLabel=v=>v,strengthOf=()=>({})`,
   orderCreateRequest: `export const beginOrderCopy=${fail},orderRequestAction=${fail}`,
   customer: 'export const useCustomers=()=>({customers:[]})',
-  erpApi: `export const erpLookup=async(entity,filters)=>{globalThis.fixture.calls.push([entity,filters.q]);return globalThis.fixture[entity]};export const erpLines=async(of,id)=>{globalThis.fixture.calls.push([of,id]);return {rows:[{seq:1,item_code:'FICT-ARCHIVE-ITEM',description:'Fictional ERP line',qty:7,unit:'pcs',unit_price:3}],surcharges:[]}}`,
+  erpApi: `export const erpLookup=async(entity,filters)=>{const f=globalThis.fixture;f.calls.push([entity,filters.q]);if(f.erpFailure)throw Error('Fictional archive failure');return f[entity]};export const erpLines=async(of,id)=>{globalThis.fixture.calls.push([of,id]);return {rows:[{seq:1,item_code:'FICT-ARCHIVE-ITEM',description:'Fictional ERP line',qty:7,unit:'pcs',unit_price:3}],surcharges:[]}}`,
 }
-const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'LogisticsVendorForm', 'ErpDocModal', 'i18n', 'access', 'useProfile'])
+const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'LogisticsVendorForm', 'ErpDocModal', 'ExportFilterBar', 'i18n', 'access', 'useProfile'])
 const routeOutput = name => `import React from 'react';import{useParams}from 'react-router-dom';export default function RouteProbe(){return React.createElement('div',{'data-route':${JSON.stringify(name)}},JSON.stringify(Object.fromEntries(Object.entries(useParams()).filter(([key])=>key!=='*'))))}`
 before(async () => {
   const result = await build({ entryPoints: ['src/App.jsx'], bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic', external: [], plugins: [{ name: 'local-route-fixture',setup(builder) {
@@ -63,9 +66,9 @@ before(async () => {
 })
 after(async () => { globalThis.fetch = originalFetch; dom.window.close(); if (scratch) await rm(scratch, { recursive: true, force: true }) })
 const settle = async (ms = 0) => { await act(async () => { await new Promise(resolve => setTimeout(resolve, ms)) }) }
-async function withPage(path, who, check) {
+async function withPage(path, who, check, overrides) {
   calls = []
-  globalThis.fixture = { ...fixtures, profile: who, calls }
+  globalThis.fixture = { ...fixtures, profile: who, calls, ...overrides }
   window.history.replaceState({}, '', path)
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   try { await act(async () => root.render(React.createElement(app))); await settle(); await check() }
@@ -188,6 +191,12 @@ test('invoice-only staff cannot see Direct Invoice or open the Shipping form by 
     assert.equal(h1(), 'Sales Invoices')
     assert.equal(link('Direct Invoice'), undefined)
     assert.equal(host.querySelector('a[href="/shipments/new?direct=1"]'), null)
+    assert.match(host.textContent, /OC invoicesUnavailable with this account\. Shipping access is required/)
+    assert.match(host.textContent, /JES historyUnavailable with this account\. ERP access is required/)
+    assert.ok(!host.textContent.includes('No invoices match'))
+    assert.ok(buttons('Export OC + JES CSV').disabled)
+    assert.equal(buttons('Refresh financial check'), undefined)
+    assert.deepEqual(calls, [])
   })
   await withPage('/shipments/new?direct=1', invoiceOnly, () => {
     pathIs('/dashboard')
@@ -197,6 +206,98 @@ test('invoice-only staff cannot see Direct Invoice or open the Shipping form by 
     pathIs('/dashboard')
     assert.equal(vendorLink(), null)
   })
+})
+
+const selectSource = async source => {
+  const select = [...host.querySelectorAll('select')].find(el => el.parentElement.textContent.startsWith('Source'))
+  assert.ok(select)
+  await act(async () => { select.value = source; select.dispatchEvent(new window.Event('change', {bubbles:true})) })
+}
+
+async function downloadedCsv(label) {
+  const create = URL.createObjectURL, revoke = URL.revokeObjectURL, trigger = window.HTMLAnchorElement.prototype.click
+  let blob, name
+  URL.createObjectURL = data => { blob = data; return 'blob:fictional' }
+  URL.revokeObjectURL = () => {}
+  window.HTMLAnchorElement.prototype.click = function () { name = this.download }
+  try {
+    assert.equal(buttons(label)?.disabled, false)
+    await click(buttons(label))
+    return { name, text: await blob.text() }
+  } finally {
+    URL.createObjectURL = create; URL.revokeObjectURL = revoke; window.HTMLAnchorElement.prototype.click = trigger
+  }
+}
+
+test('Invoices and ERP staff must select JES and the CSV identifies the only included source', async () => {
+  await withPage('/sales-invoices', profile('staff', ['invoices', 'erp']), async () => {
+    await settle(340)
+    assert.ok(buttons('Export OC + JES CSV').disabled)
+    assert.match(host.textContent, /Select JES history in Source/)
+    assert.ok(!host.textContent.includes('0 in the app'))
+    await selectSource('jes')
+    const csv = await downloadedCsv('Export JES CSV')
+    assert.equal(csv.name, 'sales-invoices_jes.csv')
+    assert.match(csv.text, /"Source"/)
+    assert.match(csv.text, /SI250100/)
+    assert.doesNotMatch(csv.text, /Fictional OC buyer/)
+  })
+})
+
+test('Shipping and Invoices staff can choose OC without ERP or UC and export their visible rows', async () => {
+  await withPage('/sales-invoices', profile('staff', ['invoices', 'shipping']), async () => {
+    assert.ok(buttons('Export OC + JES CSV').disabled)
+    assert.equal(buttons('Refresh financial check'), undefined)
+    await selectSource('app')
+    const csv = await downloadedCsv('Export OC CSV')
+    assert.equal(csv.name, 'sales-invoices_oc.csv')
+    assert.match(csv.text, /"App"/)
+    assert.doesNotMatch(csv.text, /SI250100/)
+    assert.deepEqual(calls, [])
+  })
+})
+
+test('admin can export both sources once ready and the choice also filters the visible table', async () => {
+  await withPage('/sales-invoices', admin, async () => {
+    assert.ok(buttons('Export OC + JES CSV').disabled)
+    await settle(340)
+    const csv = await downloadedCsv('Export OC + JES CSV')
+    assert.equal(csv.name, 'sales-invoices_oc-and-jes.csv')
+    assert.match(csv.text, /SI260050/)
+    assert.match(csv.text, /SI250100/)
+    assert.doesNotMatch(csv.text, /Duplicate ERP invoice/)
+    await selectSource('jes')
+    assert.ok(!host.textContent.includes('Fictional OC buyer'))
+    assert.match((await downloadedCsv('Export JES CSV')).text, /SI250100/)
+  })
+})
+
+test('source failures block combined export, allow an explicit healthy source and recover on retry', async () => {
+  for (const [overrides, failed, healthy, filter] of [
+    [{appError:new Error('Fictional order failure')},'OC invoices','JES','jes'],
+    [{fromCache:true},'OC invoices','JES','jes'],
+    [{erpFailure:true},'JES history','OC','app'],
+  ]) await withPage('/sales-invoices', admin, async () => {
+    await settle(340)
+    assert.ok(buttons('Export OC + JES CSV').disabled)
+    assert.ok(!host.textContent.includes('No invoices match'))
+    await selectSource(filter)
+    assert.match((await downloadedCsv(`Export ${healthy} CSV`)).name, new RegExp('_'+healthy.toLowerCase()+'\\.csv$'))
+    await selectSource('')
+    globalThis.fixture.erpFailure = false
+    await click(buttons('Retry '+failed))
+    await settle(340)
+    assert.equal(buttons('Export OC + JES CSV')?.disabled, false)
+  }, overrides)
+})
+
+test('a successful empty result is labelled separately from unavailable sources', async () => {
+  await withPage('/sales-invoices', admin, async () => {
+    await settle(340)
+    assert.match(host.textContent, /No invoices match the current filters/)
+    assert.equal(host.querySelector('[role="alert"]'), null)
+    assert.ok(buttons('Export OC + JES CSV').disabled)
+  }, { app: [], sales_invoice: [] })
 })
 
 test('admin and staff with Shipping and Invoices can still open Direct Invoice', async () => {

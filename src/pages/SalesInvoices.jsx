@@ -44,6 +44,7 @@ const AWAITING = new Set(['confirmed', 'packing', 'ready', 'shipped', 'delivered
 // Cap the preview. Unbounded, this block rendered 66 rows and pushed the actual
 // invoice list — the point of the page — entirely below the fold.
 const AWAITING_PREVIEW = 5
+const EMPTY_ROWS = []
 
 // Historical invoices are READ from the ERP mirror, never imported. Copying
 // 5,455 JES invoices into Firestore would duplicate the system of record and
@@ -51,32 +52,47 @@ const AWAITING_PREVIEW = 5
 // docs/plans/JES-RETIREMENT-PLAN.md §9 — "the Supabase archive remains as history").
 // So JES rows are visible and searchable here but not editable, and they carry
 // no Print action: the app cannot reissue a document JES produced.
-function useErpInvoices(search) {
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+function useErpInvoices(search, enabled) {
+  const [attempt, setAttempt] = useState(0)
+  const [result, setResult] = useState(null)
 
   useEffect(() => {
+    if (!enabled) {
+      setResult(null)
+      return
+    }
     let alive = true
-    setLoading(true); setError('')
     // Debounced — every keystroke would otherwise hit the edge function.
     const t = setTimeout(() => {
-      erpLookup('sales_invoice', { q: search.trim(), limit: 100 })
-        .then((r) => { if (alive) setRows(r || []) })
-        .catch((e) => { if (alive) { setError(e.message || 'Could not reach the ERP archive.'); setRows([]) } })
-        .finally(() => { if (alive) setLoading(false) })
+      erpLookup('sales_invoice', { q: search, limit: 100, requireRows: true })
+        .then(rows => { if (alive) setResult({ search, attempt, rows }) })
+        .catch(error => { if (alive) setResult({ search, attempt, error }) })
     }, 300)
     return () => { alive = false; clearTimeout(t) }
-  }, [search])
+  }, [search, enabled, attempt])
 
-  return { rows, loading, error }
+  const current = enabled && result?.search === search && result.attempt === attempt ? result : null
+  return { rows: current?.rows, error: current?.error, loading: enabled && !current, retry: () => setAttempt(n => n + 1) }
+}
+
+function InvoiceSourceNotice({ title, access, loading, error, accessRequired, retry }) {
+  if (access && !loading && !error) return null
+  return <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border border-warm-grey bg-white px-3 py-2 text-sm" role={error ? 'alert' : 'status'}>
+    <strong>{title}</strong>
+    <span className="text-ink-70">{!access ? accessRequired : loading ? 'Loading…' : error}</span>
+    {error && <button type="button" className="text-brand-600 underline underline-offset-2" onClick={retry}>Retry {title}</button>}
+  </div>
 }
 
 export default function SalesInvoices({uid}) {
   const can = useCan()
   const canOpenShipping = can('shipping')
+  const canReadErp = can('erp')
+  const canCheckFinancial = canOpenShipping && can('uc')
   const navigate = useNavigate()
-  const { orders, loading } = useOrders()
+  const oc = useOrders({ enabled: canOpenShipping, serverOnly: true })
+  const ocReady = canOpenShipping && !oc.loading && !oc.error && !oc.fromCache
+  const orders = ocReady ? oc.orders : EMPTY_ROWS
   const [search, setSearch] = useState('')
   const [showAllAwaiting, setShowAllAwaiting] = useState(false)
   const [showResolved, setShowResolved] = useState(false)
@@ -103,7 +119,9 @@ export default function SalesInvoices({uid}) {
     return () => { mounted.current = false; ledgerRequest.current++ }
   }, [])
 
-  const erp = useErpInvoices(search)
+  const erp = useErpInvoices(search.trim(), canReadErp)
+  const jesReady = canReadErp && !erp.loading && !erp.error
+  const canReviewLedger = canCheckFinancial && ocReady
 
   // Customer code next to the name — Cindy keys this into PBIS alongside the
   // invoice (2026-08-06). App rows resolve via the order's own customer_id;
@@ -162,12 +180,12 @@ export default function SalesInvoices({uid}) {
   // truth; this is a copy, and a copy nobody checks is worse than no copy —
   // it invites trust it has not earned.
   useEffect(() => {
-    if (!loading) readFinancialRecord()
+    if (canReviewLedger) readFinancialRecord()
     return () => { ledgerRequest.current++ }
-  }, [invoiceKey, loading])
+  }, [invoiceKey, canReviewLedger])
 
   async function readFinancialRecord(key = invoiceKey) {
-    if (syncInFlight.current) return
+    if (!canReviewLedger || syncInFlight.current) return
     const request = ++ledgerRequest.current
     setLedgerLoading(true); setLedgerError(''); setSyncError(''); setSyncNotice('')
     setLedger(null)
@@ -221,15 +239,15 @@ export default function SalesInvoices({uid}) {
   // Compare the complete source-owned financial projection. A failed/partial
   // read is unknown, never an empty ledger that licenses recovery writes.
   const drift = useMemo(() => {
-    if (!ledger || ledgerLoading || ledgerError || ledgerKey !== invoiceKey) return null
+    if (!canReviewLedger || !ledger || ledgerLoading || ledgerError || ledgerKey !== invoiceKey) return null
     return invoiceReconciliation(invoiced.map(financialOrderSource), ledger)
-  }, [ledger, ledgerLoading, ledgerError, ledgerKey, invoiceKey, invoiced])
+  }, [canReviewLedger, ledger, ledgerLoading, ledgerError, ledgerKey, invoiceKey, invoiced])
   const recoverable = drift?.filter(d => d.repairable) || []
 
   // Freeze the requested targets, reread source/ownership before each write,
   // and verify readback before reporting success. Ordinary saves stay best-effort.
   async function resync() {
-    if (syncInFlight.current || ledgerLoading || ledgerError || !recoverable.length) return
+    if (!canReviewLedger || syncInFlight.current || ledgerLoading || ledgerError || !recoverable.length) return
     syncInFlight.current = true
     const request = ++ledgerRequest.current, targets = [...recoverable], checked = []
     const failures = []
@@ -283,6 +301,12 @@ export default function SalesInvoices({uid}) {
     if (srcFilter && r.src !== srcFilter) return false
     return inDateRange(r.date, from, to)
   }), [merged, srcFilter, from, to])
+  const exportReady = srcFilter === 'app' ? ocReady : srcFilter === 'jes' ? jesReady : ocReady && jesReady
+  const ocCount = exportable.filter(r => r.src === 'app').length
+  const jesCount = exportable.length - ocCount
+  const selectedSource = srcFilter || (exportReady && (ocCount > 0) !== (jesCount > 0) ? (ocCount ? 'app' : 'jes') : '')
+  const csvSource = { app: 'OC', jes: 'JES', '': 'OC + JES' }[selectedSource]
+  const csvType = csvSource === 'OC + JES' ? 'oc-and-jes' : csvSource.toLowerCase()
 
   // JES rows are read from the mirror, so an export mixing both sources is
   // only as current as the last sync — the Source column says which is which.
@@ -306,10 +330,11 @@ export default function SalesInvoices({uid}) {
     { label: 'WooCommerce order no.', value: (r) => r.externalOrderNo || '', text: true },
   ]
 
-  const exportInvoices = () => downloadCsv(
-    exportStem('sales-invoices', { from, to, type: srcFilter }),
-    INVOICE_COLUMNS, exportable,
-  )
+  const exportInvoices = () => {
+    if (exportReady && exportable.length) downloadCsv(
+      exportStem('sales-invoices', { from, to, type: csvType }), INVOICE_COLUMNS, exportable,
+    )
+  }
 
   // WooCommerce accounting export — Phase 5 (docs/specs/WooCommerce_B2C_Sync_Spec.md
   // §8). A DIFFERENT column set from INVOICE_COLUMNS above: this is the
@@ -342,7 +367,7 @@ export default function SalesInvoices({uid}) {
     { label: 'WooCommerce payout date',  value: (r) => r.wooPayoutDate || '' },
   ]
   const exportWooAccounting = () => downloadCsv(
-    exportStem('woocommerce-accounting', { from, to }),
+    exportStem('woocommerce-accounting', { from, to, type: 'oc' }),
     WOO_ACCOUNTING_COLUMNS, wooAccountingRows,
   )
 
@@ -370,23 +395,23 @@ export default function SalesInvoices({uid}) {
 
       <div className="p-4 md:p-6">
         {uid && canOpenShipping && <SavedOrderRequests key={uid} uid={uid} />}
-        {loading && <LoadingBar />}
+        {oc.loading && <LoadingBar />}
         {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
         {/* A failed check stays visible and cannot license a recovery write. */}
-        {ledgerError && (
+        {canReviewLedger && ledgerError && (
           <div role="alert" className="card p-4 mb-4 space-y-2">
             <p className="text-sm text-brand-600 break-words">{ledgerError}</p>
             <button type="button" disabled={fixing || ledgerLoading} onClick={() => readFinancialRecord()}
               className="btn-secondary text-xs">Retry</button>
           </div>
         )}
-        {!ledgerError && (ledgerLoading || ledgerKey !== invoiceKey) && (
+        {canReviewLedger && !ledgerError && (ledgerLoading || ledgerKey !== invoiceKey) && (
           <p role="status" className="text-xs text-ink-60 mb-4">Checking the financial record…</p>
         )}
-        {syncError && <p role="alert" className="text-sm text-brand-600 mb-3 break-words">{syncError}</p>}
-        {syncNotice && <p role="status" className="text-xs text-ink-60 mb-3">{syncNotice}</p>}
-        {!ledgerLoading && !ledgerError && (
+        {canReviewLedger && syncError && <p role="alert" className="text-sm text-brand-600 mb-3 break-words">{syncError}</p>}
+        {canReviewLedger && syncNotice && <p role="status" className="text-xs text-ink-60 mb-3">{syncNotice}</p>}
+        {canReviewLedger && !ledgerLoading && !ledgerError && (
           <button type="button" disabled={fixing} onClick={() => readFinancialRecord()}
             className="text-xs text-brand-600 hover:underline mb-3 disabled:opacity-50">Refresh financial check</button>
         )}
@@ -427,12 +452,25 @@ export default function SalesInvoices({uid}) {
           </div>
         )}
 
+        <div className="grid gap-2 mb-3">
+          <InvoiceSourceNotice title="OC invoices" access={canOpenShipping} loading={oc.loading}
+            error={oc.error ? 'Unavailable. The order records could not load.' : oc.fromCache ? 'Unavailable until the server reconnects.' : ''}
+            accessRequired="Unavailable with this account. Shipping access is required." retry={oc.retry} />
+          <InvoiceSourceNotice title="JES history" access={canReadErp} loading={erp.loading}
+            error={erp.error ? 'Unavailable. The archive could not load.' : ''}
+            accessRequired="Unavailable with this account. ERP access is required." retry={erp.retry} />
+        </div>
+        {!srcFilter && !exportReady && (ocReady || jesReady) && (
+          <p className="text-sm text-ink-70 mb-3">Select {ocReady ? 'OC invoices' : 'JES history'} in Source to export that source only.</p>
+        )}
         <ExportFilterBar
           from={from} to={to} onFrom={setFrom} onTo={setTo}
           typeLabel="Source" typeValue={srcFilter} onType={setSrcFilter}
-          typeOptions={[{ value: 'app', label: 'Raised in app' }, { value: 'jes', label: 'JES (history)' }]}
+          allLabel="OC + JES" exportLabel={`Export ${csvSource} CSV`}
+          typeOptions={[{ value: 'app', label: 'OC invoices' }, { value: 'jes', label: 'JES history' }]}
           count={exportable.length} total={merged.length} noun="invoices"
-          onExport={exportInvoices} disabled={loading}
+          showCount={exportReady || exportable.length > 0}
+          onExport={exportInvoices} disabled={!exportReady}
         />
 
         {wooAccountingRows.length > 0 && (
@@ -440,7 +478,7 @@ export default function SalesInvoices({uid}) {
             {wooAccountingRows.length} WooCommerce invoice{wooAccountingRows.length === 1 ? '' : 's'} in this date range —{' '}
             <button type="button" onClick={exportWooAccounting}
               className="text-brand-600 hover:text-brand-800 underline underline-offset-2">
-              export for accounting (CSV)
+              Export WooCommerce accounting CSV (OC)
             </button>
           </p>
         )}
@@ -572,24 +610,18 @@ export default function SalesInvoices({uid}) {
 
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <p className="text-sm text-ink-60">
-            {merged.length} invoice{merged.length === 1 ? '' : 's'}
-            {erp.rows.length > 0 && <span className="text-ink-60"> · {invoiced.length} in the app, {merged.length - invoiced.length} from JES</span>}
+            {ocCount > 0 && <span>{ocCount} OC {ocCount === 1 ? 'invoice' : 'invoices'}</span>}
+            {ocCount > 0 && jesCount > 0 && ' · '}
+            {jesCount > 0 && <span>{jesCount} JES {jesCount === 1 ? 'invoice' : 'invoices'}</span>}
           </p>
-          {erp.loading && <span className="text-xs text-ink-60">loading JES history…</span>}
         </div>
 
-        {erp.error && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-3">
-            JES history unavailable — {erp.error}
-          </p>
-        )}
-
-        {merged.length === 0 && !loading && !erp.loading ? (
+        {exportable.length === 0 ? (exportReady && (
           <div className="text-center py-16 text-ink-60">
             <Receipt size={28} className="mx-auto mb-3 opacity-40" />
-            {search ? 'No invoices match your search.' : 'No invoices yet. Open an order and allocate an invoice number to raise one.'}
+            No invoices match the current filters.
           </div>
-        ) : (
+        )) : (
           <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -605,7 +637,7 @@ export default function SalesInvoices({uid}) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-warm-grey">
-                {merged.map((r) => {
+                {exportable.map((r) => {
                   const isApp = r.src === 'app'
                   // App rows open the order; JES rows open a read-only viewer.
                   // Both are clickable — read-only should not mean opaque.

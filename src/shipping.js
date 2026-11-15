@@ -187,20 +187,30 @@ function reconcileOrderLines(batch, orderId, lines, existing) {
 // That's exactly why a newly-created PI could vanish from every screen that reads
 // useOrders() (Orders list, MRP Requirements picker, Dashboard). Fetch everything,
 // sort client-side instead — same fix already applied to loadCustomers.
-export function useOrders() {
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
-  useEffect(() => onSnapshot(
-    ORDERS(),
-    snap => {
-      const list = snap.docs.map(orderFromDoc)
-      list.sort((a, b) => (b._raw?.createdAt?.seconds || 0) - (a._raw?.createdAt?.seconds || 0))
-      setOrders(list)
-      setLoading(false)
-    },
-    () => setLoading(false),
-  ), [])
-  return { orders, loading }
+export function useOrders({ enabled = true, serverOnly = false } = {}) {
+  const [attempt, setAttempt] = useState(0)
+  const [snapshot, setSnapshot] = useState(null)
+  useEffect(() => {
+    if (!enabled) {
+      setSnapshot(null)
+      return
+    }
+    const receive = snap => {
+      const orders = snap.docs.map(orderFromDoc)
+      orders.sort((a, b) => (b._raw?.createdAt?.seconds || 0) - (a._raw?.createdAt?.seconds || 0))
+      setSnapshot({ attempt, orders, fromCache: snap.metadata?.fromCache === true })
+    }
+    const fail = error => setSnapshot(previous => ({ attempt, orders: serverOnly ? [] : previous?.orders || [], error }))
+    return serverOnly
+      ? onSnapshot(ORDERS(), { includeMetadataChanges: true }, receive, fail)
+      : onSnapshot(ORDERS(), receive, fail)
+  }, [enabled, serverOnly, attempt])
+  const current = enabled && snapshot?.attempt === attempt ? snapshot : null
+  return {
+    orders: current?.orders || [], loading: enabled && !current,
+    error: current?.error, fromCache: current?.fromCache,
+    retry: () => setAttempt(value => value + 1),
+  }
 }
 
 // All figurine products (for SKU matching during import / reconciliation).

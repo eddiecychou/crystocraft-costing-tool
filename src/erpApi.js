@@ -7,7 +7,7 @@ import { authedUser } from './firebase'
 // item_type }); `nonZeroOnly` hides stock lines that have netted to zero.
 export async function erpLookup(
   entity,
-  { q = '', limit = 25, activeOnly = false, filters = {}, nonZeroOnly = false } = {},
+  { q = '', limit = 25, activeOnly = false, filters = {}, nonZeroOnly = false, requireRows = false } = {},
 ) {
   const user = await authedUser()
   if (!user) throw new Error('Please sign in to look up ERP data.')
@@ -21,7 +21,8 @@ export async function erpLookup(
 
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) throw new Error([data.error, data.detail].filter(Boolean).join(' — ') || `Lookup failed (${res.status})`)
+  if (!res.ok) throw new Error([data?.error, data?.detail].filter(Boolean).join(' — ') || `Lookup failed (${res.status})`)
+  if (requireRows && !Array.isArray(data?.rows)) throw new Error('The ERP archive returned an incomplete response.')
   return data.rows || []
 }
 

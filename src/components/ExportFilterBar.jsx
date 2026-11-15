@@ -13,7 +13,8 @@ import { useT } from '../i18n'
 export default function ExportFilterBar({
   from, to, onFrom, onTo,
   typeLabel, typeValue, onType, typeOptions,   // optional second filter
-  count, total, noun,
+  allLabel, exportLabel,
+  count, total, noun, showCount = true,
   onExport, disabled,
 }) {
   const t = useT()
@@ -38,7 +39,7 @@ export default function ExportFilterBar({
           <span className="text-2xs font-medium text-ink-60 uppercase tracking-wide">{typeLabel}</span>
           <select value={typeValue} onChange={(e) => onType(e.target.value)}
             className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40">
-            <option value="">{t('All')}</option>
+            <option value="">{allLabel ?? t('All')}</option>
             {typeOptions.map((o) => (
               <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>
             ))}
@@ -54,15 +55,15 @@ export default function ExportFilterBar({
       )}
 
       <div className="ml-auto flex items-center gap-3">
-        <span className="text-xs text-ink-60">
+        {showCount && <span className="text-xs text-ink-60">
           {filtered
             ? <><strong className="font-medium text-ink-80">{count}</strong> {t('of')} {total} {unit}</>
             : <>{total} {unit}</>}
-        </span>
+        </span>}
         <button type="button" onClick={onExport} disabled={disabled || !count}
           className="btn-secondary text-sm inline-flex items-center gap-1.5 disabled:opacity-40"
           title={count ? t('Export these {n} {noun} to CSV', { n: count, noun: unit }) : t('Nothing to export')}>
-          <Download size={15} /> {t('Export CSV')}
+          <Download size={15} /> {exportLabel ?? t('Export CSV')}
         </button>
       </div>
     </div>

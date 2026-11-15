@@ -10,6 +10,7 @@ import { amountInWords } from '../constants'
 import { pdfFileTitle } from '../pdfFilename'
 import { downloadOrderInvoiceExcel } from '../invoiceExcel'
 import { invoicePaymentTotals } from '../invoicePayments'
+import { useCan } from '../access'
 import logoUrl from '../assets/logo.png'
 
 // Sales Invoice — the commercial invoice, raised from an order the same way
@@ -38,9 +39,11 @@ const fmtDate = (s) => {
 }
 
 export default function SalesInvoicePrint() {
+  const can = useCan()
   const { id } = useParams()
   const [search] = useSearchParams()
   const requestedSi = search.get('si')
+  if (!can('shipping')) return <p role="alert" className="p-6 text-center text-brand-600">Shipping access is required to open this OC invoice.</p>
   return <InvoiceDocument key={JSON.stringify([id, requestedSi])} id={id} requestedSi={requestedSi} />
 }
 
