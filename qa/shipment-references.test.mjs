@@ -91,6 +91,7 @@ const stubs={
  export const adoptErpLineUnits=()=>{throw Error('No ERP adoption')};`,
  soNumber:'import{ocYear}from"./src/ocTime.js";export const soYear=()=>String(ocYear(new Date())%100).padStart(2,"0");export const allocateSoNo=(...a)=>globalThis.__shipmentReferences.invoke("so",a);export const JES_SEED_BY_YEAR={};export const formatSoNo=()=>{throw Error("No order creation authorized")}',
  invoiceRecovery:'export const invoiceAction=(...a)=>globalThis.__shipmentReferences.invoiceAction(...a)',
+ wooSyncApi:'export const verifyWooOrderImport=()=>{throw Error("Unexpected Woo verification in shipment mapping tests")}',
  quoteConversion:'export const quoteConversionAction=(...a)=>globalThis.__shipmentReferences.quoteAction(...a)',
  quoteConversionModel:'export const quoteSourceToken=async(...a)=>globalThis.__shipmentReferences.sourceToken(...a)',
  ucRegistry:'export const allocateOrderUc=(...a)=>globalThis.__shipmentReferences.invoke("uc",a);export const allocateInvoice=(...a)=>globalThis.__shipmentReferences.invoke("si",a);export const updateUcInvoice=(...a)=>globalThis.__shipmentReferences.invoke("registry",a);export const upsertInvoice=async data=>{const f=globalThis.__shipmentReferences;if(!f.allowAccounting)throw Error("No accounting upsert authorized");f.accountingWrites.push(structuredClone(data))}',
