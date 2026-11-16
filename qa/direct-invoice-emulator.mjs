@@ -212,6 +212,7 @@ test('an existing first claim from the saved order is adopted; replay never runs
     success(
       await api(invoices.handler, 'staff', {
         action: 'resume',
+        previous_operation_id: additional.operation.id,
         order_id: saved.order_id
       })
     )

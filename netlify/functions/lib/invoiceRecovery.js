@@ -2,6 +2,8 @@ import { orderEditBase } from '../../../src/orderEditModel.js'
 import {
   invoiceRecoveryView,
   invoiceResult,
+  invoiceFollowupReviewTarget,
+  sameInvoiceValue,
   validInvoiceOrderId,
   validInvoiceOperationId,
   invoiceFollowupsDone
@@ -103,6 +105,14 @@ export function createInvoiceRecoveryHandler({
           400
         )
       const id = input.order_id
+      const canManage = has(profile, 'uc')
+      const respond = async (state) => {
+        let followupChecklist
+        try { followupChecklist = await repo.followupChecklist(state.order, state.operation) }
+        catch { followupChecklist = { unavailable: true, entries: [] } }
+        return json({ ...invoiceRecoveryView(state.order, state.operation, state.history),
+          editBase: orderEditBase(state.order), moreHistory: state.moreHistory, followupChecklist, canManage })
+      }
       if (input.action === 'status') {
         const state = await repo.state(id),
           op = state.operation
@@ -121,13 +131,9 @@ export function createInvoiceRecoveryHandler({
             }
           }
         }
-        return json({
-          ...invoiceRecoveryView(state.order, op, state.history),
-          editBase: orderEditBase(state.order),
-          moreHistory: state.moreHistory
-        })
+        return respond(state)
       }
-      if (!has(profile, 'uc'))
+      if (!canManage)
         return json(
           {
             error:
@@ -191,18 +197,27 @@ export function createInvoiceRecoveryHandler({
           400
         )
       if (input.action === 'closure_review_followups') {
+        if (input.review_expected !== undefined) {
+          const [state, op] = await Promise.all([repo.state(id), repo.operation(id, input.previous_operation_id)])
+          if (!sameInvoiceValue(input.review_expected, invoiceFollowupReviewTarget(state.order, op)))
+            throw new InvoiceRecoveryError('The selected invoice or saved references changed. Reload before recording Finance review.')
+        }
         await reviewClosureInvoice(repo, sql, id, input.previous_operation_id, identity, input.reason.trim())
         return json({ reviewed: true })
       }
       if (input.action === 'manual_followups') {
-        const { operation } = await repo.state(id)
+        const { order, operation } = await repo.state(id)
         if (operation?.status !== 'linked')
           throw new InvoiceRecoveryError('Link the issued invoice before reviewing follow-ups.')
         if (operation.id !== input.previous_operation_id)
           throw new InvoiceRecoveryError('Another invoice request has started. Reload before reviewing follow-ups.')
+        if (!sameInvoiceValue(input.review_expected, invoiceFollowupReviewTarget(order, operation)))
+          throw new InvoiceRecoveryError('The selected invoice or saved references changed. Reload before recording Finance review.')
         const outcome = await sql.review(id, operation.id, identity, input.reason)
         await repo.finishFollowupReview(id, operation.id, outcome)
       } else {
+        if (input.action === 'resume' && !validInvoiceOperationId(input.previous_operation_id))
+          throw new InvoiceRecoveryError('Reload and select the saved invoice request before resuming.')
         let state = ['raise', 'new', 'initial_direct'].includes(input.action)
           ? await repo.begin(id, input, identity)
           : await repo.state(id)
@@ -215,6 +230,8 @@ export function createInvoiceRecoveryHandler({
             'There is no saved invoice request to resume. Use Raise Invoice first.'
           )
         const operationId = op.id
+        if (input.action === 'resume' && operationId !== input.previous_operation_id)
+          throw new InvoiceRecoveryError('Another invoice request is current. Reload and select the invoice to resume.')
         if (
           input.action === 'link_review' &&
           operationId !== input.previous_operation_id
@@ -253,15 +270,7 @@ export function createInvoiceRecoveryHandler({
               )
               .catch(() => {})
             state = await repo.state(id)
-            return json({
-              ...invoiceRecoveryView(
-                state.order,
-                state.operation,
-                state.history
-              ),
-              editBase: orderEditBase(state.order),
-              moreHistory: state.moreHistory
-            })
+            return respond(state)
           }
           op = await repo.operation(id, operationId)
         }
@@ -294,11 +303,7 @@ export function createInvoiceRecoveryHandler({
         }
       }
       const state = await repo.state(id)
-      return json({
-        ...invoiceRecoveryView(state.order, state.operation, state.history),
-        editBase: orderEditBase(state.order),
-        moreHistory: state.moreHistory
-      })
+      return respond(state)
     } catch (error) {
       return json(
         {

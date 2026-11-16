@@ -81,7 +81,7 @@ for (const fault of ['followup', 'lostFollowupAck']) {
     )).rows
     const beforeResume = await ledger()
     // The existing saved-order Resume remains idempotent after initial recovery.
-    const resumed = await api(invoices.handler, { action: 'resume', order_id: saved.order_id })
+    const resumed = await api(invoices.handler, { action: 'resume', order_id: saved.order_id, previous_operation_id: first.operation.id })
     assert.equal(resumed.operation.id, first.operation.id)
     assert.ok(invoiceFollowupsDone(resumed.operation))
     const afterResume = await ledger()

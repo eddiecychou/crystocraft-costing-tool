@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { validInvoiceOperationId, validInvoiceOrderId } from '../../../src/invoiceRecoveryModel.js'
+import { invoiceFollowupStages, invoiceFollowupSettled, validInvoiceOperationId, validInvoiceOrderId } from '../../../src/invoiceRecoveryModel.js'
 import { orderEditRevision } from '../../../src/orderEditModel.js'
 
-export const followupStages = ['financial', 'woo']
-const terminal = new Set(['done', 'not_applicable', 'manual_review'])
+export const followupStages = invoiceFollowupStages
 const minute = 60_000
 const automaticLimit = 4
 const paused = Number.MAX_SAFE_INTEGER
@@ -19,7 +18,7 @@ export function createInvoiceFollowupQueue(db, stamp) {
   return {
     enqueue(tx, operation, editRevision) {
       for (const stage of followupStages) {
-        if (terminal.has(operation.followups[stage].state)) continue
+        if (invoiceFollowupSettled(operation.followups[stage])) continue
         tx.create(jobRef(operation.id, stage), {
           order_id: operation.order_id,
           operation_id: operation.id,
@@ -51,7 +50,7 @@ export function createInvoiceFollowupQueue(db, stamp) {
         if (job && (job.order_id !== orderId || job.operation_id !== operationId || job.stage !== stage))
           return null
         if (!operation?.result || operation.id !== operationId || operation.order_id !== orderId ||
-            operation.status !== 'linked' || terminal.has(operation.followups[stage]?.state) ||
+            operation.status !== 'linked' || invoiceFollowupSettled(operation.followups[stage]) ||
             order.get('invoice_allocation_id') !== operationId) {
           if (job) tx.delete(ref)
           return null
@@ -95,7 +94,7 @@ export function createInvoiceFollowupQueue(db, stamp) {
         const [jobSnap, opSnap] = await tx.getAll(ref, opRef)
         const job = jobSnap.data()
         const op = opSnap.data()
-        if (job?.token !== claim.token || !op || terminal.has(op.followups[stage]?.state)) return
+        if (job?.token !== claim.token || !op || invoiceFollowupSettled(op.followups[stage])) return
         let result = outcome
         if (outcome.state === 'done') tx.delete(ref)
         else {

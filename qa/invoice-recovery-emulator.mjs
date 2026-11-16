@@ -28,7 +28,7 @@ import { invoiceTestRest } from './invoice-recovery-rest-fixture.mjs'
 import { retryDueInvoiceFollowups } from '../netlify/functions/lib/invoiceFollowup.js'
 
 import {orderEditBase,orderEditPatch} from '../src/orderEditModel.js'
-import { invoiceExpected } from '../src/invoiceRecoveryModel.js'
+import { invoiceExpected, invoiceFollowupReviewTarget } from '../src/invoiceRecoveryModel.js'
 if (
   !/^(127\.0\.0\.1|localhost):\d+$/.test(
     process.env.FIRESTORE_EMULATOR_HOST || ''
@@ -152,8 +152,68 @@ const assertOne = async () =>
     receipts: 1
   })
 const raise = () => request('raise', { expected: expected() })
+const resume = async () => request('resume', { previous_operation_id: (await current()).invoice_allocation_id })
 const jobRef = (operationId, stage = 'financial') =>
   store.doc('invoice_followup_jobs/' + operationId + '_' + stage)
+const splitOrReissue = async (purpose, pending = false) => {
+  const { body } = await request('status')
+  faults.followup = pending
+  const next = await request('new', { purpose, reason: `Fictional ${purpose}`, expected: body.expected, previous_operation_id: body.operation.id })
+  assert.equal(next.status, 200, next.body.error)
+  return next.body.operation
+}
+
+test('stale and unspecified actions cannot write to the new replacement invoice', async () => {
+  await raise()
+  const split = await splitOrReissue('split', true)
+  const reviewed = invoiceFollowupReviewTarget(await current(), split)
+  await jobRef(split.id).delete()
+  assert.equal((await resume()).body.operation.followups.financial.state, 'done')
+  const replacement = await splitOrReissue('reissue', true)
+  const before = await db.counts(), beforeQueries = queries.length
+  assert.equal((await request('resume', { previous_operation_id: split.id })).status, 409)
+  assert.equal((await request('resume')).status, 409)
+  assert.equal((await request('manual_followups', { previous_operation_id: split.id, review_expected: reviewed, reason: 'Reviewed split' })).status, 409)
+  assert.equal((await request('manual_followups', { previous_operation_id: replacement.id, review_expected: reviewed, reason: 'Reviewed split' })).status, 409)
+  assert.equal((await raise()).status, 409)
+  assert.equal(queries.length, beforeQueries)
+  assert.equal((await repo.operation(id, replacement.id)).followups.financial.state, 'pending')
+  assert.deepEqual(await db.counts(), before)
+})
+
+test('historical pending receipts are discoverable past the latest twenty and use the exact Finance review', async () => {
+  await raise()
+  const split = await splitOrReissue('split', true)
+  const old = store.doc(`orders/${id}/invoice_allocations/${split.id}`)
+  // Model an earlier workflow that moved the current pointer before finishing this stage.
+  await old.update({ 'followups.financial.state': 'done' })
+  const replacement = await splitOrReissue('reissue')
+  await jobRef(split.id).delete()
+  await old.update({ 'followups.financial.state': 'pending', created_at: new Date('2020-01-01') })
+  const batch = store.batch()
+  for (let i = 0; i < 20; i++) {
+    const doc = store.collection(`orders/${id}/invoice_allocations`).doc()
+    batch.set(doc, { status: 'linked', created_at: new Date('2024-01-01'), request: { purpose: 'split' },
+      followups: { financial: { state: 'done' }, woo: { state: 'not_applicable' } } })
+  }
+  await batch.commit()
+  const status = await request('status', {}, 'shipping')
+  assert.equal(status.status, 200)
+  assert.equal(status.body.canManage, false)
+  assert.equal(status.body.moreHistory, true)
+  assert.ok(!status.body.history.some(row => row.id === split.id))
+  const [row] = status.body.followupChecklist.entries
+  assert.equal(row.result.si_no, split.result.si_no)
+  assert.equal(row.disposition, 'finance_review')
+  assert.equal(row.current, false)
+  const selected = { previous_operation_id: row.id, review_expected: invoiceFollowupReviewTarget(await current(), row), reason: 'Fictional Finance verified the split' }
+  const before = await db.counts()
+  assert.equal((await request('closure_review_followups', selected, 'shipping')).status, 403)
+  assert.equal((await request('closure_review_followups', selected)).status, 200)
+  assert.equal((await repo.operation(id, split.id)).followups.financial.state, 'manual_review')
+  assert.equal((await current()).invoice_allocation_id, replacement.id)
+  assert.deepEqual(await db.counts(), before)
+})
 
 for (const fault of ['followup', 'lostFollowupAck']) {
   test('automatic retries recover one linked invoice after ' + fault, async () => {
@@ -165,7 +225,7 @@ for (const fault of ['followup', 'lostFollowupAck']) {
     const before = await db.counts()
     const initialCalls = queries.filter(path => path === 'allocate_sales_invoice_once').length
     await jobRef(operationId).update({ next_at: 0 })
-    await Promise.all([retryDueInvoiceFollowups(repo, sql), retryDueInvoiceFollowups(repo, sql), request('resume')])
+    await Promise.all([retryDueInvoiceFollowups(repo, sql), retryDueInvoiceFollowups(repo, sql), resume()])
     const result = (await request('status')).body.operation
     assert.equal(result.id, operationId)
     assert.equal(result.result.si_no, si)
@@ -184,7 +244,7 @@ test('review persisted in SQL survives a lost response and prevents delayed auto
   const counts = await db.counts()
   faults.lostReviewAck = true
   const review = await request('manual_followups', {
-    previous_operation_id: op.id, reason: 'Fictional finance review'
+    previous_operation_id: op.id, reason: 'Fictional finance review', review_expected: invoiceFollowupReviewTarget(await current(), op)
   })
   assert.equal(review.status, 503)
   assert.equal((await request('status')).body.operation.followups.financial.state, 'pending')
@@ -283,7 +343,7 @@ for (const fault of ['beforeSql', 'lostSqlAck', 'result', 'link'])
         status = await request('status')
       assert.equal(status.status, 200)
       assert.deepEqual(await db.counts(), before)
-      const resumed = await request('resume')
+      const resumed = await resume()
       assert.equal(resumed.status, 200)
       assert.equal(resumed.body.operation.id, op)
       assert.equal(resumed.body.operation.status, 'linked')
@@ -306,7 +366,7 @@ test(
         uc_no: 'UC90/26',
         invoice_reference_revision: 2
       })
-    let r = await request('resume')
+    let r = await resume()
     assert.equal(r.body.operation.status, 'review_required')
     assert.equal(r.body.order.erp_si_no, 'SI260020')
     const operationId = r.body.operation.id
@@ -329,7 +389,7 @@ test(
     await store
       .doc('orders/' + id)
       .update({ customer_name: 'Different customer' })
-    r = await request('resume')
+    r = await resume()
     assert.equal(r.body.operation.status, 'review_required')
     r = await request('link_review', {
       previous_operation_id: r.body.operation.id,
@@ -402,7 +462,7 @@ test(
       'update app_sales_invoice set accounting_total=777,adjustment_reason=$1 where si_no=$2',
       ['Manual financial decision', no]
     )
-    r = await request('resume')
+    r = await resume()
     assert.equal(r.body.operation.followups.financial.state, 'pending')
     assert.match(
       r.body.operation.followups.financial.error,
@@ -422,6 +482,7 @@ test(
     assert.equal((await db.counts()).receipts, 1)
     r = await request('manual_followups', {
       previous_operation_id: r.body.operation.id,
+      review_expected: invoiceFollowupReviewTarget(await current(), r.body.operation),
       reason: 'Fictional reviewed manually'
     })
     assert.equal(r.body.canStartNew, true)
@@ -620,7 +681,7 @@ test(
     let r = await raise()
     assert.equal(r.body.operation.followups.financial.state, 'pending')
     const counts = await db.counts()
-    r = await request('resume')
+    r = await resume()
     assert.equal(r.body.operation.followups.financial.state, 'done')
     assert.deepEqual(await db.counts(), counts)
     await assertOne()

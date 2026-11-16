@@ -204,6 +204,22 @@ test('an unconfirmed link leaves a recoverable saved request rather than issuing
  assert.equal(input('Invoice No').value,'');assert.ok(host.textContent.includes('Fictional persist failure'));assert.equal(f.calls.filter(c=>c.kind==='si').length,1)
  f.writeError=null;await click(allocation('Invoice No'));assert.equal(input('Invoice No').value,'SI-FICTIONAL');assert.equal(f.calls.filter(c=>c.kind==='si').length,1)
 })
+test('Raise in the order header sends the operation rendered before another tab changed it',async()=>{
+ const selected='12345678-1234-4123-8123-123456789abc',replacement='87654321-1234-4123-8123-123456789abc'
+ f.order.invoice_allocation_id=selected
+ f.operation={id:selected,status:'pending',request:{purpose:'split',reason:'Fictional split',customer:f.order.customer_name,currency:f.order.currency},followups:{financial:{state:'pending'},woo:{state:'not_applicable'}}}
+ const requests=[],invoke=f.invoiceAction
+ f.invoiceAction=async(...args)=>{requests.push(args);return invoke(...args)}
+ await render()
+ f.operation={...f.operation,id:replacement,request:{...f.operation.request,purpose:'reissue'}}
+ f.order.invoice_allocation_id=replacement
+ const raise=[...host.querySelectorAll('button')].find(button=>button.textContent.trim()==='Raise Invoice')
+ assert.ok(raise && !raise.disabled)
+ await click(raise)
+ assert.deepEqual(requests.find(([,action])=>action==='resume'),[f.id,'resume',{previous_operation_id:selected}])
+ assert.match(host.textContent,/Another invoice request is current/)
+ assert.deepEqual(f.orderWrites,[])
+})
 // The separately authorized Woo metadata repair intentionally updates the two
 // original bug-characterization expectations; all other reference cases remain.
 for(const registryFails of [false,true])test(`WooCommerce allocation preserves its checkout total and recorded payout (${registryFails?'failure':'success'})`,async()=>{

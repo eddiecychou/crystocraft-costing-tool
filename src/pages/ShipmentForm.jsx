@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
+import { useCan } from '../access'
 import { hasIncompleteRangeLine, quoteItemToOrderLine } from '../rangeQuote'
 import {
   applyExtractedPiHeader,
@@ -104,6 +105,7 @@ export default function ShipmentForm({ uid, onCreateOrder, initialDraft, origina
 }
 
 function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, createBlocked }) {
+  const canManageInvoices = useCan()('uc')
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
@@ -452,6 +454,12 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   const [imgPickerLine, setImgPickerLine] = useState(null)   // index of the line whose image picker is open
   const [allocatingSi, setAllocatingSi] = useState(false)
   const [siError, setSiError] = useState('')
+  const [invoiceStatusError, setInvoiceStatusError] = useState('')
+  const [invoiceReadAttempt, setInvoiceReadAttempt] = useState(0)
+  const hasSavedInvoice = Boolean(invoiceExpected(header).si)
+  const shouldReadInvoice = Boolean(header.invoice_allocation_id || header.source === 'direct_invoice')
+  const invoiceActionDisabled = !canManageInvoices || Boolean(invoiceStatusError || invoiceState?.followupChecklist?.unavailable) ||
+    (shouldReadInvoice && !invoiceState)
   const invoiceLocked=allocatingSi||Boolean(invoiceState?.operation&&invoiceState.operation.status!=='linked')
   function applyInvoiceState(state) {
     setInvoiceState(state)
@@ -469,27 +477,34 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
     })
   }
   useEffect(()=>{
-    if(!isEdit||fetching||loadError||!header.invoice_allocation_id&&header.source!=='direct_invoice')return
+    if(!isEdit||fetching||loadError||!shouldReadInvoice)return
     let alive=true
     const read=async()=>{
       if(invoiceInFlight.current)return
       const seq=++invoiceReadSequence.current
-      try{const state=await invoiceAction(id,'status');if(alive&&seq===invoiceReadSequence.current)applyInvoiceState(state)}
-      catch(error){if(alive&&seq===invoiceReadSequence.current)setSiError(error.message)}
+      try{const state=await invoiceAction(id,'status');if(alive&&seq===invoiceReadSequence.current){applyInvoiceState(state);setInvoiceStatusError('')}}
+      catch(error){if(alive&&seq===invoiceReadSequence.current)setInvoiceStatusError(error.message)}
     }
     read()
     const timer=setInterval(read,15000)
     return()=>{alive=false;clearInterval(timer)}
-  },[id,isEdit,fetching,loadError,header.invoice_allocation_id,header.source])
+  },[id,isEdit,fetching,loadError,shouldReadInvoice,header.invoice_allocation_id,invoiceReadAttempt])
 
   async function runInvoiceAction(action,details={}) {
-    if(editConflict||saveInFlight.current||invoiceInFlight.current||allocatingSo||allocatingUc)return
+    if(invoiceActionDisabled||editConflict||saveInFlight.current||invoiceInFlight.current||allocatingSo||allocatingUc)return
     if(!id){setSiError('Create and save this order before raising its invoice.');return}
     invoiceInFlight.current=true;++invoiceReadSequence.current
     setAllocatingSi(true);setSiError('')
     try{
-      const state=await invoiceAction(id,action,{...details,...(['raise','new'].includes(action)?{expected:invoiceExpected(header)}:{})})
-      if(mounted.current)applyInvoiceState(state)
+      let state=await invoiceAction(id,action,{...details,...(['raise','new'].includes(action)?{expected:invoiceExpected(header)}:{})})
+      if (action === 'closure_review_followups') {
+        try { state = await invoiceAction(id, 'status') }
+        catch {
+          if (mounted.current) setInvoiceStatusError('Finance review was recorded. Refresh invoice status to see the result.')
+          return
+        }
+      }
+      if(mounted.current){applyInvoiceState(state);setInvoiceStatusError('')}
     }catch(error){
       if(mounted.current)setSiError(error.message||'Confirmation unavailable. Reopen this saved order and resume the same request.')
       throw error
@@ -499,7 +514,10 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
     }
   }
   async function doAllocateSi() {
-    await runInvoiceAction(invoiceState?.operation?'resume':'raise').catch(()=>{})
+    const selection = invoiceState?.operation
+    const currentFollowup = invoiceState?.followupChecklist?.entries?.find(row => row.id === selection?.id)
+    if (currentFollowup && currentFollowup.disposition !== 'resume') return
+    await runInvoiceAction(selection ? 'resume' : 'raise', selection ? {previous_operation_id:selection.id} : {}).catch(()=>{})
   }
 
   const setH = field => e => {
@@ -742,15 +760,18 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
         id={id} isEdit={isEdit} isDirect={isDirect} closed={closed} fromQuote={hasQuoteSource}
         invoiceNo={header.erp_si_no} ucNo={header.uc_no}
         allocatingSi={allocatingSi} saving={saving || Boolean(editConflict)} siError={siError}
+        invoiceActionDisabled={invoiceActionDisabled}
         onRaiseInvoice={doAllocateSi} tab={tab} onTabChange={setTab}
       />
 
       {isEdit && <OrderClosurePanel orderId={id} closed={closed} onClosed={() => setClosed(true)}
         disabled={saving || allocatingSi || allocatingSo || allocatingUc || deleting || Boolean(editConflict)} />}
 
-      {isEdit&&(invoiceState||header.invoice_allocation_id||invoiceExpected(header).si||header.source==='direct_invoice')&&<ShipmentInvoiceRecovery
-        state={invoiceState||(!header.invoice_allocation_id?{order:header,expected:invoiceExpected(header),history:[],operation:null,canStartNew:true}:null)}
-        readOnly={closed} busy={allocatingSi||saving||Boolean(editConflict)} error={siError} hasInvoice={!!invoiceExpected(header).si} onAction={runInvoiceAction}
+      {isEdit&&(invoiceState||shouldReadInvoice||hasSavedInvoice)&&<ShipmentInvoiceRecovery key={id}
+        state={invoiceState||(!shouldReadInvoice?{order:header,expected:invoiceExpected(header),history:[],operation:null,canStartNew:true}:null)}
+        readOnly={closed||!canManageInvoices} busy={allocatingSi||saving||Boolean(editConflict)}
+        error={invoiceStatusError||siError} hasInvoice={hasSavedInvoice} onAction={runInvoiceAction}
+        statusUnavailable={Boolean(invoiceStatusError)} onRefresh={()=>setInvoiceReadAttempt(n=>n+1)}
       />}
 
       {hasQuoteSource&&<QuoteOrderRecovery state={quoteRecovery} busy={saving||quoteRecoveryBusy} error={quoteRecoveryError}
@@ -826,7 +847,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
           header={header} setH={setH}
           doAllocateSo={doAllocateSo} allocatingSo={allocatingSo} soError={soError}
           doAllocateUc={doAllocateUc} allocatingUc={allocatingUc} ucError={ucError}
-          doAllocateSi={doAllocateSi} allocatingSi={allocatingSi} siError={siError}
+          doAllocateSi={doAllocateSi} allocatingSi={allocatingSi} siError={siError} invoiceActionDisabled={invoiceActionDisabled}
           invoiceFieldRef={invoiceFieldRef}
           referencesLocked={invoiceLocked}
           onNewRevision={() => setHeader(h => ({ ...h, pi_revision: String((parseInt(h.pi_revision, 10) || 0) + 1) }))}

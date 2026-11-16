@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { FieldValue } from 'firebase-admin/firestore'
 import { orderEditBase } from '../../../src/orderEditModel.js'
-import { invoiceFollowupsDone, sameInvoiceValue, validInvoiceOperationId } from '../../../src/invoiceRecoveryModel.js'
+import { invoiceFollowupsDone, linkedInvoiceReceipt, sameInvoiceValue, validInvoiceOperationId } from '../../../src/invoiceRecoveryModel.js'
 import { noInvoiceReasonOf, orderSi } from '../../../src/shippingModel.js'
 import { OrderRequestError, shippingProfile, permitted } from './orderRequestAccess.js'
 import { closureStock } from './orderClosureStock.js'
@@ -38,7 +38,7 @@ export function createShippingClosure(db) {
       : `${part.label}: Supply must review the stock movements and saved reservation before closure.`)
     const invoices = allocations.docs.map(doc => {
       const op = doc.data()
-      const linked = validInvoiceOperationId(doc.id) && op.id === doc.id && op.status === 'linked' && op.result?.si_no && op.order_id === id
+      const linked = linkedInvoiceReceipt(op, doc.id, id)
       const pending = !linked || !invoiceFollowupsDone(op)
       return { id: doc.id, si: op.result?.si_no || '', uc: op.result?.uc_no || '', state: linked ? (pending ? 'followups' : 'ready') : 'allocation' }
     })

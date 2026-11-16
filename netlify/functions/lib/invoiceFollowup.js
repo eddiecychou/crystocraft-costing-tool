@@ -12,14 +12,14 @@ export async function runInvoiceFollowup({ repo, sql, orderId, operationId, stag
       repo, orderId, operation: claim.operation, identity, deadline: claim.deadline,
       editRevision: claim.editRevision
     })
-    outcome = { state: 'done', error: '' }
+    outcome = { state: 'done', error: '', requires_review: false }
   } catch (error) {
     if (error instanceof InvoiceFollowupReviewed) {
       await repo.finishFollowupReview(orderId, operationId, error.outcome)
       return
     }
     requiresReview = error instanceof InvoiceRecoveryError
-    outcome = { state: 'pending', error: error.message || 'Follow-up needs retry.' }
+    outcome = { state: 'pending', error: error.message || 'Follow-up needs retry.', requires_review: requiresReview }
   }
   if (claim.legacy) await repo.followup(orderId, operationId, stage, outcome)
   else await repo.settleFollowup(orderId, operationId, stage, claim, outcome, requiresReview)

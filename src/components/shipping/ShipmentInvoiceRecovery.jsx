@@ -1,24 +1,38 @@
 import { useState } from 'react'
+import { invoiceFollowupsDone, invoiceFollowupReviewTarget, sameInvoiceValue } from '../../invoiceRecoveryModel'
 
-const finished = (op) =>
-  ['financial', 'woo'].every((k) =>
-    ['done', 'not_applicable', 'manual_review'].includes(
-      op?.followups?.[k]?.state
-    )
-  )
+const stageLabel = { financial: 'Financial copy', woo: 'UC Registry' }
+const dispositionLabel = { resume: 'Ready to resume', in_progress: 'In progress', finance_review: 'Finance review needed' }
 export default function ShipmentInvoiceRecovery({
   state,
   busy,
   error,
   onAction,
   hasInvoice,
-  readOnly = false
+  readOnly = false,
+  statusUnavailable = false,
+  onRefresh,
 }) {
-  const [mode, setMode] = useState(''),
+  const [selection, setSelection] = useState(null),
     [reason, setReason] = useState(''),
     [purpose, setPurpose] = useState('split')
-  const op = state?.operation,
-    needsResume = op && (op.status !== 'linked' || !finished(op))
+  const mode = selection?.mode
+  const op = state?.operation
+  const entries = state?.followupChecklist?.entries || []
+  const current = entries.find(row => row.id === op?.id)
+  const unavailable = statusUnavailable || state?.followupChecklist?.unavailable
+  const canManage = !readOnly && state?.canManage !== false
+  const needsResume = op && (op.status !== 'linked' || !invoiceFollowupsDone(op))
+  const canResume = needsResume && (!current || current.disposition === 'resume')
+  const selectedRow = mode === 'closure_review_followups'
+    ? entries.find(row => row.id === selection.id && !row.current) : op
+  const liveTarget = invoiceFollowupReviewTarget(state?.order, selectedRow, state?.expected)
+  const selectionChanged = selection && (selection.id !== (selectedRow?.id || null) ||
+    !sameInvoiceValue(selection.target, liveTarget))
+  const open = (mode, row = op) => {
+    setSelection({ mode, id: row?.id || null, target: invoiceFollowupReviewTarget(state?.order, row, state?.expected) })
+    setReason('')
+  }
   const subjectMatches =
     op &&
     state.expected?.customer === op.customer &&
@@ -27,12 +41,12 @@ export default function ShipmentInvoiceRecovery({
     onAction(action, {
       reason: reason.trim(),
       purpose,
-      previous_operation_id: op?.id || null,
-      expected: state.expected,
-      review_expected: state.expected
+      previous_operation_id: selection.id,
+      expected: selection.target.expected,
+      review_expected: action === 'link_review' ? selection.target.expected : selection.target
     })
       .then(() => {
-        setMode('')
+        setSelection(null)
         setReason('')
       })
       .catch(() => {})
@@ -43,15 +57,12 @@ export default function ShipmentInvoiceRecovery({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="eyebrow">Invoice status</h2>
-        {!readOnly && hasInvoice && state?.canStartNew && (
+        {canManage && hasInvoice && state?.canStartNew && (
           <button
             type="button"
             className="btn-secondary text-sm min-h-[44px]"
-            disabled={busy}
-            onClick={() => {
-              setMode('new')
-              setReason('')
-            }}
+            disabled={busy || unavailable}
+            onClick={() => open('new')}
           >
             New split / reissued invoice
           </button>
@@ -66,7 +77,7 @@ export default function ShipmentInvoiceRecovery({
         <>
           <p role="status" className="text-sm break-words">
             {op.status === 'linked'
-              ? finished(op)
+              ? invoiceFollowupsDone(op)
                 ? 'Invoice linked.'
                 : 'Invoice linked — follow-up pending.'
               : op.status === 'review_required'
@@ -93,40 +104,34 @@ export default function ShipmentInvoiceRecovery({
                 {op.followups[k].error}
               </p>
             ))}
-          {!readOnly && needsResume && (
+          {canManage && needsResume && (
             <div className="flex flex-wrap gap-3">
-              <button
+              {canResume && <button
                 type="button"
                 className="btn-primary min-h-[44px]"
-                disabled={busy}
-                onClick={() => onAction('resume').catch(() => {})}
+                disabled={busy || unavailable}
+                onClick={() => onAction('resume', { previous_operation_id: op.id }).catch(() => {})}
               >
                 {busy ? 'Confirming…' : 'Resume saved request'}
-              </button>
+              </button>}
               {op.status === 'review_required' && op.result && (
                 <button
                   type="button"
                   className="btn-secondary min-h-[44px]"
-                  disabled={busy}
-                  onClick={() => {
-                    setMode('link_review')
-                    setReason('')
-                  }}
+                  disabled={busy || unavailable}
+                  onClick={() => open('link_review')}
                 >
                   Review references
                 </button>
               )}
-              {op.status === 'linked' && (
+              {op.status === 'linked' && current?.disposition !== 'in_progress' && (
                 <button
                   type="button"
                   className="btn-secondary min-h-[44px]"
-                  disabled={busy}
-                  onClick={() => {
-                    setMode('manual_followups')
-                    setReason('')
-                  }}
+                  disabled={busy || unavailable}
+                  onClick={() => open('manual_followups')}
                 >
-                  Record manual follow-up
+                  Record Finance review
                 </button>
               )}
             </div>
@@ -136,20 +141,44 @@ export default function ShipmentInvoiceRecovery({
         <p className="text-sm text-ink-60">
           {state
             ? hasInvoice
-              ? readOnly ? 'Existing invoice retained.' : 'Existing invoice retained. Use the separate action above for a deliberate split or reissue.'
+              ? !canManage ? 'Existing invoice retained.' : 'Existing invoice retained. Use the separate action above for a deliberate split or reissue.'
               : 'Raise Invoice after saving the order details.'
             : 'Checking saved invoice status…'}
         </p>
       )}
-      {!readOnly && mode && (
+      {(unavailable || state?.followupChecklist?.incomplete || entries.length > 0) && (
+        <div className="border-t border-warm-grey pt-3 space-y-2">
+          <h3 className="eyebrow">Invoice follow-ups</h3>
+          {unavailable && <p role="status" className="text-sm">Follow-ups could not be verified. {onRefresh &&
+            <button type="button" onClick={onRefresh} disabled={busy} className="text-brand-600 underline">Refresh invoice status</button>}
+          </p>}
+          {state?.followupChecklist?.incomplete && <p role="status" className="text-sm">This list includes the first 500 linked receipts. Ask Finance to check the remaining history.</p>}
+          <ul className="divide-y divide-warm-grey">
+            {entries.map(row => <li key={row.id} className="space-y-1 py-2 text-sm break-words">
+              <p><strong>{row.result.si_no} · {row.result.uc_no}</strong> · {row.current ? 'Current invoice' : 'Historical invoice'}</p>
+              <p className={row.disposition === 'finance_review' ? 'text-amber-800' : 'text-ink-70'}>{dispositionLabel[row.disposition]}</p>
+              {row.referenceConflict && <p className="text-amber-800">Saved invoice references or customer details have changed.</p>}
+              {row.stages.map(stage => <p key={stage.stage} className="text-ink-70">
+                {stageLabel[stage.stage]} · {stage.inProgress ? 'In progress' : 'Pending'}{stage.error ? ` · ${stage.error}` : ''}
+              </p>)}
+              {canManage && !row.current && <button type="button" className="btn-secondary min-h-[44px]"
+                disabled={busy || unavailable} onClick={() => open('closure_review_followups', row)}>
+                Record Finance review for {row.result.si_no}
+              </button>}
+            </li>)}
+          </ul>
+        </div>
+      )}
+      {canManage && mode && (
         <div className="border-t border-warm-grey pt-4 space-y-3">
           <p className="text-sm">
             {mode === 'new'
               ? 'Issue a separate invoice. Earlier invoices remain in the ledger; this does not void or replace them.'
               : mode === 'link_review'
                 ? `Link issued invoice ${op?.result?.si_no} to this order. Current invoice: ${state.expected.si || 'none'}; current UC: ${state.expected.uc || 'none'}.`
-                : 'Record that the pending financial/UC follow-up has been reviewed manually. This acknowledgment does not change financial values.'}
+                : `Record Finance’s completed follow-up review for ${selection.target.si} · ${selection.target.uc}.`}
           </p>
+          {selectionChanged && <p role="alert" className="text-sm text-amber-800">The invoice or saved references changed. Reopen the review for the intended invoice before confirming.</p>}
           {mode === 'link_review' && !subjectMatches && (
             <p role="alert" className="text-sm text-amber-800">
               Issued for {op.customer} ({op.currency}). The saved
@@ -185,6 +214,7 @@ export default function ShipmentInvoiceRecovery({
               className="btn-primary min-h-[44px]"
               disabled={
                 busy ||
+                unavailable || selectionChanged ||
                 !reason.trim() ||
                 (mode === 'link_review' && !subjectMatches)
               }
@@ -196,7 +226,7 @@ export default function ShipmentInvoiceRecovery({
               type="button"
               className="btn-secondary min-h-[44px]"
               disabled={busy}
-              onClick={() => setMode('')}
+              onClick={() => setSelection(null)}
             >
               Cancel
             </button>

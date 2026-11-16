@@ -11,6 +11,8 @@ import {
   invoiceSubject,
   invoiceRequestSnapshot,
   invoiceFollowupsDone,
+  invoiceFollowupSettled,
+  linkedInvoiceReceipt,
   sameInvoiceValue,
   validInvoiceOperationId
 } from '../../../src/invoiceRecoveryModel.js'
@@ -89,6 +91,36 @@ export function createInvoiceRecoveryRepository(
         throw new InvoiceRecoveryError('Invoice request not found.')
       return op
     },
+    async followupChecklist(saved, operation) {
+      const id = saved.id, pointer = saved.invoice_allocation_id
+      const [all, jobs] = await Promise.all([
+        order(id).collection('invoice_allocations').where('status', '==', 'linked').limit(501).get(),
+        validInvoiceOperationId(pointer) ? db.getAll(...followupStages.map(stage =>
+          db.doc(`invoice_followup_jobs/${pointer}_${stage}`))) : [],
+      ])
+      const expected = invoiceExpected(saved)
+      const now = Date.now()
+      const candidates = all.docs.slice(0, 500).map(doc => [doc.id, doc.data()])
+      if (operation && !candidates.some(([id]) => id === operation.id)) candidates.push([operation.id, operation])
+      const entries = candidates.flatMap(([operationId, op]) => {
+        if (!linkedInvoiceReceipt(op, operationId, id) || invoiceFollowupsDone(op)) return []
+        const current = op.id === pointer
+        const stages = followupStages.filter(stage => !invoiceFollowupSettled(op.followups?.[stage])).map(stage => {
+          const followup = op.followups?.[stage]
+          const job = current ? jobs[followupStages.indexOf(stage)]?.data() : null
+          const inProgress = job?.operation_id === op.id && job.order_id === id && job.stage === stage && job.lease_until > now
+          return { stage, error: followup?.error || '', inProgress, requiresReview: followup?.requires_review === true }
+        })
+        const matches = expected.si === op.result.si_no && expected.uc === op.result.uc_no &&
+          expected.customer === op.request?.customer && expected.currency === op.request?.currency
+        const disposition = stages.some(stage => stage.inProgress) ? 'in_progress'
+          : !current || !matches || saved.shipping_closed || stages.some(stage => stage.requiresReview) ? 'finance_review' : 'resume'
+        return [{ id: op.id, result: { si_no: op.result.si_no, uc_no: op.result.uc_no }, current,
+          disposition, referenceConflict: current && !matches, stages }]
+      })
+      entries.sort((a, b) => Number(b.current) - Number(a.current) || b.result.si_no.localeCompare(a.result.si_no))
+      return { entries, incomplete: all.size > 500 }
+    },
     async begin(id, input, identity) {
       const operationId = randomUUID()
       const direct = input.action === 'initial_direct'
@@ -127,7 +159,11 @@ export function createInvoiceRecoveryRepository(
           if (initial.operation_id) return initial.operation_id
         }
         const op = await current(tx, saved)
-        if (op && input.action !== 'new') return
+        if (op && input.action !== 'new') {
+          if (op.request?.purpose !== 'first' || !sameInvoiceValue(op.before?.expected, input.expected))
+            throw new InvoiceRecoveryError('An invoice request already exists. Reload and select it before continuing.')
+          return op.id
+        }
         if (input.action === 'new') {
           if (
             (saved.invoice_allocation_id || null) !==
@@ -141,7 +177,7 @@ export function createInvoiceRecoveryRepository(
               op.request.reason === input.reason &&
               sameInvoiceValue(op.before.expected, input.expected)
             )
-              return
+              return op.id
             throw new InvoiceRecoveryError(
               'Another invoice request has already started. Reload and review it before requesting another.'
             )
@@ -205,15 +241,18 @@ export function createInvoiceRecoveryRepository(
         )
         if (direct) {
           tx.update(receipt, { initial_invoice_id: operationId })
-          return operationId
         }
+        return operationId
       })
       // A late first-issue retry must never switch to a newer split/reissue.
       if (direct)
         return {
           operation: selected ? await this.operation(id, selected) : null
         }
-      return this.state(id)
+      const state = await this.state(id)
+      if (state.operation?.id !== selected)
+        throw new InvoiceRecoveryError('The current invoice request changed. Reload before continuing.')
+      return state
     },
     async result(id, operationId, result) {
       await db.runTransaction(async (tx) => {

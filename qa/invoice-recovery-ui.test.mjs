@@ -128,7 +128,7 @@ test('issued-unlinked state shows its actual SI/UC and only resumes; customer co
   assert.match(host.textContent, /customer\/currency differ/)
   await click('Cancel')
   await click('Resume saved request')
-  assert.equal(calls[0][0], 'resume')
+  assert.deepEqual(calls[0], ['resume', { previous_operation_id: operation.id }])
 })
 test('pending financial follow-up and history remain visible; explicit manual review requires reason and pins operation', async () => {
   state.operation.followups.financial = {
@@ -143,12 +143,49 @@ test('pending financial follow-up and history remain visible; explicit manual re
     host.textContent,
     /Earlier requests and invoices remain retained/
   )
-  await click('Record manual follow-up')
+  await click('Record Finance review')
   assert.equal(button('Confirm').disabled, true)
   await reason()
   await click('Confirm')
   assert.equal(calls[0][0], 'manual_followups')
   assert.equal(calls[0][1].previous_operation_id, operation.id)
+  assert.equal(calls[0][1].review_expected.si, operation.result.si_no)
   await render(true)
   assert.equal(button('Confirming…').disabled, true)
+})
+
+test('a Finance review draft stays on the reviewed split across a status refresh', async () => {
+  state.operation.purpose = 'split'
+  state.operation.followups.financial.state = 'pending'
+  await render()
+  await click('Record Finance review')
+  await reason()
+  state = { ...state, operation: { ...state.operation, purpose: 'reissue',
+    id: '87654321-1234-4123-8123-123456789abc', result: { ...operation.result, si_no: 'SI260101' } } }
+  await render()
+  assert.match(host.textContent, /completed follow-up review for SI260100/)
+  assert.match(host.textContent, /invoice or saved references changed/)
+  assert.equal(host.querySelector('textarea').value, 'Reviewed fictional split')
+  assert.equal(button('Confirm').disabled, true)
+  assert.deepEqual(calls, [])
+})
+
+test('historical work is visible outside collapsed history and Finance review uses the exact old receipt', async () => {
+  const historical = { id: '87654321-1234-4123-8123-123456789abc', result: { si_no: 'SI250099', uc_no: 'UC099/25' },
+    current: false, disposition: 'finance_review', stages: [{ stage: 'financial', error: 'Older pending copy' }] }
+  state.history = []
+  state.followupChecklist = { entries: [historical] }
+  state.canManage = false
+  await render()
+  assert.match(host.textContent, /SI250099 · UC099\/25 · Historical invoice/)
+  assert.match(host.textContent, /Finance review needed/)
+  assert.equal(button('Record Finance review for SI250099'), undefined)
+  state.canManage = true
+  await render()
+  await click('Record Finance review for SI250099')
+  await reason()
+  await click('Confirm')
+  assert.equal(calls[0][0], 'closure_review_followups')
+  assert.equal(calls[0][1].previous_operation_id, historical.id)
+  assert.equal(calls[0][1].review_expected.si, historical.result.si_no)
 })

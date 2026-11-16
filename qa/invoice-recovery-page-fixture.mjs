@@ -16,6 +16,8 @@ export async function referenceFixtureInvoiceAction(
   if (action === 'status') return invoiceRecoveryView(f.order, f.operation)
   if (!['raise', 'resume'].includes(action))
     throw Error('Unexpected fictional invoice action')
+  if (action === 'resume' && (!f.operation || details.previous_operation_id !== f.operation.id))
+    throw Error('Another invoice request is current. Reload and select the invoice to resume.')
   if (
     action === 'raise' &&
     JSON.stringify(invoiceExpected(f.order)) !==

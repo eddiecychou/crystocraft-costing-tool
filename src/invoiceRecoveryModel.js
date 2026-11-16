@@ -44,17 +44,27 @@ export const validInvoiceOperationId = (v) =>
   /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
     v
   )
+export const invoiceFollowupStages = ['financial', 'woo']
+export const invoiceFollowupSettled = (stage) =>
+  ['done', 'manual_review', 'not_applicable'].includes(stage?.state)
 export const invoiceFollowupsDone = (op) =>
-  ['financial', 'woo'].every((k) =>
-    ['done', 'manual_review', 'not_applicable'].includes(
-      op?.followups?.[k]?.state
-    )
-  )
+  invoiceFollowupStages.every((k) => invoiceFollowupSettled(op?.followups?.[k]))
 export const invoiceReferenceRevision = (o) =>
   Number.isSafeInteger(o?.invoice_reference_revision) &&
   o.invoice_reference_revision >= 0
     ? o.invoice_reference_revision
     : 0
+
+export const invoiceFollowupReviewTarget = (order, op, expected = invoiceExpected(order)) => ({
+  referenceRevision: invoiceReferenceRevision(order),
+  expected,
+  si: op?.result?.si_no || '',
+  uc: op?.result?.uc_no || '',
+})
+
+export const linkedInvoiceReceipt = (op, id, orderId) =>
+  validInvoiceOperationId(id) && op.id === id && op.order_id === orderId &&
+  op.status === 'linked' && typeof op.result?.si_no === 'string' && Boolean(op.result.si_no)
 
 export function invoiceRequestSnapshot(
   order,
@@ -149,11 +159,12 @@ export function invoiceRecoveryView(order, operation, history = []) {
           created_at:
             op.created_at?.toDate?.().toISOString() || op.created_at || null,
           followups: Object.fromEntries(
-            ['financial', 'woo'].map((k) => [
+            invoiceFollowupStages.map((k) => [
               k,
               {
                 state: op.followups?.[k]?.state || 'pending',
-                error: op.followups?.[k]?.error || ''
+                error: op.followups?.[k]?.error || '',
+                requiresReview: op.followups?.[k]?.requires_review === true
               }
             ])
           )

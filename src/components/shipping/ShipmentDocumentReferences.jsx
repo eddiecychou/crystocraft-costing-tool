@@ -12,6 +12,7 @@ export default function ShipmentDocumentReferences({
   allocatingUc,
   ucError,
   doAllocateSi,
+  invoiceActionDisabled = false,
   allocatingSi,
   siError,
   invoiceFieldRef,
@@ -61,7 +62,7 @@ export default function ShipmentDocumentReferences({
               <label className="label flex items-center justify-between gap-2">
                 <span>Invoice No</span>
                 {!header.erp_si_no && (
-                  <button type="button" onClick={doAllocateSi} disabled={allocatingSi}
+                  <button type="button" onClick={doAllocateSi} disabled={allocatingSi || invoiceActionDisabled}
                           className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
                           title="Issue the invoice: allocate the next SI number (and a UC if none), and stamp today as the invoice date. Deliberately manual — an order is invoiced when you invoice it, not when it is created.">
                     {allocatingSi ? 'Allocating…' : 'Allocate'}

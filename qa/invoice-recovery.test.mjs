@@ -213,12 +213,12 @@ test('actual client transmits no chosen operation ID and never allocates a repla
   globalThis.fetch = async () =>
     Response.json({ error: 'Access denied' }, { status: 403 })
   await assert.rejects(
-    client.invoiceAction('fictional', 'resume'),
+    client.invoiceAction('fictional', 'resume', { previous_operation_id: opid }),
     /Access denied/
   )
   globalThis.fetch = async () => Response.json({ operation: { id: opid } })
   assert.equal(
-    (await client.invoiceAction('fictional', 'resume')).operation.id,
+    (await client.invoiceAction('fictional', 'resume', { previous_operation_id: opid })).operation.id,
     opid
   )
 })
