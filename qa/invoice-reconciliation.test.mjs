@@ -64,6 +64,7 @@ const stubs = {
   customer: 'export const useCustomers=()=>({customers:[]});',
   erpApi: 'export const erpLookup=async()=>[];',
   ExportFilterBar: 'export default()=>null;', ErpDocModal: 'export default()=>null;', LoadingBar: 'export default()=>null;',
+  InvoiceOriginalButton: 'export default()=>null;',
   exportCsv: 'export const downloadCsv=()=>{throw Error("Exports are outside reconciliation QA")};export const exportStem=()=>"";export const inDateRange=()=>true;',
 }
 

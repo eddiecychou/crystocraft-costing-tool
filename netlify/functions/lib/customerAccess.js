@@ -1,7 +1,8 @@
 // Privileged reads stay behind a verified Firebase identity and a current role.
+export const privateHeaders = { 'Cache-Control': 'private, no-store',
+  'Netlify-CDN-Cache-Control': 'no-store', Vary: 'Authorization', 'X-Content-Type-Options': 'nosniff' }
 export const privateJson = (body, status = 200) => new Response(JSON.stringify(body), {
-  status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store',
-    'Netlify-CDN-Cache-Control': 'no-store', Vary: 'Authorization', 'X-Content-Type-Options': 'nosniff' },
+  status, headers: { ...privateHeaders, 'Content-Type': 'application/json' },
 })
 export const validId = value => typeof value === 'string' && value.length > 0 && value.length <= 200 && !value.includes('/')
 export async function customerContext(req, { verifyToken, getProfile, getCustomer }) {

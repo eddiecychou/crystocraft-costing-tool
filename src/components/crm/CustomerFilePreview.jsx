@@ -3,7 +3,7 @@ import {ChevronLeft,ChevronRight} from 'lucide-react'
 import {openCustomerPdf} from '../../customerFilePreview'
 import FileDialog from './CustomerFileDialog'
 
-export default function CustomerFilePreview({file,blob,onClose}) {
+export default function CustomerFilePreview({file,blob,onClose,title='Customer file preview',actions}) {
   const canvas=useRef(null),[pdf,setPdf]=useState(null),[page,setPage]=useState(1),[error,setError]=useState(''),[image,setImage]=useState(''),[busy,setBusy]=useState(true)
   useEffect(()=>{
     let active=true,document,url
@@ -24,17 +24,22 @@ export default function CustomerFilePreview({file,blob,onClose}) {
     }).catch(e=>{if(active && e.name!=='RenderingCancelledException'){setError('This page cannot be previewed. Download the original to open it.');setBusy(false)}})
     return()=>{active=false;task?.cancel()}
   },[pdf,page])
-  return <FileDialog title="Customer file preview" onClose={onClose}>
+  function changePage(next) {
+    setBusy(true)
+    setPage(next)
+  }
+  return <FileDialog title={title} onClose={onClose}>
       <p className="p-4 text-sm text-ink break-all">{file.title||file.filename}{file.title?` · ${file.filename}`:''}</p>
+      {actions}
       {pdf && <div className="flex items-center justify-center gap-4 p-3 border-b border-warm-grey">
-        <button className="btn-secondary p-2" onClick={()=>setPage(p=>p-1)} disabled={page<=1||busy} aria-label="Previous page"><ChevronLeft size={16}/></button>
+        <button className="btn-secondary p-2" onClick={()=>changePage(page-1)} disabled={page<=1||busy} aria-label="Previous page"><ChevronLeft size={16}/></button>
         <span className="text-sm">Page {page} of {pdf.numPages}</span>
-        <button className="btn-secondary p-2" onClick={()=>setPage(p=>p+1)} disabled={page>=pdf.numPages||busy} aria-label="Next page"><ChevronRight size={16}/></button>
+        <button className="btn-secondary p-2" onClick={()=>changePage(page+1)} disabled={page>=pdf.numPages||busy} aria-label="Next page"><ChevronRight size={16}/></button>
       </div>}
       <div className="p-4 bg-ivory min-h-48 text-center">
         {busy && <p className="text-sm text-ink-60" role="status">Loading preview…</p>}
         {error && <p className="text-sm text-brand-600" role="alert">{error}</p>}
-        {blob.type==='application/pdf'?<canvas ref={canvas} className="max-w-full h-auto mx-auto" aria-label={`PDF page ${page}`}/>:image&&<img src={image} alt={file.title||file.filename} className="max-w-full max-h-screen object-contain mx-auto"/>}
+        {blob.type==='application/pdf'?<canvas ref={canvas} className={`max-w-full h-auto mx-auto ${busy||error?'invisible':''}`} aria-label={`PDF page ${page}`}/>:image&&<img src={image} alt={file.title||file.filename} className="max-w-full max-h-screen object-contain mx-auto"/>}
       </div>
   </FileDialog>
 }

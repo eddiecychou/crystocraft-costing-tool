@@ -97,7 +97,7 @@ test('ledger read uses a narrow projection and a forward cursor until the exact 
   const result = await readOcInvoiceLedger('https://fictional.invalid','key',async (href, options)=>{
     const url = new URL(href)
     assert.equal(url.pathname,'/rest/v1/app_sales_invoice')
-    assert.equal(url.searchParams.get('select'),'id,si_no,order_id,invoice_date,invoiced_at,customer,currency,status,total')
+    assert.equal(url.searchParams.get('select'),'id,si_no,order_id,invoice_date,invoiced_at,customer,currency,status,total,accounting_total')
     assert.equal(options.headers.Prefer,'count=exact')
     const offset = Number(url.searchParams.get('id').slice(3))
     offsets.push(offset)

@@ -1,6 +1,8 @@
 import { privateJson, validId } from './customerAccess.js'
 import { ocDateOnly } from '../../../src/ocTime.js'
+import { OC_PDF_MISSING, OC_PDF_RETRY } from '../../../src/ocInvoicePdfStatus.js'
 import { orderSi, orderStatusOf } from '../../../src/shippingModel.js'
+import { ocInvoicePdfStatus, readOcInvoicePdf } from './ocInvoicePdfs.js'
 
 const invoiceNo = value => typeof value === 'string' && /^SI\d{6,}$/i.test(value.trim())
   ? value.trim().toUpperCase() : ''
@@ -20,17 +22,18 @@ function byExactNumber(records, numberOf) {
   return indexed
 }
 
-export function projectOcInvoiceSummaries(ledger, orders, allocations) {
+function resolveOcInvoices(ledger, orders, allocations) {
   const ordersById = new Map(orders.map(order => [order.id, order]))
   const current = byExactNumber(orders, orderNumber)
   const receipts = byExactNumber(allocations, op => invoiceNo(op.result?.si_no))
   const ledgerBySi = byExactNumber(ledger, row => invoiceNo(row.si_no))
   const modernOrders = new Set(allocations.map(op => op.orderId))
   const rows = []
-  const append = (no, status, date, customer, currency, total) => {
-    rows.push({ no, date: ocDateOnly(date) || null, customer: typeof customer === 'string' ? customer : '',
+  const append = (no, status, date, customer, currency, total, accountingTotal, recordKey) => {
+    const row = { no, date: ocDateOnly(date) || null, customer: typeof customer === 'string' ? customer : '',
       currency: typeof currency === 'string' ? currency : '', status, amount: amount(total),
-      source: 'OC', documentStatus: 'Original unavailable' })
+      source: 'OC', documentStatus: OC_PDF_MISSING }
+    rows.push({ row, recordKey, payable: amount(accountingTotal) ?? row.amount })
   }
 
   for (const [no, row] of ledgerBySi) {
@@ -48,16 +51,22 @@ export function projectOcInvoiceSummaries(ledger, orders, allocations) {
           orderStatusOf(linkedOrder.status).value === 'draft' || orderNumber(linkedOrder) !== no)) continue
       if (!linkedOrder && row.status !== 'void' && amount(row.total) === null) continue
     }
-    append(no, row.status.toUpperCase(), row.invoice_date || row.invoiced_at, row.customer, row.currency, row.total)
+    append(no, row.status.toUpperCase(), row.invoice_date || row.invoiced_at, row.customer, row.currency,
+      row.total, row.accounting_total, `ledger:${row.id}:${row.order_id || ''}`)
   }
 
   for (const [no, order] of current) {
     // A ledger or receipt takes precedence, including pending and conflicting entries.
     if (!order || ledgerBySi.has(no) || receipts.has(no) || order.invoice_allocation_id ||
         modernOrders.has(order.id) || orderStatusOf(order.status).value === 'draft') continue
-    append(no, 'ISSUED', order.invoice_date || order.invoiced_at, order.customer_name, order.currency, order.total_amount)
+    append(no, 'ISSUED', order.invoice_date || order.invoiced_at, order.customer_name, order.currency,
+      order.total_amount, order.accounting_total, `legacy-order:${order.id}`)
   }
-  return rows.sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.no.localeCompare(a.no))
+  return rows.sort(({ row:a }, { row:b }) => (b.date || '').localeCompare(a.date || '') || b.no.localeCompare(a.no))
+}
+
+export function projectOcInvoiceSummaries(ledger, orders, allocations) {
+  return resolveOcInvoices(ledger, orders, allocations).map(({ row }) => row)
 }
 
 export async function readOcInvoiceLedger(base, key, fetcher = fetch) {
@@ -66,7 +75,7 @@ export async function readOcInvoiceLedger(base, key, fetcher = fetch) {
   const rows = []
   let id = 0
   for (;;) {
-    const params = new URLSearchParams({ select: 'id,si_no,order_id,invoice_date,invoiced_at,customer,currency,status,total',
+    const params = new URLSearchParams({ select: 'id,si_no,order_id,invoice_date,invoiced_at,customer,currency,status,total,accounting_total',
       order: 'id.asc', id: `gt.${id}`, limit: '500' })
     const response = await fetcher(`${base.replace(/\/$/, '')}/rest/v1/app_sales_invoice?${params}`, {
       headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json', Prefer: 'count=exact' },
@@ -90,7 +99,7 @@ export async function loadOcInvoiceSources(db, loadLedger) {
   const [ledger, orders, allocations] = await Promise.all([
     loadLedger(),
     db.collection('orders').select('erp_si_no', 'erp_so_no', 'invoice_allocation_id', 'status', 'invoice_date',
-      'invoiced_at', 'customer_name', 'currency', 'total_amount').get(),
+      'invoiced_at', 'customer_name', 'currency', 'total_amount', 'accounting_total').get(),
     db.collectionGroup('invoice_allocations').select('status', 'result.si_no', 'result.invoice_id', 'order_id').get(),
   ])
   return {
@@ -103,7 +112,7 @@ export async function loadOcInvoiceSources(db, loadLedger) {
   }
 }
 
-export function createOcInvoiceSummariesHandler({ verifyToken, getProfile, load }) {
+export function createOcInvoiceSummariesHandler({ verifyToken, getProfile, load, archive }) {
   return async req => {
     if (req.method !== 'GET') return privateJson({ error: 'Method not allowed' }, 405)
     const token = req.headers.get('authorization')?.match(/^Bearer (\S+)$/i)?.[1]
@@ -112,13 +121,34 @@ export function createOcInvoiceSummariesHandler({ verifyToken, getProfile, load 
     try { uid = (await verifyToken(token)).uid } catch { return privateJson({ error: 'Please sign in again.' }, 401) }
     if (!validId(uid)) return privateJson({ error: 'Please sign in again.' }, 401)
     try {
-      const profile = await getProfile(uid)
-      if (profile?.role !== 'admin' && !(profile?.role === 'staff' &&
-          Array.isArray(profile.modules) && profile.modules.includes('invoices'))) {
-        return privateJson({ error: 'Access denied' }, 403)
+      const authorize = async () => {
+        const profile = await getProfile(uid)
+        return profile?.role === 'admin' || (profile?.role === 'staff' &&
+          Array.isArray(profile.modules) && profile.modules.includes('invoices'))
+      }
+      if (!await authorize()) return privateJson({ error: 'Access denied' }, 403)
+      const params = new URL(req.url).searchParams
+      const pdf = params.get('pdf')
+      if (pdf !== null) {
+        if (params.size !== 1 || !pdf || pdf !== invoiceNo(pdf) || pdf.length > 40) {
+          return privateJson({ error: 'Invalid invoice number' }, 400)
+        }
+        if (!archive) return privateJson({ error: OC_PDF_MISSING }, 404)
       }
       const { ledger, orders, allocations } = await load()
-      return privateJson({ rows: projectOcInvoiceSummaries(ledger, orders, allocations) })
+      const entries = resolveOcInvoices(ledger, orders, allocations)
+      if (pdf !== null) {
+        return readOcInvoicePdf({ entry: entries.find(({ row }) => row.no === pdf), archive,
+          authorize, ifMatch: req.headers.get('if-match') })
+      }
+      if (archive) {
+        let records
+        try { records = await archive.list() } catch { /* Preserve invoice summaries during an archive outage. */ }
+        for (const entry of entries) {
+          entry.row.documentStatus = records ? ocInvoicePdfStatus(entry, records.get(entry.row.no), archive.issuer) : OC_PDF_RETRY
+        }
+      }
+      return privateJson({ rows: entries.map(({ row }) => row) })
     } catch {
       return privateJson({ error: 'OC invoice summaries are temporarily unavailable. Please retry.' }, 503)
     }

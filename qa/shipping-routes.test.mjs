@@ -27,7 +27,7 @@ const pass = 'export default ({children})=>children??null'
 const fail = '()=>{throw Error("Unexpected write in the Shipping routing test")}'
 const stubs = {
   useAuthState: 'export const useAuthState=()=>globalThis.fixture.profile?{uid:"fictional"}:null',
-  firebase: 'export const db={};',
+  firebase: 'export const db={};export const authedUser=async()=>({uid:"fictional",getIdToken:async()=>"fictional-token"});',
   firestore: `export const doc=(...args)=>args; export const onSnapshot=(_path,next)=>{next({id:'fictional',exists:()=>true,data:()=>globalThis.fixture.profile});return()=>{}}`,
   Layout: pass, CustomerLayout: pass, ErrorBoundary: pass,
   store: `export const CartProvider=${pass.split('default ')[1]}, FavouritesProvider=CartProvider`,
@@ -40,10 +40,11 @@ const stubs = {
   logistics: `export const useVendors=()=>({vendors:globalThis.fixture.vendor?[globalThis.fixture.vendor]:[],loading:false}), getVendor=async id=>{globalThis.fixture.calls.push('vendor:'+id);return globalThis.fixture.vendor}, saveVendor=${fail},deleteVendor=async id=>{const f=globalThis.fixture;if(id!==f.vendor?.id)throw Error('Expected fictional vendor');f.calls.push('delete:'+id);f.vendor=null}, FREIGHT_MODES=[],COVERAGE_STRENGTH=[],FREIGHT_INCOTERMS=[],modeLabel=v=>v,strengthOf=()=>({})`,
   orderCreateRequest: `export const beginOrderCopy=${fail},orderRequestAction=${fail}`,
   useOcInvoiceSummaries: `export default enabled=>{const f=globalThis.fixture;return {rows:enabled?f.summaries:undefined,error:enabled&&f.summaryError,retry:()=>{}}}`,
+  CustomerFilePreview: `import React from 'react';export default ({title,actions})=>React.createElement('div',{role:'dialog','aria-label':title},actions)`,
   customer: 'export const useCustomers=()=>({customers:[]})',
   erpApi: `export const erpLookup=async(entity,filters)=>{const f=globalThis.fixture;f.calls.push([entity,filters.q]);if(f.erpFailure)throw Error('Fictional archive failure');return f[entity]};export const erpLines=async(of,id)=>{globalThis.fixture.calls.push([of,id]);return {rows:[{seq:1,item_code:'FICT-ARCHIVE-ITEM',description:'Fictional ERP line',qty:7,unit:'pcs',unit_price:3}],surcharges:[]}}`,
 }
-const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'LogisticsVendorForm', 'ErpDocModal', 'ExportFilterBar', 'i18n', 'access', 'useProfile'])
+const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'InvoiceOriginalButton', 'LogisticsVendorForm', 'ErpDocModal', 'ExportFilterBar', 'i18n', 'access', 'useProfile'])
 const routeOutput = name => `import React from 'react';import{useParams}from 'react-router-dom';export default function RouteProbe(){return React.createElement('div',{'data-route':${JSON.stringify(name)}},JSON.stringify(Object.fromEntries(Object.entries(useParams()).filter(([key])=>key!=='*'))))}`
 before(async () => {
   const result = await build({ entryPoints: ['src/App.jsx'], bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic', external: [], plugins: [{ name: 'local-route-fixture',setup(builder) {
@@ -264,6 +265,38 @@ test('invoice-only staff see read-only OC summaries and export only the displaye
     assert.match(line, /"USD","","ISSUED","OC","Original unavailable"/)
     assert.deepEqual(calls, [])
   }, { summaries:[summary] })
+})
+
+test('invoice-only staff can open only an available exact original and the CSV retains availability labels', async () => {
+  const rows = ['Verified original PDF', 'Original unavailable', 'Needs review'].map((documentStatus, i) => ({
+    no: `SI26990${i}`, date: '2026-11-16', customer: 'Fictional buyer', currency: 'USD', status: 'ISSUED', amount: 99, documentStatus,
+  }))
+  const fetchBefore = globalThis.fetch
+  const reads = []
+  globalThis.fetch = async (url, { headers }) => {
+    reads.push([url, headers.Authorization, headers['If-Match']])
+    if (reads.length === 2) return Response.json({ error: 'Original unavailable' }, { status: 404 })
+    return new Response('%PDF-fictional', { headers: { 'Content-Type': 'application/pdf', ETag: '"fictional-revision"' } })
+  }
+  try {
+    await withPage('/sales-invoices', profile('staff', ['invoices']), async () => {
+      assert.equal([...host.querySelectorAll('button')].filter(b => b.textContent.includes('View original')).length, 1)
+      assert.match(host.textContent, /Needs review/)
+      assert.equal(host.querySelector('td a'), null)
+      const csv = await downloadedCsv('Export OC summary CSV')
+      for (const row of rows) assert.match(csv.text, new RegExp(`"${row.documentStatus}"`))
+      assert.deepEqual(reads, [])
+      await act(async () => buttons('View original').click())
+      assert.ok(host.querySelector('[role=dialog][aria-label="Original invoice SI269900"]'))
+      await act(async () => buttons('Download original').click())
+      assert.equal(host.querySelector('[role=dialog]'), null)
+      assert.match(host.querySelector('[role=alert]')?.textContent || '', /Original unavailable/)
+      assert.deepEqual(reads, [
+        ['/api/oc-invoice-summaries?pdf=SI269900', 'Bearer fictional-token', undefined],
+        ['/api/oc-invoice-summaries?pdf=SI269900', 'Bearer fictional-token', '"fictional-revision"'],
+      ])
+    }, { summaries: rows })
+  } finally { globalThis.fetch = fetchBefore }
 })
 
 test('Shipping and Invoices staff can choose OC without ERP or UC and export their visible rows', async () => {

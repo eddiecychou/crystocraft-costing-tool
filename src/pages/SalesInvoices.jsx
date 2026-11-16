@@ -13,7 +13,9 @@ import { useCustomers } from '../domain/customer'
 import { erpLookup } from '../erpApi'
 import { Receipt, AlertTriangle, FileText, Database } from 'lucide-react'
 import ErpDocModal from '../components/ErpDocModal'
+import InvoiceOriginalButton from '../components/shipping/InvoiceOriginalButton'
 import useOcInvoiceSummaries from '../hooks/useOcInvoiceSummaries'
+import { OC_PDF_AVAILABLE, OC_PDF_RETRY } from '../ocInvoicePdfStatus'
 
 // Sales Invoices. An invoice is not a separate record here — it is an order
 // that has been given an invoice number, which mirrors how CuiLing actually
@@ -104,6 +106,7 @@ export default function SalesInvoices({uid}) {
   const navigate = useNavigate()
   const oc = useOrders({ enabled: canOpenShipping, serverOnly: true })
   const summaries = useOcInvoiceSummaries(summaryMode, uid)
+  const originalArchiveUnavailable = summaries.rows?.some(row => row.documentStatus === OC_PDF_RETRY)
   const ocSource = summaryMode ? summaries : oc
   const ocReady = !ocSource.loading && !ocSource.error && (summaryMode ? Array.isArray(summaries.rows) : !oc.fromCache)
   const orders = !summaryMode && ocReady ? oc.orders : EMPTY_ROWS
@@ -480,6 +483,8 @@ export default function SalesInvoices({uid}) {
           <InvoiceSourceNotice title="JES history" access={canReadErp} loading={erp.loading}
             error={erp.error ? 'Unavailable. The archive could not load.' : ''}
             accessRequired="Unavailable with this account. ERP access is required." retry={erp.retry} />
+          {originalArchiveUnavailable && <InvoiceSourceNotice title="Original PDFs" access
+            error="The original archive could not load. Invoice summaries are still available." retry={summaries.retry} />}
         </div>
         {!srcFilter && !exportReady && (ocReady || jesReady) && (
           <p className="text-sm text-ink-70 mb-3">Select {ocReady ? 'OC invoices' : 'JES history'} in Source to export that source only.</p>
@@ -704,7 +709,9 @@ export default function SalesInvoices({uid}) {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
                         {readOnlySummary ? (
-                          <span className="text-xs text-ink-70">{r.documentStatus}</span>
+                          r.documentStatus === OC_PDF_AVAILABLE
+                            ? <InvoiceOriginalButton key={uid} invoiceNo={r.no} uid={uid} />
+                            : <span className="text-xs text-ink-70">{r.documentStatus}</span>
                         ) : isApp ? (
                           <Link to={`/shipments/${r.id}/invoice`} target="_blank" rel="noreferrer"
                                 className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
