@@ -60,6 +60,8 @@ export function prepareRangeOrderForm(products, { colors = [], profile = null, r
     const variants = orderFormVariants(product)
     const design = product.design_no || designNumber(product.design_code)
     const options = variants.length ? variants : [{}]
+    const cartonQuantity = Number(product.packing?.pcs_per_carton)
+    const piecesPerCarton = Number.isSafeInteger(cartonQuantity) && cartonQuantity > 0 ? cartonQuantity : null
     options.forEach((variant, index) => {
       const brand = variant.brand_code || fallbackBrand(product) || 'D'
       const code = [`${brand}${design}`, product.format_code].filter(Boolean).join('-')
@@ -78,7 +80,7 @@ export function prepareRangeOrderForm(products, { colors = [], profile = null, r
       const plating = String(variant.plating_code || '').trim().toUpperCase()
       const option = rangeCatalogueVariantLabel(variant)
       rows.push({ key:`${product.id || code}:${index}`, productId:product.id || code, code,
-        name:product.description || product.design_name || code, size:product.size || '',
+        name:product.description || product.design_name || code, size:product.size || '', piecesPerCarton,
         status:product.status === 'stock' ? 'Retired Stock' : product.status === 'concept' ? 'Concept — enquiry only' : 'Made to Order',
         option, crystalOption:crystalLabel(option,variant.plating_name || ''),
         plating:variant.plating_name || variant.plating_code || '', platingCode:plating,

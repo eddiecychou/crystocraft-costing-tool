@@ -64,7 +64,7 @@ export async function buildRangeOrderWorkbook(model, {images=new Map()}={}) {
   const wb=new ExcelJS.Workbook()
   wb.creator='Crystocraft';wb.title='Crystocraft Range — Price List';wb.created=new Date(model.generatedAt)
   const ws=wb.addWorksheet('Price list'),guide=wb.addWorksheet('Code guide')
-  const widths=[12,30,20,18,18,48,19],colorNames=new Map(model.colors.map(c=>[c.code,c.name]))
+  const widths=[12,30,20,18,18,48,19,15,21],colorNames=new Map(model.colors.map(c=>[c.code,c.name]))
   widths.forEach((width,i)=>{ws.getColumn(i+1).width=width})
   ws.getColumn(3).numFmt='@'
   guide.getColumn(1).numFmt='@'
@@ -80,27 +80,29 @@ export async function buildRangeOrderWorkbook(model, {images=new Map()}={}) {
     const cell=set(sheet,row,1,text,{bold:true});cell.font={...FONT,bold:true,size:15,color:{argb:C.white}};cell.fill=fill(C.brand)
     sheet.getRow(row).height=32
   }
-  banner(ws,1,7,'CRYSTOCRAFT RANGE · PRICE LIST')
+  banner(ws,1,9,'CRYSTOCRAFT RANGE · PRICE LIST')
   ws.mergeCells('A2:E2');set(ws,2,1,model.buyer||'Trade buyer',{muted:true})
   set(ws,2,6,'Issued',{muted:true});set(ws,2,7,new Date(ocDateOnly(new Date(model.generatedAt))+'T00:00:00Z')).numFmt='dd mmm yyyy'
   ws.getRow(2).height=26
-  ws.mergeCells('A3:G3');set(ws,3,1,'Crystal colours and codes are listed per price option. See Code guide for the full item-code format.',{muted:true});ws.getRow(3).height=22
-  const headers=['Photo','Product','Code','Size','Plating','Crystal options available',`Unit price (${model.currency})`]
+  ws.mergeCells('A3:I3');set(ws,3,1,
+    'Crystal colours and codes are listed per price option. See Code guide for the full item-code format.\nRetired stock can be ordered subject to availability. We’ll confirm available quantities after receiving your enquiry.',
+    {muted:true});ws.getRow(3).height=38
+  const headers=['Photo','Product','Code','Size','Plating','Crystal options available',`Unit price (${model.currency})`,'Pieces per carton','Stock status']
   headers.forEach((label,i)=>{const c=set(ws,HEADER,i+1,label,{bold:true});c.font.color={argb:C.white};c.fill=fill(C.brand)})
   ws.getRow(HEADER).height=32
   const imageIds=new Map();let next=HEADER+1
   for(const [index,item]of model.rows.entries()) {
     const colours=item.colors.map(code=>code==='__AS_SHOWN__'?'As shown':`${code} — ${colorNames.get(code)||code}`).join('; ')
     const crystal=[item.crystalOption||item.option,colours,item.review?'Please confirm specification':''].filter(Boolean).join('\n')
-    const product=[item.name,item.status==='Retired Stock'?'Retired stock':item.status==='Concept — enquiry only'?'Concept — enquiry only':''].filter(Boolean).join('\n')
     const displayCode=[item.code,item.runningNo?`Running no. ${item.runningNo}`:''].filter(Boolean).join('\n')
     const plating=[item.platingCode,item.plating].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' — ')
-    const values=[null,product,displayCode,item.size,plating,crystal,item.price==null?'Quotation required':item.price]
-    const parts=values.map((v,i)=>i===0||i===6?[v]:textParts(v||'',widths[i]-2))
+    const status=item.status==='Made to Order'?'Active':item.status
+    const values=[null,item.name,displayCode,item.size,plating,crystal,item.price==null?'Quotation required':item.price,item.piecesPerCarton,status]
+    const parts=values.map((v,i)=>i===0||i>=6?[v]:textParts(v||'',widths[i]-2))
     const start=next
     for(let part=0;part<Math.max(...parts.map(a=>a.length));part++,next++) {
       let rowHeight=part===0?66:28
-      for(let i=0;i<7;i++) {
+      for(let i=0;i<widths.length;i++) {
         const value=parts[i][part]??null,cell=set(ws,next,i+1,value,{bold:i===6,moneyFormat:i===6&&typeof value==='number'})
         cell.fill=fill(index%2?C.alt:C.white);cell.border={bottom:{style:'hair',color:{argb:C.border}}}
         if(value!=null)rowHeight=Math.max(rowHeight,height(value,widths[i]-2))
@@ -115,11 +117,11 @@ export async function buildRangeOrderWorkbook(model, {images=new Map()}={}) {
       ws.addImage(id,{tl:{col:(80-w)/2/80,row:start-1+(rowHeight-h)/2/rowHeight},ext:{width:w,height:h},editAs:'oneCell'})
     }
   }
-  ws.mergeCells(`A${next+1}:G${next+1}`)
-  set(ws,next+1,1,'Prices valid 30 days. Final prices and availability confirmed on quotation. Retired stock is available while stocks last; no further production.',{muted:true})
+  ws.mergeCells(`A${next+1}:I${next+1}`)
+  set(ws,next+1,1,'Prices valid 30 days. Final prices and availability confirmed on quotation.',{muted:true})
   ws.getRow(next+1).height=30
   ws.views=[{state:'frozen',xSplit:3,ySplit:HEADER,topLeftCell:`D${HEADER+1}`,activeCell:`D${HEADER+1}`,showGridLines:false,zoomScale:90}]
-  ws.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,printTitlesRow:`${HEADER}:${HEADER}`,printArea:`A1:G${next+1}`,margins:{left:0.25,right:0.25,top:0.4,bottom:0.4,header:0.15,footer:0.2}}
+  ws.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,printTitlesRow:`${HEADER}:${HEADER}`,printArea:`A1:I${next+1}`,margins:{left:0.25,right:0.25,top:0.4,bottom:0.4,header:0.15,footer:0.2}}
   ws.headerFooter={oddFooter:'Crystocraft · Page &P of &N'}
 
   ;[20,37,65].forEach((w,i)=>{guide.getColumn(i+1).width=w})

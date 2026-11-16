@@ -83,15 +83,15 @@ test('sorts by numeric design and format, grouping U D A H M before UA UB and ot
   assert.equal(legacy.rows[0].code,'UB061-001','Legacy multi-letter series identity survives')
   const body=modelOf([p('A061','231',['U'])]);assert.equal(body.rows[0].code,'UA061-231')
 })
-test('price list has seven separate columns, typed prices/date/codes, and no order controls or totals',async()=>{
+test('price list has nine separate columns, typed prices/date/codes, and no order controls or totals',async()=>{
   const {wb,ws,bytes}=await reload(modelOf())
   assert.deepEqual(wb.worksheets.map(s=>s.name),['Price list','Code guide'])
-  assert.deepEqual(ws.getRow(4).values.slice(1),['Photo','Product','Code','Size','Plating','Crystal options available','Unit price (USD)'])
+  assert.deepEqual(ws.getRow(4).values.slice(1),['Photo','Product','Code','Size','Plating','Crystal options available','Unit price (USD)','Pieces per carton','Stock status'])
   assert.equal(ws.getCell('B5').value,'Fictional swan 天鵝 & gift');assert.equal(ws.getCell('C5').value,'D0026-001');assert.equal(ws.getCell('D5').value,'8.2 × 7.3 cm')
   assert.equal(ws.getCell('E5').value,'CP — Chrome');assert.equal(ws.getCell('G5').value,5.25);assert.equal(ws.getCell('G5').numFmt,'#,##0.00')
   assert.match(ws.getCell('F5').value,/Bohemia crystals\nC1 — Crystal; RO — Rose/);assert.doesNotMatch(ws.getCell('F5').value,/Chrome plated/)
   assert.equal(ws.getCell('C5').type,ExcelJS.ValueType.String);assert.ok(ws.getCell('G2').value instanceof Date)
-  assert.equal(ws.columnCount,7);assert.equal(ws.autoFilter,undefined);assert.equal(ws.views[0].showGridLines,false)
+  assert.equal(ws.columnCount,9);assert.equal(ws.autoFilter,undefined);assert.equal(ws.views[0].showGridLines,false)
   assert.equal(ws.views[0].xSplit,3);assert.equal(ws.views[0].ySplit,4)
   assert.equal(ws.pageSetup.printTitlesRow,'4:4');assert.equal(ws.pageSetup.fitToWidth,1)
   const zip=await JSZip.loadAsync(bytes)
@@ -113,14 +113,25 @@ test('unpriced and concept options stay enquiry-only; premium and ambiguous opti
   const rows=Array.from({length:ws.rowCount-4},(_,i)=>ws.getRow(i+5).values)
   assert.ok(rows.some(r=>r[7]==='Quotation required'&&String(r[6]).includes('Premium Crystal AB')))
   assert.equal(rows.filter(r=>String(r[6]).includes('Please confirm specification')).length,2)
-  assert.ok(rows.some(r=>r[7]==='Quotation required'&&String(r[2]).includes('Concept — enquiry only')))
+  assert.ok(rows.some(r=>r[7]==='Quotation required'&&r[9]==='Concept — enquiry only'))
 })
 test('price list is independent of stock/order quantities and preserves retired-stock context',async()=>{
-  const p=product({status:'stock',stock_finished:999})
+  const p=product({status:'stock',stock_finished:999,packing:{pcs_per_carton:'96'}})
   const a=modelOf([p]),b=modelOf([p],{availabilityById:{[p.id]:{qty:0,byPlating:{CP:0}}}})
   assert.deepEqual(a,b);assert.equal(Object.hasOwn(a.rows[0],'stock'),false)
-  const {ws}=await reload(a);assert.match(ws.getCell('B5').value,/Retired stock/)
-  assert.match(ws.getCell(`A${ws.rowCount}`).value,/no further production/)
+  const {ws}=await reload(a)
+  assert.equal(ws.getCell('H5').value,96)
+  assert.equal(ws.getCell('H5').type,ExcelJS.ValueType.Number)
+  assert.equal(ws.getCell('I5').value,'Retired Stock')
+  assert.match(ws.getCell('A3').value,/Retired stock can be ordered subject to availability\. We’ll confirm available quantities after receiving your enquiry\./)
+})
+test('active products use the saved carton quantity and leave unknown quantities blank',async()=>{
+  const {ws}=await reload(modelOf([product({packing:{pcs_per_carton:48}}),
+    product({id:'unknown',design_no:'0027',packing:{pcs_per_carton:''}}),
+    product({id:'invalid',design_no:'0028',packing:{pcs_per_carton:'2.5'}})]))
+  assert.equal(ws.getCell('H5').value,48)
+  for(const row of [6,7])assert.equal(ws.getCell(row,8).value,null)
+  for(const row of [5,6,7])assert.equal(ws.getCell(row,9).value,'Active')
 })
 test('long English/Chinese specifications continue visibly without dropping text or exceeding Excel row height',async()=>{
   const description='Long English product detail. '.repeat(140)+' 天鵝水晶尺寸與禮盒說明'.repeat(70)
@@ -212,7 +223,7 @@ test('read failures show an error and never enable a partial catalogue export',a
 })
 test('save a fictional price-list artifact from the production exporter for visual and type QA',async()=>{
   if(!process.env.RANGE_ORDER_EVIDENCE)return
-  const p=product({status:'stock',variants:[variant({description:'Bohemia crystals, Chrome plated'}),variant({description:'Premium Crystal AB',crystal_colors:['AB'],ws_price_usd:5.8}),variant({description:'Unpriced gold option',plating_code:'G',plating_name:'Gold',ws_price_usd:null,crystal_colors:['RO']})]})
+  const p=product({status:'stock',packing:{pcs_per_carton:'96'},variants:[variant({description:'Bohemia crystals, Chrome plated'}),variant({description:'Premium Crystal AB',crystal_colors:['AB'],ws_price_usd:5.8}),variant({description:'Unpriced gold option',plating_code:'G',plating_name:'Gold',ws_price_usd:null,crystal_colors:['RO']})]})
   const model=modelOf([p,product({id:'long',design_no:'0027',description:'Long public specification. '.repeat(70)+' 每件水晶禮品說明'.repeat(35),variants:[variant({ws_price_usd:8})]})],{availabilityById:{[p.id]:{qty:10,byPlating:{CP:10,G:0}}}})
   await writeFile(process.env.RANGE_ORDER_EVIDENCE,await rangeOrderFormBytes(model))
 })
