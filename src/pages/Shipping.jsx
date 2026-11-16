@@ -11,6 +11,7 @@ import { useCustomers } from '../domain/customer'
 import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck, Copy, Plus, Database } from 'lucide-react'
 import ComponentRequirements from './ComponentRequirements'
 import SavedOrderRequests from '../components/shipping/SavedOrderRequests'
+import InvoiceFollowups from '../components/shipping/InvoiceFollowups'
 import ErpDocModal from '../components/ErpDocModal'
 
 const TABS = [
@@ -49,6 +50,16 @@ function useErpOrders(search) {
 export default function Shipping({uid}) {
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = TABS.find(({ v }) => v === searchParams.get('tab'))?.v ?? 'shipments'
+  const showInvoiceFollowups = searchParams.get('orderView') === 'invoice-followups'
+
+  function selectOrderView(showFollowups) {
+    setSearchParams(current => {
+      const next = new URLSearchParams(current)
+      if (showFollowups) next.set('orderView', 'invoice-followups')
+      else next.delete('orderView')
+      return next
+    })
+  }
 
   function selectTab(value) {
     if (value === tab) return
@@ -76,14 +87,16 @@ export default function Shipping({uid}) {
         </div>
       </div>
 
-      {tab === 'shipments' && <ShipmentsList key={uid} uid={uid} />}
+      {tab === 'shipments' && (showInvoiceFollowups
+        ? <InvoiceFollowups key={uid} onBack={() => selectOrderView(false)} />
+        : <ShipmentsList key={uid} uid={uid} onOpenInvoiceFollowups={() => selectOrderView(true)} />)}
       {tab === 'requirements' && <ComponentRequirements />}
       {tab === 'logistics' && <LogisticsList />}
     </div>
   )
 }
 
-function ShipmentsList({uid}) {
+function ShipmentsList({uid, onOpenInvoiceFollowups}) {
   const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
@@ -168,13 +181,14 @@ function ShipmentsList({uid}) {
   return (
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <p className="text-sm text-ink-60">
           {merged.length} order{merged.length === 1 ? '' : 's'}
           {jesOnly > 0 && <span className="text-ink-60"> · {filtered.length} in the app, {jesOnly} from JES</span>}
           {!showClosed && erp.loading && <span className="text-ink-60"> · loading JES history…</span>}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn-secondary text-sm" onClick={onOpenInvoiceFollowups}>Invoice follow-ups</button>
           {/* An order can be entered directly now, not only imported from a PDF.
               Without this button the only way in was Import PI, which is why the
               app could parse an order but never originate one. */}

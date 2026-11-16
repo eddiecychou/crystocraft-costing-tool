@@ -1,8 +1,7 @@
-import { useState } from 'react'
-import { invoiceFollowupsDone, invoiceFollowupReviewTarget, sameInvoiceValue } from '../../invoiceRecoveryModel'
+import { useEffect, useRef, useState } from 'react'
+import { invoiceFollowupsDone, invoiceFollowupReviewTarget, sameInvoiceValue,
+  invoiceFollowupStageLabel, invoiceFollowupDispositionLabel } from '../../invoiceRecoveryModel'
 
-const stageLabel = { financial: 'Financial copy', woo: 'UC Registry' }
-const dispositionLabel = { resume: 'Ready to resume', in_progress: 'In progress', finance_review: 'Finance review needed' }
 export default function ShipmentInvoiceRecovery({
   state,
   busy,
@@ -12,6 +11,7 @@ export default function ShipmentInvoiceRecovery({
   readOnly = false,
   statusUnavailable = false,
   onRefresh,
+  focusedFollowupId,
 }) {
   const [selection, setSelection] = useState(null),
     [reason, setReason] = useState(''),
@@ -21,6 +21,13 @@ export default function ShipmentInvoiceRecovery({
   const entries = state?.followupChecklist?.entries || []
   const current = entries.find(row => row.id === op?.id)
   const unavailable = statusUnavailable || state?.followupChecklist?.unavailable
+  const focusedRead = Boolean(focusedFollowupId && state?.focusedFollowupId === focusedFollowupId)
+  const focusedRow = focusedRead && !unavailable && entries.some(row => row.id === focusedFollowupId)
+  const focusRef = useRef(null)
+  useEffect(() => {
+    if (!focusedFollowupId || (!focusedRead && !unavailable)) return
+    focusRef.current?.focus()
+  }, [focusedFollowupId, focusedRead, focusedRow, unavailable])
   const canManage = !readOnly && state?.canManage !== false
   const needsResume = op && (op.status !== 'linked' || !invoiceFollowupsDone(op))
   const canResume = needsResume && (!current || current.disposition === 'resume')
@@ -146,20 +153,24 @@ export default function ShipmentInvoiceRecovery({
             : 'Checking saved invoice status…'}
         </p>
       )}
-      {(unavailable || state?.followupChecklist?.incomplete || entries.length > 0) && (
+      {(focusedFollowupId || unavailable || state?.followupChecklist?.incomplete || entries.length > 0) && (
         <div className="border-t border-warm-grey pt-3 space-y-2">
           <h3 className="eyebrow">Invoice follow-ups</h3>
-          {unavailable && <p role="status" className="text-sm">Follow-ups could not be verified. {onRefresh &&
+          {unavailable && <p ref={focusedFollowupId ? focusRef : null} tabIndex={focusedFollowupId ? -1 : undefined} role="status" className="text-sm">Follow-ups could not be verified. {onRefresh &&
             <button type="button" onClick={onRefresh} disabled={busy} className="text-brand-600 underline">Refresh invoice status</button>}
           </p>}
+          {focusedFollowupId && !unavailable && !focusedRead && <p role="status" className="text-sm text-ink-60">Checking the selected invoice follow-up…</p>}
+          {focusedRead && !unavailable && !focusedRow && <p ref={focusRef} tabIndex={-1} role="status" className="text-sm text-ink-60">The selected invoice follow-up is no longer pending or could not be found on this order.</p>}
           {state?.followupChecklist?.incomplete && <p role="status" className="text-sm">This list includes the first 500 linked receipts. Ask Finance to check the remaining history.</p>}
           <ul className="divide-y divide-warm-grey">
-            {entries.map(row => <li key={row.id} className="space-y-1 py-2 text-sm break-words">
+            {entries.map(row => <li key={row.id} ref={focusedRow && row.id === focusedFollowupId ? focusRef : null}
+              tabIndex={focusedRow && row.id === focusedFollowupId ? -1 : undefined}
+              className={`space-y-1 py-2 text-sm break-words ${focusedRow && row.id === focusedFollowupId ? 'border-l-2 border-brand-600 pl-3 bg-ivory' : ''}`}>
               <p><strong>{row.result.si_no} · {row.result.uc_no}</strong> · {row.current ? 'Current invoice' : 'Historical invoice'}</p>
-              <p className={row.disposition === 'finance_review' ? 'text-amber-800' : 'text-ink-70'}>{dispositionLabel[row.disposition]}</p>
+              <p className={row.disposition === 'finance_review' ? 'text-amber-800' : 'text-ink-70'}>{invoiceFollowupDispositionLabel[row.disposition]}</p>
               {row.referenceConflict && <p className="text-amber-800">Saved invoice references or customer details have changed.</p>}
               {row.stages.map(stage => <p key={stage.stage} className="text-ink-70">
-                {stageLabel[stage.stage]} · {stage.inProgress ? 'In progress' : 'Pending'}{stage.error ? ` · ${stage.error}` : ''}
+                {invoiceFollowupStageLabel[stage.stage]} · {stage.inProgress ? 'In progress' : 'Pending'}{stage.error ? ` · ${stage.error}` : ''}
               </p>)}
               {canManage && !row.current && <button type="button" className="btn-secondary min-h-[44px]"
                 disabled={busy || unavailable} onClick={() => open('closure_review_followups', row)}>

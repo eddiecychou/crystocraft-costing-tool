@@ -235,6 +235,21 @@ test('Raise invoice arrival still scrolls/focuses the exact invoice input after 
  HTMLElement.prototype.scrollIntoView=function(options){calls.push({node:this,options})}
  try{await render();assert.equal(document.activeElement,input('Invoice No'));assert.equal(calls.length,1);assert.equal(calls[0].node,input('Invoice No'));assert.deepEqual(calls[0].options,{block:'center',behavior:'smooth'});assert.deepEqual(f.calls,[])}finally{if(original)HTMLElement.prototype.scrollIntoView=original;else delete HTMLElement.prototype.scrollIntoView}
 })
+test('the order deep link reads and focuses the historical split without issuing or selecting the current reissue',async()=>{
+ const split='12345678-1234-4123-8123-123456789abc',reissue='87654321-1234-4123-8123-123456789abc'
+ f.search=`followup=${split}`;f.order.invoice_allocation_id=reissue
+ const requests=[]
+ f.invoiceAction=async(...args)=>{
+  requests.push(args)
+  return {focusedFollowupId:split,followupChecklist:{entries:[
+    {id:split,current:false,disposition:'finance_review',result:{si_no:'SI260099',uc_no:'UC99/26'},stages:[]},
+  ]}}
+ }
+ await render()
+ assert.deepEqual(requests,[[f.id,'status',{followup_id:split}]])
+ assert.match(document.activeElement.textContent,/SI260099.*Historical invoice/)
+ assert.deepEqual(f.orderWrites,[])
+})
 test('route reuse clears saved references/source for a new order and keeps allocation callbacks current',async()=>{
  Object.assign(f.order,{erp_so_no:'SO-OLD',erp_si_no:'SI-OLD',uc_no:'UC-OLD',source_file:{url:'https://fictional.invalid/old.pdf',name:'Old PI'}});await render();assert.equal(input('Invoice No').value,'SI-OLD')
  f.id=undefined;await render();for(const label of ['SO / Doc No','UC#','Invoice No','Customer PO','Revision'])assert.equal(input(label).value,'');assert.equal(panel().querySelector('a'),null)

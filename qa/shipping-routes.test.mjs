@@ -27,7 +27,7 @@ const pass = 'export default ({children})=>children??null'
 const fail = '()=>{throw Error("Unexpected write in the Shipping routing test")}'
 const stubs = {
   useAuthState: 'export const useAuthState=()=>globalThis.fixture.profile?{uid:"fictional"}:null',
-  firebase: 'export const db={};export const authedUser=async()=>({uid:"fictional",getIdToken:async()=>"fictional-token"});',
+  firebase: 'export const db={};export const authedUser=async()=>({uid:"fictional",getIdToken:async()=>"fictional-token"});export const authHeader=async()=>({Authorization:"Bearer fictional-token"});',
   firestore: `export const doc=(...args)=>args; export const onSnapshot=(_path,next)=>{next({id:'fictional',exists:()=>true,data:()=>globalThis.fixture.profile});return()=>{}}`,
   Layout: pass, CustomerLayout: pass, ErrorBoundary: pass,
   store: `export const CartProvider=${pass.split('default ')[1]}, FavouritesProvider=CartProvider`,
@@ -44,7 +44,7 @@ const stubs = {
   customer: 'export const useCustomers=()=>({customers:[]})',
   erpApi: `export const erpLookup=async(entity,filters)=>{const f=globalThis.fixture;f.calls.push([entity,filters.q]);if(f.erpFailure)throw Error('Fictional archive failure');return f[entity]};export const erpLines=async(of,id)=>{globalThis.fixture.calls.push([of,id]);return {rows:[{seq:1,item_code:'FICT-ARCHIVE-ITEM',description:'Fictional ERP line',qty:7,unit:'pcs',unit_price:3}],surcharges:[]}}`,
 }
-const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'InvoiceOriginalButton', 'LogisticsVendorForm', 'ErpDocModal', 'ExportFilterBar', 'i18n', 'access', 'useProfile'])
+const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'InvoiceOriginalButton', 'LogisticsVendorForm', 'ErpDocModal', 'ExportFilterBar', 'InvoiceFollowups', 'i18n', 'access', 'useProfile'])
 const routeOutput = name => `import React from 'react';import{useParams}from 'react-router-dom';export default function RouteProbe(){return React.createElement('div',{'data-route':${JSON.stringify(name)}},JSON.stringify(Object.fromEntries(Object.entries(useParams()).filter(([key])=>key!=='*'))))}`
 before(async () => {
   const result = await build({ entryPoints: ['src/App.jsx'], bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic', external: [], plugins: [{ name: 'local-route-fixture',setup(builder) {
@@ -64,7 +64,14 @@ before(async () => {
   await writeFile(bundle, result.outputFiles[0].text)
   app = (await import(pathToFileURL(bundle).href)).default
   originalFetch = globalThis.fetch
-  globalThis.fetch = () => { throw Error('Network forbidden in this fixture') }
+  globalThis.fetch = (path, options) => {
+    if (/^\/api\/invoice-followups(?:\?|$)/.test(path) && globalThis.fixture?.followups) {
+      assert.equal(options.method ?? 'GET', 'GET')
+      assert.equal(options.headers.Authorization, 'Bearer fictional-token')
+      return globalThis.fixture.followups(new URL(path, window.location.origin).searchParams.get('cursor'))
+    }
+    throw Error('Network forbidden in this fixture')
+  }
 })
 after(async () => { globalThis.fetch = originalFetch; dom.window.close(); if (scratch) await rm(scratch, { recursive: true, force: true }) })
 const settle = async (ms = 0) => { await act(async () => { await new Promise(resolve => setTimeout(resolve, ms)) }) }
@@ -149,6 +156,46 @@ test('tab links keep unrelated query parameters and restore selection from brows
     pathIs('/shipping?source=fictional')
     assert.equal(buttons('Orders').getAttribute('aria-pressed'), 'true')
   })
+})
+
+test('Shipping follow-ups retain the failed cursor and open the exact historical or current receipt', async () => {
+  const split = '12345678-1234-4123-8123-123456789abc', reissue = '12345678-1234-4123-8123-123456789abd'
+  const base = { orderId: 'fictional-order', reference: 'SO260050', customer: 'Fictional OC buyer', stages: [{stage:'financial'}] }
+  const reads = []
+  const followups = cursor => {
+    reads.push(cursor)
+    if (!cursor) return Response.json({ rows: [], next: 'settled-first-page' })
+    if (reads.length === 2) return Response.json({ error: 'Fictional next page unavailable.' }, { status: 503 })
+    return Response.json({ next: null, rows: [
+      { ...base, operationId: split, si: 'SI260048', uc: 'UC48/26', current: false, disposition: 'finance_review' },
+      { ...base, operationId: reissue, si: 'SI260050', uc: 'UC50/26', current: true, disposition: 'resume' },
+      { orderId: 'fictional-missing', operationId: split, issue: 'order_unavailable' },
+    ] })
+  }
+  await withPage('/shipping?source=fictional', staff, async () => {
+    await click(buttons('Invoice follow-ups'))
+    pathIs('/shipping?source=fictional&orderView=invoice-followups')
+    assert.match(host.textContent, /More receipts are available to check/)
+    assert.doesNotMatch(host.textContent, /No pending invoice follow-ups\./)
+    await click(buttons('Check more receipts'))
+    assert.match(host.textContent, /Fictional next page unavailable/)
+    await click(buttons('Retry'))
+    assert.deepEqual(reads, [null, 'settled-first-page', 'settled-first-page'])
+    assert.match(host.textContent, /Historical invoice/)
+    assert.match(host.textContent, /Current invoice/)
+    assert.match(host.textContent, /Order unavailable/)
+    assert.equal(host.querySelectorAll('a[aria-label^="Open order for"]').length, 2)
+    assert.equal(host.querySelector('[aria-label="Open order for SI260050"]').getAttribute('href'), `/shipments/fictional-order?followup=${reissue}`)
+    await click(host.querySelector('[aria-label="Open order for SI260048"]'))
+    pathIs(`/shipments/fictional-order?followup=${split}`)
+    route('ShipmentForm', {id:'fictional-order'})
+  }, { followups })
+  for (const user of [customer, profile('staff', ['invoices'])]) {
+    await withPage('/shipping?orderView=invoice-followups', user, () => {
+      assert.equal(host.querySelector('#invoice-followups-heading'), null)
+    }, { followups })
+  }
+  assert.equal(reads.length, 3)
 })
 
 test('entry query flags, saved IDs and staff print shapes resolve through original gates', async () => {

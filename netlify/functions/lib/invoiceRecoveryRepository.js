@@ -1,6 +1,7 @@
 import { permitted } from './orderRequestAccess.js'
 import { readInitialDirectInvoice } from './initialDirectInvoice.js'
 import { createInvoiceFollowupQueue, followupStages } from './invoiceFollowupQueue.js'
+import { classifyInvoiceFollowup } from './invoiceFollowupStatus.js'
 
 import { orderEditRevision } from '../../../src/orderEditModel.js'
 import { randomUUID } from 'node:crypto'
@@ -11,7 +12,6 @@ import {
   invoiceSubject,
   invoiceRequestSnapshot,
   invoiceFollowupsDone,
-  invoiceFollowupSettled,
   linkedInvoiceReceipt,
   sameInvoiceValue,
   validInvoiceOperationId
@@ -91,32 +91,28 @@ export function createInvoiceRecoveryRepository(
         throw new InvoiceRecoveryError('Invoice request not found.')
       return op
     },
-    async followupChecklist(saved, operation) {
+    async followupChecklist(saved, operation, targetId) {
       const id = saved.id, pointer = saved.invoice_allocation_id
-      const [all, jobs] = await Promise.all([
+      const [all, jobs, target] = await Promise.all([
         order(id).collection('invoice_allocations').where('status', '==', 'linked').limit(501).get(),
         validInvoiceOperationId(pointer) ? db.getAll(...followupStages.map(stage =>
           db.doc(`invoice_followup_jobs/${pointer}_${stage}`))) : [],
+        targetId && targetId !== pointer ? request(id, targetId).get() : null,
       ])
-      const expected = invoiceExpected(saved)
       const now = Date.now()
       const candidates = all.docs.slice(0, 500).map(doc => [doc.id, doc.data()])
       if (operation && !candidates.some(([id]) => id === operation.id)) candidates.push([operation.id, operation])
+      // Use the exact read for a deep link, even when the newest checklist page
+      // omitted it or the receipt was settled while the two reads were in flight.
+      if (target) {
+        const index = candidates.findIndex(([id]) => id === targetId)
+        if (index >= 0) candidates.splice(index, 1)
+        if (target.exists) candidates.push([targetId, target.data()])
+      }
+      const byStage = new Map(jobs.map((job, i) => [followupStages[i], job.data()]))
       const entries = candidates.flatMap(([operationId, op]) => {
         if (!linkedInvoiceReceipt(op, operationId, id) || invoiceFollowupsDone(op)) return []
-        const current = op.id === pointer
-        const stages = followupStages.filter(stage => !invoiceFollowupSettled(op.followups?.[stage])).map(stage => {
-          const followup = op.followups?.[stage]
-          const job = current ? jobs[followupStages.indexOf(stage)]?.data() : null
-          const inProgress = job?.operation_id === op.id && job.order_id === id && job.stage === stage && job.lease_until > now
-          return { stage, error: followup?.error || '', inProgress, requiresReview: followup?.requires_review === true }
-        })
-        const matches = expected.si === op.result.si_no && expected.uc === op.result.uc_no &&
-          expected.customer === op.request?.customer && expected.currency === op.request?.currency
-        const disposition = stages.some(stage => stage.inProgress) ? 'in_progress'
-          : !current || !matches || saved.shipping_closed || stages.some(stage => stage.requiresReview) ? 'finance_review' : 'resume'
-        return [{ id: op.id, result: { si_no: op.result.si_no, uc_no: op.result.uc_no }, current,
-          disposition, referenceConflict: current && !matches, stages }]
+        return [classifyInvoiceFollowup(saved, op, byStage, now)]
       })
       entries.sort((a, b) => Number(b.current) - Number(a.current) || b.result.si_no.localeCompare(a.result.si_no))
       return { entries, incomplete: all.size > 500 }

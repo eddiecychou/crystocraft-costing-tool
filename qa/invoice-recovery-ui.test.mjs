@@ -73,12 +73,13 @@ afterEach(async () => {
   await act(async () => root.unmount())
   host.remove()
 })
-const render = async (busy = false) =>
+const render = async (busy = false, focusedFollowupId) =>
   act(async () =>
     root.render(
       React.createElement(Panel, {
         state,
         busy,
+        focusedFollowupId,
         hasInvoice: true,
         onAction: async (...args) => calls.push(args)
       })
@@ -93,6 +94,25 @@ const reason = async () =>
       target: { value: 'Reviewed fictional split' }
     })
   )
+
+test('a deep link focuses only the verified follow-up and explains when it has settled', async () => {
+  const split = '12345678-1234-4123-8123-123456789abd'
+  state.followupChecklist = { entries: [
+    { id: split, current: false, disposition: 'finance_review', result: {si_no:'SI260099',uc_no:'UC99/26'}, stages: [] },
+    { id: operation.id, current: true, disposition: 'resume', result: operation.result, stages: [] },
+  ] }
+  await render(false, split)
+  assert.match(host.textContent, /Checking the selected invoice follow-up/)
+  state.focusedFollowupId = split
+  await render(false, split)
+  assert.equal(document.activeElement.tagName, 'LI')
+  assert.match(document.activeElement.textContent, /SI260099/)
+  assert.doesNotMatch(document.activeElement.textContent, /SI260100/)
+  state.followupChecklist.entries.shift()
+  await render(false, split)
+  assert.match(document.activeElement.textContent, /no longer pending/)
+  assert.equal(calls.length, 0)
+})
 test('separate split/reissue action requires purpose/reason and sends reviewed previous operation without automatic voiding', async () => {
   await render()
   assert.equal(calls.length, 0)

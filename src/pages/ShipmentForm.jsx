@@ -24,7 +24,7 @@ import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo } from '../soNumber'
 import { upsertInvoice, allocateOrderUc } from '../ucRegistry'
 import {invoiceAction} from '../invoiceRecovery'
-import {invoiceExpected,invoiceReferenceValues,invoiceReferenceSavePatch,sameInvoiceValue} from '../invoiceRecoveryModel.js'
+import {invoiceExpected,invoiceReferenceValues,invoiceReferenceSavePatch,sameInvoiceValue,validInvoiceOperationId} from '../invoiceRecoveryModel.js'
 import ShipmentInvoiceRecovery from '../components/shipping/ShipmentInvoiceRecovery'
 import QuoteOrderRecovery from '../components/shipping/QuoteOrderRecovery'
 import {quoteConversionAction} from '../quoteConversion'
@@ -122,6 +122,8 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   // long and the invoice field is well down it, so landing here without being
   // shown where to go is the same discoverability problem that action fixes.
   const wantsInvoice = searchParams.get('invoice') === '1'
+  const requestedFollowup = searchParams.get('followup')
+  const focusedFollowupId = validInvoiceOperationId(requestedFollowup) ? requestedFollowup : null
   const invoiceFieldRef = useRef(null)
 
   const [header, setHeader]   = useState(() => {
@@ -457,7 +459,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   const [invoiceStatusError, setInvoiceStatusError] = useState('')
   const [invoiceReadAttempt, setInvoiceReadAttempt] = useState(0)
   const hasSavedInvoice = Boolean(invoiceExpected(header).si)
-  const shouldReadInvoice = Boolean(header.invoice_allocation_id || header.source === 'direct_invoice')
+  const shouldReadInvoice = Boolean(header.invoice_allocation_id || header.source === 'direct_invoice' || focusedFollowupId)
   const invoiceActionDisabled = !canManageInvoices || Boolean(invoiceStatusError || invoiceState?.followupChecklist?.unavailable) ||
     (shouldReadInvoice && !invoiceState)
   const invoiceLocked=allocatingSi||Boolean(invoiceState?.operation&&invoiceState.operation.status!=='linked')
@@ -482,13 +484,13 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
     const read=async()=>{
       if(invoiceInFlight.current)return
       const seq=++invoiceReadSequence.current
-      try{const state=await invoiceAction(id,'status');if(alive&&seq===invoiceReadSequence.current){applyInvoiceState(state);setInvoiceStatusError('')}}
+      try{const state=await invoiceAction(id,'status',focusedFollowupId ? {followup_id:focusedFollowupId} : {});if(alive&&seq===invoiceReadSequence.current){applyInvoiceState(state);setInvoiceStatusError('')}}
       catch(error){if(alive&&seq===invoiceReadSequence.current)setInvoiceStatusError(error.message)}
     }
     read()
     const timer=setInterval(read,15000)
     return()=>{alive=false;clearInterval(timer)}
-  },[id,isEdit,fetching,loadError,shouldReadInvoice,header.invoice_allocation_id,invoiceReadAttempt])
+  },[id,isEdit,fetching,loadError,shouldReadInvoice,header.invoice_allocation_id,invoiceReadAttempt,focusedFollowupId])
 
   async function runInvoiceAction(action,details={}) {
     if(invoiceActionDisabled||editConflict||saveInFlight.current||invoiceInFlight.current||allocatingSo||allocatingUc)return
@@ -498,7 +500,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
     try{
       let state=await invoiceAction(id,action,{...details,...(['raise','new'].includes(action)?{expected:invoiceExpected(header)}:{})})
       if (action === 'closure_review_followups') {
-        try { state = await invoiceAction(id, 'status') }
+        try { state = await invoiceAction(id, 'status', focusedFollowupId ? {followup_id:focusedFollowupId} : {}) }
         catch {
           if (mounted.current) setInvoiceStatusError('Finance review was recorded. Refresh invoice status to see the result.')
           return
@@ -769,6 +771,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
 
       {isEdit&&(invoiceState||shouldReadInvoice||hasSavedInvoice)&&<ShipmentInvoiceRecovery key={id}
         state={invoiceState||(!shouldReadInvoice?{order:header,expected:invoiceExpected(header),history:[],operation:null,canStartNew:true}:null)}
+        focusedFollowupId={focusedFollowupId}
         readOnly={closed||!canManageInvoices} busy={allocatingSi||saving||Boolean(editConflict)}
         error={invoiceStatusError||siError} hasInvoice={hasSavedInvoice} onAction={runInvoiceAction}
         statusUnavailable={Boolean(invoiceStatusError)} onRefresh={()=>setInvoiceReadAttempt(n=>n+1)}

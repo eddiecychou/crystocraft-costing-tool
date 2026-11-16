@@ -78,11 +78,14 @@ export function createInvoiceRecoveryHandler({
               'request_id',
               'purpose',
               'reason',
-              'review_expected'
+              'review_expected',
+              'followup_id'
             ].includes(k)
         )
       )
         throw new InvoiceRecoveryError('Invalid invoice request.', 400)
+      if (input.followup_id !== undefined && (input.action !== 'status' || !validInvoiceOperationId(input.followup_id)))
+        throw new InvoiceRecoveryError('Choose a valid invoice follow-up.', 400)
       if (input.action === 'ready') {
         await sql.lookup('00000000-0000-0000-0000-000000000000')
         return json({ ready: true })
@@ -108,10 +111,11 @@ export function createInvoiceRecoveryHandler({
       const canManage = has(profile, 'uc')
       const respond = async (state) => {
         let followupChecklist
-        try { followupChecklist = await repo.followupChecklist(state.order, state.operation) }
+        try { followupChecklist = await repo.followupChecklist(state.order, state.operation, input.followup_id) }
         catch { followupChecklist = { unavailable: true, entries: [] } }
         return json({ ...invoiceRecoveryView(state.order, state.operation, state.history),
-          editBase: orderEditBase(state.order), moreHistory: state.moreHistory, followupChecklist, canManage })
+          editBase: orderEditBase(state.order), moreHistory: state.moreHistory, followupChecklist, canManage,
+          ...(input.followup_id ? { focusedFollowupId: input.followup_id } : {}) })
       }
       if (input.action === 'status') {
         const state = await repo.state(id),
