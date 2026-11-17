@@ -220,13 +220,14 @@ test('Raise in the order header sends the operation rendered before another tab 
  assert.match(host.textContent,/Another invoice request is current/)
  assert.deepEqual(f.orderWrites,[])
 })
-test('conflicting receipt status pauses Resume in both the order header and invoice reference controls',async()=>{
- const selected='12345678-1234-4123-8123-123456789abc'
+test('a current receipt conflict pauses linking while keeping review of an independently linked historical invoice',async()=>{
+ const selected='12345678-1234-4123-8123-123456789abc',history='12345678-1234-4123-8123-123456789abd'
  f.order.invoice_allocation_id=selected
  const requests=[]
  f.invoiceAction=async(...args)=>{
   requests.push(args)
-  return {operation:{id:selected,status:'pending',receiptStatus:'conflict',followups:{}},canStartNew:false}
+  return {operation:{id:selected,status:'pending',receiptStatus:'conflict',followups:{}},canStartNew:false,
+    followupChecklist:{entries:[{id:history,current:false,disposition:'finance_review',result:{si_no:'SI260099',uc_no:'UC99/26'},stages:[]}]}}
  }
  await render()
  assert.match(host.textContent,/Conflicting receipt evidence/)
@@ -236,6 +237,11 @@ test('conflicting receipt status pauses Resume in both the order header and invo
  await click(raise)
  await click(allocation('Invoice No'))
  assert.deepEqual(requests,[[f.id,'status',{}]])
+ await click([...host.querySelectorAll('button')].find(button=>button.textContent.trim()==='Record Finance review for SI260099'))
+ await fill(host.querySelector('textarea[maxlength="500"]'),'Fictional review of the earlier invoice')
+ await click([...host.querySelectorAll('button')].find(button=>button.textContent.trim()==='Confirm'))
+ assert.equal(requests.filter(([,action])=>action==='closure_review_followups').length,1)
+ assert.equal(requests.find(([,action])=>action==='closure_review_followups')[2].previous_operation_id,history)
  assert.deepEqual(f.orderWrites,[])
 })
 // The separately authorized Woo metadata repair intentionally updates the two

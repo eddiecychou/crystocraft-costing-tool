@@ -461,8 +461,8 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   const hasSavedInvoice = Boolean(invoiceExpected(header).si)
   const shouldReadInvoice = Boolean(header.invoice_allocation_id || header.source === 'direct_invoice' || focusedFollowupId)
   const invoiceActionDisabled = !canManageInvoices || Boolean(invoiceStatusError || invoiceState?.followupChecklist?.unavailable || invoiceState?.linkBlocked) ||
-    invoiceReceiptCheckBlocked(invoiceState?.operation) ||
     (shouldReadInvoice && !invoiceState)
+  const invoiceLinkActionDisabled = invoiceActionDisabled || invoiceReceiptCheckBlocked(invoiceState?.operation)
   const invoiceLocked=allocatingSi||Boolean(invoiceState?.operation&&invoiceState.operation.status!=='linked')
   function applyInvoiceState(state) {
     setInvoiceState(state)
@@ -496,7 +496,8 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   },[id,isEdit,fetching,loadError,shouldReadInvoice,header.invoice_allocation_id,invoiceReadAttempt,focusedFollowupId])
 
   async function runInvoiceAction(action,details={}) {
-    if(invoiceActionDisabled||editConflict||saveInFlight.current||invoiceInFlight.current||allocatingSo||allocatingUc)return
+    const disabled = action === 'closure_review_followups' ? invoiceActionDisabled : invoiceLinkActionDisabled
+    if(disabled||editConflict||saveInFlight.current||invoiceInFlight.current||allocatingSo||allocatingUc)return
     if(!id){setSiError('Create and save this order before raising its invoice.');return}
     invoiceInFlight.current=true;++invoiceReadSequence.current
     setAllocatingSi(true);setSiError('')
@@ -765,7 +766,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
         id={id} isEdit={isEdit} isDirect={isDirect} closed={closed} fromQuote={hasQuoteSource}
         invoiceNo={header.erp_si_no} ucNo={header.uc_no}
         allocatingSi={allocatingSi} saving={saving || Boolean(editConflict)} siError={siError}
-        invoiceActionDisabled={invoiceActionDisabled}
+        invoiceActionDisabled={invoiceLinkActionDisabled}
         onRaiseInvoice={doAllocateSi} tab={tab} onTabChange={setTab}
       />
 
@@ -853,7 +854,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
           header={header} setH={setH}
           doAllocateSo={doAllocateSo} allocatingSo={allocatingSo} soError={soError}
           doAllocateUc={doAllocateUc} allocatingUc={allocatingUc} ucError={ucError}
-          doAllocateSi={doAllocateSi} allocatingSi={allocatingSi} siError={siError} invoiceActionDisabled={invoiceActionDisabled}
+          doAllocateSi={doAllocateSi} allocatingSi={allocatingSi} siError={siError} invoiceActionDisabled={invoiceLinkActionDisabled}
           invoiceFieldRef={invoiceFieldRef}
           referencesLocked={invoiceLocked}
           onNewRevision={() => setHeader(h => ({ ...h, pi_revision: String((parseInt(h.pi_revision, 10) || 0) + 1) }))}
