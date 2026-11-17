@@ -30,27 +30,25 @@ export default function ShipmentInvoiceRecovery({
   }, [focusedFollowupId, focusedRead, focusedRow, unavailable])
   const canManage = !readOnly && state?.canManage !== false
   const needsResume = op && (op.status !== 'linked' || !invoiceFollowupsDone(op))
-  const canResume = needsResume && (!current || current.disposition === 'resume')
+  const canResume = needsResume && !state?.linkBlocked && (!current || current.disposition === 'resume')
   const selectedRow = mode === 'closure_review_followups'
     ? entries.find(row => row.id === selection.id && !row.current) : op
-  const liveTarget = invoiceFollowupReviewTarget(state?.order, selectedRow, state?.expected)
+  const liveTarget = mode === 'link_review' ? state?.linkReviewTarget
+    : invoiceFollowupReviewTarget(state?.order, selectedRow, state?.expected)
   const selectionChanged = selection && (selection.id !== (selectedRow?.id || null) ||
     !sameInvoiceValue(selection.target, liveTarget))
   const open = (mode, row = op) => {
-    setSelection({ mode, id: row?.id || null, target: invoiceFollowupReviewTarget(state?.order, row, state?.expected) })
+    const target = mode === 'link_review' ? state.linkReviewTarget : invoiceFollowupReviewTarget(state?.order, row, state?.expected)
+    setSelection({ mode, id: row?.id || null, target })
     setReason('')
   }
-  const subjectMatches =
-    op &&
-    state.expected?.customer === op.customer &&
-    state.expected?.currency === op.currency
   const run = (action) =>
     onAction(action, {
       reason: reason.trim(),
       purpose,
       previous_operation_id: selection.id,
       expected: selection.target.expected,
-      review_expected: action === 'link_review' ? selection.target.expected : selection.target
+      review_expected: selection.target
     })
       .then(() => {
         setSelection(null)
@@ -80,10 +78,11 @@ export default function ShipmentInvoiceRecovery({
           {error}
         </p>
       )}
+      {state?.linkBlocked && <p role="alert" className="text-sm text-amber-800">{state.linkBlocked} Preserve the issued invoice and refer the saved request to Finance.</p>}
       {op ? (
         <>
           <p role="status" className="text-sm break-words">
-            {op.status === 'linked'
+            {state.linkBlocked ? 'Invoice request needs Finance review.' : op.status === 'linked'
               ? invoiceFollowupsDone(op)
                 ? 'Invoice linked.'
                 : 'Invoice linked — follow-up pending.'
@@ -121,7 +120,7 @@ export default function ShipmentInvoiceRecovery({
               >
                 {busy ? 'Confirming…' : 'Resume saved request'}
               </button>}
-              {op.status === 'review_required' && op.result && (
+              {state.linkReviewTarget && (
                 <button
                   type="button"
                   className="btn-secondary min-h-[44px]"
@@ -186,15 +185,12 @@ export default function ShipmentInvoiceRecovery({
             {mode === 'new'
               ? 'Issue a separate invoice. Earlier invoices remain in the ledger; this does not void or replace them.'
               : mode === 'link_review'
-                ? `Link issued invoice ${op?.result?.si_no} to this order. Current invoice: ${state.expected.si || 'none'}; current UC: ${state.expected.uc || 'none'}.`
+                ? `Link issued invoice ${selection.target.si} · ${selection.target.uc} to this order. Current invoice ${selection.target.expected.si || 'none'} · current UC ${selection.target.expected.uc || 'none'}.`
                 : `Record Finance’s completed follow-up review for ${selection.target.si} · ${selection.target.uc}.`}
           </p>
           {selectionChanged && <p role="alert" className="text-sm text-amber-800">The invoice or saved references changed. Reopen the review for the intended invoice before confirming.</p>}
-          {mode === 'link_review' && !subjectMatches && (
-            <p role="alert" className="text-sm text-amber-800">
-              Issued for {op.customer} ({op.currency}). The saved
-              customer/currency differ. Restore or review them before linking.
-            </p>
+          {mode === 'link_review' && (
+            <p className="text-sm text-ink-70">Saved SO {selection.target.references.erp_so_no || 'none'} · PI {selection.target.references.erp_pi_no || 'none'} · invoice date {selection.target.references.invoiced_at || 'none'}</p>
           )}
           {mode === 'new' && (
             <label className="label">
@@ -226,8 +222,7 @@ export default function ShipmentInvoiceRecovery({
               disabled={
                 busy ||
                 unavailable || selectionChanged ||
-                !reason.trim() ||
-                (mode === 'link_review' && !subjectMatches)
+                !reason.trim()
               }
               onClick={() => run(mode)}
             >

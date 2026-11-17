@@ -370,10 +370,11 @@ test(
     assert.equal(r.body.operation.status, 'review_required')
     assert.equal(r.body.order.erp_si_no, 'SI260020')
     const operationId = r.body.operation.id
+    assert.equal(r.body.linkReviewTarget.operationId, operationId)
     r = await request('link_review', {
       previous_operation_id: operationId,
       reason: 'Reviewed fictional original',
-      review_expected: invoiceExpected(await current())
+      review_expected: r.body.linkReviewTarget
     })
     assert.equal(r.body.operation.status, 'linked')
     await assertOne()
@@ -390,17 +391,94 @@ test(
       .doc('orders/' + id)
       .update({ customer_name: 'Different customer' })
     r = await resume()
-    assert.equal(r.body.operation.status, 'review_required')
+    assert.match(r.body.linkBlocked, /Finance review needed/)
+    r = await request('status')
+    assert.equal(r.body.operation.status, 'allocated')
+    assert.ok(r.body.operation.result.si_no)
+    assert.equal(r.body.linkReviewTarget, null)
     r = await request('link_review', {
       previous_operation_id: r.body.operation.id,
       reason: 'Cannot silently change buyer',
       review_expected: invoiceExpected(await current())
     })
-    assert.equal(r.body.operation.status, 'review_required')
-    assert.equal(r.body.order.erp_si_no, 'SI260100')
+    assert.equal(r.status, 409)
+    assert.equal((await current()).erp_si_no, 'SI260100')
   },
   { timeout: 20000 }
 )
+
+test('a split with a saved SQL result blocks a same-name customer ID swap and keeps its issued identity', async () => {
+  await raise()
+  const first = (await request('status')).body
+  faults.link = true
+  assert.equal((await request('new', { purpose:'split', reason:'Fictional split', expected:first.expected,
+    previous_operation_id:first.operation.id })).status,503)
+  const op = (await request('status')).body.operation
+  const prior = await db.counts(), queriesBefore = queries.length
+  const client = doc(env.authenticatedContext('shipping').firestore(), 'orders', id)
+  await assertSucceeds(updateDoc(client, { ...orderEditPatch(orderEditBase(await current()),'other-customer-id'),
+    customer_id:'fictional-other-customer' }))
+  const blocked = (await resume()).body
+  assert.equal(blocked.operation.status,'review_required')
+  assert.match(blocked.linkBlocked,/Finance review needed/)
+  assert.equal(blocked.linkReviewTarget,null)
+  assert.deepEqual(blocked.operation.result,op.result)
+  assert.equal(blocked.order.erp_si_no,first.operation.result.si_no)
+  assert.equal(queries.length,queriesBefore)
+  await store.doc('orders/' + id).update({customer_id:original.customer_id})
+  const linked = (await resume()).body
+  assert.equal(linked.operation.status,'linked')
+  assert.deepEqual(linked.operation.result,op.result)
+  const after = await db.counts()
+  for (const field of ['invoices','ucs','receipts']) assert.equal(after[field],prior[field])
+})
+
+test('a stale date or revision blocks confirming an issued reissue before any new financial write', async () => {
+  await raise()
+  const split = await splitOrReissue('split')
+  faults.link = true
+  const first = await current()
+  assert.equal((await request('new', { purpose:'reissue', reason:'Fictional reissue', expected:invoiceExpected(first),
+    previous_operation_id:split.id })).status,503)
+  await store.doc('orders/' + id).update({uc_no:'UC999/26',invoice_reference_revision:first.invoice_reference_revision+2})
+  const reviewed = (await resume()).body
+  assert.equal(reviewed.operation.status,'review_required')
+  const before = await db.counts(), sqlBefore = queries.length
+  const confirm = target => request('link_review', { previous_operation_id:reviewed.operation.id,
+    reason:'Reviewed fictional reissue',review_expected:target })
+  await store.doc('orders/' + id).update({invoiced_at:'2026-10-15',invoice_reference_revision:reviewed.linkReviewTarget.referenceRevision+1})
+  assert.equal((await confirm(reviewed.linkReviewTarget)).status,409)
+  assert.equal((await current()).invoiced_at,'2026-10-15')
+  assert.deepEqual(await db.counts(),before)
+  assert.equal(queries.length,sqlBefore)
+  const beforeRevision = (await request('status')).body.linkReviewTarget
+  await store.doc('orders/' + id).update({invoice_reference_revision:beforeRevision.referenceRevision+1})
+  assert.equal((await confirm(beforeRevision)).status,409)
+  assert.equal(queries.length,sqlBefore)
+  const fresh = (await request('status')).body.linkReviewTarget
+  const linked = (await confirm(fresh)).body
+  assert.equal(linked.operation.status,'linked')
+  assert.deepEqual(linked.operation.result,reviewed.operation.result)
+  assert.equal(linked.history.find(op=>op.id===split.id).result.si_no,split.result.si_no)
+  const after = await db.counts()
+  for (const field of ['invoices','ucs','receipts']) assert.equal(after[field],before[field])
+})
+
+test('a legacy unlinked first invoice without a saved customer ID keeps its SI and UC for Finance', async () => {
+  faults.link = true
+  assert.equal((await raise()).status,503)
+  const op = (await request('status')).body.operation
+  await store.doc(`orders/${id}/invoice_allocations/${op.id}`).update({'before.customerId':FieldValue.delete()})
+  const before = await db.counts(), sqlBefore = queries.length
+  const unresolved = (await resume()).body
+  assert.match(unresolved.linkBlocked,/no verifiable customer ID/)
+  assert.equal(unresolved.operation.status,'review_required')
+  assert.equal(unresolved.linkReviewTarget,null)
+  assert.deepEqual(unresolved.operation.result,op.result)
+  assert.equal(unresolved.order.erp_si_no,'')
+  assert.deepEqual(await db.counts(),before)
+  assert.equal(queries.length,sqlBefore)
+})
 test(
   'explicit split and reissued invoices use distinct operations while same-action retries and late workers cannot duplicate or overwrite',
   async () => {

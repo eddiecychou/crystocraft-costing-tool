@@ -1,6 +1,7 @@
 import {
   invoiceExpected,
   invoiceFollowupsDone,
+  invoiceLinkOwnershipIssue,
   invoiceSubject,
   sameInvoiceValue,
   validInvoiceOperationId
@@ -86,10 +87,7 @@ export async function readInitialDirectInvoice(tx, request, order) {
     if (
       saved.invoice_allocation_id !== op.id ||
       !['pending', 'allocated'].includes(op.status) ||
-      !sameInvoiceValue(invoiceSubject(saved), {
-        customer: op.request.customer,
-        currency: op.request.currency
-      })
+      invoiceLinkOwnershipIssue(saved, op)
     )
       return {
         ...review('Review the first invoice request on the saved order.'),

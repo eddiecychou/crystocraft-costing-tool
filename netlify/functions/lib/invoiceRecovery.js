@@ -3,6 +3,7 @@ import {
   invoiceRecoveryView,
   invoiceResult,
   invoiceFollowupReviewTarget,
+  invoiceLinkOwnershipIssue,
   sameInvoiceValue,
   validInvoiceOrderId,
   validInvoiceOperationId,
@@ -243,7 +244,12 @@ export function createInvoiceRecoveryHandler({
           throw new InvoiceRecoveryError(
             'Another invoice request has started. Reload before reviewing references.'
           )
+        if (input.action === 'link_review' && !op.result)
+          throw new InvoiceRecoveryError('Confirm the existing issued invoice before reviewing its order link.')
         if (!op.result) {
+          // Before the SQL result exists locally, Resume can create a number.
+          // Leave unverifiable ownership for Finance before calling the allocator.
+          if (state.order && invoiceLinkOwnershipIssue(state.order, op)) return respond(state)
           try {
             const receipt = await sql.allocate(op),
               result = invoiceResult(receipt, op)
@@ -289,6 +295,7 @@ export function createInvoiceRecoveryHandler({
                 : null
             )
           } catch (error) {
+            if (error instanceof InvoiceRecoveryError) throw error
             await repo
               .error(
                 id,

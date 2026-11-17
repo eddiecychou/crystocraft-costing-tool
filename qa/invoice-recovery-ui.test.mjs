@@ -134,21 +134,42 @@ test('separate split/reissue action requires purpose/reason and sends reviewed p
   await click('Confirm')
   assert.equal(calls[1][1].purpose, 'reissue')
 })
-test('issued-unlinked state shows its actual SI/UC and only resumes; customer conflict blocks reviewed linking', async () => {
+test('issued-unlinked state keeps its SI and UC visible and sends a customer conflict to Finance', async () => {
   state.operation.status = 'review_required'
   state.canStartNew = false
   state.expected.customer = 'Changed buyer'
+  state.linkBlocked = 'Finance review needed. The saved customer or currency changed after the invoice request started.'
   await render()
-  assert.ok(button('Resume saved request'))
+  assert.equal(button('Resume saved request'), undefined)
   assert.equal(button('New split / reissued invoice'), undefined)
+  assert.equal(button('Review references'), undefined)
   assert.match(host.textContent, /SI260100 · UC100\/26/)
+  assert.match(host.textContent, /Finance review needed/)
+  assert.deepEqual(calls, [])
+})
+
+test('link review confirmation keeps the full reference snapshot and invalidates a stale date', async () => {
+  state.operation.status = 'review_required'
+  state.canStartNew = false
+  state.linkReviewTarget = { operationId: operation.id, expected: state.expected, si: 'SI260100', uc: 'UC100/26',
+    referenceRevision: 5, references: { erp_so_no: 'SO260016', erp_pi_no: 'PI260080', invoiced_at: '2026-11-15' },
+    customerId: 'fictional-buyer', invoiceId: '99' }
+  await render()
   await click('Review references')
   await reason()
+  assert.equal(button('Confirm').disabled, false)
+  state.linkReviewTarget = { ...state.linkReviewTarget, referenceRevision: 6,
+    references: { ...state.linkReviewTarget.references, invoiced_at: '2026-11-16' } }
+  await render()
   assert.equal(button('Confirm').disabled, true)
-  assert.match(host.textContent, /customer\/currency differ/)
+  assert.match(host.textContent, /saved references changed/)
+  assert.match(host.querySelector('textarea').value, /Reviewed fictional split/)
   await click('Cancel')
-  await click('Resume saved request')
-  assert.deepEqual(calls[0], ['resume', { previous_operation_id: operation.id }])
+  await click('Review references')
+  await reason()
+  await click('Confirm')
+  assert.equal(calls[0][0], 'link_review')
+  assert.deepEqual(calls[0][1].review_expected,state.linkReviewTarget)
 })
 test('pending financial follow-up and history remain visible; explicit manual review requires reason and pins operation', async () => {
   state.operation.followups.financial = {

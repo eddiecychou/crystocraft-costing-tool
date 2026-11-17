@@ -64,6 +64,30 @@ export const invoiceFollowupReviewTarget = (order, op, expected = invoiceExpecte
   uc: op?.result?.uc_no || '',
 })
 
+export function invoiceCustomerId(order) {
+  const id = order?.customer_id
+  if (id == null || id === '') return null
+  return typeof id === 'string' && id.trim() === id ? id : undefined
+}
+
+export function invoiceLinkOwnershipIssue(order, operation) {
+  const customerId = invoiceCustomerId(order)
+  if (customerId === undefined || operation.before?.customerId === undefined)
+    return 'Finance review needed. The saved invoice request has no verifiable customer ID.'
+  if (customerId !== operation.before.customerId || !sameInvoiceValue(invoiceSubject(order), {
+    customer: operation.request?.customer, currency: operation.request?.currency
+  })) return 'Finance review needed. The saved customer or currency changed after the invoice request started.'
+  return ''
+}
+
+export const invoiceLinkReviewTarget = (order, op) => ({
+  ...invoiceFollowupReviewTarget(order, op),
+  operationId: op.id,
+  references: invoiceReferenceValues(order),
+  customerId: invoiceCustomerId(order),
+  invoiceId: String(op.result?.invoice_id ?? ''),
+})
+
 export const linkedInvoiceReceipt = (op, id, orderId) =>
   validInvoiceOperationId(id) && op.id === id && op.order_id === orderId &&
   op.status === 'linked' && typeof op.result?.si_no === 'string' && Boolean(op.result.si_no)
@@ -147,6 +171,7 @@ export function invoiceRecoveryView(order, operation, history = []) {
     invoice_allocation_id: order?.invoice_allocation_id || '',
     invoice_reference_revision: invoiceReferenceRevision(order)
   }
+  const linkBlocked = operation && operation.status !== 'linked' ? invoiceLinkOwnershipIssue(order, operation) : ''
   const view = (op) =>
     op
       ? {
@@ -177,6 +202,9 @@ export function invoiceRecoveryView(order, operation, history = []) {
     expected: invoiceExpected(order),
     operation: view(operation),
     history: history.map(view),
+    linkBlocked,
+    linkReviewTarget: operation?.status === 'review_required' && operation.result && !linkBlocked
+      ? invoiceLinkReviewTarget(order, operation) : null,
     canStartNew:
       !operation ||
       (operation.status === 'linked' && invoiceFollowupsDone(operation))

@@ -207,7 +207,7 @@ test('an unconfirmed link leaves a recoverable saved request rather than issuing
 test('Raise in the order header sends the operation rendered before another tab changed it',async()=>{
  const selected='12345678-1234-4123-8123-123456789abc',replacement='87654321-1234-4123-8123-123456789abc'
  f.order.invoice_allocation_id=selected
- f.operation={id:selected,status:'pending',request:{purpose:'split',reason:'Fictional split',customer:f.order.customer_name,currency:f.order.currency},followups:{financial:{state:'pending'},woo:{state:'not_applicable'}}}
+ f.operation={id:selected,status:'pending',before:{customerId:f.order.customer_id},request:{purpose:'split',reason:'Fictional split',customer:f.order.customer_name,currency:f.order.currency},followups:{financial:{state:'pending'},woo:{state:'not_applicable'}}}
  const requests=[],invoke=f.invoiceAction
  f.invoiceAction=async(...args)=>{requests.push(args);return invoke(...args)}
  await render()

@@ -9,7 +9,9 @@ import {
   invoiceReferenceValues,
   invoiceReferenceRevision,
   invoiceExpected,
-  invoiceSubject,
+  invoiceCustomerId,
+  invoiceLinkOwnershipIssue,
+  invoiceLinkReviewTarget,
   invoiceRequestSnapshot,
   invoiceFollowupsDone,
   linkedInvoiceReceipt,
@@ -199,6 +201,8 @@ export function createInvoiceRecoveryRepository(
           )
         const purpose = input.action === 'new' ? input.purpose : 'first',
           reason = input.action === 'new' ? input.reason : ''
+        const customerId = invoiceCustomerId(saved)
+        if (customerId === undefined) throw new InvoiceRecoveryError('Review the customer ID on the saved order before issuing.')
         const snapshot = invoiceRequestSnapshot(
           saved,
           id,
@@ -213,6 +217,7 @@ export function createInvoiceRecoveryRepository(
           request: snapshot,
           previous_operation_id: saved.invoice_allocation_id || null,
           before: {
+            customerId,
             refs: invoiceReferenceValues(saved),
             expected: invoiceExpected(saved)
           },
@@ -273,49 +278,38 @@ export function createInvoiceRecoveryRepository(
         const saved = requireOrder(await tx.get(order(id))),
           op = value(await tx.get(request(id, operationId)))
         if (saved.shipping_closed === true) throw new InvoiceRecoveryError('This order is closed.')
-        if (!op?.result || op.order_id !== id)
+        if (!op?.result || op.id !== operationId || op.order_id !== id || op.request?.order_id !== id)
           throw new InvoiceRecoveryError(
             'Confirm the existing allocation result before linking.'
           )
-        if (
-          op.status === 'linked' &&
-          saved.invoice_allocation_id !== operationId
-        )
-          return
+        if (review && (op.status !== 'review_required' || !sameInvoiceValue(review.expected, invoiceLinkReviewTarget(saved, op))))
+          throw new InvoiceRecoveryError('The selected invoice or saved references changed. Reopen Review references before confirming.')
+        if (op.status === 'linked') return
         const resultRefs = {
           ...invoiceReferenceValues(saved),
           erp_si_no: op.result.si_no,
           uc_no: op.result.uc_no,
           invoiced_at: op.request.invoiced_at
         }
-        const sameSubject = sameInvoiceValue(invoiceSubject(saved), {
-          customer: op.request.customer,
-          currency: op.request.currency
-        })
+        const ownershipIssue = invoiceLinkOwnershipIssue(saved, op)
         const sameBefore = sameInvoiceValue(
             invoiceReferenceValues(saved),
-            op.before.refs
+            op.before?.refs
           ),
           sameResult = sameInvoiceValue(
             invoiceReferenceValues(saved),
             resultRefs
           )
-        const reviewed =
-          review &&
-          review.reason.trim() &&
-          sameInvoiceValue(invoiceExpected(saved), review.expected)
         if (
           saved.invoice_allocation_id !== operationId ||
-          !sameSubject ||
-          (!sameBefore && !sameResult && !reviewed)
+          ownershipIssue ||
+          (!sameBefore && !sameResult && !review)
         ) {
           tx.update(request(id, operationId), {
             status: 'review_required',
             error: {
               stage: 'link',
-              message: !sameSubject
-                ? 'The saved customer/currency changed. Restore the intended saved details or review the issued invoice manually.'
-                : 'Current references differ from this request. Review the issued number before linking it.'
+              message: ownershipIssue || 'Current references differ from this request. Review the issued number before linking it.'
             },
             updated_at: stamp()
           })
@@ -328,7 +322,7 @@ export function createInvoiceRecoveryRepository(
           error: null,
           linked_at: stamp(),
           updated_at: stamp(),
-          ...(reviewed
+          ...(review
             ? {
                 reference_review: {
                   by: identity.uid,

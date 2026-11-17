@@ -460,7 +460,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   const [invoiceReadAttempt, setInvoiceReadAttempt] = useState(0)
   const hasSavedInvoice = Boolean(invoiceExpected(header).si)
   const shouldReadInvoice = Boolean(header.invoice_allocation_id || header.source === 'direct_invoice' || focusedFollowupId)
-  const invoiceActionDisabled = !canManageInvoices || Boolean(invoiceStatusError || invoiceState?.followupChecklist?.unavailable) ||
+  const invoiceActionDisabled = !canManageInvoices || Boolean(invoiceStatusError || invoiceState?.followupChecklist?.unavailable || invoiceState?.linkBlocked) ||
     (shouldReadInvoice && !invoiceState)
   const invoiceLocked=allocatingSi||Boolean(invoiceState?.operation&&invoiceState.operation.status!=='linked')
   function applyInvoiceState(state) {

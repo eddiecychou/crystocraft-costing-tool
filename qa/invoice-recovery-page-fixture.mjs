@@ -2,7 +2,8 @@
 // Real backend/SQL/rules behavior is separately tested by invoice-recovery-emulator.
 import {
   invoiceRecoveryView,
-  invoiceExpected
+  invoiceExpected,
+  invoiceCustomerId
 } from '../src/invoiceRecoveryModel.js'
 import { wooRegistryAutofillFields } from '../src/invoiceRegistryFields.js'
 import { isKnownFinancialAmount } from '../src/invoiceFinancialModel.js'
@@ -33,6 +34,7 @@ export async function referenceFixtureInvoiceAction(
         customer: f.order.customer_name,
         currency: f.order.currency
       },
+      before: { customerId: invoiceCustomerId(f.order) },
       status: 'pending',
       followups: {
         financial: { state: 'done' },
