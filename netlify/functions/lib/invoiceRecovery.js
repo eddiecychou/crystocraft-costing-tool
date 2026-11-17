@@ -81,13 +81,19 @@ export function createInvoiceRecoveryHandler({
               'purpose',
               'reason',
               'review_expected',
-              'followup_id'
+              'followup_id',
+              'invoice_request_id'
             ].includes(k)
         )
       )
         throw new InvoiceRecoveryError('Invalid invoice request.', 400)
       if (input.followup_id !== undefined && (input.action !== 'status' || !validInvoiceOperationId(input.followup_id)))
         throw new InvoiceRecoveryError('Choose a valid invoice follow-up.', 400)
+      if (input.invoice_request_id !== undefined && (input.followup_id !== undefined ||
+          !validInvoiceOperationId(input.invoice_request_id) ||
+          (input.action !== 'status' && (!['resume', 'link_review'].includes(input.action) ||
+            input.previous_operation_id !== input.invoice_request_id))))
+        throw new InvoiceRecoveryError('Choose a valid saved invoice request.', 400)
       if (input.action === 'ready') {
         await sql.lookup('00000000-0000-0000-0000-000000000000')
         return json({ ready: true })
@@ -126,12 +132,14 @@ export function createInvoiceRecoveryHandler({
         }
         return json({ ...view,
           editBase: orderEditBase(state.order), moreHistory: state.moreHistory, followupChecklist, canManage,
+          ...(input.invoice_request_id ? { focusedInvoiceRequestId: input.invoice_request_id } : {}),
           ...(input.followup_id ? { focusedFollowupId: input.followup_id } : {}) })
       }
       if (input.action === 'status') {
         const state = await repo.state(id),
           op = state.operation
-        const receipt = op && op.status !== 'linked' ? await readInvoiceReceiptStatus(op, sql.lookup) : null
+        const selected = !input.invoice_request_id || input.invoice_request_id === op?.id
+        const receipt = selected && op && op.status !== 'linked' ? await readInvoiceReceiptStatus(op, sql.lookup) : null
         return respond(state, receipt)
       }
       if (!canManage)
@@ -242,13 +250,20 @@ export function createInvoiceRecoveryHandler({
           )
         if (input.action === 'link_review' && !op.result)
           throw new InvoiceRecoveryError('Confirm the existing issued invoice before reviewing its order link.')
+        let verifiedResult
+        if (input.invoice_request_id) {
+          if (op.status === 'linked') return respond(state)
+          const receipt = await readInvoiceReceiptStatus(op, sql.lookup)
+          if (receipt.status !== 'verified')
+            throw new InvoiceRecoveryError('The issued receipt could not be verified. Refresh the saved request before linking.')
+          verifiedResult = receipt.result
+        }
         if (!op.result) {
           // Before the SQL result exists locally, Resume can create a number.
           // Leave unverifiable ownership for Finance before calling the allocator.
           if (state.order && invoiceLinkOwnershipIssue(state.order, op)) return respond(state)
           try {
-            const receipt = await sql.allocate(op),
-              result = invoiceResult(receipt, op)
+            const result = verifiedResult ?? invoiceResult(await sql.allocate(op), op)
             try {
               await repo.result(id, op.id, result)
             } catch {

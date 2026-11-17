@@ -12,6 +12,7 @@ import {
   invoiceCustomerId,
   invoiceLinkOwnershipIssue,
   invoiceLinkReviewTarget,
+  invoiceLinkedReferences,
   invoiceRequestSnapshot,
   invoiceFollowupsDone,
   linkedInvoiceReceipt,
@@ -285,12 +286,7 @@ export function createInvoiceRecoveryRepository(
         if (review && (op.status !== 'review_required' || !sameInvoiceValue(review.expected, invoiceLinkReviewTarget(saved, op))))
           throw new InvoiceRecoveryError('The selected invoice or saved references changed. Reopen Review references before confirming.')
         if (op.status === 'linked') return
-        const resultRefs = {
-          ...invoiceReferenceValues(saved),
-          erp_si_no: op.result.si_no,
-          uc_no: op.result.uc_no,
-          invoiced_at: op.request.invoiced_at
-        }
+        const resultRefs = invoiceLinkedReferences(saved, op)
         const ownershipIssue = invoiceLinkOwnershipIssue(saved, op)
         const sameBefore = sameInvoiceValue(
             invoiceReferenceValues(saved),

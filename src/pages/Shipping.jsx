@@ -50,12 +50,13 @@ function useErpOrders(search) {
 export default function Shipping({uid}) {
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = TABS.find(({ v }) => v === searchParams.get('tab'))?.v ?? 'shipments'
-  const showInvoiceFollowups = searchParams.get('orderView') === 'invoice-followups'
+  const orderView = searchParams.get('orderView')
+  const showInvoiceList = ['awaiting-order-link', 'invoice-followups'].includes(orderView)
 
-  function selectOrderView(showFollowups) {
+  function selectOrderView(view) {
     setSearchParams(current => {
       const next = new URLSearchParams(current)
-      if (showFollowups) next.set('orderView', 'invoice-followups')
+      if (view) next.set('orderView', view)
       else next.delete('orderView')
       return next
     })
@@ -87,16 +88,16 @@ export default function Shipping({uid}) {
         </div>
       </div>
 
-      {tab === 'shipments' && (showInvoiceFollowups
-        ? <InvoiceFollowups key={uid} onBack={() => selectOrderView(false)} />
-        : <ShipmentsList key={uid} uid={uid} onOpenInvoiceFollowups={() => selectOrderView(true)} />)}
+      {tab === 'shipments' && (showInvoiceList
+        ? <InvoiceFollowups key={`${uid}:${orderView}`} awaiting={orderView === 'awaiting-order-link'} onBack={() => selectOrderView(null)} />
+        : <ShipmentsList key={uid} uid={uid} onOpenOrderView={selectOrderView} />)}
       {tab === 'requirements' && <ComponentRequirements />}
       {tab === 'logistics' && <LogisticsList />}
     </div>
   )
 }
 
-function ShipmentsList({uid, onOpenInvoiceFollowups}) {
+function ShipmentsList({uid, onOpenOrderView}) {
   const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
@@ -188,7 +189,8 @@ function ShipmentsList({uid, onOpenInvoiceFollowups}) {
           {!showClosed && erp.loading && <span className="text-ink-60"> · loading JES history…</span>}
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="btn-secondary text-sm" onClick={onOpenInvoiceFollowups}>Invoice follow-ups</button>
+          <button type="button" className="btn-secondary text-sm" onClick={() => onOpenOrderView('awaiting-order-link')}>Awaiting order link</button>
+          <button type="button" className="btn-secondary text-sm" onClick={() => onOpenOrderView('invoice-followups')}>Invoice follow-ups</button>
           {/* An order can be entered directly now, not only imported from a PDF.
               Without this button the only way in was Import PI, which is why the
               app could parse an order but never originate one. */}

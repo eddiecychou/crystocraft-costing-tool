@@ -12,6 +12,12 @@ export const invoiceReferenceValues = (o) =>
   Object.fromEntries(
     INVOICE_REFERENCE_FIELDS.map((k) => [k, o?.[k] == null ? '' : String(o[k])])
   )
+export const invoiceLinkedReferences = (order, operation, result = operation.result) => ({
+  ...invoiceReferenceValues(order),
+  erp_si_no: result.si_no,
+  uc_no: result.uc_no,
+  invoiced_at: operation.request.invoiced_at,
+})
 export const invoiceOrderSi = (o) =>
   text(o?.erp_si_no) ||
   (/^SI/i.test(text(o?.erp_so_no)) ? text(o.erp_so_no) : '')
@@ -48,6 +54,8 @@ export const invoiceFollowupStages = ['financial', 'woo']
 export const invoiceFollowupStageLabel = { financial: 'Financial copy', woo: 'UC Registry' }
 export const invoiceFollowupDispositionLabel = { resume: 'Ready to resume', in_progress: 'In progress', finance_review: 'Finance review needed' }
 export const invoiceReceiptCheckBlocked = operation => ['unavailable', 'conflict'].includes(operation?.receiptStatus)
+export const focusedInvoiceRequestBlocked = (state, id) => Boolean(id &&
+  (state?.focusedInvoiceRequestId !== id || state.operation?.id !== id || state.operation.receiptStatus !== 'verified'))
 export const invoiceFollowupSettled = (stage) =>
   ['done', 'manual_review', 'not_applicable'].includes(stage?.state)
 export const invoiceFollowupsDone = (op) =>

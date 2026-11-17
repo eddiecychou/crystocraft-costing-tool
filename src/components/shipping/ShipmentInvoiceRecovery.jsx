@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { invoiceFollowupsDone, invoiceFollowupReviewTarget, invoiceReceiptCheckBlocked, sameInvoiceValue,
+import { focusedInvoiceRequestBlocked, invoiceFollowupsDone, invoiceFollowupReviewTarget, invoiceReceiptCheckBlocked, sameInvoiceValue,
   invoiceFollowupStageLabel, invoiceFollowupDispositionLabel } from '../../invoiceRecoveryModel'
 
 const receiptStatusMessage = {
@@ -18,12 +18,17 @@ export default function ShipmentInvoiceRecovery({
   statusUnavailable = false,
   onRefresh,
   focusedFollowupId,
+  focusedInvoiceRequestId,
+  invalidInvoiceRequest,
+  onClearRequest,
 }) {
   const [selection, setSelection] = useState(null),
     [reason, setReason] = useState(''),
     [purpose, setPurpose] = useState('split')
   const mode = selection?.mode
   const op = state?.operation
+  const focusedRequestRead = state?.focusedInvoiceRequestId === focusedInvoiceRequestId
+  const focusBlocked = focusedInvoiceRequestBlocked(state, focusedInvoiceRequestId)
   const receiptBlocked = invoiceReceiptCheckBlocked(op)
   const receiptMessage = op?.receiptStatus === 'verified'
     ? `Issued receipt verified. ${op.status === 'review_required' ? 'The order link needs review.' : 'Order link pending.'}`
@@ -34,13 +39,17 @@ export default function ShipmentInvoiceRecovery({
   const focusedRead = Boolean(focusedFollowupId && state?.focusedFollowupId === focusedFollowupId)
   const focusedRow = focusedRead && !unavailable && entries.some(row => row.id === focusedFollowupId)
   const focusRef = useRef(null)
+  const requestRef = useRef(null)
+  useEffect(() => {
+    if (focusedInvoiceRequestId || invalidInvoiceRequest) requestRef.current?.focus()
+  }, [focusedInvoiceRequestId, invalidInvoiceRequest])
   useEffect(() => {
     if (!focusedFollowupId || (!focusedRead && !unavailable)) return
     focusRef.current?.focus()
   }, [focusedFollowupId, focusedRead, focusedRow, unavailable])
   const canManage = !readOnly && state?.canManage !== false
   const needsResume = op && (op.status !== 'linked' || !invoiceFollowupsDone(op))
-  const canResume = needsResume && !state?.linkBlocked && !receiptBlocked && (!current || current.disposition === 'resume')
+  const canResume = needsResume && !state?.linkBlocked && !receiptBlocked && !focusBlocked && (!current || current.disposition === 'resume')
   const selectedRow = mode === 'closure_review_followups'
     ? entries.find(row => row.id === selection.id && !row.current) : op
   const liveTarget = mode === 'link_review' ? state?.linkReviewTarget
@@ -65,14 +74,33 @@ export default function ShipmentInvoiceRecovery({
         setReason('')
       })
       .catch(() => {})
+  if (invalidInvoiceRequest || (focusedInvoiceRequestId &&
+    (!focusedRequestRead || op?.id !== focusedInvoiceRequestId || op.status === 'linked'))) {
+    return <section ref={requestRef} tabIndex={-1} className="card p-4 md:p-6 mb-5 space-y-3" aria-label="Saved invoice request">
+      <h2 className="eyebrow">Saved invoice request</h2>
+      <p role="status" className="text-sm">
+        {invalidInvoiceRequest ? 'This saved invoice request link is invalid.'
+          : statusUnavailable ? 'The saved invoice request could not be checked.'
+            : !focusedRequestRead ? 'Checking the selected saved invoice request…'
+              : op?.id !== focusedInvoiceRequestId ? 'This saved invoice request is no longer current on this order.'
+                : `This saved invoice request is already linked. ${op.result?.si_no || ''} ${op.result?.uc_no || ''}`}
+      </p>
+      {statusUnavailable && <button type="button" className="btn-secondary" onClick={onRefresh}>Refresh invoice status</button>}
+      <button type="button" className="btn-secondary" onClick={onClearRequest}>View current invoice status</button>
+    </section>
+  }
   return (
     <section
+      ref={focusedInvoiceRequestId ? requestRef : null}
+      tabIndex={focusedInvoiceRequestId ? -1 : undefined}
       className="card p-4 md:p-6 mb-5 space-y-3"
       aria-label="Invoice recovery"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="eyebrow">Invoice status</h2>
-        {canManage && hasInvoice && state?.canStartNew && (
+        {focusedInvoiceRequestId && <button type="button" className="btn-secondary text-sm"
+          onClick={onClearRequest}>View current invoice status</button>}
+        {!focusedInvoiceRequestId && canManage && hasInvoice && state?.canStartNew && (
           <button
             type="button"
             className="btn-secondary text-sm min-h-[44px]"
@@ -133,7 +161,7 @@ export default function ShipmentInvoiceRecovery({
               >
                 {busy ? 'Confirming…' : 'Resume saved request'}
               </button>}
-              {state.linkReviewTarget && !receiptBlocked && (
+              {state.linkReviewTarget && !receiptBlocked && !focusBlocked && (
                 <button
                   type="button"
                   className="btn-secondary min-h-[44px]"
@@ -184,7 +212,7 @@ export default function ShipmentInvoiceRecovery({
               {row.stages.map(stage => <p key={stage.stage} className="text-ink-70">
                 {invoiceFollowupStageLabel[stage.stage]} · {stage.inProgress ? 'In progress' : 'Pending'}{stage.error ? ` · ${stage.error}` : ''}
               </p>)}
-              {canManage && !row.current && <button type="button" className="btn-secondary min-h-[44px]"
+              {!focusedInvoiceRequestId && canManage && !row.current && <button type="button" className="btn-secondary min-h-[44px]"
                 disabled={busy || unavailable} onClick={() => open('closure_review_followups', row)}>
                 Record Finance review for {row.result.si_no}
               </button>}
@@ -235,7 +263,7 @@ export default function ShipmentInvoiceRecovery({
               disabled={
                 busy ||
                 unavailable || selectionChanged ||
-                (mode === 'link_review' && receiptBlocked) ||
+                (mode === 'link_review' && (receiptBlocked || focusBlocked)) ||
                 !reason.trim()
               }
               onClick={() => run(mode)}

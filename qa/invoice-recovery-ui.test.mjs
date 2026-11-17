@@ -73,13 +73,15 @@ afterEach(async () => {
   await act(async () => root.unmount())
   host.remove()
 })
-const render = async (busy = false, focusedFollowupId) =>
+const render = async (busy = false, focusedFollowupId, focusedInvoiceRequestId) =>
   act(async () =>
     root.render(
       React.createElement(Panel, {
         state,
         busy,
         focusedFollowupId,
+        focusedInvoiceRequestId,
+        onClearRequest: () => calls.push(['clear']),
         onRefresh: () => calls.push(['refresh']),
         hasInvoice: true,
         onAction: async (...args) => calls.push(args)
@@ -95,6 +97,35 @@ const reason = async () =>
       target: { value: 'Reviewed fictional split' }
     })
   )
+
+test('a saved-request link recovers only the selected verified receipt and never switches to a replacement', async () => {
+  const id = operation.id
+  state.operation.status = 'allocated'
+  state.operation.receiptStatus = 'verified'
+  await render(false, undefined, id)
+  assert.match(host.textContent, /Checking the selected saved invoice request/)
+  assert.equal(button('Resume saved request'), undefined)
+  state.focusedInvoiceRequestId = id
+  await render(false, undefined, id)
+  assert.match(host.textContent, /Issued receipt verified/)
+  assert.equal(button('New split / reissued invoice'), undefined)
+  await click('Resume saved request')
+  assert.deepEqual(calls, [['resume', { previous_operation_id: id }]])
+  state.operation.receiptStatus = 'not_found'
+  await render(false, undefined, id)
+  assert.match(host.textContent, /No issued receipt found/)
+  assert.equal(button('Resume saved request'), undefined)
+  state.operation = { ...operation }
+  await render(false, undefined, id)
+  assert.match(host.textContent, /already linked.*SI260100/)
+  state.operation = { ...operation, id: '12345678-1234-4123-8123-123456789abd',
+    receiptStatus: 'verified', result: {si_no:'SI260101',uc_no:'UC101/26'} }
+  await render(false, undefined, id)
+  assert.match(host.textContent, /no longer current/)
+  assert.doesNotMatch(host.textContent, /SI260101|Resume saved request|Review references/)
+  await click('View current invoice status')
+  assert.deepEqual(calls.at(-1), ['clear'])
+})
 
 test('a deep link focuses only the verified follow-up and explains when it has settled', async () => {
   const split = '12345678-1234-4123-8123-123456789abd'

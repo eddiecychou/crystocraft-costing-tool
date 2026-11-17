@@ -68,7 +68,8 @@ before(async () => {
     if (/^\/api\/invoice-followups(?:\?|$)/.test(path) && globalThis.fixture?.followups) {
       assert.equal(options.method ?? 'GET', 'GET')
       assert.equal(options.headers.Authorization, 'Bearer fictional-token')
-      return globalThis.fixture.followups(new URL(path, window.location.origin).searchParams.get('cursor'))
+      const params = new URL(path, window.location.origin).searchParams
+      return globalThis.fixture.followups(params.get('cursor'), params.get('view'))
     }
     throw Error('Network forbidden in this fixture')
   }
@@ -196,6 +197,38 @@ test('Shipping follow-ups retain the failed cursor and open the exact historical
     }, { followups })
   }
   assert.equal(reads.length, 3)
+})
+
+test('Awaiting order link opens the exact saved request and gives detached or conflicting cases to Finance', async () => {
+  const selected = '12345678-1234-4123-8123-123456789abc'
+  const followups = (cursor, view) => {
+    assert.equal(cursor, null)
+    assert.equal(view, 'awaiting_link')
+    return Response.json({ next: null, rows: [
+      { orderId: 'fictional-order', operationId: selected, reference: 'SO260050', si: 'SI260050',
+        uc: 'UC50/26', customer: 'Fictional buyer', purpose: 'reissue', disposition: 'resume' },
+      { orderId: 'fictional-missing', operationId: '12345678-1234-4123-8123-123456789abd', issue: 'order_unavailable' },
+      { orderId: 'fictional-conflict', operationId: '12345678-1234-4123-8123-123456789abe', issue: 'receipt_conflict' },
+    ] })
+  }
+  await withPage('/shipping', staff, async () => {
+    await click(buttons('Awaiting order link'))
+    pathIs('/shipping?orderView=awaiting-order-link')
+    assert.equal(host.querySelector('#invoice-followups-heading').textContent, 'Awaiting order link')
+    assert.match(host.textContent, /SI260050 · UC50\/26/)
+    assert.match(host.textContent, /Reissued invoice/)
+    assert.match(host.textContent, /Order unavailable/)
+    assert.match(host.textContent, /Receipt evidence conflicts/)
+    const [link, ...others] = host.querySelectorAll('a[aria-label^="Open saved request"]')
+    assert.equal(others.length, 0)
+    assert.equal(link.getAttribute('href'), `/shipments/fictional-order?invoiceRequest=${selected}`)
+    await click(link)
+    pathIs(`/shipments/fictional-order?invoiceRequest=${selected}`)
+    route('ShipmentForm', {id:'fictional-order'})
+  }, { followups })
+  await withPage('/shipping?orderView=awaiting-order-link', customer, () => {
+    assert.equal(host.querySelector('#invoice-followups-heading'), null)
+  }, { followups: () => assert.fail('Customer must not read the list') })
 })
 
 test('entry query flags, saved IDs and staff print shapes resolve through original gates', async () => {
