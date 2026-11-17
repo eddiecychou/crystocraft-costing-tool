@@ -15,6 +15,7 @@ const dom = new JSDOM('<!doctype html><body></body>', { url: 'https://fictional.
 for (const name of ['window', 'document', 'HTMLElement', 'MouseEvent']) globalThis[name] = dom.window[name]
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const { createRoot } = await import('react-dom/client')
+const { Simulate } = await import('react-dom/test-utils')
 const fixtures = {
   app: [{ id: 'fictional-order', erp_so_no: 'SO260050', erp_si_no: 'SI260050', customer_name: 'Fictional OC buyer', customer_id: 'synthetic', status: 'confirmed', order_date: '2026-11-01', total_amount: 100, currency: 'USD' }],
   sales_order: [{ code: ' so260050 ', customer: 'Duplicate ERP order' }, { code: 'SO250100', customer: 'Fictional ERP order buyer', date: '2025-11-01' }],
@@ -44,7 +45,7 @@ const stubs = {
   customer: 'export const useCustomers=()=>({customers:[]})',
   erpApi: `export const erpLookup=async(entity,filters)=>{const f=globalThis.fixture;f.calls.push([entity,filters.q]);if(f.erpFailure)throw Error('Fictional archive failure');return f[entity]};export const erpLines=async(of,id)=>{globalThis.fixture.calls.push([of,id]);return {rows:[{seq:1,item_code:'FICT-ARCHIVE-ITEM',description:'Fictional ERP line',qty:7,unit:'pcs',unit_price:3}],surcharges:[]}}`,
 }
-const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'InvoiceOriginalButton', 'LogisticsVendorForm', 'ErpDocModal', 'ExportFilterBar', 'InvoiceFollowups', 'i18n', 'access', 'useProfile'])
+const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'InvoiceOriginalButton', 'InvoiceFinanceLookup', 'LogisticsVendorForm', 'ErpDocModal', 'ExportFilterBar', 'InvoiceFollowups', 'i18n', 'access', 'useProfile'])
 const routeOutput = name => `import React from 'react';import{useParams}from 'react-router-dom';export default function RouteProbe(){return React.createElement('div',{'data-route':${JSON.stringify(name)}},JSON.stringify(Object.fromEntries(Object.entries(useParams()).filter(([key])=>key!=='*'))))}`
 before(async () => {
   const result = await build({ entryPoints: ['src/App.jsx'], bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic', external: [], plugins: [{ name: 'local-route-fixture',setup(builder) {
@@ -65,6 +66,11 @@ before(async () => {
   app = (await import(pathToFileURL(bundle).href)).default
   originalFetch = globalThis.fetch
   globalThis.fetch = (path, options) => {
+    if (path.startsWith('/api/oc-invoice-summaries?lookup=') && globalThis.fixture?.lookup) {
+      assert.equal(options.method ?? 'GET', 'GET')
+      assert.equal(options.headers.Authorization, 'Bearer fictional-token')
+      return globalThis.fixture.lookup(new URL(path, window.location.origin).searchParams.get('lookup'))
+    }
     if (/^\/api\/invoice-followups(?:\?|$)/.test(path) && globalThis.fixture?.followups) {
       assert.equal(options.method ?? 'GET', 'GET')
       assert.equal(options.headers.Authorization, 'Bearer fictional-token')
@@ -206,7 +212,7 @@ test('Awaiting order link opens the exact saved request and gives detached or co
     assert.equal(view, 'awaiting_link')
     return Response.json({ next: null, rows: [
       { orderId: 'fictional-order', operationId: selected, reference: 'SO260050', si: 'SI260050',
-        uc: 'UC50/26', customer: 'Fictional buyer', purpose: 'reissue', disposition: 'resume' },
+        uc: 'UC50/26', customer: 'Fictional buyer', purpose: 'reissue', disposition: 'finance_review' },
       { orderId: 'fictional-missing', operationId: '12345678-1234-4123-8123-123456789abd', issue: 'order_unavailable' },
       { orderId: 'fictional-conflict', operationId: '12345678-1234-4123-8123-123456789abe', issue: 'receipt_conflict' },
     ] })
@@ -219,6 +225,22 @@ test('Awaiting order link opens the exact saved request and gives detached or co
     assert.match(host.textContent, /Reissued invoice/)
     assert.match(host.textContent, /Order unavailable/)
     assert.match(host.textContent, /Receipt evidence conflicts/)
+    const [verified, missing, conflict] = [...host.querySelectorAll('button')].filter(b => b.textContent === 'Copy handoff details')
+    const copied = []
+    Object.defineProperty(window.navigator, 'clipboard', { configurable:true, value:{ writeText:async value => copied.push(value) } })
+    try {
+      await click(verified)
+      await click(missing)
+      assert.match(copied[0], /Verified SI: SI260050\nVerified UC: UC50\/26/)
+      assert.ok(copied[0].includes(selected))
+      assert.doesNotMatch(copied[0], /Fictional buyer/)
+      assert.match(copied[1], /Issue: Order unavailable\nOrder ID: fictional-missing\nSaved request ID: 12345678-1234-4123-8123-123456789abd/)
+      assert.doesNotMatch(copied[1], /SI260050|UC50/)
+      assert.match(copied[1], /Checked \(UTC\): .+Z/)
+      window.navigator.clipboard.writeText = async () => { throw Error('Fictional permission denied') }
+      await click(conflict)
+      assert.match(host.querySelector('[aria-label="Handoff details to copy"]').value, /fictional-conflict/)
+    } finally { delete window.navigator.clipboard }
     const [link, ...others] = host.querySelectorAll('a[aria-label^="Open saved request"]')
     assert.equal(others.length, 0)
     assert.equal(link.getAttribute('href'), `/shipments/fictional-order?invoiceRequest=${selected}`)
@@ -229,6 +251,40 @@ test('Awaiting order link opens the exact saved request and gives detached or co
   await withPage('/shipping?orderView=awaiting-order-link', customer, () => {
     assert.equal(host.querySelector('#invoice-followups-heading'), null)
   }, { followups: () => assert.fail('Customer must not read the list') })
+})
+
+test('invoice staff can check an exact SI or request ID and retry unavailable evidence', async () => {
+  const reads = [], id = '12345678-1234-4123-8123-123456789abc'
+  const lookup = input => {
+    reads.push(input)
+    if (reads.length === 1) return Response.json({}, { status:503 })
+    if (input === 'SI260050') return Response.json({ status:'linked', ledgerId:'500', si:input, ledgerStatus:'issued', purpose:'split', uc:'UC20/26' })
+    return Response.json({ status:'request_missing', requestId:id, ledgerId:'501', si:'SI260051', ledgerStatus:'issued',
+      orderId:'fictional-shipping', uc:'UC20/26', purpose:'reissue' })
+  }
+  await withPage('/sales-invoices', profile('staff', ['invoices']), async () => {
+    const details = [...host.querySelectorAll('summary')].find(node => node.textContent === 'Finance invoice lookup')
+    await click(details)
+    const input = details.parentElement.querySelector('input')
+    async function type(value) {
+      await act(async () => Simulate.change(input, { target:{ value } }))
+    }
+    await type('si260050')
+    await click(buttons('Look up invoice'))
+    assert.match(host.textContent, /could not be checked/)
+    await click(buttons('Look up invoice'))
+    assert.match(host.textContent, /SI260050.*Split invoice/)
+    await type(id)
+    assert.doesNotMatch(details.parentElement.textContent, /SI260050/)
+    await click(buttons('Look up invoice'))
+    assert.match(host.textContent, /Saved Shipping request missing/)
+    assert.match(host.textContent, /SI260051.*Reissued invoice/)
+    assert.deepEqual(reads, ['SI260050', 'SI260050', id])
+    assert.equal(link('Direct Invoice'), undefined)
+  }, { summaries:[], lookup })
+  await withPage('/sales-invoices', customer, () => {
+    assert.doesNotMatch(host.textContent, /Finance invoice lookup/)
+  })
 })
 
 test('entry query flags, saved IDs and staff print shapes resolve through original gates', async () => {

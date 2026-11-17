@@ -14,6 +14,7 @@ import { erpLookup } from '../erpApi'
 import { Receipt, AlertTriangle, FileText, Database } from 'lucide-react'
 import ErpDocModal from '../components/ErpDocModal'
 import InvoiceOriginalButton from '../components/shipping/InvoiceOriginalButton'
+import InvoiceFinanceLookup from '../components/shipping/InvoiceFinanceLookup'
 import useOcInvoiceSummaries from '../hooks/useOcInvoiceSummaries'
 import { OC_PDF_AVAILABLE, OC_PDF_RETRY } from '../ocInvoicePdfStatus'
 
@@ -418,6 +419,7 @@ export default function SalesInvoices({uid}) {
       </div>
 
       <div className="p-4 md:p-6">
+        {can('invoices') && <InvoiceFinanceLookup key={uid} />}
         {uid && canOpenShipping && <SavedOrderRequests key={uid} uid={uid} />}
         {ocSource.loading && <LoadingBar />}
         {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}

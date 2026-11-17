@@ -3,6 +3,7 @@ import { ocDateOnly } from '../../../src/ocTime.js'
 import { OC_PDF_MISSING, OC_PDF_RETRY } from '../../../src/ocInvoicePdfStatus.js'
 import { orderSi, orderStatusOf } from '../../../src/shippingModel.js'
 import { ocInvoicePdfStatus, readOcInvoicePdf } from './ocInvoicePdfs.js'
+import { financeLookupTarget } from '../../../src/invoiceFinanceLookupModel.js'
 
 const invoiceNo = value => typeof value === 'string' && /^SI\d{6,}$/i.test(value.trim())
   ? value.trim().toUpperCase() : ''
@@ -112,7 +113,7 @@ export async function loadOcInvoiceSources(db, loadLedger) {
   }
 }
 
-export function createOcInvoiceSummariesHandler({ verifyToken, getProfile, load, archive }) {
+export function createOcInvoiceSummariesHandler({ verifyToken, getProfile, load, archive, lookup }) {
   return async req => {
     if (req.method !== 'GET') return privateJson({ error: 'Method not allowed' }, 405)
     const token = req.headers.get('authorization')?.match(/^Bearer (\S+)$/i)?.[1]
@@ -128,6 +129,13 @@ export function createOcInvoiceSummariesHandler({ verifyToken, getProfile, load,
       }
       if (!await authorize()) return privateJson({ error: 'Access denied' }, 403)
       const params = new URL(req.url).searchParams
+      if (params.has('lookup')) {
+        const value = params.get('lookup')
+        const target = params.size === 1 && value.length <= 40 && financeLookupTarget(value)
+        if (!target) return privateJson({ error: 'Enter an exact OC invoice number or saved request ID.' }, 400)
+        try { return privateJson(await lookup(target)) }
+        catch { return privateJson({ error: 'Invoice evidence is temporarily unavailable. Try the lookup again.' }, 503) }
+      }
       const pdf = params.get('pdf')
       if (pdf !== null) {
         if (params.size !== 1 || !pdf || pdf !== invoiceNo(pdf) || pdf.length > 40) {

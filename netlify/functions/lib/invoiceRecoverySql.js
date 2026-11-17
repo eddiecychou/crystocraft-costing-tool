@@ -120,6 +120,9 @@ export function createInvoiceRecoverySql({
     return followupResult(rows)
   }
   return {
+    readLedgerMatches: si => rest('app_sales_invoice?' + new URLSearchParams({
+      si_no: 'eq.' + si, select: 'id,si_no,order_id,uc_no,uc_id,status', limit: '2',
+    })),
     allocate: (operation) =>
       rest('rpc/allocate_sales_invoice_once', {
         method: 'POST',

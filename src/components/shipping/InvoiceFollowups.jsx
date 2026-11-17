@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authHeader } from '../../firebase'
 import { invoiceFollowupDispositionLabel, invoiceFollowupStageLabel } from '../../invoiceRecoveryModel.js'
+import { invoicePurposeLabel } from '../../invoiceFinanceLookupModel.js'
 
 const rowKey = row => `${row.orderId}/${row.operationId}`
 const nextStep = {
@@ -15,7 +16,34 @@ const issueDetail = {
   request_not_current: 'A different invoice request is current',
   receipt_conflict: 'Receipt evidence conflicts or could not be verified',
 }
-const purposeLabel = { first: 'First invoice', split: 'Split invoice', reissue: 'Reissued invoice' }
+
+function InvoiceHandoffCopy({ row, awaiting }) {
+  const [copyStatus, setCopyStatus] = useState('')
+  const details = [
+    'OC invoice handoff',
+    'Issue: ' + (row.issue ? issueDetail[row.issue] : 'Finance review needed'),
+    'Order ID: ' + row.orderId,
+    row.reference && row.reference !== row.orderId && 'Order reference: ' + row.reference,
+    'Saved request ID: ' + row.operationId,
+    row.si && (awaiting ? 'Verified SI: ' : 'Saved SI: ') + row.si,
+    row.uc && (awaiting ? 'Verified UC: ' : 'Saved UC: ') + row.uc,
+    row.checkedAt && 'Checked (UTC): ' + row.checkedAt,
+  ].filter(Boolean).join('\n')
+  async function copy() {
+    try {
+      await window.navigator.clipboard.writeText(details)
+      setCopyStatus('copied')
+    } catch {
+      setCopyStatus('manual')
+    }
+  }
+  return <div className="space-y-2">
+    <button type="button" className="btn-secondary min-h-11 w-fit" onClick={copy}>Copy handoff details</button>
+    {copyStatus === 'copied' && <p className="text-xs text-ink-60" role="status">Handoff details copied.</p>}
+    {copyStatus === 'manual' && <textarea className="input w-full text-xs" rows={5} readOnly value={details}
+      aria-label="Handoff details to copy" onFocus={event => event.target.select()} />}
+  </div>
+}
 
 export default function InvoiceFollowups({ onBack, awaiting = false }) {
   const title = awaiting ? 'Awaiting order link' : 'Invoice follow-ups'
@@ -41,9 +69,10 @@ export default function InvoiceFollowups({ onBack, awaiting = false }) {
       const data = await response.json().catch(() => null)
       if (!response.ok || !Array.isArray(data?.rows)) throw Error(data?.error || 'Invoice receipts could not be loaded.')
       if (active.current !== controller) return
+      const checkedAt = new Date().toISOString()
       setPage(previous => {
         const rows = new Map((cursor ? previous?.rows || [] : []).map(row => [rowKey(row), row]))
-        for (const row of data.rows) rows.set(rowKey(row), row)
+        for (const row of data.rows) rows.set(rowKey(row), { ...row, checkedAt })
         return { rows: [...rows.values()], next: data.next }
       })
     } catch (err) {
@@ -78,21 +107,25 @@ export default function InvoiceFollowups({ onBack, awaiting = false }) {
           <div><p>Order {row.orderId}</p><p className="text-ink-60">{issueDetail[row.issue]}</p>
             {awaiting && <p className="text-xs text-ink-60">Request {row.operationId}</p>}</div>
           <p className="text-brand-600">Finance review needed</p>
+          <InvoiceHandoffCopy row={row} awaiting={awaiting} />
         </> : <>
           <div>
             <p>{row.si} · {row.uc}</p>
             <p className="text-ink-60">{row.reference}{row.customer && ` · ${row.customer}`}</p>
-            <p className="text-xs text-ink-60">{awaiting ? purposeLabel[row.purpose] : row.current ? 'Current invoice' : 'Historical invoice'}</p>
+            <p className="text-xs text-ink-60">{awaiting ? invoicePurposeLabel[row.purpose] : row.current ? 'Current invoice' : 'Historical invoice'}</p>
           </div>
           <div>
             <p className={row.disposition === 'finance_review' ? 'text-brand-600' : 'text-ink'}>{invoiceFollowupDispositionLabel[row.disposition]}</p>
             {row.stages && <p className="text-ink-60">{row.stages.map(stage => invoiceFollowupStageLabel[stage.stage]).join(' · ')}</p>}
             <p className="text-xs text-ink-60">{nextStep[row.disposition]}</p>
           </div>
-          <Link className="btn-secondary min-h-11 w-fit" aria-label={`${awaiting ? 'Open saved request' : 'Open order'} for ${row.si}`}
-            to={`/shipments/${encodeURIComponent(row.orderId)}?${orderQuery}=${encodeURIComponent(row.operationId)}`}>
-            {awaiting ? 'Open saved request' : 'Open order'}
-          </Link>
+          <div className="flex flex-col gap-2">
+            <Link className="btn-secondary min-h-11 w-fit" aria-label={`${awaiting ? 'Open saved request' : 'Open order'} for ${row.si}`}
+              to={`/shipments/${encodeURIComponent(row.orderId)}?${orderQuery}=${encodeURIComponent(row.operationId)}`}>
+              {awaiting ? 'Open saved request' : 'Open order'}
+            </Link>
+            {row.disposition === 'finance_review' && <InvoiceHandoffCopy row={row} awaiting={awaiting} />}
+          </div>
         </>}
       </div>)}
       {busy && <p className="p-4 text-sm text-ink-60" role="status">{awaiting ? 'Checking issued invoice receipts…' : 'Checking invoice follow-ups…'}</p>}
