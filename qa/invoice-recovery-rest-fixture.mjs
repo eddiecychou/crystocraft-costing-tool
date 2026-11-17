@@ -21,13 +21,14 @@ export const invoiceTestRest =
           faults.lostSqlAck = false
           throw Error('FICTIONAL committed with lost response')
         }
-      } else if (path === 'lookup_invoice_allocation')
+      } else if (path === 'lookup_invoice_allocation') {
+        if (faults.lookupUnavailable) return Response.json({}, { status: 503 })
         rows = await db.asRole(
           'service_role',
           'select * from lookup_invoice_allocation($1::uuid)',
           [body.p_operation_id]
         )
-      else if (path === 'review_invoice_allocation_followups') {
+      } else if (path === 'review_invoice_allocation_followups') {
         rows = await db.asRole(
           'service_role',
           'select * from review_invoice_allocation_followups($1::uuid,$2,$3,$4)',

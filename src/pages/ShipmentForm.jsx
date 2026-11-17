@@ -24,7 +24,7 @@ import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo } from '../soNumber'
 import { upsertInvoice, allocateOrderUc } from '../ucRegistry'
 import {invoiceAction} from '../invoiceRecovery'
-import {invoiceExpected,invoiceReferenceValues,invoiceReferenceSavePatch,sameInvoiceValue,validInvoiceOperationId} from '../invoiceRecoveryModel.js'
+import {invoiceExpected,invoiceReferenceValues,invoiceReferenceSavePatch,invoiceReceiptCheckBlocked,sameInvoiceValue,validInvoiceOperationId} from '../invoiceRecoveryModel.js'
 import ShipmentInvoiceRecovery from '../components/shipping/ShipmentInvoiceRecovery'
 import QuoteOrderRecovery from '../components/shipping/QuoteOrderRecovery'
 import {quoteConversionAction} from '../quoteConversion'
@@ -461,6 +461,7 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   const hasSavedInvoice = Boolean(invoiceExpected(header).si)
   const shouldReadInvoice = Boolean(header.invoice_allocation_id || header.source === 'direct_invoice' || focusedFollowupId)
   const invoiceActionDisabled = !canManageInvoices || Boolean(invoiceStatusError || invoiceState?.followupChecklist?.unavailable || invoiceState?.linkBlocked) ||
+    invoiceReceiptCheckBlocked(invoiceState?.operation) ||
     (shouldReadInvoice && !invoiceState)
   const invoiceLocked=allocatingSi||Boolean(invoiceState?.operation&&invoiceState.operation.status!=='linked')
   function applyInvoiceState(state) {
@@ -480,12 +481,14 @@ function ShipmentEditor({ uid, onCreateOrder, initialDraft, originalFile, create
   }
   useEffect(()=>{
     if(!isEdit||fetching||loadError||!shouldReadInvoice)return
-    let alive=true
+    let alive=true, reading=false
     const read=async()=>{
-      if(invoiceInFlight.current)return
+      if(invoiceInFlight.current || reading)return
+      reading=true
       const seq=++invoiceReadSequence.current
       try{const state=await invoiceAction(id,'status',focusedFollowupId ? {followup_id:focusedFollowupId} : {});if(alive&&seq===invoiceReadSequence.current){applyInvoiceState(state);setInvoiceStatusError('')}}
       catch(error){if(alive&&seq===invoiceReadSequence.current)setInvoiceStatusError(error.message)}
+      finally{reading=false}
     }
     read()
     const timer=setInterval(read,15000)

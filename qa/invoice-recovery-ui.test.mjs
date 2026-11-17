@@ -80,6 +80,7 @@ const render = async (busy = false, focusedFollowupId) =>
         state,
         busy,
         focusedFollowupId,
+        onRefresh: () => calls.push(['refresh']),
         hasInvoice: true,
         onAction: async (...args) => calls.push(args)
       })
@@ -146,6 +147,36 @@ test('issued-unlinked state keeps its SI and UC visible and sends a customer con
   assert.match(host.textContent, /SI260100 · UC100\/26/)
   assert.match(host.textContent, /Finance review needed/)
   assert.deepEqual(calls, [])
+})
+
+test('the order labels each receipt check and pauses recovery controls while evidence is unavailable or conflicts', async () => {
+  state.operation.status = 'allocated'
+  state.canStartNew = false
+  state.operation.receiptStatus = 'verified'
+  await render()
+  assert.match(host.textContent, /Issued receipt verified/)
+  assert.ok(button('Resume saved request'))
+
+  state.operation.receiptStatus = 'unavailable'
+  await render()
+  assert.match(host.textContent, /receipt source is unavailable/)
+  assert.match(host.textContent, /Saved references · SI260100/)
+  assert.equal(button('Resume saved request'), undefined)
+  await click('Refresh receipt status')
+
+  state.operation.receiptStatus = 'conflict'
+  await render()
+  assert.match(host.textContent, /Conflicting receipt evidence.*Finance/)
+  assert.equal(button('Resume saved request'), undefined)
+  assert.equal(button('Review references'), undefined)
+
+  state.operation.status = 'pending'
+  state.operation.result = null
+  state.operation.receiptStatus = 'not_found'
+  await render()
+  assert.match(host.textContent, /No issued receipt found/)
+  assert.ok(button('Resume saved request'))
+  assert.deepEqual(calls, [['refresh']])
 })
 
 test('link review confirmation keeps the full reference snapshot and invalidates a stale date', async () => {

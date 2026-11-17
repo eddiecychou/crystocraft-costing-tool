@@ -15,6 +15,7 @@ import { runInvoiceFollowup } from './invoiceFollowup.js'
 import { reviewClosureInvoice } from './shippingClosure.js'
 import { OrderRequestError } from './orderRequestAccess.js'
 import { followupStages } from './invoiceFollowupQueue.js'
+import { readInvoiceReceiptStatus } from './invoiceReceiptStatus.js'
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -110,33 +111,28 @@ export function createInvoiceRecoveryHandler({
         )
       const id = input.order_id
       const canManage = has(profile, 'uc')
-      const respond = async (state) => {
+      const respond = async (state, receipt) => {
         let followupChecklist
         try { followupChecklist = await repo.followupChecklist(state.order, state.operation, input.followup_id) }
         catch { followupChecklist = { unavailable: true, entries: [] } }
-        return json({ ...invoiceRecoveryView(state.order, state.operation, state.history),
+        const view = invoiceRecoveryView(state.order, state.operation, state.history)
+        if (input.action === 'status' && view.operation) {
+          view.operation.receiptStatus = receipt?.status ?? null
+          if (receipt?.status === 'verified' && !view.operation.result) {
+            view.operation.result = receipt.result
+            if (view.operation.status === 'pending') view.operation.status = 'allocated'
+          }
+          if (receipt?.status !== 'verified') view.linkReviewTarget = null
+        }
+        return json({ ...view,
           editBase: orderEditBase(state.order), moreHistory: state.moreHistory, followupChecklist, canManage,
           ...(input.followup_id ? { focusedFollowupId: input.followup_id } : {}) })
       }
       if (input.action === 'status') {
         const state = await repo.state(id),
           op = state.operation
-        if (op && !op.result && op.status === 'pending') {
-          try {
-            const receipt = await sql.lookup(op.id)
-            if (receipt) {
-              op.result = invoiceResult(receipt, op)
-              op.status = 'allocated'
-            }
-          } catch {
-            op.error = {
-              stage: 'check',
-              message:
-                'The issued-number check is temporarily unavailable. Resume the same saved request safely.'
-            }
-          }
-        }
-        return respond(state)
+        const receipt = op && op.status !== 'linked' ? await readInvoiceReceiptStatus(op, sql.lookup) : null
+        return respond(state, receipt)
       }
       if (!canManage)
         return json(

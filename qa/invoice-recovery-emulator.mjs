@@ -342,6 +342,7 @@ for (const fault of ['beforeSql', 'lostSqlAck', 'result', 'link'])
       const before = await db.counts(),
         status = await request('status')
       assert.equal(status.status, 200)
+      assert.equal(status.body.operation.receiptStatus, fault === 'beforeSql' ? 'not_found' : 'verified')
       assert.deepEqual(await db.counts(), before)
       const resumed = await resume()
       assert.equal(resumed.status, 200)
@@ -354,6 +355,33 @@ for (const fault of ['beforeSql', 'lostSqlAck', 'result', 'link'])
     },
     { timeout: 20000 }
   )
+
+test('issued receipt checks preserve the saved SI, UC, and SQL counts during an outage and conflicts', async () => {
+  faults.link = true
+  assert.equal((await raise()).status,503)
+  const first = await request('status'), operation = first.body.operation
+  assert.equal(operation.receiptStatus,'verified')
+  const path = store.doc(`orders/${id}/invoice_allocations/${operation.id}`)
+  const before = await db.counts(), snapshot = await path.get(), root = await store.doc('orders/' + id).get()
+  faults.lookupUnavailable = true
+  const unavailable = (await request('status')).body
+  assert.equal(unavailable.operation.receiptStatus,'unavailable')
+  assert.deepEqual(unavailable.operation.result,operation.result)
+  assert.equal(unavailable.linkReviewTarget,null)
+  assert.deepEqual(await db.counts(),before)
+  assert.ok((await path.get()).updateTime.isEqual(snapshot.updateTime))
+  assert.ok((await store.doc('orders/' + id).get()).updateTime.isEqual(root.updateTime))
+
+  faults.lookupUnavailable = false
+  await path.update({'request.reason':'Fictional evidence mismatch'})
+  const changed = await path.get(), conflict = (await request('status')).body
+  assert.equal(conflict.operation.receiptStatus,'conflict')
+  assert.deepEqual(conflict.operation.result,operation.result)
+  assert.equal(conflict.linkReviewTarget,null)
+  assert.deepEqual(await db.counts(),before)
+  assert.ok((await path.get()).updateTime.isEqual(changed.updateTime))
+  assert.ok((await store.doc('orders/' + id).get()).updateTime.isEqual(root.updateTime))
+})
 test(
   'changed references require explicit reviewed link; changed subject cannot be silently adopted',
   async () => {
@@ -452,9 +480,10 @@ test('a stale date or revision blocks confirming an issued reissue before any ne
   assert.deepEqual(await db.counts(),before)
   assert.equal(queries.length,sqlBefore)
   const beforeRevision = (await request('status')).body.linkReviewTarget
+  const beforeRevisionSql = queries.length
   await store.doc('orders/' + id).update({invoice_reference_revision:beforeRevision.referenceRevision+1})
   assert.equal((await confirm(beforeRevision)).status,409)
-  assert.equal(queries.length,sqlBefore)
+  assert.equal(queries.length,beforeRevisionSql)
   const fresh = (await request('status')).body.linkReviewTarget
   const linked = (await confirm(fresh)).body
   assert.equal(linked.operation.status,'linked')

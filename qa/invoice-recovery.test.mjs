@@ -14,6 +14,7 @@ import {
   sameInvoiceValue
 } from '../src/invoiceRecoveryModel.js'
 import { createInvoiceRecoveryHandler } from '../netlify/functions/lib/invoiceRecovery.js'
+import { createInvoiceRecoverySql } from '../netlify/functions/lib/invoiceRecoverySql.js'
 const opid = '12345678-1234-4123-8123-123456789abc',
   order = {
     customer_name: 'Fictional 中文 Company',
@@ -159,6 +160,57 @@ test('fresh backend authentication and module authorization precede every SQL/re
     assert.equal(r.status, uid === 'revoked' || !uid ? 401 : 403)
   }
   assert.equal(calls, 0)
+})
+
+test('read-only receipt status checks one exact operation and distinguishes verification, absence, outage and conflict', async () => {
+  const saved = { ...order, customer_id: 'fictional-buyer', invoice_allocation_id: opid }
+  const request = invoiceRequestSnapshot(saved, 'fictional', identity, 'split', 'Test split')
+  const receipt = { operation_id: opid, order_id: 'fictional', request_json: request,
+    o_si_no: 'SI260100', o_uc_no: 'UC1/26', o_invoice_id: 42, o_uc_id: 1 }
+  const exact = invoiceResult(receipt, { id: opid, order_id: 'fictional', request })
+  for (const { label, received, status, recorded = null, phase = 'pending', expected = status === 'verified' ? exact : recorded } of [
+    { label:'lost acknowledgement', received:[receipt], status:'verified' },
+    { label:'saved result', received:[receipt], recorded:exact, phase:'allocated', status:'verified' },
+    { label:'clean empty response', received:[], status:'not_found' },
+    { label:'source down', received:503, status:'unavailable' },
+    { label:'incomplete source response', received:{wrong:'shape'}, status:'unavailable' },
+    { label:'source down after result recorded', received:503, recorded:exact, phase:'review_required', status:'unavailable' },
+    { label:'wrong frozen facts', received:[{...receipt,request_json:{...request,currency:'HKD'}}], status:'conflict' },
+    { label:'more than one row', received:[receipt,receipt], status:'conflict' },
+    { label:'invalid row', received:[null], status:'conflict' },
+    { label:'successful empty read of recorded invoice', received:[], recorded:exact, phase:'allocated', status:'conflict' },
+    { label:'result disagrees with SQL', received:[receipt], recorded:{...exact,si_no:'SI260199'}, phase:'allocated', status:'conflict',
+      expected:{...exact,si_no:'SI260199'} },
+    { label:'linked invoice', received:503, recorded:exact, phase:'linked', status:null },
+  ]) {
+    const operation = { id: opid, order_id: 'fictional', request, before:{customerId:saved.customer_id}, status: phase, result: recorded }
+    const original = structuredClone({ saved, operation })
+    const calls = []
+    const sql = createInvoiceRecoverySql({ url:'https://fictional.invalid',key:'fixture', fetchImpl:async (url, options) => {
+      calls.push(JSON.parse(options.body))
+      assert.equal(new URL(url).pathname, '/rest/v1/rpc/lookup_invoice_allocation')
+      return typeof received === 'number' ? Response.json({message:'private source error'}, {status:received}) : Response.json(received)
+    } })
+    const handler = createInvoiceRecoveryHandler({ verifyToken:async()=>identity,
+      getProfile:async()=>({role:'staff',modules:['shipping']}), sql,
+      repo:{ state:async id=>{assert.equal(id,'fictional');return { order:saved, operation, history:[operation] }},
+        followupChecklist:async()=>({entries:[]}) },
+    })
+    const response = await handler(new Request('https://fictional.invalid/api/invoice-allocation', {method:'POST',
+      headers:{Authorization:'Bearer fixture'},body:JSON.stringify({order_id:'fictional',action:'status'})}))
+    const body = await response.json()
+    assert.equal(response.status,200,label)
+    assert.equal(body.operation.id,opid,label)
+    assert.equal(body.operation.receiptStatus,status,label)
+    assert.deepEqual(body.operation.result,expected,label)
+    assert.equal(body.operation.status,phase === 'pending' && status === 'verified' ? 'allocated' : phase,label)
+    assert.equal(body.linkReviewTarget,null,label)
+    assert.equal(body.canManage,false,label)
+    assert.equal(body.history[0].status,phase,label)
+    assert.deepEqual(calls, phase === 'linked' ? [] : [{p_operation_id:opid}],label)
+    assert.deepEqual({saved,operation},original,label)
+    assert.doesNotMatch(JSON.stringify(body),/private source error/)
+  }
 })
 let scratch, client, originalFetch
 before(async () => {

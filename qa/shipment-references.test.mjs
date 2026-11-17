@@ -220,6 +220,24 @@ test('Raise in the order header sends the operation rendered before another tab 
  assert.match(host.textContent,/Another invoice request is current/)
  assert.deepEqual(f.orderWrites,[])
 })
+test('conflicting receipt status pauses Resume in both the order header and invoice reference controls',async()=>{
+ const selected='12345678-1234-4123-8123-123456789abc'
+ f.order.invoice_allocation_id=selected
+ const requests=[]
+ f.invoiceAction=async(...args)=>{
+  requests.push(args)
+  return {operation:{id:selected,status:'pending',receiptStatus:'conflict',followups:{}},canStartNew:false}
+ }
+ await render()
+ assert.match(host.textContent,/Conflicting receipt evidence/)
+ const raise=[...host.querySelectorAll('button')].find(button=>button.textContent.trim()==='Raise Invoice')
+ assert.ok(raise?.disabled)
+ assert.ok(allocation('Invoice No').disabled)
+ await click(raise)
+ await click(allocation('Invoice No'))
+ assert.deepEqual(requests,[[f.id,'status',{}]])
+ assert.deepEqual(f.orderWrites,[])
+})
 // The separately authorized Woo metadata repair intentionally updates the two
 // original bug-characterization expectations; all other reference cases remain.
 for(const registryFails of [false,true])test(`WooCommerce allocation preserves its checkout total and recorded payout (${registryFails?'failure':'success'})`,async()=>{

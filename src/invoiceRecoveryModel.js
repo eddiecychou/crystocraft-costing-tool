@@ -47,6 +47,7 @@ export const validInvoiceOperationId = (v) =>
 export const invoiceFollowupStages = ['financial', 'woo']
 export const invoiceFollowupStageLabel = { financial: 'Financial copy', woo: 'UC Registry' }
 export const invoiceFollowupDispositionLabel = { resume: 'Ready to resume', in_progress: 'In progress', finance_review: 'Finance review needed' }
+export const invoiceReceiptCheckBlocked = operation => ['unavailable', 'conflict'].includes(operation?.receiptStatus)
 export const invoiceFollowupSettled = (stage) =>
   ['done', 'manual_review', 'not_applicable'].includes(stage?.state)
 export const invoiceFollowupsDone = (op) =>

@@ -15,6 +15,7 @@ import {
   invoiceSubject
 } from '../../../src/invoiceRecoveryModel.js'
 import { InvoiceRecoveryError } from './invoiceRecoveryRepository.js'
+import { InvoiceReceiptConflict } from './invoiceReceiptStatus.js'
 import { orderEditRevision } from '../../../src/orderEditModel.js'
 
 export class InvoiceFollowupReviewed extends Error {
@@ -132,8 +133,9 @@ export function createInvoiceRecoverySql({
         method: 'POST',
         body: { p_operation_id: id }
       }).then((rows) => {
-        if (rows.length > 1) throw Error('Allocation receipt is ambiguous.')
-        return rows[0] || null
+        if (rows.length > 1 || (rows.length === 1 && (!rows[0] || typeof rows[0] !== 'object' || Array.isArray(rows[0]))))
+          throw new InvoiceReceiptConflict('Allocation receipt is ambiguous or malformed.')
+        return rows.length ? rows[0] : null
       }),
     async review(orderId, operationId, identity, reason) {
       const rows = await rest('rpc/review_invoice_allocation_followups', {

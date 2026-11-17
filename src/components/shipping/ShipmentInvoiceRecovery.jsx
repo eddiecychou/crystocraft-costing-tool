@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { invoiceFollowupsDone, invoiceFollowupReviewTarget, sameInvoiceValue,
+import { invoiceFollowupsDone, invoiceFollowupReviewTarget, invoiceReceiptCheckBlocked, sameInvoiceValue,
   invoiceFollowupStageLabel, invoiceFollowupDispositionLabel } from '../../invoiceRecoveryModel'
+
+const receiptStatusMessage = {
+  not_found: 'No issued receipt found for this saved request.',
+  unavailable: 'The receipt source is unavailable. Refresh to check again.',
+  conflict: 'Conflicting receipt evidence. Send this saved request to Finance.',
+}
 
 export default function ShipmentInvoiceRecovery({
   state,
@@ -18,6 +24,10 @@ export default function ShipmentInvoiceRecovery({
     [purpose, setPurpose] = useState('split')
   const mode = selection?.mode
   const op = state?.operation
+  const receiptBlocked = invoiceReceiptCheckBlocked(op)
+  const receiptMessage = op?.receiptStatus === 'verified'
+    ? `Issued receipt verified. ${op.status === 'review_required' ? 'The order link needs review.' : 'Order link pending.'}`
+    : receiptStatusMessage[op?.receiptStatus]
   const entries = state?.followupChecklist?.entries || []
   const current = entries.find(row => row.id === op?.id)
   const unavailable = statusUnavailable || state?.followupChecklist?.unavailable
@@ -30,7 +40,7 @@ export default function ShipmentInvoiceRecovery({
   }, [focusedFollowupId, focusedRead, focusedRow, unavailable])
   const canManage = !readOnly && state?.canManage !== false
   const needsResume = op && (op.status !== 'linked' || !invoiceFollowupsDone(op))
-  const canResume = needsResume && !state?.linkBlocked && (!current || current.disposition === 'resume')
+  const canResume = needsResume && !state?.linkBlocked && !receiptBlocked && (!current || current.disposition === 'resume')
   const selectedRow = mode === 'closure_review_followups'
     ? entries.find(row => row.id === selection.id && !row.current) : op
   const liveTarget = mode === 'link_review' ? state?.linkReviewTarget
@@ -82,7 +92,7 @@ export default function ShipmentInvoiceRecovery({
       {op ? (
         <>
           <p role="status" className="text-sm break-words">
-            {state.linkBlocked ? 'Invoice request needs Finance review.' : op.status === 'linked'
+            {receiptMessage || (state.linkBlocked ? 'Invoice request needs Finance review.' : op.status === 'linked'
               ? invoiceFollowupsDone(op)
                 ? 'Invoice linked.'
                 : 'Invoice linked — follow-up pending.'
@@ -90,14 +100,17 @@ export default function ShipmentInvoiceRecovery({
                 ? 'Review required — keep this saved request.'
                 : op.result
                   ? 'Invoice issued — linking pending.'
-                  : 'Invoice request pending — safe to resume.'}
+                  : 'Invoice request pending — safe to resume.')}
             {op.result && (
               <strong className="block mt-1 text-ink">
-                {op.result.si_no} · {op.result.uc_no}
+                {receiptBlocked && 'Saved references · '}{op.result.si_no} · {op.result.uc_no}
               </strong>
             )}
           </p>
-          {op.error?.message && (
+          {op.receiptStatus === 'unavailable' && onRefresh && (
+            <button type="button" className="btn-secondary min-h-11" disabled={busy} onClick={onRefresh}>Refresh receipt status</button>
+          )}
+          {!receiptBlocked && op.error?.message && (
             <p className="text-sm text-amber-800 break-words">
               {op.error.message}
             </p>
@@ -120,7 +133,7 @@ export default function ShipmentInvoiceRecovery({
               >
                 {busy ? 'Confirming…' : 'Resume saved request'}
               </button>}
-              {state.linkReviewTarget && (
+              {state.linkReviewTarget && !receiptBlocked && (
                 <button
                   type="button"
                   className="btn-secondary min-h-[44px]"
@@ -188,7 +201,7 @@ export default function ShipmentInvoiceRecovery({
                 ? `Link issued invoice ${selection.target.si} · ${selection.target.uc} to this order. Current invoice ${selection.target.expected.si || 'none'} · current UC ${selection.target.expected.uc || 'none'}.`
                 : `Record Finance’s completed follow-up review for ${selection.target.si} · ${selection.target.uc}.`}
           </p>
-          {selectionChanged && <p role="alert" className="text-sm text-amber-800">The invoice or saved references changed. Reopen the review for the intended invoice before confirming.</p>}
+          {selectionChanged && !receiptBlocked && <p role="alert" className="text-sm text-amber-800">The invoice or saved references changed. Reopen the review for the intended invoice before confirming.</p>}
           {mode === 'link_review' && (
             <p className="text-sm text-ink-70">Saved SO {selection.target.references.erp_so_no || 'none'} · PI {selection.target.references.erp_pi_no || 'none'} · invoice date {selection.target.references.invoiced_at || 'none'}</p>
           )}
@@ -222,6 +235,7 @@ export default function ShipmentInvoiceRecovery({
               disabled={
                 busy ||
                 unavailable || selectionChanged ||
+                (mode === 'link_review' && receiptBlocked) ||
                 !reason.trim()
               }
               onClick={() => run(mode)}
