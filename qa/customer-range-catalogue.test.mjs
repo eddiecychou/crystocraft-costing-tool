@@ -43,3 +43,24 @@ test('featured picks use current visibility and current Range images',async()=>{
  assert.deepEqual(result.featured.items.map(i=>i.image_url),['ok.jpg'])
  assert.doesNotMatch(JSON.stringify(result),/PRIVATE|outdated|retired|hidden/)
 })
+
+test('enquiry units, legacy drafts, and finish/colour limits', async () => {
+  const {rangeOrderMode, quantityIssue, stockLimit} = await import('../src/domain/enquiryQuantity.js')
+  const stock = {status:'stock', qty:5, pcs_per_carton:24, cartons:1, plating_code:'C', color:'RED'}
+  const available = {verified:true, buildable:30, byPlating:{C:12}, byVariant:{'C|RED':5}}
+  assert.equal(rangeOrderMode(stock),'stock')
+  assert.equal(quantityIssue(stock, available),'')
+  assert.match(quantityIssue({...stock, qty:6}, available),/Only 5/)
+  assert.equal(stockLimit({...stock, color:'BLUE'}, available),0)
+  assert.equal(stockLimit(stock, {...available,verified:false}),null)
+  const first = {...stock, id:'design', type:'figurine', qty:4}
+  const shared = {...available, byVariant:{}, buildable:6}
+  assert.match(quantityIssue(first, shared, [first, {...first, qty:3}]), /Only 3/)
+  const oldActive = {...stock, status:'active'}
+  assert.match(quantityIssue(oldActive, available),/Choose how/)
+  const cartons = {...oldActive, order_mode:'mto', qty:48, cartons:2}
+  assert.equal(quantityIssue(cartons, null),'')
+  assert.match(quantityIssue({...cartons, qty:25},null),/confirm the number/)
+  assert.match(quantityIssue({...cartons, pcs_per_carton:0},null),/needs confirmation/)
+  assert.equal(quantityIssue({...stock, status:'concept'},null),'')
+})

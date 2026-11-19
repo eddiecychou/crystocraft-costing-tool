@@ -97,6 +97,8 @@ const cust   = env.authenticatedContext('cust1').firestore()
 const supplyS = env.authenticatedContext('supply1').storage()
 const broadS  = env.authenticatedContext('broad1').storage()
 
+await ok('buyer enquiries require the checked submission service', assertFails(setDoc(doc(cust, 'enquiries/unchecked'), {uid:'cust1', items:[]})))
+
 // ---- admin: unchanged, sees everything ------------------------------------
 await ok('admin read customers',       assertSucceeds(getDoc(doc(admin, 'customers/c1'))))
 await ok('admin write settings/pricing_groups', assertSucceeds(setDoc(doc(admin, 'settings/pricing_groups'), { groups: [1] })))

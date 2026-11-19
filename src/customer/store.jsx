@@ -7,7 +7,9 @@ const sameItem = (a, t, id) => a.type === t && a.id === id
 
 // A cart line is one orderable SKU: design + plating finish + crystal colour.
 // Two variations of the same design are therefore distinct lines.
-export const cartKey = i => i.type==='crystal_fabric' ? fabricCartKey(i) : i.type==='crystal_component' ? JSON.stringify([i.type,i.id,i.variant_id||'',i.swatch_sample_id||'']) : `${i.type}:${i.id}:${i.finish || ''}:${i.color || ''}`
+export const cartKey = i => i.type === 'figurine' && i.order_mode
+  ? JSON.stringify([i.type, i.id, i.finish_sku || i.finish || '', i.color || '', i.order_mode])
+  : i.type==='crystal_fabric' ? fabricCartKey(i) : i.type==='crystal_component' ? JSON.stringify([i.type,i.id,i.variant_id||'',i.swatch_sample_id||'']) : `${i.type}:${i.id}:${i.finish || ''}:${i.color || ''}`
 
 // MOQ groups every variation AND format that shares one design body. The design
 // number is taken from design_no (falling back to the middle of the item code,
@@ -74,14 +76,14 @@ function BuyerCart({ uid, children }) {
 
   const add = item => setItems(prev => {
     const key = cartKey(item)
-    if (prev.some(i => i.key === key)) return prev
+    if (prev.some(i => cartKey(i) === key)) return prev
     return [...prev, { qty: 1, note: '', ...item, key }]
   })
   const remove = key => setItems(prev => prev.filter(i => i.key !== key))
   const update = (key, patch) => setItems(prev => prev.map(i => i.key === key ? { ...i, ...patch } : i))
   const clear = () => setItems([])
   // has() accepts an item-like { type, id, finish, color }.
-  const has = item => items.some(i => i.key === cartKey(item))
+  const has = item => items.some(i => cartKey(i) === cartKey(item))
 
   return <CartCtx.Provider value={{ uid, items, add, remove, update, clear, has, count: items.length }}>{children}</CartCtx.Provider>
 }

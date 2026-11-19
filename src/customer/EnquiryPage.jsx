@@ -1,9 +1,11 @@
+import { useEnquiryAvailability } from '../hooks/useCustomerAvailability'
+import { positiveWhole, quantityIssue, rangeOrderMode, remainingStock } from '../domain/enquiryQuantity'
 import { resolveRangeSelection } from '../domain/customerRangeSelection'
 import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import { loadCustomerCatalogue } from '../customerCatalogueApi'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { Gem, Package, Trash2, ClipboardList, CheckCircle2, Plus, Minus } from 'lucide-react'
 import { useCart, designGroupKey, formatGroupKey, formatCodeOf, designNumberOf } from './store'
@@ -37,6 +39,9 @@ export default function EnquiryPage({ profile }) {
     .filter(Boolean)
   const unavailable = saved.filter(i => !items.some(current => current.key === i.key))
 
+  const rangeLines = items.filter(i => i.type === 'figurine')
+  const stock = useEnquiryAvailability(rangeLines.filter(i => ['stock', ''].includes(rangeOrderMode(i))).map(i => i.id))
+  const needsReview = rangeLines.some(i => quantityIssue(i, stock.values[i.id], rangeLines))
   const isConcept = i => i.status === 'concept'
 
   // Unit price (customer currency, account WS factor applied) for figurine lines.
@@ -56,7 +61,7 @@ export default function EnquiryPage({ profile }) {
   // count toward it together, so aggregate pieces by design group. Concept
   // lines are an interest estimate, not a real order — excluded so they can
   // never silently help a real order reach a manufacturing minimum.
-  const designPcs = items.filter(i => !isConcept(i)).reduce((m, i) => {
+  const designPcs = items.filter(i => i.type !== 'figurine' || rangeOrderMode(i) === 'mto').reduce((m, i) => {
     const k = designGroupKey(i)
     m[k] = (m[k] || 0) + Math.max(1, Number(i.qty) || 1)
     return m
@@ -64,14 +69,14 @@ export default function EnquiryPage({ profile }) {
 
   // Second MOQ floor: the format base component (music box, bible…) pools across
   // every design sharing that format. Minimums come from admin Settings.
-  const formatPcs = items.filter(i => !isConcept(i)).reduce((m, i) => {
+  const formatPcs = items.filter(i => i.type !== 'figurine' || rangeOrderMode(i) === 'mto').reduce((m, i) => {
     const k = formatGroupKey(i)
     m[k] = (m[k] || 0) + Math.max(1, Number(i.qty) || 1)
     return m
   }, {})
 
   async function submit() {
-    if (!items.length) return
+    if (!items.length || needsReview || sending) return
     setSending(true); setError('')
     const ownerUid = cart.uid
     function checkDraftOwner() {
@@ -84,7 +89,7 @@ export default function EnquiryPage({ profile }) {
         if (unavailable.length || items.some(i => {
           if (i.type !== 'figurine') return false
           const live = resolveRangeSelection(i, fresh.products)
-          return !live || live.customer_price_usd !== i.customer_price_usd || live.status !== i.status
+          return !live || live.customer_price_usd !== i.customer_price_usd || live.status !== i.status || live.pcs_per_carton !== i.pcs_per_carton
         })) {
           range.retry()
           throw Error('A Range design or price changed. Please review your enquiry before sending.')
@@ -94,7 +99,7 @@ export default function EnquiryPage({ profile }) {
       checkDraftOwner()
       const attachments=drawing?[await uploadEnquiryDrawing(enquiryId,drawing,drawingId,ownerUid)]:[]
       checkDraftOwner()
-      await setDoc(doc(db, 'enquiries',enquiryId), {
+      const enquiry = {
         attachments,
         uid: ownerUid,
         company_name: profile?.company_name || '',
@@ -109,8 +114,9 @@ export default function EnquiryPage({ profile }) {
           ...(i.type === 'crystal_fabric' ? fabricEnquirySnapshot(i) : {}),
           ...(i.type === 'swatch_sample' && i.swatch_sample_id ? { swatch_sample_id:i.swatch_sample_id, swatch_revision:i.swatch_revision || null } : {}),
           customer_price_usd: i.customer_price_usd ?? null,
+          ...(i.type === 'figurine' ? { order_mode: rangeOrderMode(i), finish_sku: i.finish_sku || '', variant_index: i.variant_index ?? null } : {}),
           pcs_per_carton: Number(i.pcs_per_carton) || 0,
-          cartons: Number(i.cartons) || 0,
+          cartons: i.type === 'figurine' && rangeOrderMode(i) !== 'mto' ? 0 : Number(i.cartons) || 0,
           moq: Number(i.moq) || 0,
           status: i.status || '',   // 'concept' = interest estimate, not an order line
           unit_price: unitPrice(i), line_total: lineTotal(i),
@@ -119,9 +125,19 @@ export default function EnquiryPage({ profile }) {
         estimated_total: swatchOnly ? null : total,
         message,
         status: 'new',
-        createdAt: serverTimestamp(),
+      }
+      const token = await auth.currentUser.getIdToken()
+      checkDraftOwner()
+      const response = await fetch('/api/customer-enquiry', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({enquiryId, enquiry}),
       })
-      if (auth.currentUser?.uid === ownerUid) notifyEmail('enquiry', {
+      const result = await response.json()
+      if (!response.ok || result.enquiryId !== enquiryId) {
+        if (response.status === 409) { stock.retry(); range.retry() }
+        throw Error(result.error || 'Could not send your enquiry. Please try again.')
+      }
+      if (result.created && auth.currentUser?.uid === ownerUid) notifyEmail('enquiry', {
         company_name: profile?.company_name || '',
         contact_name: profile?.contact_name || '',
         currency: cur,
@@ -176,16 +192,21 @@ export default function EnquiryPage({ profile }) {
           const ppc = Number(i.pcs_per_carton) || 0
           const moq = Number(i.moq) || 0
           const qtyPcs = Math.max(1, Number(i.qty) || 1)
-          const cartons = ppc > 0 ? Math.max(1, Math.round(qtyPcs / ppc)) : 0
+          const isRange = i.type === 'figurine'
+          const mode = isRange ? rangeOrderMode(i) : ''
+          const cartons = Number(i.cartons) || 1
+          const limit = mode === 'stock' ? remainingStock(i, stock.values[i.id], rangeLines) : null
+          const issue = isRange ? quantityIssue(i, stock.values[i.id], rangeLines) : ''
+          const manufacturing = !isRange || mode === 'mto'
           const designTotal = designPcs[designGroupKey(i)] || qtyPcs
-          const belowMoq = moq > 0 && designTotal < moq
+          const belowMoq = manufacturing && moq > 0 && designTotal < moq
           const fmtCode = formatCodeOf(i)
           const fmtMoq = Number(formatMoqMap[fmtCode]) || 0
           const formatTotal = formatPcs[formatGroupKey(i)] || qtyPcs
-          const belowFormatMoq = fmtMoq > 0 && formatTotal < fmtMoq
+          const belowFormatMoq = manufacturing && fmtMoq > 0 && formatTotal < fmtMoq
           const fmtLabel = formatLabels[fmtCode] || FORMAT_LABEL[fmtCode] || `Format ${fmtCode}`
           const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.key, { cartons: c, qty: c * ppc }) }
-          const setPcs = n => cart.update(i.key, { qty: Math.max(1, Math.floor(n) || 1) })
+          const setPcs = n => cart.update(i.key, { qty: Math.min(limit ?? Infinity, Math.max(1, Math.floor(n) || 1)) })
           return (
             <div key={i.key} className="grid grid-cols-[64px_minmax(0,1fr)] sm:grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-3 p-3">
               <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden shrink-0">
@@ -223,12 +244,20 @@ export default function EnquiryPage({ profile }) {
                 <span className="text-xs text-ink-60">
                   {unitPrice(i) != null ? `${fmtMoney(unitPrice(i), cur)} ea` : 'On enquiry'}
                 </span>
-                {ppc > 0 ? (
+                {isRange && !mode && <div className="flex flex-col items-end gap-1 text-xs">
+                  <span>Saved quantity: {qtyPcs} pcs</span>
+                  <button type="button" className="underline" disabled={cart.has({...i, order_mode:'stock'})} onClick={() => cart.update(i.key, { order_mode:'stock', cartons:0 })}>Use pieces from stock</button>
+                  {positiveWhole(ppc) && <button type="button" className="underline" disabled={cart.has({...i, order_mode:'mto'})} onClick={() => {
+                    const count = Math.ceil(qtyPcs / ppc)
+                    cart.update(i.key, {order_mode:'mto', cartons:count, qty:count * ppc})
+                  }}>Use {Math.ceil(qtyPcs / ppc)} carton(s) · {Math.ceil(qtyPcs / ppc) * ppc} pcs</button>}
+                </div>}
+                {mode === 'mto' ? (
                   <div className="flex flex-col items-end gap-0.5">
                     <div className="inline-flex items-center border border-ivory-dark rounded-none overflow-hidden">
                       <button type="button" onClick={() => setCartons(cartons - 1)}
                         className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-ivory text-ink-70" aria-label="Fewer cartons"><Minus size={12} /></button>
-                      <input type="number" min="1" value={cartons}
+                      <input aria-label="Cartons" type="number" min="1" value={cartons}
                         onChange={e => setCartons(Number(e.target.value))}
                         className="w-12 text-center text-sm py-2 outline-none border-x border-ivory-dark" />
                       <button type="button" onClick={() => setCartons(cartons + 1)}
@@ -236,13 +265,18 @@ export default function EnquiryPage({ profile }) {
                     </div>
                     <span className="text-xs text-ink-60">{cartons} ctn · {qtyPcs.toLocaleString()} pcs</span>
                   </div>
-                ) : (
+                ) : (!isRange || mode) && (
                   <label className="text-xs text-ink-60">{concept ? 'Estimated qty' : 'Qty ('+(CRYSTAL_UNITS[i.unit]||'pcs')+')'}
-                    <input type="number" min="1" value={qtyPcs}
+                    <input type="number" min="1" max={limit ?? undefined} disabled={mode === 'stock' && !limit} value={qtyPcs}
                       onChange={e => setPcs(Number(e.target.value))}
                       className="input py-2 w-20 ml-1 inline-block" />
                   </label>
                 )}
+                {mode === 'stock' && limit != null && <span className="text-xs text-ink-60">From stock · {limit} pcs available</span>}
+                {issue && <div className="max-w-64 text-xs text-amber-700" role="status">{stock.loading && mode === 'stock' && limit == null ? 'Checking stock…' : issue}
+                  {mode === 'stock' && !stock.loading && <button type="button" className="underline ml-1" onClick={stock.retry}>Recheck stock</button>}
+                  {mode === 'mto' && positiveWhole(ppc) && <button type="button" className="underline ml-1" onClick={() => setCartons(cartons)}>Confirm {cartons} × {ppc} pcs</button>}
+                </div>}
                 <span className="text-sm text-ink font-medium">
                   {concept ? <span className="text-ink-60 font-normal text-xs">Not in total</span>
                     : lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
@@ -279,7 +313,7 @@ export default function EnquiryPage({ profile }) {
       {error && <p role="alert" className="text-sm text-red-600 mt-2">{error}</p>}
 
       <div className="flex items-center gap-3 mt-4">
-        <button onClick={submit} disabled={sending || unavailable.length > 0} className="btn-primary">
+        <button onClick={submit} disabled={sending || needsReview || unavailable.length > 0} className="btn-primary">
           {sending ? 'Sending…' : 'Send enquiry'}
         </button>
         <button onClick={() => cart.clear()} className="text-sm text-ink-60 hover:text-ink">Clear list</button>

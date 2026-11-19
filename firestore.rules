@@ -606,7 +606,8 @@ service cloud.firestore {
 
     match /enquiries/{eid} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn() && request.auth.uid != 'mcp-figurine-range-service' && request.auth.uid != 'mcp-range-upload-service' && request.resource.data.uid == request.auth.uid;
+      // Buyer submissions validate live Range stock in /api/customer-enquiry.
+      allow create: if isAdmin() && request.auth.uid != 'mcp-figurine-range-service' && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 

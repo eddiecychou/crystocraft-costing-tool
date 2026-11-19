@@ -1,0 +1,65 @@
+// Customer-facing currencies (RMB intentionally excluded for the storefront).
+export const CUSTOMER_CURRENCIES = ['USD', 'EUR', 'HKD', 'GBP', 'AUD', 'CAD', 'SGD']
+
+// Rates are stored in settings/exchange_rates as HKD per 1 unit of currency.
+// HKD is the pivot: 1 USD = rates.USD HKD, etc.
+export const DEFAULT_RATES = { RMB: 1.09, USD: 7.78, EUR: 8.60, HKD: 1 }
+
+// Convert a HKD amount into the target currency. A currency with no rate on
+// file returns NULL — never the unconverted amount.
+//
+// This used to be `Number(amountHKD) / (rates[cur] || 1)`, which silently
+// divided by 1 for any currency missing from the rates doc and handed the raw
+// HKD figure back wearing the target currency's label. CUSTOMER_CURRENCIES
+// offers GBP/AUD/CAD/SGD but settings/exchange_rates only ever held RMB/USD/
+// EUR, so a GBP account saw "GBP 155.60" for what should have been ~GBP 15.90
+// — a plausible-looking number that is ~7.8x wrong, which is far worse than no
+// number at all. fmtMoney() renders null as "—". See LESSONS-LEARNED L-35.
+export const fromHKD = (amountHKD, cur, rates) => {
+  if (cur === 'HKD') return Number(amountHKD)
+  const rate = Number(rates?.[cur])
+  if (!Number.isFinite(rate) || rate <= 0) return null
+  return Number(amountHKD) / rate
+}
+
+// Convert a USD amount into the target currency (USD -> HKD -> target).
+export const fromUSD = (amountUSD, cur, rates) => {
+  const hkd = Number(amountUSD) * (rates.USD || DEFAULT_RATES.USD)
+  return fromHKD(hkd, cur, rates)
+}
+
+// Convert a USD (ex-factory base) amount into the customer's display currency,
+// honouring a per-account FIXED rate when set. profile.fx_rate = units of the
+// customer's base_currency per 1 USD (e.g. HKD 7.80, EUR 0.92). When set (>0) it
+// locks the customer's prices regardless of the live daily rates; blank/0 falls
+// back to the live global conversion. Customer-facing use only.
+export const convertFromUSD = (amountUSD, profile, rates) => {
+  if (amountUSD == null) return null
+  const fx = Number(profile?.fx_rate)
+  if (Number.isFinite(fx) && fx > 0) return Number(amountUSD) * fx
+  return fromUSD(amountUSD, profile?.base_currency || 'USD', rates)
+}
+
+// Convert a HKD amount into the customer's display currency, honouring the same
+// per-account fixed rate. The lock is defined as USD→display (profile.fx_rate),
+// so corp-gift HKD prices are first bridged to USD via the live pivot (HKD is
+// USD-pegged, so this is effectively stable) then converted at the locked rate.
+// Blank/0 fx_rate falls back to the live HKD→currency conversion.
+export const convertFromHKD = (amountHKD, profile, rates) => {
+  if (amountHKD == null) return null
+  const fx = Number(profile?.fx_rate)
+  if (Number.isFinite(fx) && fx > 0) {
+    const usd = Number(amountHKD) / (rates.USD || DEFAULT_RATES.USD)  // HKD → USD (pegged)
+    return usd * fx                                                   // USD → display (locked)
+  }
+  return fromHKD(amountHKD, profile?.base_currency || 'USD', rates)
+}
+
+export { wsPriceFactor } from './wholesalePrice.js'
+
+// Per-currency decimal rules: HKD max 1 dp, everything else max 2 dp.
+export const fmtMoney = (val, cur) => {
+  if (val == null || val === '' || Number.isNaN(Number(val))) return '—'
+  const dp = cur === 'HKD' ? 1 : 2
+  return `${cur} ${(Number(val)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: dp })}`
+}

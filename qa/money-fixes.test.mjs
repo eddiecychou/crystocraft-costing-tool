@@ -8,28 +8,7 @@
 //   L-37  an uncosted product published price_hkd 0, which passed the customer
 //         storefront's `!= null` filter and rendered as free
 //
-// src/currency.js can't be imported directly in Node — it pulls `db` from
-// ./firebase, which needs a browser. Same approach as qa/supplier-merge.test.mjs:
-// copy the real module to a temp file with the React/Firebase imports and the
-// useRates hook stripped, so the PURE conversion logic under test is the actual
-// shipped code, not a replica.
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { join, dirname } from 'node:path'
-import { tmpdir } from 'node:os'
-
-const here = dirname(fileURLToPath(import.meta.url))
-const src = readFileSync(join(here, '..', 'src', 'currency.js'), 'utf8')
-const pure = src
-  .replace(/^import[\s\S]*?from '\.\/firebase'\n/m, '')
-  .replace(/^import .*\n/gm, '')
-  .replace(/export function useRates\(\)[\s\S]*?\n}\n/m, '')
-const dir = mkdtempSync(join(tmpdir(), 'money-'))
-const modPath = join(dir, 'currency.mjs')
-writeFileSync(modPath, pure.replace('./domain/wholesalePrice.js', new URL('../src/domain/wholesalePrice.js', import.meta.url).href))
-const { fromHKD, fromUSD, convertFromUSD, convertFromHKD, wsPriceFactor, fmtMoney, CUSTOMER_CURRENCIES } =
-  await import(modPath)
-rmSync(dir, { recursive: true, force: true })
+import { fromHKD, fromUSD, convertFromUSD, convertFromHKD, wsPriceFactor, fmtMoney, CUSTOMER_CURRENCIES } from '../src/domain/customerCurrency.js'
 
 let pass = 0, fail = 0
 const check = (name, cond, detail = '') => {

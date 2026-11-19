@@ -1,3 +1,4 @@
+import { stockLimit, positiveWhole } from '../domain/enquiryQuantity'
 import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
@@ -116,13 +117,6 @@ export default function FigurineDetail({ profile }) {
     ? selVariant.crystal_colors : colorCodes
   const needsColor = colorCodes.length > 0
   const colorValid = !!color && finishColors.includes(color)
-  // In-cart status reflects the specific selected SKU (plating + colour).
-  const inCart = cart?.has({
-    type: 'figurine', id: p.id,
-    finish: selVariant.plating_name || selVariant.plating_code || '',
-    color: needsColor ? (color || '') : '',
-  })
-
   const ppc = Number(p.packing?.pcs_per_carton) || 0    // pcs per carton (0 = unknown)
   const isLastStock = p.status === 'stock'
   const isConcept = p.status === 'concept'
@@ -137,23 +131,23 @@ export default function FigurineDetail({ profile }) {
     const pc = (p2 || '').trim().toUpperCase()
     return pc ? (avail.byPlating[pc] ?? null) : null
   }
-  // When per-plating data exists, a plating NOT in byPlating has 0 stock (not total fallback).
-  // Only fall back to avail.buildable when there is NO per-plating breakdown at all.
-  const hasByPlating = avail?.byPlating && Object.keys(avail.byPlating).length > 0
-  const selBuildable = hasByPlating
-    ? (avail.byPlating[selPlating] ?? 0)
-    : (avail?.buildable ?? 0)
   const selectedAvailability = (color && avail?.variantAvailability?.[`${selPlating}|${String(color).trim().toUpperCase()}`]) || avail?.finishAvailability?.[selPlating] || avail
-  const hasColourLimits = Object.keys(avail?.byVariant || {}).length > 0
-  const selectedLimit = hasColourLimits && color ? (avail.byVariant[`${selPlating}|${String(color).trim().toUpperCase()}`] ?? 0) : selBuildable
-  const hasSelStock = !isLastStock && Number.isFinite(selectedLimit) && selectedLimit > 0   // MTO product with parts on hand for this plating
+  const selectedLimit = stockLimit({ plating_code: selPlating, color }, avail) ?? 0
+  const hasSelStock = !isLastStock && !isConcept && !isRetired && Number.isFinite(selectedLimit) && selectedLimit > 0   // MTO product with parts on hand for this plating
   // Effective order mode: last-stock always uses stock (pcs); MTO uses the toggle.
   // Concept/retired have no stock and no MOQ — plain optional pcs input.
   const effectiveMode = (isLastStock || isConcept || isRetired) ? 'stock' : (hasSelStock ? orderMode : 'mto')
   const maxPcs = (isConcept || isRetired) ? Infinity : ((isLastStock || effectiveMode === 'stock') ? selectedLimit : Infinity)
-  const maxCartons = ppc > 0 ? Math.floor(maxPcs / ppc) : maxPcs
+  const supplyMode = isConcept ? 'interest' : effectiveMode
+  // In-cart status reflects the specific selected SKU (plating + colour).
+  const inCart = cart?.has({
+    type: 'figurine', id: p.id, order_mode: supplyMode, finish_sku: selVariant.sku || '',
+    finish: selVariant.plating_name || selVariant.plating_code || '',
+    color: needsColor ? (color || '') : '',
+  })
   const pcs = effectiveMode === 'stock' ? stockPcs : (ppc > 0 ? cartons * ppc : cartons)
   const canAdd = (!needsColor || colorValid) && !availabilityLoading && !!avail && (!isLastStock || avail.verified)
+    && positiveWhole(pcs) && (effectiveMode !== 'mto' || positiveWhole(ppc))
     && (!Number.isFinite(maxPcs) || (pcs > 0 && pcs <= maxPcs))
   // MOQ applies across every variation AND format of this design (same body /
   // design number — freestand, music box, bible, …), so include any pieces of
@@ -161,7 +155,7 @@ export default function FigurineDetail({ profile }) {
   const lineLike = { type: 'figurine', id: p.id, design_no: designNo, code, format_code: p.format_code || '' }
   const thisGroup = designGroupKey(lineLike)
   const cartDesignPcs = (cart?.items || [])
-    .filter(it => designGroupKey(it) === thisGroup)
+    .filter(it => it.order_mode === 'mto' && designGroupKey(it) === thisGroup)
     .reduce((s, it) => s + Math.max(1, Number(it.qty) || 1), 0)
   const designPcs = cartDesignPcs + (inCart ? 0 : pcs)
   const belowMoq = moq > 0 && designPcs < moq
@@ -172,7 +166,7 @@ export default function FigurineDetail({ profile }) {
   const fmtMoq = Number(formatMoqMap[fmtCode]) || 0
   const fmtGroup = formatGroupKey(lineLike)
   const cartFormatPcs = (cart?.items || [])
-    .filter(it => formatGroupKey(it) === fmtGroup)
+    .filter(it => it.order_mode === 'mto' && formatGroupKey(it) === fmtGroup)
     .reduce((s, it) => s + Math.max(1, Number(it.qty) || 1), 0)
   const formatPcs = cartFormatPcs + (inCart ? 0 : pcs)
   const belowFormatMoq = fmtMoq > 0 && formatPcs < fmtMoq
@@ -200,7 +194,8 @@ export default function FigurineDetail({ profile }) {
       color_name: needsColor ? (lookup[color]?.name || '') : '',
       customer_price_usd: selVariant.customer_price_usd ?? null,
       pcs_per_carton: ppc,
-      cartons: ppc > 0 ? cartons : 0,
+      order_mode: supplyMode, plating_code: selPlating,
+      cartons: effectiveMode === 'mto' ? cartons : 0,
       qty: pcs,
       moq,
       status: p.status || '',   // 'concept' flags this line as an interest estimate, not orderable
@@ -315,7 +310,7 @@ export default function FigurineDetail({ profile }) {
           )}
 
           {/* Quantity */}
-          {!inCart && (
+          {(!inCart || hasSelStock) && (
             <div className="mt-6">
               {/* Mode toggle — only for MTO products that have stock on hand for this plating */}
               {hasSelStock && (
@@ -330,6 +325,8 @@ export default function FigurineDetail({ profile }) {
                   </button>
                 </div>
               )}
+              {!inCart && <>
+              {effectiveMode === 'mto' && !positiveWhole(ppc) && <p className="text-xs text-amber-700">Carton size needs confirmation. Please contact us for packing details.</p>}
               <p className="label mb-1.5">
                 {effectiveMode === 'stock'
                   ? <>Quantity <span className="normal-case text-ink-60">· pcs{isLastStock && Number.isFinite(maxPcs) ? ` (max ${maxPcs})` : (isConcept || isRetired) ? ' · optional' : ''}</span></>
@@ -405,6 +402,7 @@ export default function FigurineDetail({ profile }) {
                   )}
                 </div>
               )}
+              </>}
             </div>
           )}
 
