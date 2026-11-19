@@ -36,13 +36,13 @@ const SOURCE_STYLE = {
   self:  { label: 'Applied', cls: 'text-teal-600 bg-teal-50' },
 }
 
-export default function PortalInvitations({ embedded = false }) {
+export default function PortalInvitations({ embedded = false, checkApprovalEmail = false }) {
   const [invitations, setInvitations] = useState([])
   const [customers, setCustomers] = useState([])
   const [customersById, setCustomersById] = useState({})
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(checkApprovalEmail ? 'Account approved. Check email delivery below.' : '')
   const [pickCustomerFor, setPickCustomerFor] = useState({}) // invitationId -> selected customerId
 
   useEffect(() => {
@@ -64,7 +64,8 @@ export default function PortalInvitations({ embedded = false }) {
   async function run(fn, id) {
     setBusyId(id); setError('')
     try {
-      await fn()
+      const result = await fn()
+      if (result?.emailStatus === 'unconfirmed') setError('Account approved. Check email delivery below.')
     } catch (e) {
       setError(e.message || 'Action failed.')
     } finally {
@@ -89,6 +90,8 @@ export default function PortalInvitations({ embedded = false }) {
             const srcStyle = SOURCE_STYLE[inv.source] || SOURCE_STYLE.admin
             const company = inv.customer_id ? (customersById[inv.customer_id]?.company_name || inv.customer_id) : null
             const busy = busyId === inv.id
+            const sending = inv.email_send_status === 'sending'
+            const interrupted = sending && Date.now() - (inv.approval_email_started_at?.toMillis?.() || 0) >= 10 * 60 * 1000
             const needsCustomerLink = inv.status === 'claimed' && !inv.customer_id
             const pickedCustomerId = pickCustomerFor[inv.id] || ''
             return (
@@ -107,6 +110,7 @@ export default function PortalInvitations({ embedded = false }) {
                     {inv.source === 'self' ? 'Applied' : 'Invited'} {fmtDate(inv.created_at)}{inv.source === 'admin' && ` by ${inv.created_by || '—'}`}
                     {inv.claimed_at && inv.source === 'admin' && ` · Claimed ${fmtDate(inv.claimed_at)}`}
                     {inv.approved_at && ` · Approved ${fmtDate(inv.approved_at)}`}
+                    {sending && <span> · {interrupted ? 'Email delivery unconfirmed' : 'Sending approval email…'}</span>}
                     {inv.email_send_status === 'failed' && (
                       <span className="text-red-600"> · Last email failed to send</span>
                     )}
@@ -147,26 +151,29 @@ export default function PortalInvitations({ embedded = false }) {
                       {inv.status === 'claimed' && (
                         <>
                           <button
-                            onClick={() => run(() => approveInvitation(inv.id, pickedCustomerId || undefined), inv.id)}
+                            onClick={() => run(() => approveInvitation(inv.id, pickedCustomerId || undefined, { expectedUid: inv.claimed_uid }), inv.id)}
                             disabled={needsCustomerLink && !pickedCustomerId}
                             className="btn-primary text-xs py-1 px-2 disabled:opacity-40"
                           >
                             Approve
                           </button>
-                          <button onClick={() => run(() => rejectInvitation(inv.id), inv.id)} className="btn-secondary text-xs py-1 px-2">Reject</button>
+                          <button onClick={() => run(() => rejectInvitation(inv.id, inv.claimed_uid), inv.id)} className="btn-secondary text-xs py-1 px-2">Reject</button>
                         </>
                       )}
                       {inv.status === 'pending' && (
                         <>
-                          <button onClick={() => run(() => resendInvitation(inv.id), inv.id)} className="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1">
+                          <button onClick={() => run(() => resendInvitation(inv.id, inv.status), inv.id)} className="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1">
                             <RefreshCw size={11} /> Resend
                           </button>
                           <button onClick={() => run(() => revokeInvitation(inv.id), inv.id)} className="btn-secondary text-xs py-1 px-2 text-red-600">Revoke</button>
                         </>
                       )}
-                      {inv.status === 'approved' && inv.email_send_status === 'failed' && (
-                        <button onClick={() => run(() => resendInvitation(inv.id), inv.id)} className="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1">
-                          <RefreshCw size={11} /> Resend setup email
+                      {inv.status === 'approved' && (inv.email_send_status === 'failed' || interrupted) && (
+                        <button onClick={() => {
+                          if (!interrupted || window.confirm('Delivery is unconfirmed. Have you checked that the approval email needs resending?'))
+                            run(() => resendInvitation(inv.id, inv.status, inv.email_send_status), inv.id)
+                        }} className="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1">
+                          <RefreshCw size={11} /> Resend approval email
                         </button>
                       )}
                     </>

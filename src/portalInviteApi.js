@@ -31,19 +31,19 @@ async function call(action, payload, token) {
 // (auto-approval for an admin invitation happens the moment the customer
 // claims it, so this is the only chance to set it before they're in). See
 // CustomerDetail.jsx's InvitePricingDialog and portal-invite.js's
-// runApproval.
+// stageApproval in lib/portalApproval.js.
 export const createInvitation = (customerId, contactEmail, contactName, marketingContactId, pricing) =>
   callAdmin('create_invitation', { customerId, contactEmail, contactName, marketingContactId, pricing })
 
-export const resendInvitation = invitationId => callAdmin('resend_invitation', { invitationId })
-export const revokeInvitation = invitationId => callAdmin('revoke_invitation', { invitationId })
-export const rejectInvitation = invitationId => callAdmin('reject_invitation', { invitationId })
+export const resendInvitation = (invitationId, expectedStatus, expectedMailStatus) => callAdmin('resend_invitation', { invitationId, expectedStatus, expectedMailStatus })
+export const revokeInvitation = (invitationId, expectedStatus = 'pending') => callAdmin('revoke_invitation', { invitationId, expectedStatus })
+export const rejectInvitation = (invitationId, expectedUid) => callAdmin('reject_invitation', { invitationId, expectedUid })
 // customerId is optional — required only when approving a self-submitted
 // application (source:'self') that has no customer link yet, or to correct
 // an admin-invitation's link before approving. See portal-invite.js's
 // approveInvitation.
-export const approveInvitation = (invitationId, customerId) =>
-  callAdmin('approve_invitation', { invitationId, customerId })
+export const approveInvitation = (invitationId, customerId, { accountType, pricingChanges, expectedUid } = {}) =>
+  callAdmin('approve_invitation', { invitationId, customerId, accountType, pricingChanges, expectedUid })
 
 // AccountEdit.jsx's "Delete account" — deletes BOTH the Firebase Auth user
 // and the users/{uid} Firestore doc (the old deleteDoc-only client path left
@@ -116,4 +116,4 @@ export function retryAccessAlert(invitationId) {
 
 export const listAccountFollowupStates = uids => callAdmin('list_account_followup_states', { uids })
 
-export const approveLegacyAccount = (uid, customerId, role) => callAdmin('approve_legacy_account', { uid, customerId, role })
+export const approveLegacyAccount = (uid, customerId, role, expectedStatus) => callAdmin('approve_legacy_account', { uid, customerId, role, expectedStatus })

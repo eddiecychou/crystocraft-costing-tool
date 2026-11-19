@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom'
 import { useContext, useState } from 'react'
 import CustomerAccounts from './CustomerAccounts'
 import PortalLogins from './PortalLogins'
@@ -24,7 +25,8 @@ export default function Portal() {
   const {count,unavailable} = useContext(PortalRequestCount)
   const [reviewVisit,setReviewVisit] = useState(0)
   const [accountTab,setAccountTab] = useState('approved')
-  const [tab, setTab] = useState(isAdmin ? 'accounts' : 'logins')
+  const checkApprovalEmail = useLocation().state?.approvalEmailUnconfirmed === true
+  const [tab, setTab] = useState(isAdmin ? (checkApprovalEmail ? 'invitations' : 'accounts') : 'logins')
 
   return (
     <div>
@@ -50,7 +52,7 @@ export default function Portal() {
       </div>
 
       {tab === 'accounts'    && <CustomerAccounts key={reviewVisit} embedded selectedTab={accountTab} onTabChange={setAccountTab} />}
-      {tab === 'invitations' && <PortalInvitations embedded />}
+      {tab === 'invitations' && <PortalInvitations embedded checkApprovalEmail={checkApprovalEmail} />}
       {tab === 'logins'      && <PortalLogins embedded />}
       {tab === 'enquiries'   && <Enquiries embedded />}
     </div>

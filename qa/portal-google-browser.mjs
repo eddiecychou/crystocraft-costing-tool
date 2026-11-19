@@ -153,6 +153,41 @@ try {
   await password.waitForURL(u=>u.pathname==='/shop')
   assert.equal((await readUser(passwordInviteEmail)).get('status'),'approved')
   console.log('PASS: standard invitation, password setup and sign-in reached the approved storefront')
+  // Both staff pages load the same pending account before either approves it.
+  await pending.ref.update({customer_id:'demo-company'})
+  const review=async suffix=>{
+    const email='fictional-reviewer-'+suffix+'@example.test', secret='Fictional-Reviewer-Only1'
+    const user=await getAuth(app).createUser({email,password:secret})
+    await db.doc('users/'+user.uid).set({role:'admin',status:'approved',email})
+    const page=await createPage()
+    await page.goto(origin+'/login')
+    await page.locator('input[type=email]').fill(email)
+    await page.locator('input[type=password]').fill(secret)
+    await page.locator('form button[type=submit]').click()
+    await page.waitForURL(u=>u.pathname==='/dashboard')
+    await page.goto(origin+'/portal/accounts/'+pending.id)
+    await page.getByRole('button',{name:'Approve & send setup email'}).waitFor()
+    return page
+  }
+  const first=await review('first'), second=await review('second')
+  const markup=page=>page.getByLabel('Corp Gift Catalogue — Markup ×')
+  await markup(first).fill('2.25')
+  await markup(second).fill('3.75')
+  const sentBefore=sent.length
+  await first.getByRole('button',{name:'Approve & send setup email'}).click()
+  await first.waitForURL(u=>u.pathname==='/portal')
+  await second.getByRole('button',{name:'Approve & send setup email'}).click()
+  await second.getByText(/request has changed/i).waitFor()
+  assert.equal(await markup(second).inputValue(),'3.75')
+  await second.getByRole('button',{name:'Save changes'}).click()
+  await second.getByText(/request has changed/i).waitFor()
+  const saved=await pending.ref.get()
+  assert.equal(saved.get('status'),'approved')
+  assert.equal((await db.doc('account_pricing/'+pending.id).get()).get('corp_markup_override'),2.25)
+  assert.equal((await db.doc('portal_invitations/'+saved.get('invitation_id')).get()).get('status'),'approved')
+  assert.equal(sent.length,sentBefore+1)
+  console.log('PASS: two staff pages approved the same fictional buyer; winning price saved and losing draft preserved')
+
 } finally {
   globalThis.fetch = originalFetch
   await browser.close()

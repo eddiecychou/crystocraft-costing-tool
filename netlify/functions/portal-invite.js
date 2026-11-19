@@ -1,3 +1,5 @@
+import { approveClaimed, canReviewProfile, decisionConflict, recordApprovalDelivery, retryApprovalDelivery, stageApproval } from './lib/portalApproval.js'
+import { validId } from './lib/customerAccess.js'
 import { prepareEmailApplication, emailApplicationStatus } from './lib/portalSignupRetry.js'
 import { approveLegacyAccount } from './lib/approveLegacyAccount.js'
 // SU-07A — customer portal invitation / approval / password-setup flow.
@@ -301,7 +303,12 @@ async function createInvitation(body, adminUid) {
     // account already exists by then).
     let pricingUpdated = false
     if (existingInv.status === 'pending' && pricing) {
-      await d.ref.update({ pricing, audit_log: FieldValue.arrayUnion(auditEntry('pricing_updated', adminUid)) })
+      try {
+        await d.ref.update({ pricing, audit_log: FieldValue.arrayUnion(auditEntry('pricing_updated', adminUid)) }, { lastUpdateTime: d.updateTime })
+      } catch (error) {
+        if (error.code === 9 || error.code === 5) return json({ error: decisionConflict().error }, 409)
+        throw error
+      }
       pricingUpdated = true
     }
     return json({ ok: true, id: d.id, reused: true, status: existingInv.status, pricingUpdated })
@@ -317,8 +324,8 @@ async function createInvitation(body, adminUid) {
     marketing_contact_id: marketingContactId,
     // Admin-picked pricing to apply the moment this invitation is approved
     // (which, since auto-approve, is the moment the customer claims it —
-    // see runApproval). null when the admin didn't set any, in which case
-    // runApproval falls back to its pre-existing defaults exactly as before
+    // see stageApproval). null when the admin didn't set any, in which case
+    // approval falls back to its pre-existing defaults exactly as before
     // this field existed. See CustomerDetail.jsx's InvitePricingDialog.
     pricing,
     // 'admin' = an admin invited a known customer contact (this function);
@@ -342,10 +349,7 @@ async function createInvitation(body, adminUid) {
     text: `Crystocraft is inviting you to set up a customer portal account for ${companyName}. Open this link to continue: ${claimUrl}`,
     tags: [{ name: 'invitation_id', value: ref.id, prefix: 'invite' }, { name: 'customer_id', value: customerId, prefix: 'customer' }],
   })
-  await ref.update({
-    email_send_status: send.ok ? 'sent' : 'failed',
-    email_send_error: send.ok ? null : send.error,
-  })
+  await recordInvitationEmail(ref, hash, send)
   if (!send.ok) {
     // The invitation record exists (so it can be resent) but must NOT be
     // reported to the admin as a successful send.
@@ -554,6 +558,15 @@ async function saveAccessApplication({
   return json({ ok: true, status: 'pending' })
 }
 
+// A slow invitation email can finish after the buyer has already claimed it.
+function recordInvitationEmail(ref, tokenHash, send) {
+  return ref.firestore.runTransaction(async tx => {
+    const inv = (await tx.get(ref)).data()
+    if (inv?.status === 'pending' && inv.token_hash === tokenHash)
+      tx.update(ref, { email_send_status: send.ok ? 'sent' : 'failed', email_send_error: send.ok ? null : send.error })
+  })
+}
+
 async function resendInvitation(body, adminUid) {
   const id = String(body?.invitationId || '').trim()
   if (!id) return json({ error: 'invitationId is required' }, 400)
@@ -563,6 +576,7 @@ async function resendInvitation(body, adminUid) {
   if (!snap.exists) return json({ error: 'Invitation not found' }, 404)
   const inv = snap.data()
 
+  if (body.expectedStatus && body.expectedStatus !== inv.status) return json({ error: decisionConflict().error }, 409)
   if (inv.status === 'pending') {
     // Fresh token — the old link stops working the moment a new one is
     // issued, so "resend" can't be used to keep reviving a stale/possibly-
@@ -573,82 +587,74 @@ async function resendInvitation(body, adminUid) {
     const companyName = String(customerSnap.data()?.company_name || '')
     const PORTAL_URL = process.env.PORTAL_URL || 'https://portal.crystocraft.com'
     const claimUrl = `${PORTAL_URL}/invite/${id}?t=${raw}`
+    try {
+      await ref.update({
+        token_hash: hash, expires_at: expiresAt,
+        resend_count: FieldValue.increment(1), last_resent_at: Timestamp.now(),
+        email_send_status: null, email_send_error: null,
+        audit_log: FieldValue.arrayUnion(auditEntry('resent', adminUid)),
+      }, { lastUpdateTime: snap.updateTime })
+    } catch (error) {
+      if (error.code === 9 || error.code === 5) return json({ error: decisionConflict().error }, 409)
+      throw error
+    }
     const send = await sendResendEmail({
       to: inv.contact_email, subject: `You're invited to the Crystocraft customer portal`,
       html: invitationEmailHtml({ companyName, portalUrl: claimUrl }),
       text: `Crystocraft is inviting you to set up a customer portal account for ${companyName}. Open this link to continue: ${claimUrl}`,
       tags: [{ name: 'invitation_id', value: id, prefix: 'invite' }, { name: 'customer_id', value: inv.customer_id, prefix: 'customer' }],
     })
-    await ref.update({
-      token_hash: hash, expires_at: expiresAt,
-      resend_count: FieldValue.increment(1), last_resent_at: Timestamp.now(),
-      email_send_status: send.ok ? 'sent' : 'failed', email_send_error: send.ok ? null : send.error,
-      audit_log: FieldValue.arrayUnion(auditEntry('resent', adminUid)),
-    })
+    await recordInvitationEmail(ref, hash, send)
     if (!send.ok) return json({ ok: false, error: `Could not resend: ${send.error}` }, 502)
     return json({ ok: true })
   }
 
   if (inv.status === 'approved') {
-    return setupLinkForApprovedInvitation(ref, inv, adminUid)
+    const result = await retryApprovalDelivery(ref, body.expectedMailStatus)
+    if (result.error) return json({ error: result.error }, result.status)
+    const sent = await deliverApproval(ref, result.delivery, adminUid)
+    return sent.ok ? json({ ok: true }) : json({ error: sent.error }, 502)
   }
 
   return json({ error: `Cannot resend an invitation with status "${inv.status}".` }, 400)
 }
 
-async function revokeInvitation(body, adminUid) {
-  const id = String(body?.invitationId || '').trim()
-  if (!id) return json({ error: 'invitationId is required' }, 400)
-  const db = getFirestore()
-  const ref = db.collection('portal_invitations').doc(id)
-  const snap = await ref.get()
-  if (!snap.exists) return json({ error: 'Invitation not found' }, 404)
-  const inv = snap.data()
-  if (!['pending', 'claimed', 'approved'].includes(inv.status)) {
-    return json({ error: `Invitation is already ${inv.status}.` }, 400)
-  }
-  await ref.update({
-    status: 'revoked', revoked_at: Timestamp.now(),
-    token_hash: null, // defensive — even a bug elsewhere can't revive a revoked token
-    audit_log: FieldValue.arrayUnion(auditEntry('revoked', adminUid)),
+async function declineInvitation(body, actor, status) {
+  if (!validId(body?.invitationId)) return json({ error: 'invitationId is required' }, 400)
+  const ref = getFirestore().collection('portal_invitations').doc(body.invitationId)
+  // Revoke in the invitations list acts on an unclaimed link. A caller
+  // intentionally revoking a later state must identify the state it saw.
+  const expected = status === 'rejected' ? 'claimed' : (body.expectedStatus || 'pending')
+  if (!['pending', 'claimed', 'approved'].includes(expected)) return json({ error: 'Invalid invitation status.' }, 400)
+  const result = await ref.firestore.runTransaction(async tx => {
+    const inv = (await tx.get(ref)).data()
+    if (!inv) return { error: 'Invitation not found', status: 404 }
+    if (inv.status !== expected || (body.expectedUid && body.expectedUid !== inv.claimed_uid)) return decisionConflict()
+    if (inv.status === 'claimed' && inv.claimed_uid) {
+      const profile = (await tx.get(ref.firestore.collection('users').doc(inv.claimed_uid))).data()
+      if (!canReviewProfile(profile, inv, ref.id)) return decisionConflict()
+    }
+    tx.update(ref, { status, [status + '_at']: Timestamp.now(), ...(status === 'revoked' ? { token_hash: null } : {}),
+      audit_log: FieldValue.arrayUnion(auditEntry(status, actor)) })
+    return { ok: true }
   })
-  return json({ ok: true })
+  return result.ok ? json(result) : json({ error: result.error }, result.status)
 }
 
-async function rejectInvitation(body, adminUid) {
-  const id = String(body?.invitationId || '').trim()
-  if (!id) return json({ error: 'invitationId is required' }, 400)
-  const db = getFirestore()
-  const ref = db.collection('portal_invitations').doc(id)
-  const snap = await ref.get()
-  if (!snap.exists) return json({ error: 'Invitation not found' }, 404)
-  const inv = snap.data()
-  if (inv.status !== 'claimed') return json({ error: 'Only a claimed (not yet approved) invitation can be rejected.' }, 400)
-  await ref.update({
-    status: 'rejected', rejected_at: Timestamp.now(),
-    audit_log: FieldValue.arrayUnion(auditEntry('rejected', adminUid)),
-  })
-  // The linked users/{uid} doc (if the claim created one) is left at
-  // status:'pending' — PendingScreen.jsx / firestore.rules' isApprovedCustomer()
-  // already block portal access for anything short of 'approved', so no new
-  // account-status value is needed for "rejected" — see this file's header.
-  return json({ ok: true })
-}
-
-// Shared by claimInvitation and the public preview action below — one
-// state-machine definition for "is this token still usable," so the
-// customer-facing states (valid/expired/used/revoked) can never drift
-// between what the preview shows and what claim actually enforces.
-// Returns null if usable, else the { error, status } to respond with.
-async function checkClaimable(ref, inv) {
-  if (inv.status === 'revoked') return { error: 'revoked', status: 410 }
-  if (inv.status === 'rejected') return { error: 'revoked', status: 410 } // same generic UI state — not a distinct disclosure
-  if (inv.status !== 'pending') return { error: 'used', status: 410 } // already claimed/approved
-  if (inv.expires_at?.toMillis?.() < Date.now()) {
-    await ref.update({ status: 'expired' })
-    return { error: 'expired', status: 410 }
-  }
+function claimError(inv, token) {
+  if (!inv) return { error: 'invalid', status: 404 }
+  if (['revoked', 'rejected'].includes(inv.status)) return { error: 'revoked', status: 410 }
+  if (inv.status === 'expired') return { error: 'expired', status: 410 }
+  if (inv.status !== 'pending') return { error: 'used', status: 410 }
+  if (!tokensMatch(token, inv.token_hash)) return { error: 'invalid', status: 400 }
+  if (inv.expires_at?.toMillis?.() < Date.now()) return { error: 'expired', status: 410 }
   return null
+}
+
+function validateClaim(tx, ref, inv, token) {
+  const blocked = claimError(inv, token)
+  if (inv?.status === 'pending' && blocked?.error === 'expired') tx.update(ref, { status: 'expired' })
+  return blocked
 }
 
 // PUBLIC — lets the claim page show which company/what the portal is
@@ -661,15 +667,16 @@ async function checkClaimable(ref, inv) {
 async function getInvitationPreview(body) {
   const id = String(body?.invitationId || '').trim()
   const presentedToken = String(body?.token || '')
-  if (!id || !presentedToken) return json({ error: 'invalid' }, 400)
+  if (!validId(id) || !presentedToken) return json({ error: 'invalid' }, 400)
   const db = getFirestore()
   const ref = db.collection('portal_invitations').doc(id)
-  const snap = await ref.get()
-  if (!snap.exists) return json({ error: 'invalid' }, 404)
-  const inv = snap.data()
-  const blocked = await checkClaimable(ref, inv)
-  if (blocked) return json({ error: blocked.error }, blocked.status)
-  if (!tokensMatch(presentedToken, inv.token_hash)) return json({ error: 'invalid' }, 400)
+  const result = await db.runTransaction(async tx => {
+    const inv = (await tx.get(ref)).data()
+    return validateClaim(tx, ref, inv, presentedToken) || { inv }
+  })
+  if (result.error) return json({ error: result.error }, result.status)
+  const { inv } = result
+  if (!validId(inv.customer_id)) return json({ error: 'customer_missing' }, 410)
   const customerSnap = await db.collection('customers').doc(inv.customer_id).get()
   if (!customerSnap.exists) return json({ error: 'customer_missing' }, 410)
   return json({
@@ -679,234 +686,103 @@ async function getInvitationPreview(body) {
   })
 }
 
-async function claimInvitation(body) {
+async function claimInvitation(body, googleUid = null, verifiedEmail = null) {
   const id = String(body?.invitationId || '').trim()
-  const presentedToken = String(body?.token || '')
-  const email = normEmail(body?.email)
-  const contactName = String(body?.contactName || '').trim()
-  if (!id || !presentedToken) return json({ error: 'invalid' }, 400)
-
-  const db = getFirestore()
-  const ref = db.collection('portal_invitations').doc(id)
-  const snap = await ref.get()
-  if (!snap.exists) return json({ error: 'invalid' }, 404)
-  const inv = snap.data()
-
-  const blocked = await checkClaimable(ref, inv)
+  const token = String(body?.token || '')
+  const email = normEmail(googleUid ? verifiedEmail : body?.email)
+  if (!validId(id) || !token) return json({ error: 'invalid' }, 400)
+  const db = getFirestore(), ref = db.collection('portal_invitations').doc(id)
+  const preview = (await ref.get()).data()
+  const blocked = claimError(preview, token)
   if (blocked) return json({ error: blocked.error }, blocked.status)
-  if (!tokensMatch(presentedToken, inv.token_hash)) return json({ error: 'invalid' }, 400)
   if (!EMAIL_RE.test(email)) return json({ error: 'invalid_email' }, 400)
-  if (email !== inv.contact_email) return json({ error: 'email_mismatch' }, 400)
+  if (email !== normEmail(preview.contact_email)) return json({ error: 'email_mismatch' }, 400)
+  if (!validId(preview.customer_id) || !(await db.collection('customers').doc(preview.customer_id).get()).exists)
+    return json({ error: 'customer_missing' }, 410)
 
-  const customerCheck = await db.collection('customers').doc(inv.customer_id).get()
-  if (!customerCheck.exists) return json({ error: 'customer_missing' }, 410)
-
-  // Reuse an existing Auth account for this email rather than creating a
-  // second one — covers a re-claim attempt, or an email that already
-  // self-registered separately.
-  let userRecord
-  try {
-    userRecord = await getAuth().getUserByEmail(email)
-  } catch {
-    userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false })
-  }
-  const uid = userRecord.uid
-
-  const userRef = db.collection('users').doc(uid)
-  const userSnap = await userRef.get()
-  if (!userSnap.exists) {
-    await userRef.set({
-      role: 'customer', status: 'pending', email,
-      company_name: String(customerCheck.data()?.company_name || ''),
-      contact_name: contactName || inv.contact_name || '',
-      base_currency: 'USD', ws_discount_pct: 0,
-      customer_id: inv.customer_id, invitation_id: id,
-      createdAt: Timestamp.now(),
-    })
-  } else if (userSnap.data().role === 'admin') {
-    // Defensive — an admin's own account must never be touched by a
-    // customer-invitation claim, even though this never modifies role/
-    // status either way today. Refusing outright (rather than silently
-    // no-op'ing) avoids leaving a confusing invitation_id/claimed state
-    // attached to an admin account if this ever gets invoked against one
-    // by mistake (e.g. an admin listed as a contact on a customer record).
-    return json({ error: 'used' }, 410)
-  } else if (!userSnap.data().invitation_id) {
-    await userRef.update({ invitation_id: id })
-  } else if (userSnap.data().invitation_id !== id) {
-    // This uid is already linked to a DIFFERENT invitation. Letting this one
-    // proceed would leave two invitations pointing at one user — this
-    // invitation's own claimed_uid says one thing, the user's invitation_id
-    // says another. Refuse rather than silently create that split reference.
-    return json({ error: 'already_pending' }, 409)
-  }
-
-  await ref.update({
-    status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: uid,
-    audit_log: FieldValue.arrayUnion(auditEntry('claimed', email)),
-  })
-
-  // Admin-created invitations already have a customer_id the admin chose at
-  // invite time (createInvitation requires one) — there's nothing left for
-  // a human to decide at a second "Approve" click, so skip straight to
-  // approved and send the password-setup email now instead of making the
-  // customer wait on an admin. Self-serve applications (source:'self')
-  // start with no customer link at all, so they keep the manual approval
-  // step (runApproval's own customerId guard still applies if this were
-  // ever reached for one — belt and suspenders, source check should already
-  // route those around here).
-  if (inv.source === 'admin') {
-    const result = await runApproval({ ref, claimedUid: uid, customerId: inv.customer_id, actorUid: 'system:auto_approve', auditAction: 'auto_approved', pricing: inv.pricing || null })
-    if (!result.ok) {
-      // Account is still created/claimed even if the setup email failed to
-      // send — don't tell the customer they're approved if they have no way
-      // to actually set a password yet.
-      return json({ ok: true, status: 'claimed', autoApproveError: result.error })
+  let uid = googleUid
+  if (!uid) {
+    try { uid = (await getAuth().getUserByEmail(email)).uid }
+    catch (error) {
+      if (error.code !== 'auth/user-not-found') throw error
+      try { uid = (await getAuth().createUser({ email, emailVerified: false, disabled: false })).uid }
+      catch (createError) {
+        if (createError.code !== 'auth/email-already-exists') throw createError
+        uid = (await getAuth().getUserByEmail(email)).uid
+      }
     }
-    return json({ ok: true, status: 'approved' })
-  }
-  return json({ ok: true, status: 'pending' })
-}
-
-// PUBLIC (requires only a live Google-authenticated session, not admin) —
-// V8.6's answer to "Admin-invitation path still doesn't support Google
-// sign-in" (see PROJECT-PLAN.md's "Where V8.6 starts"). Offered on the
-// invite-claim landing page itself, BEFORE any password-based Auth account
-// exists for this invitation — createInvitation (the admin step) never
-// creates one, only claimInvitation does, at claim time. Landing here first
-// means there is no pre-existing "fixed uid" to reconcile: the customer's
-// own Google sign-in IS the account, from the start, so this never needs
-// the linkWithPopup/custom-token dance a later-stage retrofit would.
-// (A customer who already claimed via email/password and only wants Google
-// afterwards is a narrower, separate case this does not cover — deferred.)
-async function claimInvitationGoogle(body, uid, googleEmail) {
-  const id = String(body?.invitationId || '').trim()
-  const presentedToken = String(body?.token || '')
-  const contactName = String(body?.contactName || '').trim()
-  if (!id || !presentedToken) return json({ error: 'invalid' }, 400)
-
-  const db = getFirestore()
-  const ref = db.collection('portal_invitations').doc(id)
-  const snap = await ref.get()
-  if (!snap.exists) return json({ error: 'invalid' }, 404)
-  const inv = snap.data()
-
-  const blocked = await checkClaimable(ref, inv)
-  if (blocked) return json({ error: blocked.error }, blocked.status)
-  if (!tokensMatch(presentedToken, inv.token_hash)) return json({ error: 'invalid' }, 400)
-  // The invitation names a specific person's email — trust the DECODED
-  // token's email claim, never a client-supplied value, same posture as
-  // every other "never trust the caller's claim" spot in this file.
-  if (normEmail(googleEmail) !== normEmail(inv.contact_email)) return json({ error: 'email_mismatch' }, 400)
-
-  const customerCheck = await db.collection('customers').doc(inv.customer_id).get()
-  if (!customerCheck.exists) return json({ error: 'customer_missing' }, 410)
-
-  const userRef = db.collection('users').doc(uid)
-  const userSnap = await userRef.get()
-  if (userSnap.exists) {
-    const existing = userSnap.data()
-    // Same defensive checks as claimInvitation's own re-claim/admin-guard
-    // branches — this Google uid may already be linked to a DIFFERENT
-    // invitation/account (e.g. an admin, or an unrelated prior signup).
-    if (existing.role === 'admin') return json({ error: 'used' }, 410)
-    if (existing.invitation_id && existing.invitation_id !== id) return json({ error: 'already_pending' }, 409)
-    if (!existing.invitation_id) await userRef.update({ invitation_id: id, auth_provider: 'google.com' })
-  } else {
-    await userRef.set({
-      role: 'customer', status: 'pending', email: normEmail(googleEmail),
-      company_name: String(customerCheck.data()?.company_name || ''),
-      contact_name: contactName || inv.contact_name || '',
-      base_currency: 'USD', ws_discount_pct: 0,
-      customer_id: inv.customer_id, invitation_id: id,
-      auth_provider: 'google.com', createdAt: Timestamp.now(),
-    })
   }
 
-  await ref.update({
-    status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: uid,
-    audit_log: FieldValue.arrayUnion(auditEntry('claimed_via_google', googleEmail)),
+  const actor = 'system:auto_approve'
+  const result = await db.runTransaction(async tx => {
+    const inv = (await tx.get(ref)).data()
+    const invalid = validateClaim(tx, ref, inv, token)
+    if (invalid) return invalid
+    if (normEmail(inv.contact_email) !== email || inv.customer_id !== preview.customer_id) return { error: 'invalid', status: 400 }
+    const customer = (await tx.get(db.collection('customers').doc(inv.customer_id))).data()
+    if (!customer) return { error: 'customer_missing', status: 410 }
+    const userRef = db.collection('users').doc(uid)
+    const old = (await tx.get(userRef)).data()
+    if (old) {
+      const eligible = old.status === 'pending' || (old.status === 'approved' && inv.source === 'admin')
+      if (!eligible || old.role !== 'customer' || (old.email && normEmail(old.email) !== email) ||
+        (old.customer_id && old.customer_id !== inv.customer_id)) return { error: 'used', status: 410 }
+      if (old.invitation_id && old.invitation_id !== id) return { error: 'already_pending', status: 409 }
+    }
+    const profile = old ? {} : {
+      role: 'customer', status: 'pending', email, company_name: customer.company_name || '',
+      contact_name: String(body?.contactName || '').trim() || inv.contact_name || '',
+      base_currency: 'USD', ws_discount_pct: 0, customer_id: inv.customer_id, createdAt: Timestamp.now(),
+    }
+    profile.invitation_id = id
+    if (googleUid) profile.auth_provider = 'google.com'
+    const invitation = { status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: uid }
+    const audit = auditEntry(googleUid ? 'claimed_via_google' : 'claimed', email)
+    if (inv.source === 'admin')
+      return stageApproval(tx, { ref, inv, userRef, user: { ...old, ...profile }, customer, customerId: inv.customer_id,
+        actor, claim: { profile, invitation, audit } })
+    tx.set(userRef, profile, { merge: true })
+    tx.update(ref, { ...invitation, audit_log: FieldValue.arrayUnion(audit) })
+    return { status: 'pending' }
   })
-
-  // Same auto-approve as claimInvitation's own branch — see its comment.
-  if (inv.source === 'admin') {
-    const result = await runApproval({ ref, claimedUid: uid, customerId: inv.customer_id, actorUid: 'system:auto_approve', auditAction: 'auto_approved', pricing: inv.pricing || null })
-    if (!result.ok) return json({ ok: true, status: 'claimed', autoApproveError: result.error })
-    return json({ ok: true, status: 'approved' })
-  }
-  return json({ ok: true, status: 'pending' })
+  return approvalResponse(ref, result, actor)
 }
 
-async function setupLinkForApprovedInvitation(ref, inv, adminUid) {
-  const PORTAL_URL = process.env.PORTAL_URL || 'https://portal.crystocraft.com'
-  const db = getFirestore()
-  // No customer_id for an approved internal/test account (see approveInvitation's
-  // isInternal branch) — db.collection().doc(null) throws, and there's no
-  // real company name to show anyway; fall back to the applicant's own
-  // free-text name from the invitation itself.
-  const companyName = inv.customer_id
-    ? String((await db.collection('customers').doc(inv.customer_id).get()).data()?.company_name || '')
-    : String(inv.applicant_company_name || '')
-  let setupUrl
+async function deliverApproval(ref, delivery, actor) {
+  const { company: companyName, email, customerId, google } = delivery
+  const portalUrl = process.env.PORTAL_URL || 'https://portal.crystocraft.com'
+  let result
   try {
-    // generatePasswordResetLink() always returns a link through Firebase's
-    // OWN hosted action handler (<project>.firebaseapp.com/__/auth/action)
-    // — handleCodeInApp does NOT make it skip straight to our continueUrl
-    // with the code attached the way the docs imply (confirmed live,
-    // 2026-08-19: the owner watched it happen — Firebase's generic blue-
-    // button "Reset your password" page ran first, then its OWN "Continue"
-    // link went to our continueUrl with NO oobCode at all, since Firebase's
-    // page had already consumed it). Never send that raw link — extract
-    // just the oobCode and build our OWN clean, always-branded url instead.
-    // verifyPasswordResetCode/confirmPasswordReset (src/pages/
-    // SetPassword.jsx) only need the auth instance + this raw code; they
-    // don't need apiKey/mode from Firebase's URL shape.
-    const rawLink = await getAuth().generatePasswordResetLink(inv.contact_email, {
-      url: `${PORTAL_URL}/portal/set-password`, handleCodeInApp: true,
-    })
-    const oobCode = new URL(rawLink).searchParams.get('oobCode')
-    if (!oobCode) throw new Error('No oobCode in the generated link')
-    setupUrl = `${PORTAL_URL}/portal/set-password?oobCode=${encodeURIComponent(oobCode)}`
-  } catch (e) {
-    return json({ ok: false, error: `Could not generate a setup link: ${String(e?.message || e).slice(0, 200)}` }, 502)
+    let message
+    if (google) {
+      message = { subject: 'Your Crystocraft portal account is approved',
+        html: googleApprovedEmailHtml({ companyName, portalUrl: portalUrl + '/login' }),
+        text: `Your Crystocraft customer portal account for ${companyName} has been approved. Sign in with Google at ${portalUrl}/login` }
+    } else {
+      const raw = await getAuth().generatePasswordResetLink(email, { url: portalUrl + '/portal/set-password', handleCodeInApp: true })
+      const code = new URL(raw).searchParams.get('oobCode')
+      if (!code) throw Error('Missing password setup code')
+      const setupUrl = portalUrl + '/portal/set-password?oobCode=' + encodeURIComponent(code)
+      message = { subject: 'Set your Crystocraft portal password', html: setupEmailHtml({ companyName, setupUrl }),
+        text: `Your Crystocraft customer portal account for ${companyName} has been approved. Set your password: ${setupUrl}` }
+    }
+    result = await sendResendEmail({ to: email, ...message,
+      tags: [{ name: 'invitation_id', value: ref.id, prefix: 'invite' }, { name: 'customer_id', value: customerId, prefix: 'customer' }] })
+  } catch {
+    result = { ok: false, error: 'Could not prepare the approval email.' }
   }
-  const send = await sendResendEmail({
-    to: inv.contact_email, subject: `Set your Crystocraft portal password`,
-    html: setupEmailHtml({ companyName, setupUrl }),
-    text: `Your Crystocraft customer portal account for ${companyName} has been approved. Set your password: ${setupUrl}`,
-    tags: [{ name: 'invitation_id', value: ref.id, prefix: 'invite' }, { name: 'customer_id', value: inv.customer_id, prefix: 'customer' }],
-  })
-  await ref.update({
-    email_send_status: send.ok ? 'sent' : 'failed', email_send_error: send.ok ? null : send.error,
-    resend_count: FieldValue.increment(1), last_resent_at: Timestamp.now(),
-    audit_log: FieldValue.arrayUnion(auditEntry('setup_link_sent', adminUid || 'system')),
-  })
-  if (!send.ok) return json({ ok: false, error: `Could not send the setup email: ${send.error}` }, 502)
-  return json({ ok: true })
+  await recordApprovalDelivery(ref, delivery, actor, result)
+  return result
 }
 
-// Companion to setupLinkForApprovedInvitation for accounts that signed up
-// via Google — no password-reset link to generate at all, just a
-// notification that approval happened, same posture as every other path.
-async function googleApprovedNotification(ref, inv, adminUid) {
-  const PORTAL_URL = process.env.PORTAL_URL || 'https://portal.crystocraft.com'
-  const db = getFirestore()
-  const companyName = inv.customer_id
-    ? String((await db.collection('customers').doc(inv.customer_id).get()).data()?.company_name || '')
-    : String(inv.applicant_company_name || '')
-  const send = await sendResendEmail({
-    to: inv.contact_email, subject: `Your Crystocraft portal account is approved`,
-    html: googleApprovedEmailHtml({ companyName, portalUrl: `${PORTAL_URL}/login` }),
-    text: `Your Crystocraft customer portal account for ${companyName} has been approved. Sign in with Google at ${PORTAL_URL}/login`,
-    tags: [{ name: 'invitation_id', value: ref.id, prefix: 'invite' }, { name: 'customer_id', value: inv.customer_id, prefix: 'customer' }],
-  })
-  await ref.update({
-    email_send_status: send.ok ? 'sent' : 'failed', email_send_error: send.ok ? null : send.error,
-    resend_count: FieldValue.increment(1), last_resent_at: Timestamp.now(),
-    audit_log: FieldValue.arrayUnion(auditEntry('google_approved_notification_sent', adminUid || 'system')),
-  })
-  if (!send.ok) return json({ ok: false, error: `Could not send the approval email: ${send.error}` }, 502)
-  return json({ ok: true })
+async function approvalResponse(ref, result, actor) {
+  if (result.error) return json({ error: result.error }, result.status)
+  if (!result.delivery) return json({ ok: true, status: result.status })
+  // The decision is already committed, even if sending or recording delivery fails.
+  let notified = false
+  try { notified = (await deliverApproval(ref, result.delivery, actor)).ok }
+  catch { console.error('Approval email confirmation pending', ref.id) }
+  return json({ ok: true, status: 'approved', emailStatus: notified ? 'sent' : 'unconfirmed' })
 }
 
 // Public: the login page's "Forgot password?" — replaces the client's
@@ -916,7 +792,7 @@ async function googleApprovedNotification(ref, inv, adminUid) {
 // branded email as the approval flow, from noreply@crystocraft.com through
 // Resend, with our own clean /portal/set-password?oobCode=… link (same
 // generate → extract oobCode → rebuild shape as
-// setupLinkForApprovedInvitation).
+// deliverApproval).
 //
 // Never reveals whether an account exists: an unknown/malformed email
 // returns { ok: true } exactly like a real one (same posture as
@@ -952,122 +828,20 @@ async function requestPasswordReset(body) {
   return json({ ok: true })
 }
 
-// Core of "approve" — mirrors pricing/sensitivity onto the user doc, flips
-// both docs to approved, and sends whichever "you're in" email fits the
-// auth method. Shared by approveInvitation (the manual admin click) and the
-// auto-approve branch inside claimInvitation/claimInvitationGoogle for
-// admin-created invitations (2026-09-24, owner request: an admin invitation
-// already has a customer_id chosen at invite time, so the manual "Approve"
-// click was re-confirming a decision already made, not making a new one —
-// see the customerId guard below, which still protects the ONE case that
-// genuinely needs a human: a self-submitted application with no customer
-// link yet). Returns a plain { ok, error?, status? } — never a Response —
-// so both callers can shape their own client-facing reply around it.
-async function runApproval({ ref, claimedUid, customerId, actorUid, auditAction, pricing }) {
-  const db = getFirestore()
-
-  // A self-submitted application (source:'self') starts with no
-  // customer_id — the applicant typed a free-text company name, not a real
-  // customers/{id}. An admin must link (or correct) it before approval can
-  // proceed.
-  //
-  // Exception: account_type:'internal' (a staff/test login, set via
-  // AccountEdit.jsx's Account Category toggle) never needs a real customer
-  // record — there's no wholesale pricing/order-history to mirror for a
-  // test account, and requiring one was pure friction the toggle itself
-  // didn't advertise (found live, 2026-08-19). Read straight off the user
-  // doc rather than trusting a client-supplied flag — same "server verifies,
-  // never trusts the caller's claim" posture as everything else here.
-  const claimedUserRef = db.collection('users').doc(claimedUid)
-  const claimedUserSnap = await claimedUserRef.get()
-  const isInternal = claimedUserSnap.data()?.account_type === 'internal'
-  if (!customerId && !isInternal) {
-    return { ok: false, error: 'Link this request to a customer record before approving.', status: 400 }
+async function approveInvitation(body, actor) {
+  if (!validId(body?.invitationId)) return json({ error: 'invitationId is required' }, 400)
+  const ref = getFirestore().collection('portal_invitations').doc(body.invitationId)
+  const { accountType, pricingChanges = {}, customerId, expectedUid } = body
+  if ((accountType !== undefined && !['customer', 'internal'].includes(accountType)) ||
+    (customerId && !validId(customerId)) || !pricingChanges || typeof pricingChanges !== 'object' || Array.isArray(pricingChanges))
+    return json({ error: 'Invalid approval details.' }, 400)
+  for (const [field, value] of Object.entries(pricingChanges)) {
+    const valid = field === 'base_currency' ? INVITE_CURRENCIES.includes(value)
+      : ['fx_rate', 'ws_discount_pct', 'corp_markup_override'].includes(field) && Number.isFinite(value) && value >= 0
+    if (!valid) return json({ error: 'Invalid approval pricing.' }, 400)
   }
-
-  let userUpdate
-  if (customerId) {
-    const customerSnap = await db.collection('customers').doc(customerId).get()
-    if (!customerSnap.exists) return { ok: false, error: 'That customer record no longer exists.', status: 404 }
-
-    // Mirror sensitive/erp_code/erp_code_shared onto the user doc — same
-    // fields domain/customer.js's mirrorToLinkedAccounts keeps in sync on
-    // every future customer edit, but THIS approval is the account's first
-    // write, so without it the account sits unscreened (sensitiveImages.js's
-    // client-side privacy check reads profile.sensitive — unset is a no-op)
-    // and order history reads empty (customer-order-history.js keys off
-    // users/{uid}.erp_code) until an admin happens to save the customer
-    // record again. Read straight off the customer doc rather than
-    // recomputing the erp_code_shared share-count query — saveCustomer
-    // already keeps that field current.
-    const custData = customerSnap.data() || {}
-    userUpdate = {
-      status: 'approved', customer_id: customerId,
-      sensitive: !!custData.sensitive,
-      erp_code: custData.erp_code || '',
-      erp_code_shared: !!custData.erp_code_shared,
-      // Keep the user's displayed company_name in sync with the linked
-      // record — matters for both a corrected self-serve link and, now,
-      // the auto-approve path (the claim-time doc used whatever company
-      // name was on the invitation/customer at claim time; this is the
-      // authoritative refresh).
-      company_name: String(custData.company_name || claimedUserSnap.data()?.company_name || ''),
-    }
-  } else {
-    // Internal, no customer linked — approve as-is, safe defaults.
-    userUpdate = { status: 'approved', customer_id: null, sensitive: false, erp_code: '', erp_code_shared: false }
-  }
-  // Pricing the admin set at invite time (InvitePricingDialog) — see
-  // sanitizePricing. Not present on older invitations or ones created before
-  // this field existed, in which case the account keeps whatever it already
-  // had (claim time's ws_discount_pct:0/base_currency:'USD' defaults, same
-  // as before this existed) for a human to set later on AccountEdit.jsx.
-  if (pricing) {
-    userUpdate.base_currency = pricing.base_currency
-    userUpdate.fx_rate = pricing.fx_rate
-    userUpdate.ws_discount_pct = pricing.ws_discount_pct
-
-  }
-  const approvalBatch = db.batch()
-  approvalBatch.update(claimedUserRef, userUpdate)
-  if (pricing) approvalBatch.set(db.doc('account_pricing/' + claimedUid), { corp_markup_override: pricing.corp_markup_override }, { merge: true })
-  await approvalBatch.commit()
-  await ref.update({
-    status: 'approved', approved_at: Timestamp.now(), customer_id: customerId || null,
-    audit_log: FieldValue.arrayUnion(auditEntry(auditAction, actorUid)),
-  })
-
-  const freshSnap = await ref.get()
-  const isGoogleAccount = claimedUserSnap.data()?.auth_provider === 'google.com'
-  const sendResp = isGoogleAccount
-    ? await googleApprovedNotification(ref, freshSnap.data(), actorUid)
-    : await setupLinkForApprovedInvitation(ref, freshSnap.data(), actorUid)
-  const sendBody = await sendResp.json()
-  // The account is fully approved either way (writes above already
-  // committed) — a failure here only means the notification/setup-link
-  // email didn't go out, same as createInvitation's own email-failure
-  // posture: the record is fine and resendInvitation/PortalInvitations.jsx
-  // can recover it, so surface the error without undoing the approval.
-  return sendBody.ok ? { ok: true } : { ok: false, error: sendBody.error, status: 502 }
-}
-
-async function approveInvitation(body, adminUid) {
-  const id = String(body?.invitationId || '').trim()
-  const suppliedCustomerId = body?.customerId ? String(body.customerId).trim() : null
-  if (!id) return json({ error: 'invitationId is required' }, 400)
-  const db = getFirestore()
-  const ref = db.collection('portal_invitations').doc(id)
-  const snap = await ref.get()
-  if (!snap.exists) return json({ error: 'Invitation not found' }, 404)
-  const inv = snap.data()
-  if (inv.status !== 'claimed') {
-    return json({ error: inv.status === 'pending' ? 'This invitation has not been claimed by the customer yet.' : `Invitation is ${inv.status}, not claimed.` }, 400)
-  }
-  if (!inv.claimed_uid) return json({ error: 'This invitation has no linked account to approve.' }, 400)
-
-  const customerId = suppliedCustomerId || inv.customer_id
-  const result = await runApproval({ ref, claimedUid: inv.claimed_uid, customerId, actorUid: adminUid, auditAction: 'approved', pricing: inv.pricing || null })
-  return result.ok ? json({ ok: true }) : json({ error: result.error }, result.status || 500)
+  const result = await approveClaimed(ref, customerId, actor, { accountType, pricing: pricingChanges, expectedUid })
+  return approvalResponse(ref, result, actor)
 }
 
 // AccountEdit.jsx's "Delete account" — previously only deleted the
@@ -1122,7 +896,7 @@ export default async function handler(req) {
     if (error) return error
     const verifiedEmail = normEmail(email)
     return action === 'claim_invitation_google'
-      ? claimInvitationGoogle(body, uid, verifiedEmail)
+      ? claimInvitation(body, uid, verifiedEmail)
       : applyForAccountGoogle(body, uid, verifiedEmail)
   }
 
@@ -1149,12 +923,12 @@ export default async function handler(req) {
       try { await retryReviewedAccessAlert(getFirestore(),body.invitationId,uid); return json({ok:true}) }
       catch (e) { return json({error:e.status ? e.message : 'Could not confirm the admin notice. Refresh before retrying.'},e.status || 500) }
     case 'approve_legacy_account':
-      try { await approveLegacyAccount(getFirestore(), body.uid, body.customerId, { role: body.role }); return json({ ok: true }) }
+      try { await approveLegacyAccount(getFirestore(), body.uid, body.customerId, { role: body.role, expectedStatus: body.expectedStatus }); return json({ ok: true }) }
       catch (e) { return json({ error: e.status ? e.message : 'Could not approve account.' }, e.status || 503) }
     case 'create_invitation': return createInvitation(body, uid)
     case 'resend_invitation': return resendInvitation(body, uid)
-    case 'revoke_invitation': return revokeInvitation(body, uid)
-    case 'reject_invitation': return rejectInvitation(body, uid)
+    case 'revoke_invitation': return declineInvitation(body, uid, 'revoked')
+    case 'reject_invitation': return declineInvitation(body, uid, 'rejected')
     case 'approve_invitation': return approveInvitation(body, uid)
     case 'delete_account': return deleteAccount(body, uid)
     default: return json({ error: 'Unknown action' }, 400)

@@ -463,3 +463,179 @@ test('a new staff invitation arriving during interruption is preserved', async (
   assert.equal((await db.collection('users').get()).size, 0)
   assert.equal(attempts.length, 0)
 })
+
+const decisionUid = 'fictional-buyer'
+const decisionId = 'fictional-application'
+const adminA = 'fictional-reviewer-a', adminB = 'fictional-reviewer-b'
+const invitationRef = db.collection('portal_invitations').doc(decisionId)
+const accountRef = db.collection('users').doc(decisionUid)
+const priceRef = db.collection('account_pricing').doc(decisionUid)
+
+async function approvalFixture(t, provider = 'google.com') {
+  await Promise.all([
+    ...[adminA, adminB].map(uid => db.doc('users/' + uid).set({ role:'admin' })),
+    ...['company-a','company-b'].map(id => db.doc('customers/'+id).set({company_name:id,erp_code:'ERP-'+id,sensitive:true})),
+    invitationRef.set({status:'claimed', claimed_uid:decisionUid, contact_email:email, source:'self', audit_log:[],
+      pricing:{base_currency:'HKD',fx_rate:7.8,ws_discount_pct:83,corp_markup_override:1.48}}),
+    accountRef.set({email,role:'customer',status:'pending',invitation_id:decisionId,auth_provider:provider,notes:'keep'}),
+    priceRef.set({ pricing_group:'keep', corp_markup_override:1.1 }),
+  ])
+  const mail = []
+  const state = { fail: false }
+  t.mock.method(globalThis,'fetch',async (url, options) => {
+    if (new URL(url).hostname === '127.0.0.1') return originalFetch(url, options)
+    assert.equal(url,'https://api.resend.com/emails')
+    const body = JSON.parse(options.body)
+    assert.equal(body.to,email)
+    assert.equal((await invitationRef.get()).get('status'),'approved')
+    assert.equal((await accountRef.get()).get('status'),'approved')
+    mail.push(body)
+    return new Response('{}',{status:state.fail ? 422 : 200})
+  })
+  t.mock.method(auth,'generatePasswordResetLink',async () => 'https://fictional.invalid/reset?oobCode=fake-only')
+  return { mail, state }
+}
+const decide = (action, actor, details = {}) => call(action,{invitationId:decisionId,...details},actor)
+
+test('two approvals with different customer and pricing choices commit one complete decision and send once', async t => {
+  const {mail} = await approvalFixture(t)
+  const options = [{customerId:'company-a',pricingChanges:{corp_markup_override:2.3}}, {customerId:'company-b',pricingChanges:{corp_markup_override:3.2}}]
+  const results = await Promise.all(options.map((o,i)=>decide('approve_invitation',[adminA,adminB][i],o)))
+  assert.deepEqual(results.map(r=>r.code).sort(),[200,409])
+  const winner=results.findIndex(r=>r.code===200), picked=options[winner]
+  const [i,u,p]=await Promise.all([invitationRef.get(),accountRef.get(),priceRef.get()])
+  assert.equal(i.get('customer_id'),picked.customerId)
+  assert.equal(u.get('customer_id'),picked.customerId)
+  assert.equal(u.get('erp_code'),'ERP-'+picked.customerId)
+  assert.equal(u.get('sensitive'),true)
+  assert.equal(u.get('base_currency'),'HKD')
+  assert.equal(u.get('fx_rate'),7.8)
+  assert.equal(u.get('ws_discount_pct'),83)
+  assert.equal(u.get('notes'),'keep')
+  assert.equal(u.get('corp_markup_override'),undefined)
+  assert.deepEqual(p.data(),{pricing_group:'keep',...picked.pricingChanges})
+  assert.deepEqual(i.get('audit_log').filter(a=>a.action==='approved').map(a=>a.by),[[adminA,adminB][winner]])
+  assert.equal((await decide('reject_invitation',adminB)).code,409)
+  assert.equal((await decide('revoke_invitation',adminB,{expectedStatus:'pending'})).code,409)
+  assert.equal(mail.length,1)
+})
+
+test('approval and rejection in two reviewers’ sessions leave exactly the winning state', async t => {
+  const {mail}=await approvalFixture(t)
+  const [approve,reject]=await Promise.all([decide('approve_invitation',adminA,{customerId:'company-a'}),decide('reject_invitation',adminB)])
+  assert.deepEqual([approve.code,reject.code].sort(),[200,409])
+  const approved=approve.code===200
+  assert.equal((await invitationRef.get()).get('status'), approved?'approved':'rejected')
+  assert.equal((await accountRef.get()).get('status'), approved?'approved':'pending')
+  assert.equal((await priceRef.get()).get('corp_markup_override'), approved?1.48:1.1)
+  assert.equal(mail.length,approved?1:0)
+})
+
+test('a failed final transaction leaves account, pricing and invitation untouched and sends nothing', async t => {
+  const {mail}=await approvalFixture(t)
+  const read=async()=>Promise.all([accountRef,priceRef,invitationRef].map(async r=>(await r.get()).data()))
+  const before=await read()
+  const run=db.runTransaction.bind(db)
+  const failure=t.mock.method(db,'runTransaction',fn=>run(async tx=>{
+    await fn(tx)
+    throw Error('Fictional transaction interrupted before commit')
+  }))
+  await assert.rejects(decide('approve_invitation',adminA,{customerId:'company-a'}),/interrupted before commit/)
+  assert.deepEqual(await read(),before)
+  assert.equal(mail.length,0)
+  failure.mock.restore()
+  assert.equal((await decide('approve_invitation',adminB,{customerId:'company-b'})).code,200)
+})
+
+for(const provider of ['google.com','password']){
+  test(provider+' email failure leaves approval saved; explicit resend only delivers the correct email',async t=>{
+    const {mail,state}=await approvalFixture(t,provider)
+    state.fail=true
+    const result=await decide('approve_invitation',adminA,{accountType:'internal'})
+    assert.deepEqual(result,{code:200,body:{ok:true,status:'approved',emailStatus:'unconfirmed'}})
+    assert.equal((await invitationRef.get()).get('email_send_status'),'failed')
+    assert.equal((await accountRef.get()).get('account_type'),'internal')
+    assert.equal((await decide('approve_invitation',adminB,{customerId:'company-a'})).code,409)
+    assert.equal(mail.length,1)
+    await priceRef.update({corp_markup_override:9.1})
+    state.fail=false
+    const retry=()=>decide('resend_invitation',adminA,{expectedStatus:'approved',expectedMailStatus:'failed'})
+    const retries=await Promise.all([retry(),retry()])
+    assert.deepEqual(retries.map(r=>r.code).sort(),[200,409])
+    assert.equal((await invitationRef.get()).get('email_send_status'),'sent')
+    assert.equal((await priceRef.get()).get('corp_markup_override'),9.1)
+    assert.equal(mail.length,2)
+    assert.equal(mail[1].subject,provider==='google.com'?'Your Crystocraft portal account is approved':'Set your Crystocraft portal password')
+    assert.equal((await invitationRef.get()).get('audit_log').filter(a=>a.action==='approved').length,1)
+  })
+}
+
+test('an invalid link, mismatched account, suspended buyer or missing company cannot change the decision',async t=>{
+  const {mail}=await approvalFixture(t)
+  assert.equal((await decide('approve_invitation',decisionUid,{customerId:'company-a'})).code,403)
+  assert.equal((await decide('approve_invitation',adminA,{customerId:'missing'})).code,404)
+  assert.equal((await decide('approve_invitation',adminA,{customerId:'company-a',expectedUid:'old-applicant'})).code,409)
+  assert.equal((await decide('reject_invitation',adminA,{expectedUid:'old-applicant'})).code,409)
+  for(const update of [{invitation_id:'another'}, {invitation_id:decisionId,status:'suspended'}, {status:'pending',role:'staff'}]){
+    await accountRef.update(update)
+    assert.equal((await decide('approve_invitation',adminA,{customerId:'company-a'})).code,409)
+    assert.equal((await decide('reject_invitation',adminA)).code,409)
+  }
+  assert.equal((await invitationRef.get()).get('status'),'claimed')
+  assert.equal((await priceRef.get()).get('corp_markup_override'),1.1)
+  assert.equal(mail.length,0)
+})
+
+test('a revoked pending link cannot be claimed or auto-approved later',async t=>{
+  await approvalFixture(t)
+  await seedInvitation()
+  assert.equal((await call('revoke_invitation',{invitationId:invitationBody.invitationId,expectedStatus:'pending'},adminA)).code,200)
+  assert.equal((await call('claim_invitation_google',invitationBody,'google')).code,410)
+  assert.equal((await db.doc('users/google').get()).exists,false)
+  assert.equal((await db.doc('portal_invitations/'+invitationBody.invitationId).get()).get('status'),'revoked')
+})
+
+test('an earlier rejection blocks a stale approval including its account category and price edits',async t=>{
+  const {mail}=await approvalFixture(t)
+  assert.equal((await decide('reject_invitation',adminA)).code,200)
+  assert.equal((await decide('approve_invitation',adminB,{accountType:'internal',pricingChanges:{corp_markup_override:7}})).code,409)
+  assert.equal((await accountRef.get()).get('account_type'),undefined)
+  assert.equal((await accountRef.get()).get('status'),'pending')
+  assert.equal((await priceRef.get()).get('corp_markup_override'),1.1)
+  assert.deepEqual((await invitationRef.get()).get('audit_log').map(a=>a.action),['rejected'])
+  assert.equal(mail.length,0)
+})
+
+test('an interrupted notification can be resent after review without reapplying pricing',async t=>{
+  const {mail}=await approvalFixture(t)
+  const run=db.runTransaction.bind(db)
+  let transactions=0
+  const interruption=t.mock.method(db,'runTransaction',fn=>{
+    transactions++
+    if(transactions===2)throw Error('Fictional loss of delivery acknowledgement')
+    return run(fn)
+  })
+  const result=await decide('approve_invitation',adminA,{customerId:'company-b'})
+  interruption.mock.restore()
+  assert.equal(result.body.status,'approved')
+  assert.equal(result.body.emailStatus,'unconfirmed')
+  assert.equal((await invitationRef.get()).get('email_send_status'),'sending')
+  const retry=()=>decide('resend_invitation',adminA,{expectedStatus:'approved',expectedMailStatus:'sending'})
+  assert.equal((await retry()).code,409)
+  assert.equal(mail.length,1)
+  await invitationRef.update({approval_email_started_at:new Date(Date.now()-11*60_000)})
+  await priceRef.update({corp_markup_override:2.47})
+  assert.equal((await retry()).code,200)
+  assert.equal((await priceRef.get()).get('corp_markup_override'),2.47)
+  assert.equal((await invitationRef.get()).get('audit_log').filter(a=>a.action==='approved').length,1)
+})
+
+test('a self-application cannot leave an already approved buyer linked to an undecided invitation',async()=>{
+  const original=await seedInvitation()
+  const profile={role:'customer',status:'approved',email,customer_id:original.customer_id}
+  await db.doc('users/google').set(profile)
+  assert.equal((await call('claim_invitation_google',invitationBody,'google')).code,410)
+  assert.deepEqual((await db.doc('users/google').get()).data(),profile)
+  assert.deepEqual((await db.doc('portal_invitations/'+invitationBody.invitationId).get()).data(),original)
+  assert.equal(attempts.length,0)
+})

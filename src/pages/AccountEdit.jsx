@@ -119,8 +119,8 @@ export default function AccountEdit() {
     setStatus('saving')
     const before = u   // captured before the write, for the audit diff
     try {
-      if (patch.status === 'approved' && (patch.role || u.role) === 'customer') await approveLegacyAccount(id, customerId || u.customer_id || null, patch.role)
-      else await updateAccountWithPricing(id, patch)
+      if (patch.status === 'approved' && (patch.role || u.role) === 'customer') await approveLegacyAccount(id, customerId || u.customer_id || null, patch.role, u.status ?? null)
+      else await updateAccountWithPricing(id, patch, isPending ? u : undefined)
       // Audit every role / status / account_type transition. L-01 (admin
       // silently demoted to `pending`, TWICE) is exactly what this trail
       // exists to catch. Best-effort and non-blocking — a failed audit
@@ -191,21 +191,21 @@ export default function AccountEdit() {
       // local state and u.customer_id should usually agree by then, but
       // this avoids a false rejection if they don't for any reason).
       const linkCustomerId = customerId || u.customer_id
-      // Internal (staff/test) accounts skip the customer-link requirement —
-      // approveInvitation's own server-side check reads account_type
-      // straight off the Firestore doc (never trusts a client claim), so
-      // persist the toggle first in case it was just flipped and not yet
-      // saved — otherwise the server would still see the old value and
-      // reject exactly like a real customer account would.
-      if (type === 'internal') await apply({ account_type: type })
       if (!linkCustomerId && type !== 'internal') {
         setStatus('Error: link this account to a customer (above) before approving — an invitation-based account needs one to be approved.')
         return
       }
       setStatus('saving')
       try {
-        await approveInvitation(u.invitation_id, linkCustomerId)
-        navigate('/portal')
+        const pricingChanges = {}
+        if (cur !== (u.base_currency || 'USD')) pricingChanges.base_currency = cur
+        if (Number(fxRate) !== Number(u.fx_rate || 0)) pricingChanges.fx_rate = Number(fxRate)
+        const ws = Number(disc) > 0 ? Number(disc) : 100
+        if (ws !== (Number(u.ws_discount_pct) > 0 ? Number(u.ws_discount_pct) : 100)) pricingChanges.ws_discount_pct = ws
+        if (Number(override) !== Number(u.corp_markup_override || 0)) pricingChanges.corp_markup_override = Number(override)
+        const accountType = type !== (u.account_type || 'customer') ? type : undefined
+        const result = await approveInvitation(u.invitation_id, linkCustomerId, { pricingChanges, accountType, expectedUid: id })
+        navigate('/portal', { state: { approvalEmailUnconfirmed: result.emailStatus === 'unconfirmed' } })
       } catch (e) {
         setStatus('Error: ' + (e?.message || 'could not approve'))
       }
@@ -520,8 +520,8 @@ export default function AccountEdit() {
         <h2 className="text-sm text-ink-80 mb-3">Account status</h2>
         <div className="flex flex-wrap items-center gap-3">
           {isPending && (
-            <button className="btn-primary text-sm" onClick={handleApprove}>
-              {u.invitation_id ? 'Approve & send setup email' : 'Approve'}
+            <button className="btn-primary text-sm" onClick={handleApprove} disabled={status === 'saving'}>
+              {u.invitation_id ? (u.auth_provider === 'google.com' ? 'Approve & send confirmation email' : 'Approve & send setup email') : 'Approve'}
             </button>
           )}
           {isApproved && (

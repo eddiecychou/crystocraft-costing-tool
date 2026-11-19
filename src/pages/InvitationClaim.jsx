@@ -54,6 +54,7 @@ function InvitationForm({ id, token }) {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [claimed, setClaimed] = useState(false)
+  const [emailUnconfirmed, setEmailUnconfirmed] = useState(false)
   const [claimedVia, setClaimedVia] = useState('form') // 'form' | 'google'
   // Admin-created invitations auto-approve at claim time (2026-09-24) — the
   // admin already picked the customer/pricing when they sent the invite, so
@@ -80,6 +81,7 @@ function InvitationForm({ id, token }) {
     try {
       const res = await claimInvitation(id, token, email.trim(), contactName.trim())
       setClaimedVia('form')
+      setEmailUnconfirmed(res?.emailStatus === 'unconfirmed')
       setClaimedStatus(res?.status || 'pending')
       setClaimed(true)
     } catch (err) {
@@ -109,6 +111,7 @@ function InvitationForm({ id, token }) {
       }
       const res = await claimInvitationGoogle(id, token, result.user.displayName || '')
       setClaimedVia('google')
+      setEmailUnconfirmed(res?.emailStatus === 'unconfirmed')
       setClaimedStatus(res?.status || 'pending')
       setClaimed(true)
     } catch (err) {
@@ -139,7 +142,7 @@ function InvitationForm({ id, token }) {
   }
 
   if (claimed) {
-    if (claimedStatus === 'approved') {
+    if (claimedStatus === 'approved' && (!emailUnconfirmed || claimedVia === 'google')) {
       return (
         <Shell>
           <h2 className="text-lg text-ink mb-2">You're in</h2>
@@ -156,13 +159,12 @@ function InvitationForm({ id, token }) {
     // server-side, just tell them plainly rather than the old generic
     // "pending review" copy, which would be misleading (nobody needs to
     // review anything; they just need the email resent).
-    if (claimedStatus === 'claimed') {
+    if (claimedStatus === 'claimed' || emailUnconfirmed) {
       return (
         <Shell>
           <h2 className="text-lg text-ink mb-2">Almost there</h2>
           <p className="text-sm text-ink-70">
-            Your account is approved, but we couldn't send the confirmation email just now. Please contact
-            Crystocraft and we'll get you a fresh link.
+            Your account is approved. If your password setup email hasn’t arrived, contact Crystocraft for a fresh link.
           </p>
         </Shell>
       )

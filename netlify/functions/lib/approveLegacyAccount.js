@@ -8,6 +8,8 @@ export async function approveLegacyAccount(db, uid, customerId, patch = {}) {
     const ref = db.doc('users/' + uid), snap = await tx.get(ref)
     if (!snap.exists) throw Object.assign(Error('Account not found.'), { status: 404 })
     const user = snap.data()
+    if (patch.expectedStatus !== undefined && (user.status ?? null) !== patch.expectedStatus)
+      throw Object.assign(Error('This account has changed. Refresh to see the current decision.'), { status: 409 })
     if (user.invitation_id && user.status === 'pending') throw Object.assign(Error('Approve this account through its invitation.'), { status: 409 })
     const customerSnap = customerId ? await tx.get(db.doc('customers/' + customerId)) : null
     if (customerId && !customerSnap.exists) throw Object.assign(Error('Customer not found.'), { status: 404 })

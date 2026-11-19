@@ -350,11 +350,11 @@ emulator job. App and private read-only credentials deployed with fresh two-role
   card) so pricing is set *before* the invite goes out, since there's no
   longer a manual "Approve" click for an admin invitation to catch it at.
   `createInvitation` stores that as `pricing` on the `portal_invitations`
-  doc; `portal-invite.js`'s shared `runApproval()` helper (used by
-  `approveInvitation`, and now also by `claimInvitation`/
-  `claimInvitationGoogle` for `source:'admin'` invitations) mirrors it onto
-  `users/{uid}` at approval — auto-approval happens the instant the
-  customer claims. Self-serve applications (`source:'self'`, no customer
+  doc. Manual approval and admin-invited claims share `stageApproval()` in
+  `netlify/functions/lib/portalApproval.js`. The transaction saves the
+  account, private markup, invitation decision and audit entry together.
+  Email delivery and explicit resends run after that commit. Admin-invited
+  claims still auto-approve at claim time. Self-serve applications (`source:'self'`, no customer
   link yet) are untouched and still need a human's manual Approve.
   Re-inviting an already-`pending` contact updates that invitation's
   pricing instead of silently no-op'ing (see L-30/L-31).
