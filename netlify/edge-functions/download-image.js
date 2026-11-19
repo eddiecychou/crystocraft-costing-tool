@@ -1,3 +1,4 @@
+import { isGalleryStorageUrl } from './lib/brandGallery.js'
 // Forces a "Save As" download for a file already in THIS app's own Firebase
 // Storage bucket (a plain <a href=".." download> is silently ignored by most
 // browsers for a cross-origin URL — Firebase Storage is — so without this it
@@ -79,6 +80,7 @@ export default async function handler(req) {
   let target
   try { target = new URL(rawUrl) } catch { return new Response('Bad url param', { status: 400 }) }
 
+  if (isGalleryStorageUrl(rawUrl)) return new Response('Use Brand Gallery to access this file.', { status: 403, headers: { 'Cache-Control':'private, no-store' } })
   const bucket = Deno.env.get('VITE_FIREBASE_STORAGE_BUCKET') || Deno.env.get('FIREBASE_STORAGE_BUCKET') || ''
   if (!isAllowedStorageUrl(target, bucket)) {
     return new Response('URL not allowed — only this app\'s own Storage bucket or crystocraft.com may be downloaded through this endpoint', { status: 403 })

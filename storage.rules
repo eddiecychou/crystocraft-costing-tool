@@ -117,7 +117,10 @@ service firebase.storage {
       allow read, write: if can('customers');
     }
     match /customer-assets/{customerId}/{allPaths=**} {
-      allow read, write: if can('customers');
+      // The original is uploaded through a create-only GCS session. Browsers
+      // cannot generate persistent download links or replace its metadata.
+      allow delete: if can('customers');
+      allow read, create, update: if false;
     }
     match /range_products/{rangeId}/{allPaths=**} {
       allow read, write: if can('figurine');

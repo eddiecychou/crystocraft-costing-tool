@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import {
-  collection, doc, getDocs, setDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp,
+  collection, doc, getDocs, getDocsFromServer, setDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp,
 } from 'firebase/firestore'
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { db, storage, auth } from './firebase'
+import { ref as storageRef, deleteObject } from 'firebase/storage'
+import { galleryVisible, galleryUrl } from './brandGalleryUrls'
+import { gallerySession } from './brandGallerySession'
+import { db, storage, auth, authHeader } from './firebase'
 
 // Customer Brand Gallery data layer — see docs/specs/Customer_Brand_Gallery_Spec.md.
 //
@@ -78,8 +80,8 @@ export const isNonRasterAsset = filename => extOf(filename) in NON_RASTER_EXT
 export const cannotRenderAsImage = filename => isNonRasterAsset(filename) && extOf(filename) !== '.svg'
 
 // ── Visibility helpers — the one source of truth, used by every surface ──────
-// A customer may see any of their own assets that aren't internal-only.
-export const visibleToCustomer = a => (a?.visibility || 'internal_only') !== 'internal_only'
+// Unknown visibility defaults to private staff access.
+export const visibleToCustomer = a => galleryVisible(a?.visibility)
 // Marketing (blog / public catalogue / case study) needs BOTH public visibility
 // AND explicit consent — the two flags are deliberately separate (spec §3).
 export const usableInMarketing = a =>
@@ -92,7 +94,7 @@ const norm = d => {
   const type = ASSET_TYPES.includes(x.type) ? x.type : 'other'
   return {
     id: d.id,
-    file_url: x.file_url || '',
+    file_url: galleryUrl(d.ref.parent.parent.id, d.id, x.filename || 'file'),
     filename: x.filename || '',
     type,
     // Backfilled from type when absent — covers assets written before this
@@ -117,6 +119,7 @@ export async function loadCustomerAssets(customerId) {
   // hidden — indistinguishable from "this customer really has none." Letting
   // it throw means the caller decides how to show the failure instead of it
   // silently becoming a false empty state.
+  await gallerySession()
   return (await getDocs(query(COL(customerId), orderBy('created_at', 'desc')))).docs.map(norm)
 }
 
@@ -130,7 +133,8 @@ export async function loadCustomerVisibleAssets(customerId) {
   try {
     // Filter only (no orderBy) to avoid needing a composite index; sort in JS.
     const q = query(COL(customerId), where('visibility', 'in', ['customer_private', 'public_reference']))
-    const rows = (await getDocs(q)).docs.map(norm)
+    const [snap] = await Promise.all([getDocsFromServer(q), gallerySession()])
+    const rows = snap.docs.map(norm)
     return rows.sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0))
   } catch { return [] }
 }
@@ -164,10 +168,13 @@ export function useCustomerAssets(customerId) {
     if (!customerId) { setAssets([]); setLoading(false); return }
     setLoading(true)
     const q = query(COL(customerId), orderBy('created_at', 'desc'))
-    return onSnapshot(q,
-      snap => { setAssets(snap.docs.map(norm)); setLoading(false) },
-      () => { setAssets([]); setLoading(false) },
-    )
+    let active = true
+    const stop = onSnapshot(q, async snap => {
+      try { await gallerySession(); if (active) setAssets(snap.docs.map(norm)) }
+      catch { if (active) setAssets([]) }
+      if (active) setLoading(false)
+    }, () => { setAssets([]); setLoading(false) })
+    return () => { active = false; stop() }
   }, [customerId])
   return { assets, loading }
 }
@@ -188,9 +195,15 @@ export async function uploadCustomerAsset(customerId, file, meta = {}) {
   const blob = file
   const contentType = file.type || NON_RASTER_EXT[extOf(file.name)] || 'application/octet-stream'
   const path = `customer-assets/${customerId}/${ref.id}/${safeName}`
-  const sRef = storageRef(storage, path)
-  await uploadBytes(sRef, blob, { contentType })
-  const file_url = await getDownloadURL(sRef)
+  const start = await fetch('/api/brand-gallery-upload', {
+    method: 'POST', headers: { ...await authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({company: customerId, asset: ref.id, filename: safeName, contentType}),
+  })
+  if (!start.ok) throw Error('Could not start the gallery upload.')
+  const {upload} = await start.json()
+  const saved = await fetch(upload, {method: 'PUT', headers: {'Content-Type': contentType}, body: blob})
+  if (!saved.ok) throw Error('Could not upload the original gallery file.')
+  const file_url = galleryUrl(customerId, ref.id, safeName)
   const by = auth.currentUser?.email || auth.currentUser?.uid || ''
   const category = CATEGORIES.includes(meta.category) ? meta.category : 'brand_asset'
   const typesHere = TYPES_BY_CATEGORY[category]
@@ -228,8 +241,7 @@ export async function updateCustomerAsset(customerId, assetId, patch) {
     { ...clean, updated_at: serverTimestamp(), updated_by: by }, { merge: true })
 }
 
-// Delete the doc and its Storage object. A quote that snapshotted the URL keeps
-// working; the export already falls back to the product hero image (spec §7).
+// Removing the descriptor immediately disables its protected media link.
 export async function deleteCustomerAsset(customerId, asset) {
   await deleteDoc(doc(db, 'customers', customerId, 'assets', asset.id))
   if (asset.storage_path) {

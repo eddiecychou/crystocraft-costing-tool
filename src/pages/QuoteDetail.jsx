@@ -1,3 +1,5 @@
+import { galleryReference } from '../brandGalleryUrls'
+import { gallerySession } from '../brandGallerySession'
 import { useState, useEffect, useRef, Fragment } from 'react'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -140,6 +142,12 @@ export default function QuoteDetail() {
       const loaded = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      let hasGalleryImage = false
+      for (const item of loaded) {
+        const media = galleryReference(item.custom_image, import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET)
+        if (media) { item.custom_image = media; hasGalleryImage = true }
+      }
+      if (hasGalleryImage) await gallerySession().catch(() => {})
       setItems(loaded)
       // Fetch live heroImage for each product so image updates are reflected
       const productIds = [...new Set(loaded.filter(i => i.product_collection !== 'range_products').map(i => i.product_id).filter(Boolean))]

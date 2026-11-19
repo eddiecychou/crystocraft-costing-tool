@@ -1,3 +1,4 @@
+import { galleryDisplayUrl } from '../brandGalleryUrls'
 import { asOcDate, formatOcDate } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
@@ -376,7 +377,7 @@ export default function ProformaInvoicePrint() {
               <tr key={i}>
                 <td>{i + 1}</td>
                 {hasImages && (
-                  <td>{l.line_image && <img className="pi-lineimg" src={l.line_image} alt="" />}</td>
+                  <td>{l.line_image && <img className="pi-lineimg" src={galleryDisplayUrl(l.line_image)} alt="" />}</td>
                 )}
                 <td className="pi-code">{l.item_code || '—'}</td>
                 <td className="desc">{l.description || '—'}{l.tier_remarks?.trim() && <div className="tier-remarks">{l.tier_remarks}</div>}</td>
@@ -390,7 +391,7 @@ export default function ProformaInvoicePrint() {
             <tr key={`c${i}`}>
               <td>{productLines.length + i + 1}</td>
               {hasImages && (
-                <td>{l.line_image && <img className="pi-lineimg" src={l.line_image} alt="" />}</td>
+                <td>{l.line_image && <img className="pi-lineimg" src={galleryDisplayUrl(l.line_image)} alt="" />}</td>
               )}
               <td className="pi-code">{l.item_code || '—'}</td>
               <td className="desc">{l.description || 'Charge'}{l.tier_remarks?.trim() && <div className="tier-remarks">{l.tier_remarks}</div>}</td>

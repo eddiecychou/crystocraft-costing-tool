@@ -1,3 +1,4 @@
+import { galleryDisplayUrl } from '../../brandGalleryUrls'
 import { CheckCircle2, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { LINE_TYPES, lineTypeOf } from '../../shipping'
 
@@ -23,7 +24,7 @@ export default function ShipmentLineRow({ line: l, index: i, setLine, classify, 
             title={l.line_image ? 'Change this line’s invoice image' : 'Add an image for the Proforma / Invoice'}
             className="group relative w-14 h-14 rounded-none bg-ivory-dark border border-warm-grey overflow-hidden flex items-center justify-center shrink-0">
             {l.line_image
-              ? <img src={l.line_image} alt="" className="w-full h-full object-cover" />
+              ? <img src={galleryDisplayUrl(l.line_image)} alt="" className="w-full h-full object-cover" />
               : <ImageIcon size={16} strokeWidth={1.5} className="text-platinum" />}
             <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
               <span className="bg-white/90 text-2xs px-1 py-0.5 rounded-none text-ink-80">

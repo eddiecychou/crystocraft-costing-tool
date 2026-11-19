@@ -42,6 +42,9 @@ export async function mergeCustomerRecords(db, sourceId, targetId, uid, { budget
     const contactIds=customerMergeContactMap(originals.survivor,originals.source)
     const carriedData=s => {
       const data=s.data()
+      if (s.ref.parent.id === 'assets' && data.storage_path?.startsWith('customer-assets/' + sourceId + '/' + s.id + '/')) {
+        return {...data, gallery_original_path: data.storage_path}
+      }
       if(s.ref.parent.id==='files')return {...data,customer_id:targetId,contact_ids:[...new Set((data.contact_ids||[]).map(id=>contactIds[id]||id))]}
       return data.contact_id && contactIds[data.contact_id] ? {...data,contact_id:contactIds[data.contact_id]} : data
     }

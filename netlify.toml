@@ -88,6 +88,10 @@
   SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_APP_ID,RENDER_ADMIN_PASSWORD"
 
 [[edge_functions]]
+  function = "brand-gallery-media"
+  path = "/api/brand-gallery-media"
+
+[[edge_functions]]
   function = "erp"
   path = "/api/erp"
 

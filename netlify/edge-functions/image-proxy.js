@@ -1,3 +1,4 @@
+import { isGalleryStorageUrl } from './lib/brandGallery.js'
 // Proxy Firebase Storage images to the browser without CORS issues.
 // Firebase Storage requires CORS config for direct browser fetch() — routing
 // through a same-origin edge function sidesteps that entirely.
@@ -20,6 +21,7 @@ export default async function handler(req) {
   const urlParam = new URL(req.url).searchParams.get('url')
   if (!urlParam) return new Response('Missing url param', { status: 400 })
 
+  if (isGalleryStorageUrl(urlParam)) return new Response('Use Brand Gallery to access this file.', { status: 403, headers: { 'Cache-Control':'private, no-store' } })
   const result = await fetchGuarded(urlParam, { allowedBases: ALLOWED_HOSTS, maxBytes: 20 * 1024 * 1024 })
   if (!result.ok) return new Response(result.message, { status: result.status })
 

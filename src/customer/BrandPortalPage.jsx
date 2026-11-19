@@ -34,7 +34,7 @@ const downloadUrl = (fileUrl, filename, normalizeImage = false) =>
 const extOf = filename => (filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
 
 export default function BrandPortalPage({ profile }) {
-  const customerId = profile?.customer_id || null
+  const customerId = profile?.role === 'customer' && profile.status === 'approved' ? profile.customer_id : null
   const [loading, setLoading] = useState(true)
   const [proposal, setProposal] = useState(null)       // resolved { proposal, heroAsset, sections } or null
   const [brandAssets, setBrandAssets] = useState([])    // category: brand_asset

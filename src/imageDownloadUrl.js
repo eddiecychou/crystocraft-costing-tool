@@ -7,6 +7,7 @@ const STORAGE_IMAGE_HOSTS = new Set([
 // Firebase/Google Storage raster images opt into JPEG normalization; arbitrary
 // files (PDF/AI/EPS/Office) and WordPress images retain their original bytes.
 export function imageDownloadUrl(fileUrl, filename = 'image.jpg', normalizeImage = false) {
+  if (fileUrl?.startsWith('/api/brand-gallery-media?')) return fileUrl + '&download=1'
   const params = new URLSearchParams({
     url: fileUrl || '',
     filename: filename || 'image.jpg',

@@ -71,6 +71,7 @@ stubs.storage =
   'const fail=()=>{throw Error("No Storage access")};export{fail as ref,fail as uploadBytes,fail as getDownloadURL,fail as deleteObject}'
 stubs.bankAccounts =
   'export const listBankAccounts=async()=>[];export const accountForCurrency=()=>null;export const formatBankDetails=()=>""'
+stubs.brandGallerySession = 'export const gallerySession=async()=>{}'
 stubs.customerAssets =
   'export const loadCustomerAssets=async()=>[];export const TYPE_LABEL={},CATEGORIES=[],CATEGORY_LABEL={}'
 stubs.QuoteExport = 'export default()=>null'

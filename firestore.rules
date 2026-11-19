@@ -838,10 +838,12 @@ service cloud.firestore {
       // linked customer's non-internal assets.
       match /assets/{assetId} {
         allow read: if can('customers')
-          || (signedIn()
+          || (isApprovedCustomer()
               && profile().get('customer_id', '') == customerId
-              && resource.data.visibility != 'internal_only');
-        allow write: if can('customers');
+              && resource.data.get('visibility', '') in ['customer_private', 'public_reference']);
+        allow create: if can('customers') && !('gallery_original_path' in request.resource.data);
+        allow update: if can('customers') && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['storage_path', 'gallery_original_path']);
+        allow delete: if can('customers');
       }
       // Proposal — customer read scoped to their own linked customer AND
       // published only.

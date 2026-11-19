@@ -18,7 +18,7 @@ async function imageToDataURL(url) {
   try {
     let buf
     try {
-      const res = await fetch(`/api/download-image?url=${encodeURIComponent(url)}`)
+      const res = await fetch(url.startsWith('/api/brand-gallery-media?') ? url : `/api/download-image?url=${encodeURIComponent(url)}`)
       if (!res.ok) throw new Error('proxy failed')
       buf = await res.arrayBuffer()
     } catch {

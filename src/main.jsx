@@ -2,6 +2,9 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
+import { watchGallerySession } from './brandGallerySession'
+
+watchGallerySession()
 
 // Self-heal stale tabs after a deploy. Every push rebuilds with new hashed
 // chunk filenames (QuotePDF-<hash>.js etc.) — a tab left open across a
