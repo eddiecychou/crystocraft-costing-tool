@@ -635,7 +635,7 @@ test('Shipping-only staff can read status but cannot allocate; staff with Shippi
   await assertOne()
 })
 test(
-  'real rules exclude private child receipts from own-customer recursive access and prohibit all client allocation writes',
+  'raw orders, lines and private receipts are restricted to Shipping and client allocation writes are denied',
   async () => {
     const r = await raise(),
       operationId = r.body.operation.id
@@ -654,12 +654,8 @@ test(
           invoice_allocation_id: 'forged'
         })
       )
-      if (uid === 'customer') {
-        await assertSucceeds(getDoc(doc(client, 'orders', id)))
-        await assertSucceeds(
-          getDoc(doc(client, 'orders', id, 'lines', 'existing'))
-        )
-      }
+      await (read ? assertSucceeds : assertFails)(getDoc(doc(client, 'orders', id)))
+      await (read ? assertSucceeds : assertFails)(getDoc(doc(client, 'orders', id, 'lines', 'existing')))
       await client.terminate()
     }
   },

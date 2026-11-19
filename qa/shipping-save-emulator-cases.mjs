@@ -100,8 +100,7 @@ test('a missing order rejects the entire batch instead of creating orphan replac
 
 test('a permission rejection leaves the header, updated/new lines and deleted lines unchanged', { timeout: 20000 }, async () => {
   const customer = makeClient('shipping_customer')
-  // The real customer rules permit reading this assigned order and its lines,
-  // but reject every write. Use a separately bundled handle to avoid replacing db.
+  // Buyer sessions have no direct access to the order editor or its documents.
   globalThis.__shippingSaveDb = customer
   const customerEngine = await import(pathToFileURL(join(scratch, 'engine.mjs')).href + '?customer')
   try { await assert.rejects(customerEngine.saveOrderWithLines('fictional-order', patch, lines), error => error.code === 'permission-denied') }

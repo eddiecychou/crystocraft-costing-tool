@@ -556,7 +556,7 @@ test(
   }
 )
 test(
-  'normal customer access still reads its saved order but private request/quote/counter writes are denied',
+  'converted orders, lines and conversion metadata stay private to staff',
   { timeout: 20000 },
   async () => {
     const op = await prepare(),
@@ -565,11 +565,11 @@ test(
       admin = client('admin'),
       both = client('both'),
       quoteOnly = client('quotes')
-    await assertSucceeds(getDoc(doc(customer, 'orders', result.order_id)))
-    await assertSucceeds(
+    await assertFails(getDoc(doc(customer, 'orders', result.order_id)))
+    await assertFails(
       getDocs(collection(customer, 'orders', result.order_id, 'lines'))
     )
-    const raw = (await getDoc(doc(customer, 'orders', result.order_id))).data()
+    const raw = (await getDoc(doc(both, 'orders', result.order_id))).data()
     assert.equal(raw.payload, undefined)
     assert.equal(raw.source_token, undefined)
     assert.equal(raw.created_by_uid, undefined)

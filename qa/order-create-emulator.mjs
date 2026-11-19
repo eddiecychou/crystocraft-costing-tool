@@ -199,7 +199,7 @@ test('validate before prepare, preserve explicit SO and recheck current permissi
   assert.equal((await call('staff', id, 'commit')).code, 403)
   assert.equal((await counter.get()).data().last, 100)
 })
-test('customer and other operator cannot inspect the receipt or stage originals; own saved order remains readable', async () => {
+test('other operators cannot inspect the receipt and buyers cannot read the raw created order', async () => {
   const id = randomUUID()
   await prep(id)
   assert.equal((await call('customer', id, 'list')).code, 403)
@@ -228,9 +228,7 @@ test('customer and other operator cannot inspect the receipt or stage originals;
   const created = await call('staff', id, 'commit')
   const client = env.authenticatedContext('customer').firestore()
   try {
-    assert.ok(
-      (await getDoc(doc(client, 'orders', created.body.order_id))).exists()
-    )
+    await assert.rejects(getDoc(doc(client, 'orders', created.body.order_id)), e => e.code === 'permission-denied')
   } finally {
     await client.terminate()
   }
