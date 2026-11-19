@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore'
+import { doc, getDoc, setDoc, onSnapshot, runTransaction } from 'firebase/firestore'
 import { db } from './firebase'
 
 // Front page "Featured Products" — hand-picked showcase cards on the
@@ -28,7 +28,9 @@ function normItem(it) {
 
 function normConfig(d) {
   return {
-    items: Array.isArray(d?.items) ? d.items.map(normItem).filter(x => x.product_id && x.image_url) : [],
+    items: Array.isArray(d?.items) ? d.items.map(it => ({
+      ...normItem(it), hasStoredId: Boolean(it.id),
+    })).filter(x => x.product_id && x.image_url) : [],
   }
 }
 
@@ -48,4 +50,19 @@ export async function saveFrontPageFeatured(items) {
 export async function getFrontPageFeaturedOnce() {
   const snap = await getDoc(cfgDoc())
   return normConfig(snap.exists() ? snap.data() : {})
+}
+
+// Update the chosen card against the latest list, preserving moves, additions
+// and edits to other cards by a second editor.
+export async function replaceFrontPageFeatured(original, selection) {
+  await runTransaction(db, async tx => {
+    const ref = cfgDoc()
+    const items = (await tx.get(ref)).data()?.items || []
+    const matches = items.filter(it =>
+      (original.hasStoredId === false ? !it.id : it.id === original.id) && it.product_id === original.product_id &&
+      (it.product_type === 'corp_gift' ? 'corp_gift' : 'range') === original.product_type &&
+      it.image_url === original.image_url)
+    if (matches.length !== 1) throw Error('This featured card changed. Close the picker and reopen it to see the latest image.')
+    tx.update(ref, {items: items.map(it => it === matches[0] ? {...it, id: original.id, ...selection} : it)})
+  })
 }

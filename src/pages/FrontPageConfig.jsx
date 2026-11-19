@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useFrontPageFeatured, saveFrontPageFeatured } from '../frontPageFeatured'
+import { useFrontPageFeatured, saveFrontPageFeatured, replaceFrontPageFeatured } from '../frontPageFeatured'
 import { normGallery } from '../constants'
 import FrontPageProductPicker from '../components/FrontPageProductPicker'
 import LoadingBar from '../components/LoadingBar'
@@ -15,7 +15,7 @@ import { ChevronUp, ChevronDown, Plus, Trash2, Image as ImageIcon } from 'lucide
 export default function FrontPageConfig({ embedded = false }) {
   const cfg = useFrontPageFeatured()
   const [products, setProducts] = useState(null) // id+type -> {name, cat} lookup for the list display
-  const [pickerFor, setPickerFor] = useState(null) // null | 'new' | item id being re-picked
+  const [pickerFor, setPickerFor] = useState(null) // null | 'new' | original featured card
   const [confirmRemove, setConfirmRemove] = useState(null)
   const [status, setStatus] = useState(null)
 
@@ -48,12 +48,13 @@ export default function FrontPageConfig({ embedded = false }) {
     }
   }
 
-  function handlePicked({ product_type, product_id, image_url }) {
+  async function handlePicked({ product_type, product_id, image_url }) {
     if (pickerFor === 'new') {
-      persist([...items, { product_id, product_type, image_url }])
-    } else if (pickerFor) {
-      persist(items.map(it => (it.id === pickerFor ? { ...it, product_type, product_id, image_url } : it)))
+      await saveFrontPageFeatured([...items, { product_id, product_type, image_url }])
+    } else {
+      await replaceFrontPageFeatured(pickerFor, { product_id, product_type, image_url })
     }
+    setStatus('saved')
     setPickerFor(null)
   }
 
@@ -88,13 +89,14 @@ export default function FrontPageConfig({ embedded = false }) {
           const meta = products[`${it.product_type}:${it.product_id}`]
           return (
             <div key={it.id} className="card overflow-hidden">
-              <div className="aspect-square bg-ivory-dark overflow-hidden">
+              <button type="button" onClick={() => setPickerFor(it)} aria-label={`Change display image for ${meta?.name || 'featured product'}`}
+                className="block w-full aspect-square bg-ivory-dark overflow-hidden focus-visible:outline-brand-600">
                 <img src={it.image_url} alt="" className="w-full h-full object-cover" />
-              </div>
+              </button>
               <div className="p-3">
                 <p className="text-sm text-ink truncate" title={meta?.name}>{meta?.name || '(product not found)'}</p>
                 <p className="text-2xs text-ink-60 uppercase tracking-wide mb-2">{it.product_type === 'range' ? 'Figurine' : 'Corporate'}</p>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
                     className="p-1 rounded-none border border-ivory-dark text-ink-60 hover:text-ink disabled:opacity-30" title="Move earlier">
                     <ChevronUp size={13} />
@@ -103,9 +105,9 @@ export default function FrontPageConfig({ embedded = false }) {
                     className="p-1 rounded-none border border-ivory-dark text-ink-60 hover:text-ink disabled:opacity-30" title="Move later">
                     <ChevronDown size={13} />
                   </button>
-                  <button type="button" onClick={() => setPickerFor(it.id)}
-                    className="p-1 rounded-none border border-ivory-dark text-ink-60 hover:text-ink" title="Change product/photo">
-                    <ImageIcon size={13} />
+                  <button type="button" onClick={() => setPickerFor(it)}
+                    className="inline-flex min-h-9 items-center gap-1.5 px-2 border border-warm-grey text-xs text-brand-600 hover:bg-ivory">
+                    <ImageIcon size={15} aria-hidden="true" /> Change image
                   </button>
                   <button type="button" onClick={() => setConfirmRemove(it.id)}
                     className="p-1 rounded-none border border-ivory-dark text-ink-60 hover:text-red-600 ml-auto" title="Remove">
@@ -128,7 +130,10 @@ export default function FrontPageConfig({ embedded = false }) {
       )}
 
       {pickerFor && (
-        <FrontPageProductPicker onSelect={handlePicked} onClose={() => setPickerFor(null)} />
+        <FrontPageProductPicker initialProduct={pickerFor === 'new' ? null : {
+          id: pickerFor.product_id, type: pickerFor.product_type,
+          name: products[`${pickerFor.product_type}:${pickerFor.product_id}`]?.name || pickerFor.product_id,
+        }} currentImage={pickerFor.image_url} onSelect={handlePicked} onClose={() => setPickerFor(null)} />
       )}
 
       {confirmRemove && (
