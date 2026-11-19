@@ -1,6 +1,6 @@
 import { authedUser } from './firebase'
 
-async function call(body) {
+async function call(body, signal) {
   const user = await authedUser()
   if (!user) throw Error('Please sign in.')
   const token = await user.getIdToken()
@@ -8,6 +8,7 @@ async function call(body) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
+    signal,
   })
   if (!res.ok)
     throw Error(
@@ -18,7 +19,16 @@ async function call(body) {
   return res.json()
 }
 
-export const myOrderHistory = () => call({ action: 'history' })
-export const myOcInvoiceHistory = () => call({ action: 'oc-history' })
+async function history(action, numberField, signal) {
+  const result = await call({ action }, signal)
+  if (!Array.isArray(result?.rows) || !result.rows.every(row =>
+    typeof row?.[numberField] === 'string' && row[numberField].trim())) {
+    throw Error('Invoice history could not load. Please try again.')
+  }
+  return result
+}
+
+export const myOrderHistory = signal => history('history', 'code', signal)
+export const myOcInvoiceHistory = signal => history('oc-history', 'no', signal)
 export const myInvoiceDetail = (code) => call({ action: 'lines', code })
 export const myOcInvoiceDetail = (id, code) => call({ action: 'oc-detail', id, code })
