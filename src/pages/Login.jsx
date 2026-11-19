@@ -59,6 +59,8 @@ export default function Login() {
       setError(
         code === 'already_pending' ? 'You already have a request pending approval for this email.'
         : code === 'already_registered' ? 'An account with this email already exists — try Sign in, or use "Forgot password?" if you need a new password.'
+        : code === 'signup_invitation_changed' ? 'Your invitation has changed. Check your latest invitation email or contact Crystocraft for help.'
+        : code === 'signup_retry_unavailable' ? 'Try again in the browser where you started this request. If you no longer have access to it, contact Crystocraft for help.'
         : code === 'invalid_email' ? 'Enter a valid email address.'
         : 'Could not submit your request. Check your details and try again.'
       )

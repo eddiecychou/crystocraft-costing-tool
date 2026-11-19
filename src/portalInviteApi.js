@@ -78,8 +78,29 @@ export const claimInvitationGoogle = (invitationId, token, contactName) =>
 // createUserWithEmailAndPassword. See portal-invite.js's applyForAccount.
 // hp: honeypot value from Login.jsx's hidden field — passed through untouched,
 // portal-invite.js is the one place that interprets it.
-export const applyForAccount = (companyName, contactName, email, currency, hp = '') =>
-  call('apply_for_account', { companyName, contactName, email, currency, hp })
+// Keep only a random retry key on this browser. A lost response, reload or
+// second tab must reuse it until the server confirms the pending application.
+const inMemorySignupKeys = new Map()
+export async function applyForAccount(companyName, contactName, email, currency, hp = '') {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.trim().toLowerCase()))
+  const storageKey = 'oc.portal.signup.' + Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('')
+  function getKey() {
+    let key = inMemorySignupKeys.get(storageKey)
+    try { key = localStorage.getItem(storageKey) || key } catch { /* private browsing */ }
+    if (!key) key = crypto.randomUUID()
+    inMemorySignupKeys.set(storageKey, key)
+    try { localStorage.setItem(storageKey, key) } catch { /* same-page retry still works */ }
+    return key
+  }
+  const retryKey = navigator.locks ? await navigator.locks.request(storageKey, getKey) : getKey()
+  const result = await call('apply_for_account', { companyName, contactName, email, currency, hp, retryKey })
+  if (result.ok !== true || result.status !== 'pending') throw new Error('Application not confirmed')
+  inMemorySignupKeys.delete(storageKey)
+  try {
+    if (localStorage.getItem(storageKey) === retryKey) localStorage.removeItem(storageKey)
+  } catch { /* storage unavailable */ }
+  return result
+}
 
 // Google-authenticated self-signup — Login.jsx calls this AFTER the visitor
 // has already completed Sign in with Google (so this goes through callAdmin,

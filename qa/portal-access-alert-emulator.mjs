@@ -61,12 +61,12 @@ before(async () => {
       code: 'auth/user-not-found'
     })
   }
-  auth.createUser = async ({ email }) => {
+  auth.createUser = async ({ email, uid }) => {
     if (users.has(email))
       throw Object.assign(Error('Exists'), {
         code: 'auth/email-already-exists'
       })
-    const row = { uid: 'fake-' + users.size, email }
+    const row = { uid: uid || 'fake-' + users.size, email }
     users.set(email, row)
     return row
   }
@@ -351,4 +351,115 @@ test('an expired ambiguous send requires admin review; applicants cannot read or
   unknown = false
   assert.equal((await call('retry_access_alert', details, 'admin')).code, 200)
   assert.equal((await job.ref.get()).get('status'), 'accepted')
+})
+
+const retryKey = 'ab02ee27-c0d3-4ad9-888a-4562f951c001'
+const retryInput = { ...input, retryKey }
+const pending = { code: 200, body: { ok: true, status: 'pending' } }
+
+async function interruptAfterAuth(request) {
+  const create = auth.createUser
+  auth.createUser = async details => {
+    await create(details)
+    throw Error('Fictional interruption after Firebase creates the sign-in')
+  }
+  try { await assert.rejects(call('apply_for_account', request), /Fictional interruption/) }
+  finally { auth.createUser = create }
+  assert.equal(users.size, 1)
+  assert.equal((await db.collection('users').get()).size, 0)
+  assert.equal((await db.collection('portal_access_alerts').get()).size, 0)
+  assert.equal(attempts.length, 0)
+  return sole('portal_signup_retries')
+}
+
+test('interrupted email application resumes its original invitation and fields; concurrent and lost-response retries alert once', async () => {
+  await seedInvitation()
+  const receipt = await interruptAfterAuth(retryInput)
+  assert.equal(receipt.get('uid'), users.get(email).uid)
+  assert.equal(receipt.get('invitationId'), invitationBody.invitationId)
+  assert.ok(!JSON.stringify(receipt.data()).includes(retryKey))
+  const client = env.unauthenticatedContext().firestore()
+  try {
+    await assert.rejects(getDoc(doc(client, receipt.ref.path)), e => e.code === 'permission-denied')
+    await assert.rejects(setDoc(doc(client, receipt.ref.path), { uid: 'other' }), e => e.code === 'permission-denied')
+  } finally { await client.terminate() }
+  assert.equal((await call('apply_for_account', { ...input, retryKey: 'ab02ee27-c0d3-4ad9-888a-4562f951c002' })).code, 409)
+  const retry = { ...retryInput, email: email.toUpperCase(), companyName: 'Retyped name', currency: 'USD' }
+  const results = await Promise.all([call('apply_for_account', retry), call('apply_for_account', retry)])
+  assert.deepEqual(results, [pending, pending])
+  assert.deepEqual(await call('apply_for_account', retryInput), pending)
+  const profile = await sole('users')
+  assert.equal(profile.id, receipt.get('uid'))
+  assert.equal(profile.get('base_currency'), input.currency)
+  assert.equal(profile.get('company_name'), input.companyName)
+  assert.equal(profile.get('invitation_id'), invitationBody.invitationId)
+  assert.equal(profile.get('customer_id'), 'fictional-company')
+  assert.equal((await sole('portal_invitations')).get('claimed_uid'), profile.id)
+  assert.equal((await sole('portal_access_alerts')).get('status'), 'accepted')
+  assert.equal((await receipt.ref.get()).exists, false)
+  assert.equal(users.size, 1)
+  assert.equal(attempts.length, 1)
+})
+
+test('two concurrent first submissions converge even when both see no Auth user', async () => {
+  const results = await Promise.all([call('apply_for_account', retryInput), call('apply_for_account', retryInput)])
+  assert.deepEqual(results, [pending, pending])
+  assert.equal(users.size, 1)
+  await sole('users')
+  await sole('portal_invitations')
+  await sole('portal_access_alerts')
+  assert.equal(attempts.length, 1)
+})
+
+test('a cached email form can replay its exact frozen application after an interruption', async () => {
+  await interruptAfterAuth(input)
+  assert.equal((await call('apply_for_account', { ...input, currency: 'EUR' })).code, 409)
+  assert.deepEqual(await call('apply_for_account', input), pending)
+  assert.equal(users.size, 1)
+  assert.equal(attempts.length, 1)
+})
+
+test('unknown Auth identities, changed credentials and revoked invitations cannot be adopted by a retry', async () => {
+  users.set(email, { uid: 'old-auth', email })
+  assert.equal((await call('apply_for_account', retryInput)).body.error, 'already_registered')
+  assert.equal((await db.collection('portal_signup_retries').get()).size, 0)
+  users.clear()
+  await seedInvitation()
+  const receipt = await interruptAfterAuth(retryInput)
+  const original = users.get(email)
+  for (const change of [{ uid: 'replacement' }, { disabled: true }, { emailVerified: true },
+    { customClaims: { staff: true } }, { providerData: [{ providerId: 'google.com' }] }, { passwordHash: 'fictional' }]) {
+    users.set(email, { ...original, ...change })
+    assert.equal((await call('apply_for_account', retryInput)).body.error, 'already_registered')
+  }
+  users.set(email, original)
+  await db.doc('portal_invitations/'+invitationBody.invitationId).update({ status: 'revoked' })
+  assert.equal((await call('apply_for_account', retryInput)).code, 409)
+  assert.equal((await receipt.ref.get()).exists, true)
+  assert.equal((await sole('portal_invitations')).get('status'), 'revoked')
+  assert.equal((await db.collection('users').get()).size, 0)
+  assert.equal((await db.collection('portal_access_alerts').get()).size, 0)
+  assert.equal(attempts.length, 0)
+})
+
+test('the same reserved UID survives a transient Auth outage before creation', async () => {
+  const create = auth.createUser
+  auth.createUser = async () => { throw Error('Fictional temporary Auth outage') }
+  try { await assert.rejects(call('apply_for_account', retryInput), /temporary Auth outage/) }
+  finally { auth.createUser = create }
+  const receipt = await sole('portal_signup_retries')
+  assert.equal(users.size, 0)
+  assert.equal(attempts.length, 0)
+  assert.deepEqual(await call('apply_for_account', retryInput), pending)
+  assert.equal(users.get(email).uid, receipt.get('uid'))
+  assert.equal(attempts.length, 1)
+})
+
+test('a new staff invitation arriving during interruption is preserved', async () => {
+  await interruptAfterAuth(retryInput)
+  const original = await seedInvitation()
+  assert.equal((await call('apply_for_account', retryInput)).body.error, 'signup_invitation_changed')
+  assert.deepEqual((await sole('portal_invitations')).data(), original)
+  assert.equal((await db.collection('users').get()).size, 0)
+  assert.equal(attempts.length, 0)
 })

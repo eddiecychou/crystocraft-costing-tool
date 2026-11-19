@@ -30,7 +30,8 @@ globalThis.fetch = (url, options) => {
 try {
   await server.listen()
   const origin = 'http://127.0.0.1:'+server.httpServer.address().port
-  const createPage = async () => {
+  const createPage = async ({ interruptApplication = false } = {}) => {
+    let submissions = 0
     const ctx = await browser.newContext()
     await ctx.route('**/*', async route => {
       const req = route.request(), url = new URL(req.url())
@@ -38,7 +39,26 @@ try {
       if (req.method() === 'GET' && req.resourceType() === 'script' && url.origin === 'https://apis.google.com') return route.continue()
       if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') return route.abort()
       if (url.origin === origin && url.pathname === '/api/portal-invite') {
-        const response = await handler(new Request(url, {method:req.method(), headers:req.headers(), body:req.postData()}))
+        const request = new Request(url, {method:req.method(), headers:req.headers(), body:req.postData()})
+        if (interruptApplication && req.postDataJSON().action === 'apply_for_account') {
+          submissions++
+          if (submissions === 1) {
+            const auth = getAuth(app), create = auth.createUser
+            auth.createUser = async details => {
+              await create.call(auth, details)
+              throw Error('Fictional crash after creating the Auth user')
+            }
+            try { await assert.rejects(handler(request), /Fictional crash/) }
+            finally { auth.createUser = create }
+            return route.abort('connectionreset')
+          }
+          if (submissions === 2) {
+            const response = await handler(request)
+            assert.equal(response.status, 200, await response.text())
+            return route.abort('connectionreset')
+          }
+        }
+        const response = await handler(request)
         return route.fulfill({status:response.status,contentType:'application/json',body:await response.text()})
       }
       if (url.origin === origin && url.pathname.startsWith('/api/')) return route.fulfill({json:{}})
@@ -91,18 +111,30 @@ try {
   console.log('PASS: mismatched Google email left the invitation pending; the invited buyer then claimed it and saw confirmation')
 
   const passwordEmail='fictional-password@example.test'
-  const password=await createPage()
-  await password.goto(origin+'/login')
-  await password.getByRole('button',{name:'Create account',exact:true}).click()
-  await password.locator('input[autocomplete=organization]').fill('Fictional Password Co')
-  await password.locator('input[autocomplete=name]').fill('Fictional Contact')
-  await password.locator('form input[type=email]').fill(passwordEmail)
-  await password.getByRole('button',{name:'Request account'}).click()
+  const password=await createPage({ interruptApplication: true })
+  const beforeSignup = sent.length
+  for (const attempt of [1, 2, 3]) {
+    await password.goto(origin+'/login')
+    await password.getByRole('button',{name:'Create account',exact:true}).click()
+    await password.locator('input[autocomplete=organization]').fill('Fictional Password Co')
+    await password.locator('input[autocomplete=name]').fill('Fictional Contact')
+    await password.locator('form input[type=email]').fill(passwordEmail)
+    await password.getByRole('button',{name:'Request account'}).click()
+    if (attempt < 3) {
+      await password.getByText(/Could not submit your request/).waitFor()
+      const profile = await readUser(passwordEmail)
+      assert.equal(profile.exists, attempt === 2)
+      assert.equal(sent.length, beforeSignup + (attempt === 2 ? 1 : 0))
+    }
+  }
   await password.getByRole('heading',{name:'Your new account request is under review'}).waitFor()
   const pending=await readUser(passwordEmail)
   assert.equal(pending.get('status'),'pending')
   assert.equal(pending.get('auth_provider'), undefined)
-  console.log('PASS: standard email application retained its pending approval and password setup path')
+  assert.equal(sent.length, beforeSignup + 1)
+  assert.equal((await db.collection('portal_invitations').where('contact_email','==',passwordEmail).get()).size, 1)
+  assert.equal((await db.collection('users').where('email','==',passwordEmail).get()).size, 1)
+  console.log('PASS: Chrome recovered from an interrupted Auth creation and a lost application response; one pending account and one captured alert')
 
   const passwordInviteEmail='fictional-password-invite@example.test'
   await db.doc('portal_invitations/password-invite').set({source:'admin',status:'pending',customer_id:'demo-company',

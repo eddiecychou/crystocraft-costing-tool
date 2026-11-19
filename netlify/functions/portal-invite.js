@@ -1,3 +1,4 @@
+import { prepareEmailApplication, emailApplicationStatus } from './lib/portalSignupRetry.js'
 import { approveLegacyAccount } from './lib/approveLegacyAccount.js'
 // SU-07A — customer portal invitation / approval / password-setup flow.
 //
@@ -386,45 +387,15 @@ async function applyForAccount(body) {
 
   const db = getFirestore()
 
-  // Non-enumerating-ish gate: an email that ALREADY has a real Auth account
-  // (predates this feature, was invited, or already self-applied) never
-  // gets a second account created — same generic response shape whether
-  // approved or suspended, so a stranger probing emails learns only "some
-  // account state already exists here," never which one specifically.
-  // 'pending' gets its OWN distinct message, per spec — the applicant
-  // typed their own email, so telling them "you already applied" is useful,
-  // not a meaningful enumeration leak.
-  let existingAuthUser = null
-  try { existingAuthUser = await getAuth().getUserByEmail(email) }
-  catch (err) { if (err?.code !== 'auth/user-not-found') throw err }
-  if (existingAuthUser) {
-    const existingUserSnap = await db.collection('users').doc(existingAuthUser.uid).get()
-    const existingStatus = existingUserSnap.exists ? existingUserSnap.data().status : null
-    if (existingStatus === 'pending') return json({ error: 'already_pending' }, 409)
-    return json({ error: 'already_registered' }, 409)
-  }
-
-  // An admin may have already invited this exact email (status 'pending',
-  // token not yet claimed) — funnel this submission into THAT existing
-  // invitation rather than creating a second, parallel one. Ownership of
-  // the email still only gets verified later, at the password-setup-link
-  // step, same as every other path here.
-  const existingInv = await db.collection('portal_invitations')
-    .where('contact_email', '==', email)
-    .where('status', 'in', ['pending', 'claimed', 'approved'])
-    .limit(1)
-    .get()
-  const invitation = existingInv.docs[0]
-  if (invitation && invitation.get('status') !== 'pending') return json({ error: 'already_pending' }, 409)
-  let userRecord
-  try { userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false }) }
-  catch (e) {
-    if (e?.code === 'auth/email-already-exists')
-      return json({ error: invitation ? 'already_pending' : 'already_registered' }, 409)
-    throw e
-  }
-  return saveAccessApplication({ db, uid:userRecord.uid, email, companyName, contactName, currency, invitation })
-
+  const retryKey = body?.retryKey
+  if (retryKey != null && (typeof retryKey !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(retryKey)))
+    return json({ error: 'invalid_retry_key' }, 400)
+  const prepared = await prepareEmailApplication(db, getAuth(), { email, companyName, contactName, currency }, retryKey)
+  if (!prepared.registration) return json(prepared, prepared.error ? 409 : 200)
+  const { registration, receipt } = prepared
+  const invitationRef = registration.invitationId ? db.collection('portal_invitations').doc(registration.invitationId) : null
+  return saveAccessApplication({ db, ...registration, receipt, invitationRef })
 }
 
 // Google-authenticated counterpart to applyForAccount — the visitor already
@@ -479,7 +450,7 @@ async function applyForAccountGoogle(body, uid, email) {
     .where('status', 'in', ['pending', 'claimed', 'approved'])
     .limit(1)
     .get()
-  return saveAccessApplication({ db, uid, email, companyName, contactName, currency, invitation:existingInv.docs[0], google:true })
+  return saveAccessApplication({ db, uid, email, companyName, contactName, currency, invitationRef:existingInv.docs[0]?.ref, google:true })
 
 }
 
@@ -491,25 +462,31 @@ async function saveAccessApplication({
   companyName,
   contactName,
   currency,
-  invitation,
+  invitationRef,
+  receipt,
+  attemptHash,
   google = false
 }) {
-  const ref = invitation?.ref || db.collection('portal_invitations').doc()
+  const ref = invitationRef || db.collection('portal_invitations').doc()
   const user = db.collection('users').doc(uid)
   const result = await db.runTransaction(async (tx) => {
     const profile = await tx.get(user)
-    if (profile.exists)
-      return google
-        ? {
-            response: json({
-              ok: true,
-              status: profile.get('status') === 'approved' ? 'approved' : 'pending'
-            })
-          }
-        : { response: json({ error: 'already_pending' }, 409) }
-    const existing = invitation ? (await tx.get(ref)).data() : null
-    if (invitation && (existing?.status !== 'pending' || existing.contact_email !== email))
-      return { response: json({ error: 'already_pending' }, 409) }
+    if (profile.exists) {
+      const outcome = google
+        ? { ok: true, status: profile.get('status') === 'approved' ? 'approved' : 'pending' }
+        : emailApplicationStatus(profile, attemptHash)
+      return { response: json(outcome, outcome.error ? 409 : 200) }
+    }
+    if (receipt && (await tx.get(receipt)).get('uid') !== uid)
+      return { response: json({ error: 'already_registered' }, 409) }
+    const existing = invitationRef ? (await tx.get(ref)).data() : null
+    if (invitationRef && (existing?.status !== 'pending' || existing.contact_email !== email))
+      return { response: json({ error: receipt ? 'signup_invitation_changed' : 'already_pending' }, 409) }
+    if (receipt && !invitationRef) {
+      const added = await tx.get(db.collection('portal_invitations').where('contact_email', '==', email)
+        .where('status', 'in', ['pending', 'claimed', 'approved']).limit(1))
+      if (!added.empty) return { response: json({ error: 'signup_invitation_changed' }, 409) }
+    }
     const now = Timestamp.now()
     const name = contactName || existing?.contact_name || ''
     const claimed = {
@@ -559,8 +536,10 @@ async function saveAccessApplication({
       customer_id: existing?.customer_id || null,
       invitation_id: ref.id,
       ...(google ? { auth_provider: 'google.com' } : {}),
+      ...(attemptHash ? { signup_attempt_hash: attemptHash } : {}),
       createdAt: now
     })
+    if (receipt) tx.delete(receipt)
     queueAccessAlert(tx, ref, { uid, email, company: companyName, contact: name })
     return { created: true }
   })
