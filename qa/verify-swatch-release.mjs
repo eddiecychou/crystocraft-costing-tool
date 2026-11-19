@@ -1,6 +1,7 @@
 // Fresh real-page sign-ins. Credentials stay local and are never reported.
 // --import is the authorized migration through the reviewed admin screen, not
 // a service-account write. Ordinary QA is read-only apart from login stamps.
+import {readQaBuyerDraft} from './read-qa-buyer-draft.mjs'
 import {createRequire} from 'node:module'
 import {readFile,mkdir,writeFile} from 'node:fs/promises'
 import assert from 'node:assert/strict'
@@ -67,7 +68,7 @@ try {
   if(role==='CUSTOMER'){
    const choice=page.getByLabel('Photographed sample');await choice.selectOption({index:1})
    await page.getByRole('button',{name:'Add sample request to enquiry'}).click()
-   const cart=await page.evaluate(()=>JSON.parse(localStorage.getItem('cc_cart')||'[]'))
+   const cart=await readQaBuyerDraft(page)
    assert.equal(cart.length,1);assert.ok(cart[0].swatch_sample_id);assert.ok(cart[0].swatch_revision)
    await navigate(base+'/shop/enquiry');await page.getByText('On quotation',{exact:true}).waitFor()
    await page.screenshot({path:out+'/sample-enquiry-'+new URL(base).hostname+'.png',fullPage:true})

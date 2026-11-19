@@ -10,7 +10,7 @@ const profile = { id: 'u1', customer_id: 'c1', company_name: 'Sun Life', base_cu
 createRoot(document.getElementById('root')).render(
   <MemoryRouter initialEntries={['/shop/brand-portal']}>
     <FavouritesProvider uid={profile.id}>
-      <CartProvider>
+      <CartProvider uid={profile.id}>
         <CustomerLayout profile={profile}>
           <Routes>
             <Route path="/shop/brand-portal" element={<BrandPortalPage profile={profile} />} />

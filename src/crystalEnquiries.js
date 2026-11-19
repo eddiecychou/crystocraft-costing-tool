@@ -13,13 +13,14 @@ export async function validateCrystalEnquirySelections(items) {
   else if(item.type==='swatch_sample')throw Error('Please reselect the photographed sample before sending.')
  }
 }
-export async function uploadEnquiryDrawing(enquiryId,file,fileId) {
+export async function uploadEnquiryDrawing(enquiryId,file,fileId,ownerUid) {
  if(!file||file.size<=0||file.size>20*1024*1024)throw Error('Drawing must be a PDF, JPEG, PNG or WebP up to 20 MB.')
  const bytes=await file.arrayBuffer(),type=file.type
  if(type==='application/pdf'){if(new TextDecoder().decode(bytes.slice(0,5))!=='%PDF-')throw Error('Choose a valid PDF.')}
  else validatePhoto(bytes,type)
  const ext=type==='application/pdf'?'pdf':type==='image/png'?'png':type==='image/webp'?'webp':'jpg'
- const path='enquiry-files/'+auth.currentUser.uid+'/'+enquiryId+'/'+fileId+'.'+ext,hash=await sha256(bytes)
+ const path='enquiry-files/'+ownerUid+'/'+enquiryId+'/'+fileId+'.'+ext,hash=await sha256(bytes)
+ if(!ownerUid||auth.currentUser?.uid!==ownerUid)throw Error('Your account changed. Reopen My Enquiry before uploading.')
  try{await uploadBytes(ref(storage,path),file,{contentType:type,cacheControl:'private, no-cache'})}catch(e){if(e.code!=='storage/unauthorized')throw e}
  const blob=await readEnquiryAttachment(path)
  if(await sha256(await blob.arrayBuffer())!==hash)throw Error('Drawing upload could not be verified. Please retry.')

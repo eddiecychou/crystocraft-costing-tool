@@ -1,6 +1,7 @@
 // Fresh real-page sign-ins. Credentials stay local and are never reported.
 // --import is the authorized migration through the reviewed admin screen, not
 // a service-account write. Ordinary QA is read-only apart from login stamps.
+import {readQaBuyerDraft} from './read-qa-buyer-draft.mjs'
 import {createRequire} from 'node:module'
 import {readFile,mkdir,writeFile} from 'node:fs/promises'
 import assert from 'node:assert/strict'
@@ -50,11 +51,11 @@ try {
    await page.getByLabel('Intended application').fill('Hotel lighting panel — quotation from drawing')
    const choice=page.getByLabel('Photographed sample');await choice.selectOption({index:1})
    await page.getByRole('button',{name:'Add fabric project to enquiry',exact:true}).click()
-   const project=await page.evaluate(()=>JSON.parse(localStorage.getItem('cc_cart'))[0])
+   const project=(await readQaBuyerDraft(page))[0]
    assert.equal(project.type,'crystal_fabric');assert.equal(project.unit,'project');assert.ok(project.swatch_sample_id);assert.ok(project.swatch_revision);assert.equal(project.application,'Hotel lighting panel — quotation from drawing');assert.equal(project.ws_price_usd,null)
    await page.getByLabel('Enquiry type').selectOption('sample')
    await page.getByRole('button',{name:'Add sample request to enquiry'}).click()
-   const cart=await page.evaluate(()=>JSON.parse(localStorage.getItem('cc_cart')||'[]'))
+   const cart=await readQaBuyerDraft(page)
    assert.equal(cart.length,2);assert.equal(cart[1].type,'swatch_sample');assert.ok(cart[0].swatch_sample_id);assert.ok(cart[0].swatch_revision)
    await navigate(base+'/shop/enquiry');await page.getByText('On quotation',{exact:true}).waitFor()
    await page.screenshot({path:out+'/sample-enquiry-'+new URL(base).hostname+'.png',fullPage:true})
@@ -78,7 +79,7 @@ try {
    assert.equal(await page.getByRole('button',{name:'Upload swatch',exact:true}).count(),0)
    await page.getByRole('button',{name:'Enquire without a swatch',exact:true}).click()
    await page.getByRole('button',{name:'Add fabric project to enquiry',exact:true}).click()
-   assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('cc_cart'))))[0].swatch_sample_id,'')
+   assert.equal((await readQaBuyerDraft(page))[0].swatch_sample_id,'')
    await navigate(base+'/shop/enquiry');await page.getByText('On quotation',{exact:true}).waitFor()
    await page.getByRole('button',{name:'Remove',exact:true}).click()
    await navigate(base+'/shop/crystal-components/fabric')
@@ -124,7 +125,7 @@ try {
    const availability=await availabilityResponse;assert.equal(availability.status(),200)
    assert.equal((await availability.json()).availability.available,null)
    await page.getByRole('button',{name:'Request a quote',exact:true}).click()
-   const selection=await page.evaluate(()=>JSON.parse(localStorage.getItem('cc_cart')))
+   const selection=await readQaBuyerDraft(page)
    assert.equal(selection.length,1);assert.equal(selection[0].type,'crystal_component');assert.ok(selection[0].variant_id);assert.ok(selection[0].product_revision)
    assert.equal(await page.getByRole('button',{name:'Review stock link',exact:true}).count(),0)
    await page.locator('img[src^="blob:"]').first().waitFor({timeout:60000})

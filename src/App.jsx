@@ -110,7 +110,7 @@ export default function App() {
   const user = useAuthState()
   return (
     <BrowserRouter>
-      <AppRoutes user={user} />
+      <AppRoutes key={user?.uid} user={user} />
     </BrowserRouter>
   )
 }
@@ -184,7 +184,7 @@ function AppRoutes({ user }) {
       <Route path="/*" element={
         !user ? <Navigate to="/login" replace />
         : role === 'pending' ? <PendingScreen profile={profile} />
-        : role === 'customer' ? <Storefront profile={profile} />
+        : role === 'customer' ? <Storefront uid={user.uid} profile={profile} />
         : <AdminApp user={user} profile={profile} role={role} />
       } />
     </Routes>

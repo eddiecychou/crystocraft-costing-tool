@@ -97,5 +97,5 @@ await build({
 })
 
 writeFileSync('qa/home-preview-seeded.html',
-`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>QA — HomePage (seeded)</title><link rel="stylesheet" href="./home-preview-seeded.css"></head><body><div id="root"></div><script>try{localStorage.setItem("cc_cart",JSON.stringify([{type:"figurine",id:"a",qty:1},{type:"figurine",id:"b",qty:1},{type:"corp",id:"c",qty:1}]))}catch(e){}</script><script type="module" src="./home-preview-seeded.js"></script></body></html>`)
+`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>QA — HomePage (seeded)</title><link rel="stylesheet" href="./home-preview-seeded.css"></head><body><div id="root"></div><script>try{localStorage.setItem("cc_cart:u1",JSON.stringify([{type:"figurine",id:"a",qty:1},{type:"figurine",id:"b",qty:1},{type:"corp",id:"c",qty:1}]))}catch(e){}</script><script type="module" src="./home-preview-seeded.js"></script></body></html>`)
 console.log('built qa/home-preview-seeded.{js,css,html}')

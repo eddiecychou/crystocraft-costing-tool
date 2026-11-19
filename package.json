@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "release:ci": "node scripts/check-release-ci.mjs",
-    "test:review-fixes": "node --test qa/review-five-fixes.test.mjs qa/customer-range-catalogue.test.mjs qa/customer-invoice-history.test.mjs && node qa/product-form-concurrency.mjs",
+    "test:review-fixes": "node --test qa/review-five-fixes.test.mjs qa/customer-range-catalogue.test.mjs qa/customer-invoice-history.test.mjs qa/enquiry-draft-privacy.test.mjs && node qa/product-form-concurrency.mjs",
     "test:release-ci": "node --test qa/release-ci.test.mjs",
     "test:access-contracts": "node --test qa/access-contracts.test.mjs",
     "test:supplier-quote": "node --test qa/supplier-quote-save.test.mjs",

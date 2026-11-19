@@ -10,7 +10,7 @@ const profile = { id: 'u1', customer_id: 'c1', company_name: 'Acme Brands Ltd', 
 createRoot(document.getElementById('root')).render(
   <MemoryRouter initialEntries={['/shop/swatches']}>
     <FavouritesProvider uid={profile.id}>
-      <CartProvider>
+      <CartProvider uid={profile.id}>
         <CustomerLayout profile={profile}>
           <Routes>
             <Route path="/shop/swatches" element={<SwatchLibraryPage profile={profile} />} />

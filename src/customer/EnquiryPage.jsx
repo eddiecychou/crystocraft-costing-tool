@@ -73,7 +73,12 @@ export default function EnquiryPage({ profile }) {
   async function submit() {
     if (!items.length) return
     setSending(true); setError('')
+    const ownerUid = cart.uid
+    function checkDraftOwner() {
+      if (!ownerUid || auth.currentUser?.uid !== ownerUid) throw Error('Your account changed. Reopen My Enquiry before sending.')
+    }
     try {
+      checkDraftOwner()
       if (hasRange) {
         const fresh = await loadCustomerCatalogue(null, true)
         if (unavailable.length || items.some(i => {
@@ -86,10 +91,12 @@ export default function EnquiryPage({ profile }) {
         }
       }
       await validateCrystalEnquirySelections(items)
-      const attachments=drawing?[await uploadEnquiryDrawing(enquiryId,drawing,drawingId)]:[]
+      checkDraftOwner()
+      const attachments=drawing?[await uploadEnquiryDrawing(enquiryId,drawing,drawingId,ownerUid)]:[]
+      checkDraftOwner()
       await setDoc(doc(db, 'enquiries',enquiryId), {
         attachments,
-        uid: auth.currentUser?.uid || profile?.id || null,
+        uid: ownerUid,
         company_name: profile?.company_name || '',
         contact_name: profile?.contact_name || '',
         email: profile?.email || auth.currentUser?.email || '',
@@ -114,7 +121,7 @@ export default function EnquiryPage({ profile }) {
         status: 'new',
         createdAt: serverTimestamp(),
       })
-      notifyEmail('enquiry', {
+      if (auth.currentUser?.uid === ownerUid) notifyEmail('enquiry', {
         company_name: profile?.company_name || '',
         contact_name: profile?.contact_name || '',
         currency: cur,

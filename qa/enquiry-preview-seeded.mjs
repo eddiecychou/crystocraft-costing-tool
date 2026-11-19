@@ -41,7 +41,7 @@ const STUBS = {
     const ITEMS = ${JSON.stringify(ITEMS)};
     export const CartProvider = ({ children }) => children;
     export const FavouritesProvider = ({ children }) => children;
-    export const useCart = () => ({ items: ITEMS, update: () => {}, remove: () => {}, clear: () => {} });
+    export const useCart = () => ({ uid: 'u1', items: ITEMS, update: () => {}, remove: () => {}, clear: () => {} });
     export const useFavourites = () => ({ has: () => false, toggle: () => {}, ids: [] });
     export const designGroupKey = (i) => 'design:' + (i.design_no || i.id || '');
     export const formatGroupKey = (i) => 'fmt:' + (i.format_code || '');

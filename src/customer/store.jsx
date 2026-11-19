@@ -50,17 +50,27 @@ export const formatGroupKey = i =>
 // ---- Enquiry cart (localStorage-backed) --------------------------------
 const CartCtx = createContext(null)
 
-export function CartProvider({ children }) {
+export function CartProvider({ uid, children }) {
+  if (!uid) return null
+  return <BuyerCart key={uid} uid={uid}>{children}</BuyerCart>
+}
+
+function BuyerCart({ uid, children }) {
+  // The old shared cc_cart has no owner. Never load it into a buyer's draft.
+  const storageKey = `cc_cart:${uid}`
   const [items, setItems] = useState(() => {
     try {
-      const raw = JSON.parse(localStorage.getItem('cc_cart') || '[]')
+      const raw = JSON.parse(localStorage.getItem(storageKey) || '[]')
       // Backfill keys for any lines saved before SKU-level keying existed.
       return raw.map(i => ({ ...i, key: i.key || cartKey(i) }))
     } catch { return [] }
   })
   useEffect(() => {
-    try { localStorage.setItem('cc_cart', JSON.stringify(items)) } catch {}
-  }, [items])
+    try {
+      if (items.length) localStorage.setItem(storageKey, JSON.stringify(items))
+      else localStorage.removeItem(storageKey)
+    } catch {}
+  }, [items, storageKey])
 
   const add = item => setItems(prev => {
     const key = cartKey(item)
@@ -73,7 +83,7 @@ export function CartProvider({ children }) {
   // has() accepts an item-like { type, id, finish, color }.
   const has = item => items.some(i => i.key === cartKey(item))
 
-  return <CartCtx.Provider value={{ items, add, remove, update, clear, has, count: items.length }}>{children}</CartCtx.Provider>
+  return <CartCtx.Provider value={{ uid, items, add, remove, update, clear, has, count: items.length }}>{children}</CartCtx.Provider>
 }
 export const useCart = () => useContext(CartCtx)
 

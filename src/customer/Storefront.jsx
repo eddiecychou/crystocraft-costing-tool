@@ -20,10 +20,10 @@ import { CartProvider, FavouritesProvider } from './store'
 import ErrorBoundary from '../components/ErrorBoundary'
 import LoadingBar from '../components/LoadingBar'
 
-export default function Storefront({ profile }) {
+export default function Storefront({ uid, profile }) {
   return (
     <FavouritesProvider uid={profile?.id}>
-      <CartProvider>
+      <CartProvider uid={uid}>
         <Suspense fallback={<LoadingBar />}>
         <Routes>
           {/* Print route — no CustomerLayout wrapper, same reason the admin
