@@ -1,6 +1,7 @@
 // The actual application endpoint with real Firestore transactions and fictional Auth/Resend.
 import { before, beforeEach, after, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { initializeApp, deleteApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -69,10 +70,17 @@ before(async () => {
     users.set(email, row)
     return row
   }
-  auth.verifyIdToken = async (token) => ({
-    uid: token,
-    email: token === 'google' ? email : token + '@example.invalid'
-  })
+  auth.verifyIdToken = async (token) => {
+    if (token === 'invalid') throw Error('Invalid fictional session')
+    const claims = { uid: token, email, email_verified: true, firebase: { sign_in_provider: 'google.com' } }
+    if (token === 'google') return claims
+    if (token === 'unverified') return { ...claims, email_verified: false }
+    if (token === 'missing-verification') return { ...claims, email_verified: undefined }
+    if (token === 'no-email') return { ...claims, email: ' ' }
+    if (token === 'no-provider') return { ...claims, firebase: undefined }
+    if (token === 'other-google') return { ...claims, email: 'another@example.invalid' }
+    return { ...claims, firebase: { sign_in_provider: 'password', identities: { 'google.com': ['linked'] } } }
+  }
   globalThis.fetch = async (url, options) => {
     if (new URL(url).hostname === '127.0.0.1')
       return originalFetch(url, options)
@@ -116,6 +124,52 @@ async function sole(collection) {
   assert.equal(d.size, 1)
   return d.docs[0]
 }
+const invitationBody = { invitationId: 'fictional-invite', token: 'fixture-only-invitation', ...input }
+async function seedInvitation() {
+  const invite = {
+    status: 'pending', source: 'self', customer_id: 'fictional-company', contact_email: email,
+    token_hash: createHash('sha256').update(invitationBody.token).digest('hex'), audit_log: [],
+  }
+  await db.doc('customers/fictional-company').set({ company_name: 'Fictional Gifts' })
+  await db.doc('portal_invitations/fictional-invite').set(invite)
+  return invite
+}
+
+for (const action of ['apply_for_account_google', 'claim_invitation_google']) {
+  test(action + ' checks the authenticated session before recording any changes', async () => {
+    const original = await seedInvitation()
+    for (const token of ['password','unverified','missing-verification','no-email','no-provider']) {
+      const response = await call(action, invitationBody, token)
+      assert.deepEqual(response, { code: 403, body: { error: 'verified_google_required' } })
+    }
+    assert.equal((await call(action, invitationBody)).code, 401)
+    assert.equal((await call(action, invitationBody, 'invalid')).code, 401)
+    assert.deepEqual((await sole('portal_invitations')).data(), original)
+    assert.equal((await db.collection('users').get()).size, 0)
+    assert.equal((await db.collection('portal_access_alerts').get()).size, 0)
+    assert.equal(attempts.length, 0)
+  })
+}
+
+test('only the invited Google email can claim its invitation, and a password invitation still works', async () => {
+  const original = await seedInvitation()
+  assert.equal((await call('claim_invitation_google', invitationBody, 'other-google')).body.error, 'email_mismatch')
+  assert.deepEqual((await sole('portal_invitations')).data(), original)
+  const response = await call('claim_invitation_google', invitationBody, 'google')
+  assert.deepEqual(response, { code: 200, body: { ok: true, status: 'pending' } })
+  assert.equal((await sole('users')).get('auth_provider'), 'google.com')
+  assert.equal((await sole('portal_invitations')).get('claimed_uid'), 'google')
+  assert.equal((await call('claim_invitation_google', invitationBody, 'google')).body.error,'used')
+
+  const passwordEmail = 'password@example.invalid'
+  await db.doc('portal_invitations/password-invite').set({ ...original, contact_email: passwordEmail })
+  const password = await call('claim_invitation', { ...invitationBody, invitationId:'password-invite', email:passwordEmail })
+  assert.equal(password.code, 200)
+  const row = await db.doc('users/'+users.get(passwordEmail).uid).get()
+  assert.equal(row.get('email'), passwordEmail)
+  assert.equal(row.get('status'), 'pending')
+  assert.equal(row.get('auth_provider'), undefined)
+})
 for (const google of [false, true])
   for (const invited of [false, true]) {
     test(

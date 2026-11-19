@@ -2,18 +2,14 @@
 // Two real sign-ins per fictional buyer, one Chrome tab and one browser storage area.
 import assert from 'node:assert/strict'
 import {createRequire} from 'node:module'
-import {fileURLToPath} from 'node:url'
 import {mkdir} from 'node:fs/promises'
 import {initializeApp} from 'firebase-admin/app'
 import {getAuth} from 'firebase-admin/auth'
 import {getFirestore} from 'firebase-admin/firestore'
-import {createServer} from 'vite'
+import {localPortalEmulators, createPortalEmulatorServer} from './portal-browser-emulators.mjs'
 
 const projectId = 'demo-enquiry-drafts'
-const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST
-const storeHost = process.env.FIRESTORE_EMULATOR_HOST
-for (const host of [authHost, storeHost]) assert.match(host || '', /^127\.0\.0\.1:\d+$/)
-assert.equal(process.env.GCLOUD_PROJECT, projectId)
+const emulators = localPortalEmulators(projectId)
 const admin = initializeApp({projectId})
 const password = 'fictional-enquiry-qa-only'
 const buyers = [
@@ -29,32 +25,7 @@ for (const buyer of buyers) {
 
 // Use the real login, storefront and enquiry pages. Only the catalogue HTTP
 // response is seeded. Auth and Firestore use the local emulators throughout.
-const server = await createServer({
-  configFile: false, envDir: false, publicDir: false, logLevel: 'error',
-  resolve: {alias: {'@': fileURLToPath(new URL('../src', import.meta.url))}},
-  esbuild: {jsx: 'automatic'},
-  define: Object.fromEntries(Object.entries({
-    VITE_FIREBASE_API_KEY: 'fictional-key', VITE_FIREBASE_AUTH_DOMAIN: projectId+'.firebaseapp.com',
-    VITE_FIREBASE_PROJECT_ID: projectId, VITE_FIREBASE_STORAGE_BUCKET: projectId+'.appspot.com',
-    VITE_FIREBASE_MESSAGING_SENDER_ID: '123456', VITE_FIREBASE_APP_ID: '1:123456:web:abc',
-  }).map(([k,v])=>['import.meta.env.'+k,JSON.stringify(v)])),
-  server: {host: '127.0.0.1', port: 0},
-  plugins: [{name:'enquiry-emulators',
-    transformIndexHtml: {order:'pre', handler: html=>html.replace('/src/main.jsx','/@id/enquiry-emulator-entry')},
-    resolveId(id) { if (id === 'enquiry-emulator-entry') return '\0enquiry-emulator-entry' },
-    load(id) {
-      if (id !== '\0enquiry-emulator-entry') return
-      return `
-        import {auth,db} from '/src/firebase.js'
-        import {connectAuthEmulator} from 'firebase/auth'
-        import {connectFirestoreEmulator} from 'firebase/firestore'
-        connectAuthEmulator(auth, 'http://${authHost}', {disableWarnings:true})
-        connectFirestoreEmulator(db,'127.0.0.1',${Number(storeHost.split(':')[1])})
-        await import('/src/main.jsx')
-      `
-    },
-  }],
-})
+const server = await createPortalEmulatorServer(emulators)
 const {chromium} = createRequire(new URL('../.qa-playwright/package.json',import.meta.url))('playwright-core')
 const browser = await chromium.launch({channel:'chrome',headless:true})
 try {

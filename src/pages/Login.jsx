@@ -3,7 +3,7 @@ import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOu
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
-import { applyForAccount, applyForAccountGoogle } from '../portalInviteApi'
+import { applyForAccount, applyForAccountGoogle, VERIFIED_GOOGLE_MESSAGE } from '../portalInviteApi'
 import logo from '../assets/logo.png'
 import { loginErrorMessage } from '../loginError'
 
@@ -119,6 +119,8 @@ export default function Login() {
         await signOut(auth)
         switchMode('signin')
         setError('An account already exists for this email. Sign in with your password below, or use "Forgot password?" if you need a new one.')
+      } else if (err?.message === 'verified_google_required') {
+        setError(VERIFIED_GOOGLE_MESSAGE)
       } else {
         setError('Could not submit your request. Check your details and try again.')
       }

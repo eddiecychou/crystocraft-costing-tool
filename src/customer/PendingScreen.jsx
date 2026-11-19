@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { signOut } from 'firebase/auth'
 import { useNavigate } from 'react-router-dom'
 import { auth } from '../firebase'
 import { Clock } from 'lucide-react'
 import logo from '../assets/logo.png'
 import { CUSTOMER_CURRENCIES } from '../currency'
-import { applyForAccountGoogle } from '../portalInviteApi'
+import { applyForAccountGoogle, VERIFIED_GOOGLE_MESSAGE } from '../portalInviteApi'
 
 function Shell({ children }) {
   return (
@@ -53,7 +53,7 @@ function GoogleDetailsStep() {
         await signOut(auth)
         navigate('/login')
       } else {
-        setError('Could not submit your request. Check your details and try again.')
+        setError(err?.message === 'verified_google_required' ? VERIFIED_GOOGLE_MESSAGE : 'Could not submit your request. Check your details and try again.')
         setSubmitting(false)
       }
     }
@@ -103,9 +103,24 @@ export default function PendingScreen({ profile }) {
   // to false the moment the real (missing) profile object arrived — the
   // "one more thing" form was never actually reachable. profile?.missing is
   // the correct check.
-  const isGoogleWithNoDoc = profile?.missing && auth.currentUser?.providerData?.some(p => p.providerId === 'google.com')
+  const user = auth.currentUser
+  const needsGoogleDetails = profile?.missing && !profile.error && user?.providerData?.some(p => p.providerId === 'google.com')
+  const [session, setSession] = useState(null)
+  useEffect(() => {
+    if (!needsGoogleDetails) return
+    let current = true
+    user.getIdTokenResult().then(({signInProvider, claims}) => {
+      if (current) setSession({uid:user.uid, verified:signInProvider === 'google.com' && claims.email_verified === true && !!claims.email})
+    }).catch(() => { if (current) setSession({uid:user.uid, verified:false}) })
+    return () => { current = false }
+  }, [user, needsGoogleDetails])
 
-  if (isGoogleWithNoDoc) return <Shell><GoogleDetailsStep /></Shell>
+  if (needsGoogleDetails) {
+    if (session?.uid !== user.uid) return <Shell><p role="status">Checking your Google sign-in…</p></Shell>
+    if (session.verified) return <Shell><GoogleDetailsStep /></Shell>
+    return <Shell><p className="text-sm mb-4">{VERIFIED_GOOGLE_MESSAGE}</p>
+      <button className="btn-secondary w-full justify-center" onClick={() => signOut(auth).then(() => navigate('/login'))}>Return to sign in</button></Shell>
+  }
 
   return (
     <Shell>

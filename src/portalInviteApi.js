@@ -5,6 +5,8 @@
 // invitee opening their invitation link has no Firebase session yet).
 import { authedUser } from './firebase'
 
+export const VERIFIED_GOOGLE_MESSAGE = 'Sign in with Google using a verified email address, then try again.'
+
 async function callAdmin(action, payload) {
   const user = await authedUser()
   if (!user) throw new Error('Please sign in.')

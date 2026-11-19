@@ -116,15 +116,16 @@ function sanitizePricing(p) {
   }
 }
 
-// Verifies the caller's Firebase ID token, no role check — any signed-in
-// user. Returns { uid, email } from the DECODED TOKEN, never trusting a
-// client-supplied email for anything that writes data (see
-// applyForAccountGoogle below, the one caller so far).
-async function requireAuth(req) {
+// Use the provider for this sign-in. A linked Google identity can also have a password.
+async function requireAuth(req, { verifiedGoogle = false } = {}) {
   const token = (req.headers.get('authorization') || '').match(/^Bearer (.+)$/i)?.[1]
   if (!token) return { error: json({ error: 'Not signed in' }, 401) }
   try {
     const decoded = await getAuth().verifyIdToken(token)
+    if (verifiedGoogle && (decoded.firebase?.sign_in_provider !== 'google.com' ||
+      decoded.email_verified !== true || typeof decoded.email !== 'string' || !decoded.email.trim())) {
+      return { error: json({ error: 'verified_google_required' }, 403) }
+    }
     return { uid: decoded.uid, email: decoded.email || '' }
   } catch {
     return { error: json({ error: 'Invalid or expired session' }, 401) }
@@ -1137,15 +1138,13 @@ export default async function handler(req) {
   if (action === 'get_invitation') return getInvitationPreview(body)
   if (action === 'apply_for_account') return applyForAccount(body)
   if (action === 'request_password_reset') return requestPasswordReset(body)
-  if (action === 'claim_invitation_google') {
-    const { uid, email, error } = await requireAuth(req)
+  if (action === 'claim_invitation_google' || action === 'apply_for_account_google') {
+    const { uid, email, error } = await requireAuth(req, { verifiedGoogle: true })
     if (error) return error
-    return claimInvitationGoogle(body, uid, email)
-  }
-  if (action === 'apply_for_account_google') {
-    const { uid, email, error } = await requireAuth(req)
-    if (error) return error
-    return applyForAccountGoogle(body, uid, email)
+    const verifiedEmail = normEmail(email)
+    return action === 'claim_invitation_google'
+      ? claimInvitationGoogle(body, uid, verifiedEmail)
+      : applyForAccountGoogle(body, uid, verifiedEmail)
   }
 
   const { uid, error } = await requireAdmin(req)

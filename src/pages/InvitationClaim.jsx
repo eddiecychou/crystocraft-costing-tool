@@ -3,7 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../firebase'
 import logo from '../assets/logo.png'
-import { getInvitationPreview, claimInvitation, claimInvitationGoogle } from '../portalInviteApi'
+import { getInvitationPreview, claimInvitation, claimInvitationGoogle, VERIFIED_GOOGLE_MESSAGE } from '../portalInviteApi'
 
 const googleProvider = new GoogleAuthProvider()
 
@@ -29,6 +29,7 @@ function Shell({ children }) {
 }
 
 const STATE_MESSAGES = {
+  verified_google_required: VERIFIED_GOOGLE_MESSAGE,
   invalid: 'This invitation link isn\'t valid. If you were expecting one, please contact Crystocraft and we can send a new one.',
   expired: 'This invitation has expired. Please contact Crystocraft and we can send you a new one.',
   used: 'This invitation has already been used.',
@@ -40,7 +41,10 @@ export default function InvitationClaim() {
   const { id } = useParams()
   const [params] = useSearchParams()
   const token = params.get('t') || ''
+  return <InvitationForm key={JSON.stringify([id, token])} id={id} token={token} />
+}
 
+function InvitationForm({ id, token }) {
   const [loading, setLoading] = useState(true)
   const [previewError, setPreviewError] = useState('')
   const [preview, setPreview] = useState(null) // { companyName, contactEmail }

@@ -110,7 +110,13 @@ export default function App() {
   const user = useAuthState()
   return (
     <BrowserRouter>
-      <AppRoutes key={user?.uid} user={user} />
+      <Suspense fallback={<LoadingBar />}>
+        <Routes>
+          {/* A Google popup changes the UID mid-claim. Keep the invitation and its result mounted. */}
+          <Route path="/invite/:id" element={<InvitationClaim />} />
+          <Route path="*" element={<AppRoutes key={user?.uid} user={user} />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }
@@ -173,7 +179,6 @@ function AppRoutes({ user }) {
       {/* SU-07A — public, unauthenticated pages, reachable regardless of
           sign-in state. Deliberately OUTSIDE the role-gated "/*" catch-all
           below, same reasoning as /login itself. */}
-      <Route path="/invite/:id" element={<InvitationClaim />} />
       <Route path="/portal/set-password" element={<SetPassword />} />
       <Route path="/login" element={
         !user ? <Login />
