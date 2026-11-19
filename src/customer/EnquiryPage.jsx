@@ -1,3 +1,6 @@
+import { resolveRangeSelection } from '../domain/customerRangeSelection'
+import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
+import { loadCustomerCatalogue } from '../customerCatalogueApi'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore'
@@ -6,7 +9,7 @@ import { Gem, Package, Trash2, ClipboardList, CheckCircle2, Plus, Minus } from '
 import { useCart, designGroupKey, formatGroupKey, formatCodeOf, designNumberOf } from './store'
 import { useFormatMoq } from '../formatMoq'
 import { RANGE_FORMAT_CODES } from '../constants'
-import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
+import { useRates, convertFromUSD, fmtMoney } from '../currency'
 import {crystalEnquirySnapshot,CRYSTAL_UNITS} from '../domain/crystalProducts'
 import {validateCrystalEnquirySelections,uploadEnquiryDrawing} from '../crystalEnquiries'
 import SwatchPhoto from '../components/SwatchPhoto'
@@ -20,7 +23,6 @@ export default function EnquiryPage({ profile }) {
   const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
-  const factor = wsPriceFactor(profile)
   const [drawing,setDrawing]=useState(null)
   const [drawingId,setDrawingId]=useState(()=>crypto.randomUUID())
   const [enquiryId]=useState(()=>doc(collection(db,'enquiries')).id)
@@ -28,7 +30,12 @@ export default function EnquiryPage({ profile }) {
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
-  const items = cart?.items || []
+  const saved = cart?.items || []
+  const hasRange = saved.some(i => i.type === 'figurine')
+  const range = useCustomerCatalogue(profile, null, true, hasRange)
+  const items = saved.map(i => i.type === 'figurine' ? resolveRangeSelection(i, range.data?.products || []) : i)
+    .filter(Boolean)
+  const unavailable = saved.filter(i => !items.some(current => current.key === i.key))
 
   const isConcept = i => i.status === 'concept'
 
@@ -36,8 +43,8 @@ export default function EnquiryPage({ profile }) {
   // Concept items keep their indicative unit price on display, but never
   // contribute to the line/grand total — they're not tooled or orderable yet,
   // just an estimate of interest.
-  const unitPrice = i => (i.type === 'figurine' && i.ws_price_usd != null)
-    ? convertFromUSD(Number(i.ws_price_usd) * factor, profile, rates) : null
+  const unitPrice = i => (i.type === 'figurine' && i.customer_price_usd != null)
+    ? convertFromUSD(i.customer_price_usd, profile, rates) : null
   const lineTotal = i => { if (isConcept(i)) return null; const u = unitPrice(i); return u == null ? null : u * (Number(i.qty) || 1) }
   const total = items.reduce((s, i) => s + (lineTotal(i) || 0), 0)
   const hasIndicative = items.some(i => !isConcept(i) && unitPrice(i) == null)
@@ -67,6 +74,17 @@ export default function EnquiryPage({ profile }) {
     if (!items.length) return
     setSending(true); setError('')
     try {
+      if (hasRange) {
+        const fresh = await loadCustomerCatalogue(null, true)
+        if (unavailable.length || items.some(i => {
+          if (i.type !== 'figurine') return false
+          const live = resolveRangeSelection(i, fresh.products)
+          return !live || live.customer_price_usd !== i.customer_price_usd || live.status !== i.status
+        })) {
+          range.retry()
+          throw Error('A Range design or price changed. Please review your enquiry before sending.')
+        }
+      }
       await validateCrystalEnquirySelections(items)
       const attachments=drawing?[await uploadEnquiryDrawing(enquiryId,drawing,drawingId)]:[]
       await setDoc(doc(db, 'enquiries',enquiryId), {
@@ -83,7 +101,7 @@ export default function EnquiryPage({ profile }) {
           ...(i.type === 'crystal_component' ? crystalEnquirySnapshot(i) : {}),
           ...(i.type === 'crystal_fabric' ? fabricEnquirySnapshot(i) : {}),
           ...(i.type === 'swatch_sample' && i.swatch_sample_id ? { swatch_sample_id:i.swatch_sample_id, swatch_revision:i.swatch_revision || null } : {}),
-          ws_price_usd: i.ws_price_usd ?? null,
+          customer_price_usd: i.customer_price_usd ?? null,
           pcs_per_carton: Number(i.pcs_per_carton) || 0,
           cartons: Number(i.cartons) || 0,
           moq: Number(i.moq) || 0,
@@ -124,7 +142,9 @@ export default function EnquiryPage({ profile }) {
     )
   }
 
-  if (!items.length) {
+  if (hasRange && range.loading) return <p>Checking Range designs and prices…</p>
+  if (hasRange && range.error) return <p role="alert">{range.error} <button onClick={range.retry}>Retry</button></p>
+  if (!saved.length) {
     return (
       <div className="text-center py-16">
         <ClipboardList size={30} className="mx-auto text-platinum mb-3" />
@@ -140,6 +160,8 @@ export default function EnquiryPage({ profile }) {
       <h1 className="text-xl md:text-2xl mb-1">Enquiry <span className="text-ink-60 text-base">({items.length})</span></h1>
       <p className="text-sm text-ink-60 mb-5">Review your selection, add quantities and notes, then send us a request for quotation.</p>
 
+      {unavailable.map(i => <p className="mb-3" key={i.key}>This Range selection is no longer available.{' '}
+        <button type="button" className="underline" onClick={() => cart.remove(i.key)}>Remove from enquiry</button></p>)}
       <div className="card divide-y divide-ivory-dark mb-5">
         {items.map(i => {
           const Icon = i.type === 'figurine' ? Gem : Package
@@ -250,7 +272,7 @@ export default function EnquiryPage({ profile }) {
       {error && <p role="alert" className="text-sm text-red-600 mt-2">{error}</p>}
 
       <div className="flex items-center gap-3 mt-4">
-        <button onClick={submit} disabled={sending} className="btn-primary">
+        <button onClick={submit} disabled={sending || unavailable.length > 0} className="btn-primary">
           {sending ? 'Sending…' : 'Send enquiry'}
         </button>
         <button onClick={() => cart.clear()} className="text-sm text-ink-60 hover:text-ink">Clear list</button>

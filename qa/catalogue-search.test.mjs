@@ -32,12 +32,13 @@ const stubs = {
   useCustomerCatalogue: `import {useState,useEffect} from 'react';
     import {onSnapshot,getDocs} from '${fixturePath}';
     import {projectCorporateProduct} from '${rootDir}netlify/functions/lib/customerCatalogue.js';
-    export function useCustomerCatalogue(profile){
+    import {projectRangeProduct} from '${rootDir}netlify/functions/lib/customerRange.js';
+    export function useCustomerCatalogue(profile,id,range){
       const [state,setState]=useState({data:null,loading:true,error:''});
-      useEffect(()=>{let alive=true;const unsub=onSnapshot('products',async snap=>{
-        const products=await Promise.all(snap.docs.map(async d=>projectCorporateProduct({id:d.id,...d.data()},(await getDocs('products/'+d.id+'/images')).docs.map(i=>({id:i.id,...i.data()})),null,{customerId:profile.customer_id,sensitive:profile.sensitive})));
+      useEffect(()=>{let alive=true;const unsub=onSnapshot(range?'range_products':'products',async snap=>{
+        const products=range?snap.docs.map(d=>projectRangeProduct(d.id,d.data(),profile)):await Promise.all(snap.docs.map(async d=>projectCorporateProduct({id:d.id,...d.data()},(await getDocs('products/'+d.id+'/images')).docs.map(i=>({id:i.id,...i.data()})),null,{customerId:profile.customer_id,sensitive:profile.sensitive})));
         if(alive)setState({data:{products:products.filter(Boolean)},loading:false,error:''});
-      });return()=>{alive=false;unsub()};},[profile.customer_id,profile.sensitive]);return {...state,retry:()=>{}};
+      });return()=>{alive=false;unsub()};},[profile.customer_id,profile.sensitive,range]);return {...state,retry:()=>{}};
     }`,
   criticalComponents: 'const components=[]; export const useComponents=()=>({components}); export const buildableFromComponents=()=>({qty:0,byPlating:{}})',
   crystalColors: 'const colors=[];export const useCrystalColors=()=>({colors});export const colorMap=()=>({})',

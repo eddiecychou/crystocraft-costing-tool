@@ -19,8 +19,8 @@ const originalFetch = globalThis.fetch
 globalThis.fetch = () => { throw Error('Live network forbidden in Range download regressions') }
 const forbidden = `()=>{throw Error('A photo download must not write business data')}`
 const stubs = {
+  useCustomerCatalogue: `export const useCustomerCatalogue=()=>({data:{products:[{...globalThis.__rangeDownloadProduct,id:'qa'}]},loading:false})`,
   firebase: 'export const db={}',
-  firestore: `export const doc=(_, ...path)=>path.join('/');export const onSnapshot=(path,cb)=>{if(path!=='range_products/qa')throw Error('Unexpected read');cb({exists:()=>true,data:()=>globalThis.__rangeDownloadProduct});return ()=>{}}`,
   currency: 'export const useRates=()=>({});export const wsPriceFactor=()=>1;export const convertFromUSD=x=>x;export const fmtMoney=x=>String(x??"—")',
   crystalColors: 'export const useCrystalColors=()=>({colors:[]});export const colorMap=()=>({})',
   formatMoq: 'export const useFormatMoq=()=>({labels:{},moq:{}})',

@@ -39,6 +39,18 @@ test('real rules deny signup identity injection, invitation bypass, raw product/
  const records=await loadCorporateCatalogue(db,id,id),p=projectCorporateProduct(records[0].product,records[0].images,records[0].price,{customerId:id,sensitive:true})
  assert.doesNotMatch(JSON.stringify(p),/PRIVATE|markup/);assert.equal(p.tiers[0].price_hkd,13.37);assert.equal(p.images.length,1)
 })
+test('buyer Range reads use the projection while catalogue staff retain raw costing access', async () => {
+ const path = 'range_products/fictional-range'
+ await db.doc(path).set({design_code:'QA42', active:true, costing:{markup:2}})
+ await db.doc(path + '/history/one').set({note:'internal'})
+ await db.doc('users/range-staff').set({role:'staff',modules:['figurine']})
+ const buyer = env.authenticatedContext(id).firestore()
+ await assertFails(getDoc(doc(buyer,path)))
+ await assertFails(getDocs(collection(buyer,'range_products')))
+ await assertFails(getDoc(doc(buyer,path + '/history/one')))
+ const staff = env.authenticatedContext('range-staff').firestore()
+ assert.equal((await assertSucceeds(getDoc(doc(staff,path)))).data().costing.markup,2)
+})
 test('legacy approval replaces forged mirrored ERP identity, retains unrelated fields and supports unlinked existing accounts',async()=>{
  const uid=id+'-legacy',ref=db.doc('users/'+uid)
  await ref.set({role:'customer',status:'pending',erp_code:'FOREIGN',sensitive:false,contact_name:'Preserved'})

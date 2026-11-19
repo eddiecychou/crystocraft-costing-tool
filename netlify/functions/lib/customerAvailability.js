@@ -1,5 +1,7 @@
 import { productAvailability, buildableFromComponents, resolveRef, availabilityComponent } from '../../../src/availability.js'
 
+import { visibleRange } from './customerRange.js'
+
 const headers = { 'Content-Type':'application/json', 'Cache-Control':'private, no-store' }
 const json = (data,status=200) => new Response(JSON.stringify(data), {status,headers})
 const finite = n => Number.isFinite(n) && n >= 0 ? n : null
@@ -57,7 +59,7 @@ export function createAvailabilityHandler({ verifyToken, getProfile, getProduct,
       if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) return json({error:'Invalid product'},400)
       const product = await getProduct(id)
       // Same publication boundary as FigurineShop, even when called directly.
-      if (!product || product.active === false || product.status === 'retired') return json({error:'Product unavailable'},404)
+      if (!visibleRange(product)) return json({error:'Product unavailable'},404)
       const refs = Array.isArray(product.critical_components) ? product.critical_components : []
       if(refs.length > 100) return json({error:'Availability needs review'},422)
       const [components,defaults] = await Promise.all([getComponents(refs),getDefaults()])

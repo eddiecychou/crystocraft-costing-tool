@@ -1,11 +1,22 @@
+import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import { Link } from 'react-router-dom'
 import { Gem, Package, Heart } from 'lucide-react'
 import { useFavourites, useCart } from './store'
 
-export default function FavouritesPage() {
+export default function FavouritesPage({ profile }) {
   const fav = useFavourites()
   const cart = useCart()
-  const items = fav?.items || []
+  const saved = fav?.items || []
+  const needsRange = saved.some(i => i.type === 'figurine')
+  const { data, error, loading, retry } = useCustomerCatalogue(profile, null, true, needsRange)
+  const items = saved.flatMap(i => {
+    if (i.type !== 'figurine') return [i]
+    const p = data?.products.find(p => p.id === i.id)
+    return p ? [{ ...i, name: p.description || p.design_name || p.design_code,
+      image: p.gallery[0]?.url || p.variants.find(v => v.image)?.image || '' }] : []
+  })
+  if (needsRange && loading) return <p>Loading favourites…</p>
+  if (needsRange && error) return <p role="alert">{error} <button onClick={retry}>Retry</button></p>
 
   if (items.length === 0) {
     return (

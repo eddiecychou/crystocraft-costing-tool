@@ -1,11 +1,10 @@
+import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import useCatalogueFilter from '../hooks/useCatalogueFilter'
 import { useState, useEffect, useMemo } from 'react'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { Link, useSearchParams } from 'react-router-dom'
-import { db } from '../firebase'
 import { Gem, X } from 'lucide-react'
 import { designNumber, brandLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER, RANGE_STATUSES, brandSortRank } from '../constants'
-import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
+import { useRates, convertFromUSD, fmtMoney } from '../currency'
 import { useFormatMoq } from '../formatMoq'
 import { newFirst } from '../newArrivals'
 import CollectionBand from './CollectionBand'
@@ -15,6 +14,7 @@ import LoadingBar from '../components/LoadingBar'
 import CardImageCarousel from '../components/CardImageCarousel'
 import useCataloguePagination from '../hooks/useCataloguePagination'
 
+const EMPTY_PRODUCTS = []
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 // Normalise a design number the same way designGroupKey does (strip leading zeros).
 const normDesign = raw => {
@@ -22,18 +22,10 @@ const normDesign = raw => {
   return /^\d+$/.test(s) ? String(parseInt(s, 10)) : s
 }
 
-function docVariants(p) {
-  if (Array.isArray(p.variants) && p.variants.length) return p.variants
-  return (p.finishes || []).map(f => ({
-    plating_name: f.finish_name, sku: f.sku,
-    ws_price_usd: f.ws_price_usd, stock_finished: f.stock_finished, image: f.image,
-  }))
-}
-
 export default function FigurineShop({ profile }) {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filtersReady, setFiltersReady] = useState(false)
+  const { data, loading, error, retry } = useCustomerCatalogue(profile, null, true)
+  const products = data?.products || EMPTY_PRODUCTS
+  const filtersReady = !!data
   // Filters persist across a detail visit (sessionStorage) so returning to the
   // catalogue keeps your search/category/status instead of resetting.
   const [search, setSearch] = useState(() => sessionStorage.getItem('fs-search') || '')
@@ -45,27 +37,15 @@ export default function FigurineShop({ profile }) {
   const formatFilter = params.get('format') || ''
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
-  const factor = wsPriceFactor(profile)
 
-  useEffect(() => {
-    const q = query(collection(db, 'range_products'), orderBy('design_code'))
-    return onSnapshot(q, snap => {
-      // Only show active/published designs to customers — retired (fully sold
-      // out, no re-run) is dropped, mirroring the corp-gift shop's treatment.
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.active !== false && p.status !== 'retired'))
-      setFiltersReady(true)
-      setLoading(false)
-    }, () => setLoading(false))
-  }, [])
-
-  const net = usd => usd == null ? null : convertFromUSD(usd * factor, profile, rates)
+  const net = usd => usd == null ? null : convertFromUSD(usd, profile, rates)
 
   const items = useMemo(() => products.map(p => {
     const designNo = p.design_no || designNumber(p.design_code)
-    const variants = docVariants(p)
+    const variants = p.variants
     const fallbackBrand = brandLetter(p.design_code) || 'D'
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
-    const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
+    const prices = variants.map(v => v.customer_price_usd).filter(x => x != null)
     // First gallery image is the chosen hero; variant image is only a fallback.
     const image = galleryUrl(p.gallery?.[0]) || variants.find(v => v.image)?.image || ''
     // Every gallery photo, for the card carousel (CardImageCarousel). Free —
@@ -97,7 +77,7 @@ export default function FigurineShop({ profile }) {
       minNet: prices.length ? net(Math.min(...prices)) : null,
       maxNet: prices.length ? net(Math.max(...prices)) : null,
     }
-  }), [products, rates, cur, factor])
+  }), [products, rates, profile])
 
   const categories = useMemo(() => [...new Set(items.map(s => s.design_type).filter(Boolean))].sort(), [items])
   const [cat, setCat] = useCatalogueFilter('fs-cat', categories, filtersReady)
@@ -150,6 +130,7 @@ export default function FigurineShop({ profile }) {
     return s.minNet === s.maxNet ? fmtMoney(s.minNet, cur) : `${fmtMoney(s.minNet, cur)}–${fmtMoney(s.maxNet, cur)}`
   }
 
+  if (error) return <p role="alert">{error} <button onClick={retry}>Retry</button></p>
   return (
     <div>
       {loading && <LoadingBar />}

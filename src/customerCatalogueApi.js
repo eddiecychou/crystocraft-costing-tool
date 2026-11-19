@@ -2,14 +2,17 @@ import { authedUser } from './firebase'
 
 // Coalesce concurrent mounts only; no persistent cache across users or requests.
 const pending = new Map()
-export async function loadCustomerCatalogue(id) {
+export async function loadCustomerCatalogue(id, range = false) {
   const user = await authedUser()
   if (!user) throw new Error('Please sign in.')
-  const key = `${user.uid}:${id || ''}`
+  const key = `${user.uid}:${range}:${id || ''}`
   if (pending.has(key)) return pending.get(key)
   const request = (async () => {
     const token = await user.getIdToken()
-    const res = await fetch('/api/customer-catalogue' + (id ? `?id=${encodeURIComponent(id)}` : ''), {
+    const params = new URLSearchParams()
+    if (range) params.set('range', '1')
+    if (id) params.set('id', id)
+    const res = await fetch('/api/customer-catalogue?' + params, {
       headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
     })
     const data = await res.json()

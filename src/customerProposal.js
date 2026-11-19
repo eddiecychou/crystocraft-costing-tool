@@ -1,4 +1,4 @@
-import { loadCustomerProduct, loadCustomerBrandedImages } from './customerCatalogueApi'
+import { loadCustomerCatalogue, loadCustomerProduct, loadCustomerBrandedImages } from './customerCatalogueApi'
 import {
   doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, getDocs,
 } from 'firebase/firestore'
@@ -211,9 +211,9 @@ export async function resolveProductRefs(refs, profile) {
   const customerId = profile?.customer_id || ''
   const resolved = await Promise.all(unique.map(async r => {
     if (r.collection === 'range_products') {
-      const snap = await getDoc(doc(db, 'range_products', r.id))
-      if (!snap.exists()) return null
-      const p = snap.data()
+      const p = profile?.role === 'customer' ? (await loadCustomerCatalogue(r.id, true)).products[0]
+        : await getDoc(doc(db, 'range_products', r.id)).then(s => s.data())
+      if (!p) return null
       if (p.active === false || p.status === 'retired') return null
       const image = normGallery(p.gallery)[0]?.url || ''
       return {

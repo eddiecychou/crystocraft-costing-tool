@@ -3,7 +3,7 @@ import { loadCustomerCatalogue } from '../customerCatalogueApi'
 
 // Authenticated projection replaces raw Firestore listeners. Refresh while open
 // and on return to the tab; abandoned responses cannot populate a new identity.
-export function useCustomerCatalogue(profile, id) {
+export function useCustomerCatalogue(profile, id, range = false, enabled = true) {
   const [state, setState] = useState({ data: null, error: '', loading: true })
   const [retry, setRetry] = useState(0)
   useEffect(() => {
@@ -13,17 +13,18 @@ export function useCustomerCatalogue(profile, id) {
       if (loading || document.hidden) return
       loading = true
       try {
-        const data = await loadCustomerCatalogue(id)
+        const data = await loadCustomerCatalogue(id, range)
         if (alive) setState({ data, error: '', loading: false })
       } catch (err) {
         if (alive) setState({ data: null, error: err.message || 'Catalogue could not load.', loading: false })
       } finally { loading = false }
     }
+    if (!enabled) return
     refresh()
     const timer = setInterval(refresh, 60000)
     window.addEventListener('focus', refresh)
     document.addEventListener('visibilitychange', refresh)
     return () => { alive = false; clearInterval(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh) }
-  }, [profile?.id, profile?.customer_id, profile?.sensitive, id, retry])
+  }, [profile?.id, profile?.customer_id, profile?.sensitive, id, range, enabled, retry])
   return { ...state, retry: () => setRetry(v => v + 1) }
 }

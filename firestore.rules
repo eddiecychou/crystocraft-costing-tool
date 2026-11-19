@@ -507,13 +507,13 @@ service cloud.firestore {
     match /range_products/{rangeId} {
       allow get: if isB0016Mcp() && rangeId == setupReleasePlan().range_id
         && !exists(/databases/$(database)/documents/range_products/$(rangeId));
-      allow get, list: if canShop() || can('figurine') || can('quotes')
+      allow get, list: if can('figurine') || can('quotes')
         || (isB0016Mcp() && resource.data.design_no == '0016');
       allow create: if (can('figurine') && rangeFamilyReserved(rangeId, request.resource.data)) || (b0016WritesApproved() && b0016RangeCreate(rangeId));
       allow update: if (can('figurine') && (rangeIdentityUnchanged() || rangeFamilyReserved(rangeId, request.resource.data))) || (b0016WritesApproved() && colourRangeLink(rangeId));
       allow delete: if can('figurine');
       match /{subcollection}/{documentId}/{allPaths=**} {
-        allow read: if canShop() || can('figurine') || can('quotes');
+        allow read: if can('figurine') || can('quotes');
         allow write: if can('figurine');
       }
     }

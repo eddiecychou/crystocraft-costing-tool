@@ -26,7 +26,7 @@ const pure = src
   .replace(/export function useRates\(\)[\s\S]*?\n}\n/m, '')
 const dir = mkdtempSync(join(tmpdir(), 'money-'))
 const modPath = join(dir, 'currency.mjs')
-writeFileSync(modPath, pure)
+writeFileSync(modPath, pure.replace('./domain/wholesalePrice.js', new URL('../src/domain/wholesalePrice.js', import.meta.url).href))
 const { fromHKD, fromUSD, convertFromUSD, convertFromHKD, wsPriceFactor, fmtMoney, CUSTOMER_CURRENCIES } =
   await import(modPath)
 rmSync(dir, { recursive: true, force: true })

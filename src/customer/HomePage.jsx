@@ -1,8 +1,6 @@
 import { loadCustomerBrandedImages } from '../customerCatalogueApi'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '../firebase'
 import { Heart, ClipboardList, Receipt, Images, ArrowRight } from 'lucide-react'
 import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import { isNew } from '../newArrivals'
@@ -50,26 +48,14 @@ function useProposalInviteStatus(customerId) {
 
 const PILLAR_IMAGE = { figurine: pillarFigurine, corporate: pillarCorporate, crystal: pillarCrystal }
 
-// Resolves each featured item's current name + detail-page link live, so a
-// renamed/retired product doesn't leave stale text on the homepage — only
-// the CHOSEN PHOTO is fixed by the admin's pick (src/frontPageFeatured.js);
-// everything else about the product stays live.
-function useFeaturedProductsMeta(items, corporateProducts) {
-  const [meta, setMeta] = useState({})
-  useEffect(() => {
-    if (!items || items.length === 0) { setMeta({}); return }
-    let alive = true
-    Promise.all(items.map(async it => {
-      const path = it.product_type === 'corp_gift' ? 'products' : 'range_products'
-      const p = path === 'products' ? corporateProducts?.find(p => p.id === it.product_id)
-        : await getDoc(doc(db, path, it.product_id)).then(s => s.exists() ? s.data() : null)
-      if (!p) return null
-      const name = it.product_type === 'corp_gift' ? (p.name || it.product_id) : (p.design_name || p.description || p.design_code || it.product_id)
-      const to = it.product_type === 'corp_gift' ? `/shop/corporate/${it.product_id}` : `/shop/figurine/${it.product_id}`
-      return [it.id, { name, to, isNew: isNew(p) }]
-    })).then(entries => { if (alive) setMeta(Object.fromEntries(entries.filter(Boolean))) })
-    return () => { alive = false }
-  }, [items, corporateProducts])
+function featuredProductsMeta(items, corporateProducts) {
+  const meta = {}
+  for (const it of items || []) {
+    const corporate = it.product_type === 'corp_gift'
+    const p = corporate ? corporateProducts.find(p => p.id === it.product_id) : it
+    if (p) meta[it.id] = { name: p.name || it.product_id, isNew: isNew(p),
+      to: `/shop/${corporate ? 'corporate' : 'figurine'}/${it.product_id}` }
+  }
   return meta
 }
 
@@ -177,7 +163,7 @@ export default function HomePage({ profile }) {
   const quickCount = { favourites: fav?.count || 0, enquiry: cart?.count || 0 }
   const { data: catalogue } = useCustomerCatalogue(profile)
   const featured = catalogue?.featured
-  const featuredMeta = useFeaturedProductsMeta(featured?.items, catalogue?.products)
+  const featuredMeta = featuredProductsMeta(featured?.items, catalogue?.products)
   const inviteStatus = useProposalInviteStatus(profile?.customer_id)
 
   // The hero CTA is the customer's most relevant first move, not a generic

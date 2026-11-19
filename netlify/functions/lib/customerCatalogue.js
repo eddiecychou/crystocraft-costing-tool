@@ -1,5 +1,7 @@
 import { customerContext, privateJson, validId } from './customerAccess.js'
 
+import { rangeFeaturedItem } from './customerRange.js'
+
 // Explicit projection, including nested objects. Never spread a Firestore record.
 const str = v => typeof v === 'string' ? v : ''
 const numeric = v => v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null
@@ -32,6 +34,8 @@ export function createCustomerCatalogueHandler(deps) {
       const ctx = await customerContext(req, deps)
       const url = new URL(req.url), id = url.searchParams.get('id')
       if (id !== null && !validId(id)) return privateJson({ error: 'Invalid product.' }, 400)
+      if (url.searchParams.get('range') === '1')
+        return privateJson({ products: await deps.loadRange(id, ctx.profile) })
       const records = await deps.load(id, ctx.uid)
       const products = records.map(({ product, images, price }) => projectCorporateProduct(product, images, price,
         { customerId: ctx.customerId, sensitive: ctx.customer ? ctx.customer.sensitive === true : ctx.profile.sensitive === true }))
@@ -39,8 +43,11 @@ export function createCustomerCatalogueHandler(deps) {
       // Featured corporate image URLs must pass the same live visibility check.
       const featured = await deps.loadFeatured()
       const byId = new Map(products.map(p => [p.id, p]))
-      const items = (featured?.items || []).flatMap(it => {
-        if (it.product_type !== 'corp_gift') return [{ id: str(it.id), product_type: 'range', product_id: str(it.product_id), image_url: str(it.image_url) }]
+      const picks = featured?.items || []
+      const rangeIds = [...new Set(picks.filter(it => it.product_type === 'range' && validId(it.product_id)).map(it => it.product_id))]
+      const range = new Map(await Promise.all(rangeIds.map(async key => [key, (await deps.loadRange(key, ctx.profile))[0]])))
+      const items = picks.flatMap(it => {
+        if (it.product_type !== 'corp_gift') return rangeFeaturedItem(it, range.get(it.product_id)) || []
         const p = byId.get(it.product_id), im = p?.images.find(im => im.file_url === it.image_url)
         return im ? [{ id: str(it.id), product_type: 'corp_gift', product_id: p.id, image_url: im.file_url }] : []
       })

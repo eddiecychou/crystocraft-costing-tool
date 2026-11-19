@@ -1,12 +1,11 @@
+import { useCustomerCatalogue } from '../hooks/useCustomerCatalogue'
 import { useState, useEffect, useMemo } from 'react'
-import { doc, onSnapshot } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
-import { db } from '../firebase'
 import { Gem, ArrowLeft, Check, Plus, Minus, Download, ExternalLink } from 'lucide-react'
 import { designNumber, brandLetter, RANGE_CRYSTAL_BRANDS, normGallery, RANGE_STATUS_CUSTOMER, normVideos, youtubeEmbed, normBlogLinks } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
-import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
+import { useRates, convertFromUSD, fmtMoney } from '../currency'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import FavHeart from './FavHeart'
 import { useCart, designGroupKey, formatGroupKey } from './store'
@@ -37,17 +36,10 @@ function downloadPhoto(event, fileUrl, filename) {
   link.remove()
 }
 
-function docVariants(p) {
-  if (Array.isArray(p.variants) && p.variants.length) return p.variants
-  return (p.finishes || []).map(f => ({
-    plating_name: f.finish_name, sku: f.sku,
-    ws_price_usd: f.ws_price_usd, stock_finished: f.stock_finished, image: f.image,
-  }))
-}
-
 export default function FigurineDetail({ profile }) {
   const { id } = useParams()
-  const [p, setP] = useState(undefined)
+  const { data, loading, error, retry } = useCustomerCatalogue(profile, id, true)
+  const p = data?.products.find(product => product.id === id)
   const [finishIdx, setFinishIdx] = useState(0)
   const [color, setColor] = useState(null)
   const [cartons, setCartons] = useState(1)
@@ -62,15 +54,11 @@ export default function FigurineDetail({ profile }) {
   const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
   const { availability: avail, loading: availabilityLoading, retry: retryAvailability } = useCustomerAvailability(id)
   const cur = profile?.base_currency || 'USD'
-  const factor = wsPriceFactor(profile)
-
-  useEffect(() => onSnapshot(doc(db, 'range_products', id),
-    s => setP(s.exists() ? { id: s.id, ...s.data() } : null), () => setP(null)), [id])
 
   // If the currently selected variant is sold out (last-stock, buildable=0), auto-advance.
   useEffect(() => {
     if (!p || p.status !== 'stock') return
-    const vars = docVariants(p)
+    const vars = p.variants
     const av = avail
     if (!av?.byPlating || !Object.keys(av.byPlating).length) return
     const isOut = v => {
@@ -83,11 +71,12 @@ export default function FigurineDetail({ profile }) {
     }
   }, [p, avail, finishIdx])
 
-  if (p === undefined) return <LoadingBar />
-  if (p === null) return <NotFound />
+  if (loading) return <LoadingBar />
+  if (error) return <p role="alert">{error} <button onClick={retry}>Retry</button></p>
+  if (!p) return <NotFound />
 
-  const net = usd => usd == null ? null : convertFromUSD(usd * factor, profile, rates)
-  const variants = docVariants(p)
+  const net = usd => usd == null ? null : convertFromUSD(usd, profile, rates)
+  const variants = p.variants
   const fallbackBrand = brandLetter(p.design_code) || 'D'
   const designNo = p.design_no || designNumber(p.design_code)
   const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
@@ -206,10 +195,10 @@ export default function FigurineDetail({ profile }) {
       format_code: p.format_code || '',
       image: colourImage || selVariant.image || image,
       finish: selVariant.plating_name || selVariant.plating_code || '',
-      finish_sku: selVariant.sku || '',
+      finish_sku: selVariant.sku || '', variant_index: finishIdx,
       color: needsColor ? color : '',
       color_name: needsColor ? (lookup[color]?.name || '') : '',
-      ws_price_usd: selVariant.ws_price_usd ?? null,
+      customer_price_usd: selVariant.customer_price_usd ?? null,
       pcs_per_carton: ppc,
       cartons: ppc > 0 ? cartons : 0,
       qty: pcs,
@@ -297,7 +286,7 @@ export default function FigurineDetail({ profile }) {
                         </span>
                       )}
                     </span>
-                    <span className="text-ink font-medium shrink-0">{fmtMoney(net(v.ws_price_usd), cur)}</span>
+                    <span className="text-ink font-medium shrink-0">{fmtMoney(net(v.customer_price_usd), cur)}</span>
                   </button>
                 )
               })}
@@ -376,8 +365,8 @@ export default function FigurineDetail({ profile }) {
                     : ppc > 0 ? `${cartons} carton${cartons > 1 ? 's' : ''} = ${pcs.toLocaleString()} pcs` : `${pcs.toLocaleString()} pcs`}
                 </span>
               </div>
-              {selVariant.ws_price_usd != null && colorValid && (
-                <p className="text-sm text-ink mt-2">Subtotal: <span className="font-medium">{fmtMoney(net(selVariant.ws_price_usd) * pcs, cur)}</span></p>
+              {selVariant.customer_price_usd != null && colorValid && (
+                <p className="text-sm text-ink mt-2">Subtotal: <span className="font-medium">{fmtMoney(net(selVariant.customer_price_usd * pcs), cur)}</span></p>
               )}
               {effectiveMode === 'stock' && !isLastStock && !isConcept && !isRetired && (
                 <p className="text-xs mt-1.5 text-sapphire">
