@@ -1,10 +1,9 @@
 import { asOcDate, formatOcDate } from '../ocTime.js'
-import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
-import { downloadInvoiceExcel, orderInvoiceLines } from '../invoiceExcel'
-import { getOrderEditSnapshot, computeOrderTotals, orderUc } from '../shipping'
-import { customerAppInvoiceNo, isConfirmedErpInvoice } from '../domain/salesInvoiceHistory'
-import { myInvoiceDetail } from '../customerOrderHistoryApi'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { downloadInvoiceExcel } from '../invoiceExcel'
+import { isConfirmedErpInvoice } from '../domain/salesInvoiceHistory'
+import { myInvoiceDetail, myOcInvoiceDetail } from '../customerOrderHistoryApi'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { amountInWords } from '../constants'
@@ -13,80 +12,72 @@ import { invoicePaymentTotals } from '../invoicePayments'
 import { Download } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 
-// A customer's own invoice, printable/PDF-able — owner, 2026-08-07: "the
-// clicked view needs to be more serious, with the same format as our sales
-// invoices, and customer can view and download with PDF or Excel." Reuses
-// the exact print CSS/layout SalesInvoicePrint.jsx (admin) already has —
-// same document family, so a customer's copy looks identical to the one
-// Cindy would print internally — but sourced safely for a customer's own
-// browser session:
-//  - App invoices (key "app-<orderId>"): check the server order for ownership
-//    and issuance before reading lines, then verify the saved version again.
-//  - JES invoices (key "erp-<code>"): header + lines come from the
-//    customer-scoped /api/customer-order-history 'lines' action, which
-//    re-verifies server-side that the invoice belongs to the caller before
-//    returning anything.
-// Deliberately OMITTED vs the admin version: bank remittance details
-// (bank_accounts has no customer-readable path — served only via the
-// admin-gated /api/bank) and the "Bill To" full address (only on
-// customers/{id}, admin-only; profile.company_name/contact_name substitute).
+// Both print and Excel use the same server-authorized invoice document.
 export default function CustomerInvoicePrint({ profile }) {
   const { key } = useParams()
-  return <InvoiceDocument key={JSON.stringify([key, profile?.id, profile?.customer_id])} invoiceKey={key} profile={profile} />
+  const [params] = useSearchParams()
+  const si = params.get('si')
+  return <InvoiceDocument key={JSON.stringify([key,si,profile?.id,profile?.customer_id])} invoiceKey={key} si={si} profile={profile} />
 }
 
-function InvoiceDocument({ invoiceKey, profile }) {
+function InvoiceDocument({ invoiceKey, si, profile }) {
   const isApp = invoiceKey?.startsWith('app-')
   const orderId = isApp ? invoiceKey.slice(4) : null
   const code = isApp ? null : (invoiceKey || '').replace(/^erp-/, '').trim()
   const customerId = profile?.customer_id
 
-  const [header, setHeader] = useState(null)   // normalized: { no, uc, date, currency, customer_po, status }
-  const [lines, setLines] = useState([])
-  const [totals, setTotals] = useState(null)   // app only — computeOrderTotals shape
+  const [invoice, setInvoice] = useState(null)
   const [stampUrl, setStampUrl] = useState('')
   const [loading, setLoading] = useState(true)
+  const [checking, setChecking] = useState(false)
+  const mounted = useRef(false)
   const [error, setError] = useState('')
+  const {header,lines=[],totals} = invoice || {}
+
+  async function loadInvoice() {
+    if (!customerId) throw Error('Invoice not found.')
+    if (orderId) {
+      if (!si) throw Error('Original unavailable. Open the invoice from Sales Invoice History.')
+      const result = await myOcInvoiceDetail(orderId, si)
+      if (result.header?.no !== si) throw Error('Original unavailable.')
+      return result
+    }
+    if (!code) throw Error('Invoice not found.')
+    const {header:h,lines} = await myInvoiceDetail(code)
+    if (h?.code !== code || !isConfirmedErpInvoice(h)) throw Error('Invoice not found.')
+    if (h.amount == null || h.amount === '' || !Number.isFinite(Number(h.amount)))
+      throw Error('Original unavailable. The issued total is missing.')
+    const subtotal = lines.reduce((sum,l) => sum + (Number(l.amount) || 0),0)
+    const discountAmount = Number(h.discount) || 0
+    const total = Number(h.amount)
+    return {header:{no:h.code,uc:h.ref,date:h.date,currency:h.currency || 'USD',customer_po:h.customer_po},
+      lines,totals:{subtotal,total,discountAmount,chargesTotal:0,adjustment:Math.round((total-subtotal+discountAmount)*100)/100}}
+  }
 
   useEffect(() => {
     let alive = true
-    ;(async () => {
-      try {
-        if (orderId && customerId) {
-          const { order: o, lines: ls } = await getOrderEditSnapshot(orderId, {
-            checkOrder: candidate => {
-              if (!customerAppInvoiceNo(candidate, customerId)) throw new Error('Invoice not found.')
-            },
-          })
-          if (!alive) return
-          setHeader({
-            no: customerAppInvoiceNo(o, customerId), uc: orderUc(o), date: o.invoice_date || o.invoiced_at || o.order_date,
-            currency: o.currency || 'USD', customer_po: o.customer_po, status: null,
-            deposit_paid: o.deposit_paid, accounting_total: o.accounting_total,
-          })
-          setLines(orderInvoiceLines(ls))
-          setTotals(computeOrderTotals(o, ls))
-        } else if (code && customerId) {
-          const { header: h, lines: ls } = await myInvoiceDetail(code)
-          if (h?.code !== code || !isConfirmedErpInvoice(h)) throw new Error('Invoice not found.')
-          if (!alive) return
-          setHeader({ no: h.code, uc: h.ref, date: h.date, currency: h.currency || 'USD', customer_po: h.customer_po, status: h.status })
-          setLines(ls)
-        } else {
-          throw new Error('Invoice not found.')
-        }
-        try {
-          const snap = await getDoc(doc(db, 'settings', 'quote_branding'))
-          if (alive && snap.exists()) setStampUrl(snap.data().stamp_url || '')
-        } catch { /* unstamped */ }
-      } catch (e) {
-        if (alive) setError(['permission-denied', 'not-found'].includes(e.code) ? 'Invoice not found.' : e.message || 'Could not load this invoice.')
-      } finally {
-        if (alive) setLoading(false)
+    mounted.current = true
+    loadInvoice().then(result => { if (alive) setInvoice(result) })
+      .catch(e => { if (alive) setError(e.message || 'Could not load this invoice.') })
+      .finally(() => { if (alive) setLoading(false) })
+    getDoc(doc(db,'settings','quote_branding')).then(snap => {
+      if (alive && snap.exists()) setStampUrl(snap.data().stamp_url || '')
+    }).catch(()=>{})
+    return () => { alive = false; mounted.current = false }
+  }, [orderId, si, code, customerId])
+
+  async function exportCurrent(action) {
+    setChecking(true)
+    try {
+      const current = await loadInvoice()
+      if (!mounted.current) return
+      if (JSON.stringify(current) !== JSON.stringify(invoice)) {
+        throw Error('This invoice changed. Reopen it from Sales Invoice History before exporting.')
       }
-    })()
-    return () => { alive = false }
-  }, [orderId, code, customerId])
+      await action()
+    } catch (e) { setError(e.message || 'Could not verify this invoice.') }
+    finally { setChecking(false) }
+  }
 
   useEffect(() => {
     if (!header) return
@@ -103,17 +94,14 @@ function InvoiceDocument({ invoiceKey, profile }) {
     return isNaN(d) ? s : formatOcDate(d, { day: '2-digit', month: 'short', year: 'numeric' }, 'en-GB')
   }
 
-  const lineSum = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0)
-  const total = orderId ? totals?.total : lineSum
-  const subtotal = orderId ? totals?.subtotal : lineSum
-  const discountAmount = orderId ? totals?.discountAmount : 0
-  const chargesTotal = orderId ? totals?.chargesTotal : 0
+  const {total, subtotal, discountAmount, chargesTotal, adjustment = 0} = totals || {}
   const payment = invoicePaymentTotals(orderId ? header : null, total)
 
   function downloadExcel() {
     const summary = [['Subtotal', subtotal]]
     if (discountAmount) summary.push(['Discount', -discountAmount])
     if (chargesTotal) summary.push(['Charges', chargesTotal])
+    if (adjustment) summary.push(['Invoice difference', adjustment])
     summary.push(['Total', total])
     if (payment.invoiceTotal !== total) summary.push(['Amount Payable', payment.invoiceTotal])
     if (payment.depositPaid > 0) {
@@ -186,8 +174,8 @@ function InvoiceDocument({ invoiceKey, profile }) {
       `}</style>
 
       <div className="print-btn-row">
-        <button className="print-btn" onClick={() => window.print()}>Print / Save as PDF</button>
-        <button className="print-btn secondary" onClick={downloadExcel}>
+        <button className="print-btn" disabled={checking} onClick={() => exportCurrent(() => window.print())}>Print / Save as PDF</button>
+        <button className="print-btn secondary" disabled={checking} onClick={() => exportCurrent(downloadExcel)}>
           <Download size={13} style={{ verticalAlign: -2, marginRight: 4 }} />Download Excel
         </button>
       </div>
@@ -256,6 +244,7 @@ function InvoiceDocument({ invoiceKey, profile }) {
             <tr><td className="k">Subtotal</td><td className="v">{money(subtotal)}</td></tr>
             {discountAmount > 0 && <tr><td className="k">Discount</td><td className="v">− {money(discountAmount)}</td></tr>}
             {chargesTotal > 0 && <tr><td className="k">Charges</td><td className="v">{money(chargesTotal)}</td></tr>}
+            {adjustment !== 0 && <tr><td className="k">Invoice difference</td><td className="v">{money(adjustment)}</td></tr>}
             <tr className="grand"><td className="k">Total</td><td className="v">{money(total)}</td></tr>
             {payment.invoiceTotal !== total && <tr><td className="k">Amount Payable</td><td className="v">{money(payment.invoiceTotal)}</td></tr>}
             {payment.depositPaid > 0 && (

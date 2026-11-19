@@ -88,3 +88,20 @@ test('metadata loader reads explicitly linked lead dates without bodies, includi
  const row=projectCustomerActivity(all.customers,all.records,Date.parse('2026-11-12')).find(r=>r.customerId===id)
  assert.equal(row.lastContactAt,'2026-11-11T00:00:00.000Z');assert.equal(row.historyState,'known')
 })
+
+test('portal invoices use a projected consistent document and deny direct headers and lines',async()=>{
+ const {customerOcSource}=await import('../netlify/functions/lib/customerOcInvoices.js')
+ const user=env.authenticatedContext(id).firestore(), staff=env.authenticatedContext(id+'-admin').firestore()
+ const oc=customerOcSource(db,async()=>[])
+ for(const [suffix,owner,status] of [['a',id,'confirmed'],['b',id,'draft'],['c','other','confirmed']]){
+   const path='orders/'+id+suffix, no='SI98000'+({a:1,b:2,c:3}[suffix])
+   await db.doc(path).set({customer_id:owner,status,erp_so_no:no,notes:'PRIVATE',currency:'USD'})
+   await db.doc(path+'/lines/item').set({line_no:1,supplier:'PRIVATE',item_code:'FICTIONAL',qty_ordered:2,unit_price:12})
+   await db.doc(path+'/internal/file').set({note:'PRIVATE'})
+   for(const raw of [path,path+'/lines/item',path+'/internal/file']){await assertFails(getDoc(doc(user,raw)));await assertSucceeds(getDoc(doc(staff,raw)))}
+   if(suffix!=='a')await assert.rejects(oc.detail(id,id+suffix,no),/Original unavailable/)
+ }
+ const rows=await oc.history(id);assert.deepEqual(rows.map(r=>r.no),['SI980001'])
+ const detail=await oc.detail(id,id+'a','SI980001');assert.equal(detail.totals.total,24);assert.doesNotMatch(JSON.stringify(detail),/PRIVATE|supplier|notes|customer_id/)
+ await assert.rejects(oc.detail(id,id+'a','SI980099'),/Original unavailable/)
+})

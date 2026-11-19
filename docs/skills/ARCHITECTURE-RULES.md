@@ -649,3 +649,9 @@ The Range shop uses the same authenticated endpoint with `range=1`. Only the ser
 `account_pricing/{uid}` owns `corp_markup_override` and `pricing_group`. Do not write those fields to the self-readable `users/{uid}` record. The bounded transaction migration preserves exact values and a private legacy snapshot; divergent destinations stop the run. See [migration/release plan](../plans/V8.20-REVIEW-FIVE-FIXES.md). ERP customer history now runs in a Node function and derives ERP identity from the linked `customers` record, never a profile mirror. Legacy approval derives those mirrors server-side.
 
 ProductForm writes only changed form-owned fields after a transactional baseline comparison; an overlapping edit keeps the draft. Contact-date workbench projection includes explicit `linked_marketing_contact_ids`, with missing lead roots treated as partial history rather than eligible quiet outreach.
+
+### Buyer invoice history
+
+The portal reads issued invoices through `/api/customer-order-history`. The service derives both the OC company ID and the individual JES code from the approved login and its linked company. Shipping staff retain direct access to order headers and children. Customer responses use an explicit field list for summaries, print and Excel.
+
+A customer OC document link carries the order ID and exact SI. Current lines may be used only for that same issued number. Historical split or reissue summaries need a linked, company-matched receipt and an issued ledger row. Show an original only where the exact document can be verified. Shared JES accounts cannot supply company-specific history. Confirmed JES totals come from the issued header.

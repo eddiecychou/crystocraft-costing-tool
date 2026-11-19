@@ -1232,10 +1232,8 @@ service cloud.firestore {
                 ? request.resource.data.invoice_reference_revision == resource.data.invoice_reference_revision
                 : linkedInvoice() && request.resource.data.invoice_reference_revision == resource.data.invoice_reference_revision + 1));
       }
-      allow read: if can('shipping')
-        || (isApprovedCustomer()
-            && profile().get('customer_id', '') != ''
-            && resource.data.get('customer_id', '') == profile().get('customer_id', ''));
+      // Buyers read issued, projected invoices through customer-order-history.
+      allow read: if can('shipping');
       allow create: if can('shipping') && validOrderEditCreate(request.resource.data) && validQuoteConversionCreate() && !request.resource.data.keys().hasAny(['invoice_allocation_id','invoice_reference_revision','shipping_closed']);
       allow update: if can('shipping') && validOrderEditUpdate(resource.data, request.resource.data)
         && validQuoteConversionUpdate() && safeInvoiceSave()
@@ -1256,9 +1254,7 @@ service cloud.firestore {
           return orderOpenAfter(orderId)
             && (!exists(root) || validOrderEditTransition(get(root).data, getAfter(root).data));
         }
-        allow read: if can('shipping')
-          || (isApprovedCustomer() && profile().get('customer_id','') != ''
-            && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id','') == profile().get('customer_id',''));
+        allow read: if can('shipping');
         allow write: if can('shipping') && validLineEdit();
       }
       match /closure_audit/{id} {
@@ -1266,12 +1262,9 @@ service cloud.firestore {
         allow write: if false;
       }
       // Require a child collection/document: ** previously matched the parent
-      // too, bypassing root rules. Own-customer access excludes private receipts.
+      // too, bypassing root rules. Raw order children are internal.
       match /{subcollection}/{childId}/{descendants=**} {
-        allow read: if !(subcollection in ['invoice_allocations','closure_audit']) && (can('shipping')
-          || (isApprovedCustomer()
-              && profile().get('customer_id', '') != ''
-              && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id', '') == profile().get('customer_id', '')));
+        allow read: if can('shipping');
         allow write: if !(subcollection in ['invoice_allocations','closure_audit','lines']) && can('shipping') && orderOpenAfter(orderId);
       }
     }

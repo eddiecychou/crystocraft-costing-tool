@@ -1,3 +1,4 @@
+import { customerOcSource } from '../netlify/functions/lib/customerOcInvoices.js'
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
@@ -34,6 +35,8 @@ const queue = createInvoiceFollowupQueue(adminServer,FieldValue.serverTimestamp)
 const repository = createInvoiceRecoveryRepository(adminServer, FieldValue.serverTimestamp)
 const getProfile = async uid => (await adminServer.doc(`users/${uid}`).get()).data()
 const verifyToken = async uid => ({ uid })
+const ocSource=customerOcSource(adminServer, async numbers => (await sql.query('select * from public.app_sales_invoice where si_no=any($1::text[])',[numbers])).rows)
+globalThis.__closureCustomerInvoice=(id,no)=>ocSource.detail('fictional-customer',id,no)
 const closeHandler = orderRequestHandler({ verifyToken, getProfile, closure: createShippingClosure(adminServer) })
 const invoiceSql = createInvoiceRecoverySql({ url:'https://fictional.invalid', key:'fixture', fetchImpl: async (url, options) => {
   const args = JSON.parse(options.body)
@@ -85,6 +88,8 @@ async function loadBundle() {
   `}, outfile:`${scratch}/app.mjs`, bundle:true, platform:'node', format:'esm', jsx:'automatic', loader:{'.png':'dataurl'},
     external:['firebase/*','react','react-dom','react-router-dom','exceljs','lucide-react'], plugins:[{name:'emulator-only',setup(b) {
       b.onResolve({filter:/\/firebase(?:\.js)?$/},a=>a.path.startsWith('.')?{path:'db',namespace:'fixture'}:null)
+      b.onResolve({filter:/\/customerOrderHistoryApi$/},()=>({path:'history',namespace:'history-fixture'}))
+      b.onLoad({filter:/.*/,namespace:'history-fixture'},()=>({contents:'export const myOcInvoiceDetail=globalThis.__closureCustomerInvoice;export const myInvoiceDetail=()=>{throw Error("Fictional OC only")}' }))
       b.onResolve({filter:/\/erpApi$/},()=>({path:'erp',namespace:'erp-fixture'}))
       b.onLoad({filter:/.*/,namespace:'erp-fixture'},()=>({contents:`export const erpLines=async()=>[];export const erpLookup=async()=>[{code:'FICTIONAL-SO',customer:'Fictional ERP duplicate'}]`,loader:'js'}))
       b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const db=globalThis.__shippingDeletionDb;
@@ -193,7 +198,7 @@ try {
   await adminOrder.update({erp_si_no:latest.result.o_si_no,invoiced_at:'2026-11-14',invoice_allocation_id:latest.operation,invoice_reference_revision:1,edit_revision:1})
   const job = operation => adminServer.doc(`invoice_followup_jobs/${operation}_financial`)
   for (const [index,{operation,result,purpose}] of allocations.entries()) {
-    await adminOrder.collection('invoice_allocations').doc(operation).set({order_id:id,id:operation,status:'linked',result:{si_no:result.o_si_no,uc_no:result.o_uc_no},request:{purpose},created_at:new Date(2026,10,14,0,index),followups:{financial:{state:index===1?'done':'pending'},woo:{state:'not_applicable'}}})
+    await adminOrder.collection('invoice_allocations').doc(operation).set({order_id:id,id:operation,status:'linked',before:{customerId:'fictional-customer'},result:{si_no:result.o_si_no,uc_no:result.o_uc_no,invoice_id:result.o_invoice_id},request:{purpose},created_at:new Date(2026,10,14,0,index),followups:{financial:{state:index===1?'done':'pending'},woo:{state:'not_applicable'}}})
     await adminServer.doc(`uc_invoices/${result.o_uc_no.replace('/','-')}`).set({uc_no:result.o_uc_no,si_no:result.o_si_no,order_id:id})
     if(index!==1) await job(operation).set({order_id:id,operation_id:operation,stage:'financial',edit_revision:1,next_at:0,automatic_attempts:0})
   }
@@ -227,7 +232,7 @@ try {
     }
   })
   const invoice = () => render(a.Invoice,'/shipments/:id/invoice',`/shipments/${id}/invoice`,v=>v.includes(latest.result.o_si_no))
-  const ownInvoice = () => render(c.CustomerInvoice,'/shop/invoice/:key',`/shop/invoice/app-${id}`,v=>v.includes(latest.result.o_si_no),{profile:{customer_id:'fictional-customer',company_name:'Fictional consignee'}})
+  const ownInvoice = () => render(c.CustomerInvoice,'/shop/invoice/:key',`/shop/invoice/app-${id}?si=${latest.result.o_si_no}`,v=>v.includes(latest.result.o_si_no),{profile:{customer_id:'fictional-customer',company_name:'Fictional consignee'}})
   const beforePacking = await packing(), beforeInvoice = await invoice(), beforeCustomer = await ownInvoice(), beforeExcel = await packingExcel()
   for (const token of positivePackingTokens) assert.ok(beforePacking.includes(token),token)
   const beforeFreight = await s.loadOrderFreight(id)

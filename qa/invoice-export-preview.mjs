@@ -9,7 +9,7 @@ const out = resolve('qa/out/invoice-deposit/exports')
 await mkdir(out, { recursive: true })
 const stubs = {
   firebase: 'export const db={}',
-  router: 'export const useParams=()=>({id:"qa-export",key:"app-qa-export"})',
+  router: 'export const useParams=()=>({id:"qa-export",key:"app-qa-export"});export const useSearchParams=()=>[new URLSearchParams({si:window.invoiceExportFixture.order.erp_si_no})]',
   firestore: `
     const data=()=>window.invoiceExportFixture;
     export const doc=(_, ...parts)=>parts.join('/'),collection=doc,query=p=>p,orderBy=()=>{};
@@ -20,12 +20,14 @@ const stubs = {
   customer: 'export const loadCustomers=async()=>[];export const primaryContact=()=>null;export const contactAddress=()=>""',
   bankAccounts: 'export const listBankAccounts=async()=>[];export const accountForCurrency=()=>null;export const formatBankDetails=()=>""',
   criticalComponents: 'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
-  customerOrderHistoryApi: 'export const myInvoiceDetail=async()=>{throw Error("No live ERP connection")}',
+  customerOrderHistoryApi: 'export const myInvoiceDetail=async()=>{throw Error("No live ERP connection")};export const myOcInvoiceDetail=(id,no)=>window.documentForFixture(no)',
 }
 await build({
   stdin: { resolveDir: process.cwd(), loader: 'jsx', contents: `
     import React from 'react';import {createRoot} from 'react-dom/client';
     import Sales from './src/pages/SalesInvoicePrint.jsx';
+    import {customerOcDocument} from './netlify/functions/lib/customerOcInvoices.js';
+    window.documentForFixture=no=>customerOcDocument(window.invoiceExportFixture.order,window.invoiceExportFixture.lines,no,'qa-export');
     import Customer from './src/customer/CustomerInvoicePrint.jsx';
     const key=new URLSearchParams(location.search).get('case')||'partial';
     const deposits={partial:2000,blank:null,zero:0,full:7613.94,adjusted:2000};

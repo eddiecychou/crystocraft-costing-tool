@@ -9,6 +9,8 @@ import {build} from 'esbuild'
 import {JSDOM} from 'jsdom'
 import React,{act} from 'react'
 import ExcelJS from 'exceljs'
+import {customerOcDocument} from '../netlify/functions/lib/customerOcInvoices.js'
+import {orderSi} from '../src/shippingModel.js'
 import {quoteItemToOrderLine} from '../src/rangeQuote.js'
 const require=createRequire(import.meta.url),rootDir=fileURLToPath(new URL('../',import.meta.url))
 const dom=new JSDOM('<!doctype html><body></body>',{url:'http://invoice.test'})
@@ -43,7 +45,7 @@ const stubs={
  customer:'export const loadCustomers=async()=>[];export const useCustomers=()=>({customers:[]});export const primaryContact=()=>null;export const contactAddress=()=>"";export const saveCustomer=async()=>{throw Error("No customer creation")}',
  bankAccounts:'export const listBankAccounts=async()=>[];export const accountForCurrency=()=>null;export const formatBankDetails=()=>""',
  criticalComponents:'export const buildProductIndex=()=>({});export const matchProductCode=()=>null',
- customerOrderHistoryApi:'export const myInvoiceDetail=async code=>({header:{code,currency:"USD",status:code==="VOID"?"VOID":"CONFIRMED"},lines:[{item_code:"ERP",description:"Historical unit unavailable",qty:code==="RETURN"?-5:5,unit_price:2,amount:code==="RETURN"?-10:10}]})',
+ customerOrderHistoryApi:'export const myOcInvoiceDetail=(id,no)=>globalThis.__customerInvoice(id,no); export const myInvoiceDetail=async code=>({header:{code,amount:code==="RETURN"?-10:code==="ADJUSTED"?8:10,currency:"USD",status:code==="VOID"?"VOID":"CONFIRMED"},lines:[{item_code:"ERP",description:"Historical unit unavailable",qty:code==="RETURN"?-5:5,unit_price:2,amount:code==="RETURN"?-10:10}]})',
  router:`import React from 'react';export const useParams=()=>globalThis.__invoiceParams;export const useNavigate=()=>to=>globalThis.__invoiceFixture.destination=to;export const useSearchParams=()=>[new URLSearchParams(globalThis.__invoiceParams.search)];export const Link=({to,children,...props})=>React.createElement('a',{href:to,...props},children)`,
  CustomerAccounts:'export const CustomerPicker=()=>null',
  erpApi:'export const erpLines=async()=>({rows:[]});export const erpLookup=async()=>[]',
@@ -73,7 +75,13 @@ before(async()=>{
  dom.window.print=()=>{printed++}
 })
 after(async()=>{URL.createObjectURL=originalCreate;URL.revokeObjectURL=originalRevoke;delete globalThis.__invoiceFixture;dom.window.close();await rm(scratch,{recursive:true,force:true})})
-async function withPage(kind,fn,{customer='qa-customer',key='app-qa-order',search=''}={}){
+async function withPage(kind,fn,{customer='qa-customer',key='app-qa-order',search}={}){
+ if(search===undefined)search=kind==='customer'?new URLSearchParams({si:orderSi(fixture.order).trim()}).toString():''
+ globalThis.__customerInvoice=(id,no)=>{
+   const order=fixture.serverOrders?.at(-1) || fixture.order
+   if(order.customer_id!==customer || order.status==='draft' || !order.status || !/^SI/i.test(no))throw Error('Invoice not found.')
+   return customerOcDocument(order,fixture.lines,no,customer)
+ }
  globalThis.__invoiceParams={id:'qa-order',key,search};downloaded=null;downloadName=null
  const host=document.createElement('div');document.body.append(host);const root=createRoot(host)
  try{
@@ -94,7 +102,7 @@ for(const kind of ['pi','sales','customer']){
   for(const[i,unit]of units.entries())assert.match(rows[i].children[3].textContent,new RegExp(` ${unit}$`))
   assert.match(rows[7].children[3].textContent,/25 pcs/);assert.equal(rows[8].children[3].textContent,'')
   assert.equal(rows[8].children[5].textContent,'30.00')
-  const button=[...host.querySelectorAll('button')].find(x=>x.textContent==='Print / Save as PDF');const before=printed;button.click();assert.equal(printed,before+1)
+  const button=[...host.querySelectorAll('button')].find(x=>x.textContent==='Print / Save as PDF');const before=printed;await act(async()=>button.click());assert.equal(printed,before+1)
   if(process.env.INVOICE_EVIDENCE_DIR)await writeFile(join(process.env.INVOICE_EVIDENCE_DIR,`${kind}-units.html`),`<!doctype html><meta charset="utf-8">${host.innerHTML}`)
  }))
  test(`${kind}: actual Excel download retains units, numeric values and charge semantics`,async()=>withPage(kind,async host=>{
@@ -114,7 +122,7 @@ for(const kind of ['pi','sales','customer']){
 test('quote conversion preserves selected units into order lines',()=>{
  for(const unit of units)assert.equal(quoteItemToOrderLine({product_unit:unit,tiers:[{quantity:80,price:10}]},0).unit,unit)
 })
-test('customer cannot export another customer invoice',async()=>withPage('customer',async host=>{assert.match(host.textContent,/Invoice not found/);assert.equal(host.querySelectorAll('button').length,0)},{customer:'other-customer'}))
+test('customer cannot export another customer invoice',async()=>withPage('customer',async host=>{assert.match(host.textContent,/Invoice not found|Original unavailable/);assert.equal(host.querySelectorAll('button').length,0)},{customer:'other-customer'}))
 
 test('customer draft and uninvoiced links stop before reading commercial lines',async()=>{
  const original=fixture.order
@@ -122,7 +130,7 @@ test('customer draft and uninvoiced links stop before reading commercial lines',
  try {
   for(const patch of [{status:'draft'},{erp_si_no:'',erp_so_no:'SO260050'},{erp_si_no:'SO260050'},{status:undefined}]){
    fixture.order={...original,...patch}
-   await withPage('customer',host=>{assert.match(host.textContent,/Invoice not found/);assert.equal(host.querySelectorAll('button').length,0)})
+   await withPage('customer',host=>{assert.match(host.textContent,/Invoice not found|Original unavailable/);assert.equal(host.querySelectorAll('button').length,0)})
   }
   assert.equal(fixture.orderLineReads,0)
  } finally {fixture.order=original;delete fixture.orderLineReads}
@@ -131,7 +139,7 @@ test('customer draft and uninvoiced links stop before reading commercial lines',
 test('customer invoice removed from issuance during line load stays unavailable',async()=>{
  fixture.serverOrders=[fixture.order,{...fixture.order,status:'draft'}]
  try {
-  await withPage('customer',host=>{assert.match(host.textContent,/Invoice not found/);assert.equal(host.querySelectorAll('button').length,0)})
+  await withPage('customer',host=>{assert.match(host.textContent,/Invoice not found|Original unavailable/);assert.equal(host.querySelectorAll('button').length,0)})
  } finally {delete fixture.serverOrders}
 })
 
@@ -142,7 +150,7 @@ test('own issued legacy SI in the SO field prints and downloads with the same nu
   await withPage('customer',async host=>{
    assert.equal(host.querySelector('.si-code').textContent,'SI260071')
    const before=printed
-   ;[...host.querySelectorAll('button')].find(x=>x.textContent==='Print / Save as PDF').click()
+   await act(async()=>[...host.querySelectorAll('button')].find(x=>x.textContent==='Print / Save as PDF').click())
    assert.equal(printed,before+1)
    assert.match(String((await workbook(host)).ws.getCell('B1').value),/SI260071/)
   })
@@ -150,12 +158,36 @@ test('own issued legacy SI in the SO field prints and downloads with the same nu
 })
 
 test('void legacy ERP response cannot offer print or Excel',async()=>withPage('customer',host=>{
- assert.match(host.textContent,/Invoice not found/)
+ assert.match(host.textContent,/Invoice not found|Original unavailable/)
  assert.equal(host.querySelectorAll('button').length,0)
 },{key:'erp-VOID'}))
 test('legacy ERP invoices without unit evidence remain unspecified rather than inventing pcs',async()=>withPage('customer',async host=>{
  const {ws}=await workbook(host);assert.equal(ws.getCell('C7').value,5);assert.equal(ws.getCell('D7').value,'')
 },{key:'erp-ERP-QA'}))
+
+test('old OC links and replaced invoice numbers never enable print or download',async()=>{
+ for(const search of ['', 'si=SI990099'])await withPage('customer',host=>{
+   assert.match(host.textContent,/Original unavailable/)
+   assert.equal(host.querySelector('button'),null)
+ },{search})
+})
+
+test('a reissue after opening the invoice blocks the existing export button',async()=>withPage('customer',async host=>{
+ const original=fixture.order
+ try{
+   fixture.order={...fixture.order,erp_si_no:'SI990999'}
+   await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Download Excel').click())
+   assert.match(host.textContent,/Original unavailable/)
+   assert.equal(downloaded,null)
+ }finally{fixture.order=original}
+}))
+
+test('historical JES export preserves the issued total and shows the difference from lines',async()=>withPage('customer',async host=>{
+ const {ws}=await workbook(host)
+ const values=ws.getSheetValues().filter(Array.isArray)
+ assert.ok(values.some(row=>row.includes('Total') && row.includes(8)))
+ assert.match(host.querySelector('.si-totals').textContent,/Invoice difference.*8.00/)
+},{key:'erp-ADJUSTED'}))
 
 test('legacy SI in the SO field identifies the staff print and Excel document', async () => {
  const original = fixture.order

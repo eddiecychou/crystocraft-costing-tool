@@ -1,36 +1,24 @@
-// Client for the portal-facing /api/customer-order-history edge function —
-// a signed-in customer's OWN JES sales invoice history and line detail.
-// Deliberately separate from erpApi.js's erpLookup(), which talks to the
-// admin-only /api/erp (trade-secret cost/margin data) — this endpoint is
-// scoped server-side to the caller's own account, no admin role needed.
 import { authedUser } from './firebase'
 
 async function call(body) {
   const user = await authedUser()
-  if (!user) return null
+  if (!user) throw Error('Please sign in.')
   const token = await user.getIdToken()
   const res = await fetch('/api/customer-order-history', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   })
-  if (!res.ok) return null
+  if (!res.ok)
+    throw Error(
+      res.status === 404 || res.status === 403
+        ? 'Original unavailable.'
+        : 'Invoice history could not load. Please try again.',
+    )
   return res.json()
 }
 
-// Returns { rows, shared } — shared:true means this account's ERP code is a
-// shared "bucket" code (JES never gave this customer a unique one), so no
-// history is returned; the caller should show an explanatory note, not an
-// empty state.
-export async function myOrderHistory() {
-  const data = await call({ action: 'history' })
-  return { rows: data?.rows || [], shared: !!data?.shared }
-}
-
-// Header + line items for one of the caller's OWN JES invoices — the server
-// re-checks ownership, so a bad/foreign code just comes back empty rather
-// than erroring the page. Returns { header, lines }.
-export async function myInvoiceDetail(code) {
-  const data = await call({ action: 'lines', code })
-  return { header: data?.header || null, lines: data?.lines || [] }
-}
+export const myOrderHistory = () => call({ action: 'history' })
+export const myOcInvoiceHistory = () => call({ action: 'oc-history' })
+export const myInvoiceDetail = (code) => call({ action: 'lines', code })
+export const myOcInvoiceDetail = (id, code) => call({ action: 'oc-detail', id, code })

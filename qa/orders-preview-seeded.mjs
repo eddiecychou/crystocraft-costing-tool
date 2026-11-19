@@ -37,6 +37,7 @@ const STUBS = {
   `,
   customerOrderHistoryApi: `
     export const myOrderHistory = async () => ({ rows: [], shared: false });
+    export const myOcInvoiceHistory = async () => ({ rows: ${JSON.stringify(ROWS.map(r=>({...r,id:r.key,original:true})))} });
   `,
   salesInvoiceHistory: `
     const ROWS = ${JSON.stringify(ROWS)};
