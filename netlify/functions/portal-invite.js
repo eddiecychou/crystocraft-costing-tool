@@ -43,39 +43,16 @@ import { approveLegacyAccount } from './lib/approveLegacyAccount.js'
 // (initializeApp/cert/getApps/...) — auth() and firestore() are NOT
 // attached to it. The modular subpath imports below are the only working
 // way to use the Admin SDK from ESM in this version.
-import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore'
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto'
 import { buildResendTags } from '../edge-functions/lib/resendTags.js'
+import { initAdminApp } from './lib/firebaseAdmin.js'
 import { queueAccessAlert, deliverAccessAlert, retryReviewedAccessAlert } from './lib/portalAccessAlerts.js'
 import { accountFollowupAction } from './lib/portalAccountFollowup.js'
 
 const INVITE_EXPIRY_DAYS = 7
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-// Same PEM-repair idiom as resend-webhook.js's normalizePkcs8 — duplicated
-// rather than shared, since it's ~10 lines and this file already can't share
-// runtime with the Deno functions; not worth a new shared module for this.
-function normalizePkcs8(input) {
-  let s = String(input || '').trim()
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) s = s.slice(1, -1)
-  s = s.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '')
-  const inner = s.replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----/, '').replace(/-----END [A-Z ]*PRIVATE KEY-----/, '')
-  const bodyB64 = inner.replace(/[^A-Za-z0-9+/=]/g, '')
-  const wrapped = bodyB64.match(/.{1,64}/g)?.join('\n') || bodyB64
-  return `-----BEGIN PRIVATE KEY-----\n${wrapped}\n-----END PRIVATE KEY-----\n`
-}
-
-function initAdminApp() {
-  if (getApps().length) return
-  const projectId = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
-  const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY
-  if (!projectId || !clientEmail || !privateKeyRaw) throw new Error('Server not configured')
-  const privateKey = normalizePkcs8(privateKeyRaw)
-  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) })
-}
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })

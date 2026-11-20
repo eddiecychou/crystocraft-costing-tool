@@ -1,15 +1,9 @@
 // Shared Firebase Admin bootstrap for Node Lambda functions (netlify/functions/).
 // A subdirectory here is NOT auto-scanned as a function (same rule as
 // netlify/edge-functions/lib/), so this is a safe place for a helper.
-//
-// portal-invite.js still carries its own copy of this idiom (deliberately, per
-// its comment — it predates this file). New functions import from here; a
-// future cleanup migrates portal-invite.js over. See TECH-DEBT.md.
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
 
-// Same PEM-repair idiom as portal-invite.js / resend-webhook.js: the
-// FIREBASE_PRIVATE_KEY env var arrives with escaped newlines and sometimes
-// surrounding quotes.
+// FIREBASE_PRIVATE_KEY can arrive with escaped newlines and surrounding quotes.
 export function normalizePkcs8(input) {
   let s = String(input || '').trim()
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) s = s.slice(1, -1)
