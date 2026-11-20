@@ -1,3 +1,7 @@
+## 20 November 2026 · OC session handoff
+
+The V8.19–V8.20 handoff covers catalogue, CRM, Shipping and Finance work, all 11 closed portal findings, and the verified portal invitation cleanup at `864371eb`. The next proposed Shipping review concerns the EUR 460 4PX quote for SO260026. [Session handoff, release evidence and open decisions](docs/plans/V8.20-SESSION-HANDOFF-2026-11-20.md)
+
 ## 2026-11-12 — Shipping recovery and PI upload limit released
 
 Released `443173e`, production `6af49af233e344fb714e28fa`. Direct Invoice keeps its first request resumable until required accounting follow-ups finish, without issuing another SI. Manual/PI/copy recovery retains deliberate repeats and split/reissued invoices. New originals have a consistent 20 MB selection/server/Storage limit; oversized replacement preserves the previous file and entered lines. Both exact-SHA GitHub jobs, full build/prebuild, 36 fictional recovery cases, 14 Chrome scenarios and existing compatibility/access suites pass. Fresh candidate/production admin and approved-customer checks pass. Additive private UC receipts and Storage rules are published/read back; Firestore unchanged. No production financial issuance or customer email in verification. [Release, migration and lessons](docs/plans/V8.20-SHIPPING-RECOVERY-RELEASE.md). A separate existing credit-note RPC privilege review is recorded as the next priority in TECH-DEBT; no credit-note writes/grant changes were performed.
