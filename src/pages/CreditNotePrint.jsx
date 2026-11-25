@@ -1,4 +1,5 @@
 import { asOcDate, formatOcDate } from '../ocTime.js'
+import { documentIssuerContact, hongKongDocumentIssuer } from '../domain/documentIssuer.js'
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
@@ -16,12 +17,6 @@ import logoUrl from '../assets/logo.png'
 // field above the signature section... where we can put in extra message
 // when issuing the document to customer", same placement Phase A already
 // built for the Sales Invoice.
-
-const SELLER = {
-  name: 'United Art Metals Factory Limited',
-  address: '11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong',
-  contact: 'WhatsApp: +852 4608 3219   |   Email: sales@uart.com.hk',
-}
 
 const money = (v, cur) =>
   `${cur} ${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -70,6 +65,9 @@ export default function CreditNotePrint() {
   if (loading) return <p style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading…</p>
   if (error) return <p style={{ padding: 40, textAlign: 'center', color: '#c00' }}>{error}</p>
 
+  const issueDate = cn.accounting_date || cn.record_date
+  const issuer = hongKongDocumentIssuer(issueDate)
+  const issuerContact = documentIssuerContact(issuer)
   const cur = cn.currency || 'USD'
   const lines = cn.lines || []
   const { subtotal: systemAmount, totalQty } = cnTotals(lines)
@@ -161,9 +159,9 @@ export default function CreditNotePrint() {
           <div className="cn-title">CREDIT NOTE</div>
         </div>
         <div className="cn-company">
-          <div className="nm">{SELLER.name}</div>
-          <div>{SELLER.address}</div>
-          <div>{SELLER.contact}</div>
+          <div className="nm">{issuer.name}</div>
+          <div>{issuer.address}</div>
+          <div>{issuerContact}</div>
         </div>
       </div>
 
@@ -175,7 +173,7 @@ export default function CreditNotePrint() {
         </div>
         <div className="cn-box">
           <div className="cn-kv"><span className="k">Credit Note No.</span><span className="v big cn-code">{cn.cn_no || '—'}</span></div>
-          <div className="cn-kv"><span className="k">Date</span><span className="v">{fmtDate(cn.accounting_date || cn.record_date)}</span></div>
+          <div className="cn-kv"><span className="k">Date</span><span className="v">{fmtDate(issueDate)}</span></div>
           {cn.original_si_no && <div className="cn-kv"><span className="k">Original Invoice</span><span className="v cn-code">{cn.original_si_no}</span></div>}
           {cn.original_uc_no && <div className="cn-kv"><span className="k">UC#</span><span className="v cn-code">{cn.original_uc_no}</span></div>}
           <div className="cn-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
@@ -252,7 +250,7 @@ export default function CreditNotePrint() {
           <div className="space">
             {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
           </div>
-          <div className="line">ISSUED BY · {SELLER.name}</div>
+          <div className="line">ISSUED BY · {issuer.name}</div>
         </div>
         <div>
           <div className="space" />
@@ -261,9 +259,9 @@ export default function CreditNotePrint() {
       </div>
 
       <div className="cn-foot">
-        <div className="nm">{SELLER.name}</div>
-        <div>{SELLER.address}</div>
-        <div>{SELLER.contact}</div>
+        <div className="nm">{issuer.name}</div>
+        <div>{issuer.address}</div>
+        <div>{issuerContact}</div>
       </div>
     </div>
   )

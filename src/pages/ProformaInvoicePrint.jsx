@@ -1,5 +1,6 @@
 import { galleryDisplayUrl } from '../brandGalleryUrls'
 import { asOcDate, formatOcDate } from '../ocTime.js'
+import { documentIssuerContact, hongKongDocumentIssuer } from '../domain/documentIssuer.js'
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
@@ -22,15 +23,6 @@ import logoUrl from '../assets/logo.png'
 // Same approach as PurchaseOrderPrint: print-CSS + window.print(), not
 // @react-pdf. Keeps bilingual text and page breaks the browser's problem, and
 // matches the document the team already recognises.
-
-// Seller entity. The HK company that invoices the customer — deliberately NOT
-// the Shenzhen factory used on purchase orders (that is the buying entity).
-// Matches the quotation footer so a customer sees one consistent identity.
-const SELLER = {
-  name: 'United Art Metals Factory Limited',
-  address: '11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong',
-  contact: 'WhatsApp: +852 4608 3219   |   Email: sales@uart.com.hk',
-}
 
 const money = (v, cur) =>
   `${cur} ${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -104,6 +96,9 @@ export default function ProformaInvoicePrint() {
   if (loading) return <p style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading…</p>
   if (error) return <p style={{ padding: 40, textAlign: 'center', color: '#c00' }}>{error}</p>
 
+  const issueDate = order.order_date
+  const issuer = hongKongDocumentIssuer(issueDate)
+  const issuerContact = documentIssuerContact(issuer)
   const cur = order.currency || 'USD'
   const { subtotal, chargesTotal, discountAmount, total } = computeOrderTotals(order, lines)
   // Charge lines (freight, insurance, one-off fees) carry a price but no qty.
@@ -314,9 +309,9 @@ export default function ProformaInvoicePrint() {
           <div className="pi-title">PROFORMA INVOICE{order.pi_revision > 0 ? ` — REV ${order.pi_revision}` : ''}</div>
         </div>
         <div className="pi-company">
-          <div className="nm">{SELLER.name}</div>
-          <div>{SELLER.address}</div>
-          <div>{SELLER.contact}</div>
+          <div className="nm">{issuer.name}</div>
+          <div>{issuer.address}</div>
+          <div>{issuerContact}</div>
         </div>
       </div>
 
@@ -346,7 +341,7 @@ export default function ProformaInvoicePrint() {
           <div className="pi-kv"><span className="k">UC#</span><span className="v pi-code">{orderUc(order) || '—'}</span></div>
           <div className="pi-kv"><span className="k">{/^SO/i.test(order.erp_so_no || '') ? 'SO No.' : 'Doc No.'}</span><span className="v pi-code">{order.erp_so_no || '—'}</span></div>
           {order.customer_po && <div className="pi-kv"><span className="k">Customer PO</span><span className="v">{order.customer_po}</span></div>}
-          <div className="pi-kv"><span className="k">Date</span><span className="v">{fmtDate(order.order_date)}</span></div>
+          <div className="pi-kv"><span className="k">Date</span><span className="v">{fmtDate(issueDate)}</span></div>
           {order.pi_revision > 0 && <div className="pi-kv"><span className="k">Revision</span><span className="v">Rev {order.pi_revision}</span></div>}
           <div className="pi-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
           {order.incoterm && <div className="pi-kv"><span className="k">Incoterm</span><span className="v">{order.incoterm}</span></div>}
@@ -446,7 +441,7 @@ export default function ProformaInvoicePrint() {
             <div className="space">
               {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
             </div>
-            <div className="line">ISSUED BY · {SELLER.name}</div>
+            <div className="line">ISSUED BY · {issuer.name}</div>
           </div>
           <div>
             <div className="space" />
@@ -455,9 +450,9 @@ export default function ProformaInvoicePrint() {
         </div>
 
       <div className="pi-foot">
-        <div className="nm">{SELLER.name}</div>
-        <div>{SELLER.address}</div>
-        <div>{SELLER.contact}</div>
+        <div className="nm">{issuer.name}</div>
+        <div>{issuer.address}</div>
+        <div>{issuerContact}</div>
       </div>
     </div>
   )

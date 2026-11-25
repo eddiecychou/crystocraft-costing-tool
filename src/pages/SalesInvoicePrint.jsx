@@ -1,5 +1,6 @@
 import { galleryDisplayUrl } from '../brandGalleryUrls'
 import { asOcDate, formatOcDate } from '../ocTime.js'
+import { documentIssuerContact, hongKongDocumentIssuer } from '../domain/documentIssuer.js'
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { getOrder, getOrderLines, getOrderEditSnapshot, computeOrderTotals, orderSi, orderSoDisplay, orderUc } from '../shipping'
@@ -23,12 +24,6 @@ import logoUrl from '../assets/logo.png'
 // The PBIS export (see docs/erp/PBIS-IMPORT-FORMAT.md) reads the same three facts this
 // prints — invoice number, date, total — so what a customer receives and what
 // reaches the books cannot drift apart.
-
-const SELLER = {
-  name: 'United Art Metals Factory Limited',
-  address: '11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong',
-  contact: 'WhatsApp: +852 4608 3219   |   Email: sales@uart.com.hk',
-}
 
 const money = (v, cur) =>
   `${cur} ${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -114,6 +109,9 @@ function InvoiceDocument({ id, requestedSi }) {
   if (loading) return <p style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading…</p>
   if (error) return <p role="alert" style={{ padding: 40, textAlign: 'center', color: '#c00' }}>{error}</p>
 
+  const issueDate = order.invoice_date || order.invoiced_at || order.order_date
+  const issuer = hongKongDocumentIssuer(issueDate)
+  const issuerContact = documentIssuerContact(issuer)
   const cur = order.currency || 'USD'
   const { subtotal, chargesTotal, discountAmount, total } = computeOrderTotals(order, lines)
   const payment = invoicePaymentTotals(order, total)
@@ -278,9 +276,9 @@ function InvoiceDocument({ id, requestedSi }) {
           <div className="si-title">INVOICE{order.pi_revision > 0 ? ` — REV ${order.pi_revision}` : ''}</div>
         </div>
         <div className="si-company">
-          <div className="nm">{SELLER.name}</div>
-          <div>{SELLER.address}</div>
-          <div>{SELLER.contact}</div>
+          <div className="nm">{issuer.name}</div>
+          <div>{issuer.address}</div>
+          <div>{issuerContact}</div>
         </div>
       </div>
 
@@ -305,7 +303,7 @@ function InvoiceDocument({ id, requestedSi }) {
           <div className="si-kv"><span className="k">Invoice No.</span><span className="v big si-code">{invoiceNo || '—'}</span></div>
           {/* invoice_date is the editable accounting date; invoiced_at (the
               allocation timestamp) is the fallback — see normOrder. */}
-          <div className="si-kv"><span className="k">Date</span><span className="v">{fmtDate(order.invoice_date || order.invoiced_at || order.order_date)}</span></div>
+          <div className="si-kv"><span className="k">Date</span><span className="v">{fmtDate(issueDate)}</span></div>
           {salesOrderNo && <div className="si-kv"><span className="k">{/^SO/i.test(salesOrderNo) ? 'SO No.' : 'Doc No.'}</span><span className="v si-code">{salesOrderNo}</span></div>}
           {orderUc(order) && <div className="si-kv"><span className="k">UC#</span><span className="v si-code">{orderUc(order)}</span></div>}
           {order.customer_po && <div className="si-kv"><span className="k">Customer PO</span><span className="v">{order.customer_po}</span></div>}
@@ -428,7 +426,7 @@ function InvoiceDocument({ id, requestedSi }) {
             <div className="space">
               {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
             </div>
-            <div className="line">ISSUED BY · {SELLER.name}</div>
+            <div className="line">ISSUED BY · {issuer.name}</div>
           </div>
           <div>
             <div className="space" />
@@ -437,9 +435,9 @@ function InvoiceDocument({ id, requestedSi }) {
         </div>
 
         <div className="si-foot">
-          <div className="nm">{SELLER.name}</div>
-          <div>{SELLER.address}</div>
-          <div>{SELLER.contact}</div>
+          <div className="nm">{issuer.name}</div>
+          <div>{issuer.address}</div>
+          <div>{issuerContact}</div>
         </div>
       </div>
     </div>

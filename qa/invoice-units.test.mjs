@@ -12,6 +12,26 @@ import ExcelJS from 'exceljs'
 import {customerOcDocument} from '../netlify/functions/lib/customerOcInvoices.js'
 import {orderSi} from '../src/shippingModel.js'
 import {quoteItemToOrderLine} from '../src/rangeQuote.js'
+import { documentIssuerContact, hongKongDocumentIssuer } from '../src/domain/documentIssuer.js'
+
+test('Hong Kong issuer revisions use the issue date and retain the legacy fallback', () => {
+  const original = hongKongDocumentIssuer()
+  const future = {
+    ...original,
+    effectiveFrom: '2030-04-01',
+    address: 'Fictional future address',
+  }
+  const revisions = [future, original]
+  for (const issuedOn of [null, '', 'unknown', '2030-02-30', '2030-03-31', '2030-03-31T15:59:59Z']) {
+    assert.equal(hongKongDocumentIssuer(issuedOn, revisions), original)
+  }
+  for (const issuedOn of ['2030-04-01', '2030-03-31T16:00:00Z', new Date('2030-04-01T00:00:00+08:00')]) {
+    assert.equal(hongKongDocumentIssuer(issuedOn, revisions), future)
+  }
+  assert.equal(original.name, 'United Art Metals Factory Limited')
+  assert.equal(documentIssuerContact(original), 'WhatsApp: +852 4608 3219   |   Email: sales@uart.com.hk')
+  assert.equal(documentIssuerContact(original, ' | '), 'WhatsApp: +852 4608 3219 | Email: sales@uart.com.hk')
+})
 const require=createRequire(import.meta.url),rootDir=fileURLToPath(new URL('../',import.meta.url))
 const dom=new JSDOM('<!doctype html><body></body>',{url:'http://invoice.test'})
 for(const k of ['window','document','HTMLElement','MouseEvent'])globalThis[k]=dom.window[k]

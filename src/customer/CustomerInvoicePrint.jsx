@@ -1,4 +1,5 @@
 import { asOcDate, formatOcDate } from '../ocTime.js'
+import { documentIssuerContact, hongKongDocumentIssuer } from '../domain/documentIssuer.js'
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { downloadInvoiceExcel } from '../invoiceExcel'
@@ -113,6 +114,9 @@ function InvoiceDocument({ invoiceKey, si, profile }) {
   if (loading) return <p style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading…</p>
   if (error) return <p style={{ padding: 40, textAlign: 'center', color: '#c00' }}>{error}</p>
 
+  const issuer = hongKongDocumentIssuer(header.date)
+  const issuerContact = documentIssuerContact(issuer, ' | ')
+
   return (
     <div className="si-doc">
       <style>{`
@@ -188,9 +192,9 @@ function InvoiceDocument({ invoiceKey, si, profile }) {
           <div className="si-title">INVOICE</div>
         </div>
         <div className="si-company">
-          <div className="nm">United Art Metals Factory Limited</div>
-          <div>11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong</div>
-          <div>WhatsApp: +852 4608 3219 | Email: sales@uart.com.hk</div>
+          <div className="nm">{issuer.name}</div>
+          <div>{issuer.address}</div>
+          <div>{issuerContact}</div>
         </div>
       </div>
 
@@ -264,7 +268,7 @@ function InvoiceDocument({ invoiceKey, si, profile }) {
           <div className="space">
             {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
           </div>
-          <div className="line">ISSUED BY · United Art Metals Factory Limited</div>
+          <div className="line">{`ISSUED BY · ${issuer.name}`}</div>
         </div>
         <div>
           <div className="space" />
@@ -273,9 +277,9 @@ function InvoiceDocument({ invoiceKey, si, profile }) {
       </div>
 
       <div className="si-foot">
-        <div className="nm">United Art Metals Factory Limited</div>
-        <div>11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong</div>
-        <div>WhatsApp: +852 4608 3219 | Email: sales@uart.com.hk</div>
+        <div className="nm">{issuer.name}</div>
+        <div>{issuer.address}</div>
+        <div>{issuerContact}</div>
       </div>
     </div>
   )
