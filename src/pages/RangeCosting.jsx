@@ -12,10 +12,10 @@ import { enumerateRangeSkus } from '../rangeSku'
 import { checkBomCoverage } from '../erpBomCoverage'
 import { useCrystalUnitCosts, crystalSizesOf, crystalBrandsForSize } from '../crystalCosting'
 import { DEFAULT_MARKUP } from '../pricing'
-import { costToHKD } from '../costCurrency'
+import { costToHKD, hkdRateForCostCurrency, normalizeCostCurrency } from '../costCurrency'
 import {
   componentCostAtQty, componentsCostHKD, extraLinesHKD,
-  toolingHKD, variantAllInCostHKD, variantSellHKD, productMarkup,
+  toolingHKD, rangePriceEstimate, readRangeCost, productMarkup,
   crystalBomCostHKD, missingCrystalLines,
 } from '../rangeCosting'
 
@@ -154,7 +154,11 @@ function BomCoverage({ prefixes, result, loading, error, onCheck }) {
   )
 }
 
-const DEFAULT_RATES = { RMB: 1.09, USD: 7.78, EUR: 8.60, HKD: 1 }
+function formatSubtotal(calculate) {
+  const { value, reason } = readRangeCost(calculate)
+  return reason || `HKD ${value.toFixed(2)}`
+}
+
 const newLineId = () => 'l_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 const blankCosting = () => ({ extra_lines: [], plating_costs: {}, crystal_bom: [], markup: '', tiers: [] })
 
@@ -201,7 +205,8 @@ function serialize(state) {
 export default function RangeCosting() {
   const { id } = useParams()
   const [product, setProduct] = useState(null)
-  const [rates, setRates] = useState(DEFAULT_RATES)
+  const [configuredRates, setConfiguredRates] = useState(null)
+  const [ratesError, setRatesError] = useState(false)
   const [state, setState] = useState(blankCosting())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -210,8 +215,8 @@ export default function RangeCosting() {
   // and only matters when someone is actually reviewing the costing.
   const [bom, setBom] = useState({ result: null, loading: false, error: '' })
 
-  const { components: lib } = useComponents()
-  const { items: crystalItems } = useCrystalUnitCosts()
+  const { components: lib, loading: componentsLoading } = useComponents()
+  const { items: crystalItems, loading: crystalLoading } = useCrystalUnitCosts()
   const crystalSizes = useMemo(() => crystalSizesOf(crystalItems), [crystalItems])
 
   useEffect(() => {
@@ -219,14 +224,21 @@ export default function RangeCosting() {
       if (s.exists()) { const p = { id: s.id, ...s.data() }; setProduct(p); setState(hydrate(p)) }
       setLoading(false)
     })
-    getDoc(doc(db, 'settings', 'exchange_rates')).then(s => {
-      if (s.exists()) {
-        const picked = Object.fromEntries(Object.entries(s.data()).filter(([, v]) => typeof v === 'number'))
-        setRates(r => ({ ...r, ...picked }))
-      }
-    })
   }, [id])
 
+  useEffect(() => {
+    let active = true
+    getDoc(doc(db, 'settings', 'exchange_rates')).then(s => {
+      if (!active) return
+      const numeric = Object.fromEntries(Object.entries(s.data() || {}).filter(([, value]) => typeof value === 'number'))
+      setConfiguredRates({ ...numeric, HKD: 1 })
+    }).catch(() => {
+      if (active) setRatesError(true)
+    })
+    return () => { active = false }
+  }, [])
+
+  const rates = configuredRates ?? { HKD: 1 }
   const variants = useMemo(() => (Array.isArray(product?.variants) ? product.variants : []), [product])
   const platings = useMemo(() => {
     const seen = new Map()
@@ -293,16 +305,31 @@ export default function RangeCosting() {
   const b0016PriceBlocked = product?.design_no === '0016' && product?.format_code === '000'
   const colourVariants = hasColourParts ? scopedVariants(draft) : []
   const summaryVariant = hasColourParts ? colourVariants[0] : null
-  const colourSubtotal = v => {
-    try { return `HKD ${componentsCostHKD(draft, lib, rates, 1, v).toFixed(2)}` }
-    catch { return 'Unavailable — review colour BOM' }
-  }
-  const compCostHKD = hasColourParts ? null : componentsCostHKD(draft, lib, rates, 1)
-  const extraHKD = extraLinesHKD(draft, rates)
-  const toolHKD = (() => { try { return toolingHKD(draft, lib, rates, summaryVariant) } catch { return null } })()
+  const componentSubtotal = variant => formatSubtotal(() => componentsCostHKD(draft, lib, rates, 1, variant))
+  const usdRate = hkdRateForCostCurrency('USD', rates)
+  const toolHKD = readRangeCost(() => toolingHKD(draft, lib, rates, summaryVariant)).value
   const markup = productMarkup(draft)
-  const tiers = serialize(state).tiers
+  const tiers = draft.costing.tiers
   const qtyCols = tiers.length ? tiers.map(t => t.quantity) : [1]
+  const inputsLoading = (!configuredRates && !ratesError)
+    || (refs.length > 0 && componentsLoading)
+    || (draft.costing.crystal_bom.length > 0 && crystalLoading)
+  const pricedVariants = variants.flatMap(variant => {
+    if (!hasColourParts || !Array.isArray(variant.crystal_colors) || !variant.crystal_colors.length) return [variant]
+    return variant.crystal_colors.map(crystal_code => ({ ...variant, crystal_code, crystal_colors: [crystal_code] }))
+  })
+  const priceRows = b0016PriceBlocked || inputsLoading || ratesError ? [] : pricedVariants.map(variant => ({
+    variant,
+    estimates: qtyCols.map(qty => rangePriceEstimate(draft, lib, rates, variant, qty, crystalItems)),
+  }))
+  let publishIssue = ''
+  if (b0016PriceBlocked) publishIssue = 'B0016 pricing is on hold pending assembly and packaging costs.'
+  else if (inputsLoading) publishIssue = 'Loading costing inputs…'
+  else if (ratesError) publishIssue = 'Exchange rates could not load. Refresh this page to retry.'
+  else if (!priceRows.length) publishIssue = 'Add a variant before publishing.'
+  else if (priceRows.some(row => row.estimates.some(estimate => estimate.reason))) {
+    publishIssue = 'Resolve the unavailable estimates above before publishing.'
+  }
 
   // ── editing helpers ─────────────────────────────────────────────────────────
   const setExtra = (i, key) => e => setState(s => ({
@@ -330,16 +357,12 @@ export default function RangeCosting() {
   const removeTier = i => setState(s => ({ ...s, tiers: s.tiers.filter((_, j) => j !== i) }))
 
   async function save({ publish } = {}) {
-    if (publish && b0016PriceBlocked) { setMsg('Error: B0016 finished-product pricing is not approved; assembly and packaging remain unresolved.'); return }
+    if (publish && publishIssue) { setMsg('Error: ' + publishIssue); return }
     setSaving(true); setMsg(null)
     try {
-      const costing = serialize(state)
-      if (publish) {
-        costing.published_at = serverTimestamp()
-        costing.markup_used = markup
-      }
+      const costing = publish ? { ...draft.costing, published_at: serverTimestamp(), markup_used: markup } : draft.costing
       await updateDoc(doc(db, 'range_products', id), { costing })
-      setProduct(p => ({ ...p, costing: { ...costing, published_at: publish ? new Date() : p?.costing?.published_at } }))
+      setProduct(p => ({ ...p, costing: publish ? { ...costing, published_at: new Date() } : costing }))
       setMsg(publish ? 'Costing saved and published.' : 'Costing saved.')
       setTimeout(() => setMsg(null), 3500)
     } catch (e) {
@@ -398,13 +421,15 @@ export default function RangeCosting() {
                       <p className="text-xs text-red-400"><AlertTriangle size={12} className="inline align-[-2px] mr-1" />No cost set — click the name above to add a supplier quote</p>
                     )}
                   </div>
-                  <p className="text-sm font-medium text-ink shrink-0">{hk != null ? `HKD ${hk.toFixed(2)}` : '—'}</p>
+                  <p className="text-sm font-medium text-ink shrink-0">
+                    {unit == null ? '—' : hk != null ? `HKD ${hk.toFixed(2)}` : `Unavailable (${normalizeCostCurrency(c.unit_cost_currency) || 'currency missing'})`}
+                  </p>
                 </div>
               )
             })}
             {hasColourParts ? (
               <>
-                {colourVariants.map(v => <div key={`${v.plating_code}-${v.crystal_code}`} className="py-2.5 flex items-center justify-between border-t border-warm-grey"><p className="text-sm font-semibold text-ink-80">{v.plating_code} · {v.crystal_code} component subtotal</p><p className="text-sm font-bold text-ink">{colourSubtotal(v)}</p></div>)}
+                {colourVariants.map(v => <div key={`${v.plating_code}-${v.crystal_code}`} className="py-2.5 flex items-center justify-between border-t border-warm-grey"><p className="text-sm font-semibold text-ink-80">{v.plating_code} · {v.crystal_code} component subtotal</p><p className="text-sm font-bold text-ink">{componentSubtotal(v)}</p></div>)}
                 <p className="pt-2 text-2xs text-ink-60">Each colour uses its matching fabric panel only. Shared metal is counted once per piece.</p>
                 {!colourVariants.length && <p role="alert" className="text-sm text-red-700">Colour-specific BOM has no resolvable variant; costing is unavailable.</p>}
               </>
@@ -416,7 +441,7 @@ export default function RangeCosting() {
                       {p.name} <span className="font-mono text-ink-60">{p.code}</span> component subtotal
                     </p>
                     <p className="text-sm font-bold text-ink">
-                      HKD {componentsCostHKD(draft, lib, rates, 1, { plating_code: p.code }).toFixed(2)}
+                      {componentSubtotal({ plating_code: p.code })}
                     </p>
                   </div>
                 ))}
@@ -428,7 +453,7 @@ export default function RangeCosting() {
             ) : (
               <div className="py-2.5 flex items-center justify-between border-t border-warm-grey">
                 <p className="text-sm font-semibold text-ink-80">Component subtotal</p>
-                <p className="text-sm font-bold text-ink">HKD {compCostHKD.toFixed(2)}</p>
+                <p className="text-sm font-bold text-ink">{componentSubtotal(null)}</p>
               </div>
             )}
           </div>
@@ -458,7 +483,7 @@ export default function RangeCosting() {
             ))}
           </div>
         )}
-        <p className="text-xs text-ink-60 mt-3">Extra subtotal: <span className="font-medium text-ink">HKD {extraHKD.toFixed(2)}</span></p>
+        <p className="text-xs text-ink-60 mt-3">Extra subtotal: <span className="font-medium text-ink">{formatSubtotal(() => extraLinesHKD(draft, rates))}</span></p>
       </div>
 
       {/* Plating adder */}
@@ -535,7 +560,7 @@ export default function RangeCosting() {
                 <div key={b.code}>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-ink-70">{b.name} crystal subtotal</span>
-                    <span className="font-medium text-ink">HKD {crystalBomCostHKD(draft, rates, { brand_code: b.code }, crystalItems).toFixed(2)}</span>
+                    <span className="font-medium text-ink">{formatSubtotal(() => crystalBomCostHKD(draft, rates, { brand_code: b.code }, crystalItems))}</span>
                   </div>
                   {missing.length > 0 && (
                     <p className="text-2xs text-red-500 flex items-center gap-1 mt-0.5">
@@ -581,7 +606,10 @@ export default function RangeCosting() {
       {/* Per-variant cost + sell table */}
       {b0016PriceBlocked ? <div className="card p-5 mb-5"><h2 className="text-sm text-ink-80 mb-2">Finished-product pricing unavailable</h2><p className="text-sm text-ink-60">B0016 component costs are provisional. Assembly and packaging remain unresolved. No finished-product selling price is calculated or published.</p></div> : <div className="card p-5 mb-5">
         <h2 className="text-sm text-ink-80 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup, USD)</span></h2>
-        <p className="text-xs text-ink-60 mb-3">All-in cost = components + extras + plating adder + crystal cost (+ tooling amortised). Sell = ⌈cost × markup⌉. Converted from HKD at {rates.USD} HKD/USD.</p>
+        <p className="text-xs text-ink-60 mb-3">
+          All-in cost includes components, extras, plating, crystals and tooling per piece. Sell price rounds up in HKD before converting to USD.
+          {usdRate != null && ` 1 USD = ${usdRate} HKD.`}
+        </p>
         <div className="overflow-x-auto -mx-5 px-5">
           <table className="text-sm border-separate border-spacing-0 w-full" style={{ minWidth: 360 + qtyCols.length * 120 + 'px' }}>
             <thead>
@@ -597,38 +625,37 @@ export default function RangeCosting() {
               <tr><td colSpan={qtyCols.length + 1} className="pb-1"><div className="border-b border-warm-grey" /></td></tr>
             </thead>
             <tbody>
-              {variants.map((v, idx) => {
+              {priceRows.map(({ variant: v, estimates }, idx) => {
                 const label = v.sku || [v.brand_code, v.plating_name].filter(Boolean).join(' · ') || `Variant ${idx + 1}`
                 return (
-                  <tr key={v.sku || idx} className={idx % 2 ? 'bg-ivory' : 'bg-white'}>
+                  <tr key={idx} className={idx % 2 ? 'bg-ivory' : 'bg-white'}>
                     <td className="py-2.5 pr-3 align-top">
                       <p className="font-mono text-xs text-ink">{label}</p>
-                      <p className="text-2xs text-ink-60">{[v.plating_name, (v.crystal_colors || []).join('/')].filter(Boolean).join(' · ')}</p>
+                      <p className="text-2xs text-ink-60">{[v.plating_name, (v.crystal_colors || []).join('/') || v.crystal_code].filter(Boolean).join(' · ')}</p>
                     </td>
-                    {qtyCols.map(q => {
-                      const costUSD = variantAllInCostHKD(draft, lib, rates, v, q, crystalItems) / (rates.USD || 7.78)
-                      const sellUSD = variantSellHKD(draft, lib, rates, v, q, markup, crystalItems) / (rates.USD || 7.78)
-                      return (
-                        <td key={q} className="py-2.5 px-3 text-right border-l border-warm-grey whitespace-nowrap">
-                          <span className="text-ink-60">{costUSD.toFixed(2)}</span>
-                          <span className="text-platinum"> → </span>
-                          <span className="font-semibold text-ink">{sellUSD.toFixed(2)}</span>
-                        </td>
-                      )
-                    })}
+                    {estimates.map(({ value, reason }, col) => (
+                      <td key={col} className="py-2.5 px-3 text-right border-l border-warm-grey">
+                        {reason ? <span className="text-xs text-brand-600">{reason}</span> : (
+                          <span className="whitespace-nowrap">
+                            <span className="text-ink-60">{value.costUSD.toFixed(2)}</span>
+                            <span className="text-platinum"> → </span>
+                            <span className="font-semibold text-ink">{value.sellUSD.toFixed(2)}</span>
+                          </span>
+                        )}
+                      </td>
+                    ))}
                   </tr>
                 )
               })}
-              {variants.length === 0 && (
+              {!pricedVariants.length && !inputsLoading && !ratesError && (
                 <tr><td colSpan={qtyCols.length + 1} className="py-4 text-center text-ink-60 text-sm">This product has no variants.</td></tr>
               )}
             </tbody>
           </table>
         </div>
         <p className="mt-3 text-xs text-ink-60">
-          Rates used: {Object.entries(rates).filter(([k, v]) => k !== 'HKD' && typeof v === 'number').map(([k, v]) => `1 ${k} = ${v} HKD`).join(' · ')}
-          {' · '}<Link to="/settings" className="text-brand-500 hover:underline">Update rates</Link>
-          {toolHKD > 0 && <> · Tooling USD {(toolHKD / (rates.USD || 7.78)).toFixed(2)} amortised over qty</>}
+          <Link to="/settings" className="text-brand-500 hover:underline">Update exchange rates</Link>
+          {toolHKD > 0 && usdRate != null && <> · Tooling USD {(toolHKD / usdRate).toFixed(2)} amortised over qty</>}
         </p>
       </div>}
 
@@ -636,13 +663,14 @@ export default function RangeCosting() {
       <div className="card p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
         <div className="text-xs text-ink-60">
           {product.costing?.published_at
-            ? <span className="inline-flex items-center gap-1 text-green-600"><BadgeCheck size={14} /> Published {formatOcDateTime(product.costing.published_at?.toDate?.(), {}) || ''}</span>
+            ? <span className="inline-flex items-center gap-1 text-green-600"><BadgeCheck size={14} /> Published {formatOcDateTime(product.costing.published_at)}</span>
             : 'Not published yet.'}
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => save()} disabled={saving} className="btn-secondary text-sm">{saving ? 'Saving…' : 'Save costing'}</button>
-          <button onClick={() => save({ publish: true })} disabled={saving || b0016PriceBlocked} className="btn-primary text-sm">{saving ? 'Saving…' : 'Save & publish'}</button>
+          <button onClick={() => save({ publish: true })} disabled={saving || !!publishIssue} className="btn-primary text-sm">{saving ? 'Saving…' : 'Save & publish'}</button>
         </div>
+        {publishIssue && <p className="w-full text-xs text-ink-60" role="status">{publishIssue}</p>}
         {msg && <p className={`w-full text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
       </div>
     </div>

@@ -8,6 +8,8 @@ import { getComponent, saveComponentQuote, deleteComponentQuote } from '../criti
 import { FolderOpen, Paperclip, FileText, X } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useT } from '../i18n'
+import SupplierUnitCostInput from '../components/SupplierUnitCostInput'
+import { hasUnchangedQuoteTerms, saveQuoteAttachments } from '../supplierQuoteAttachments'
 
 const blank = {
   supplier_id: '', supplier_name: '', unit_cost: '', unit_cost_currency: 'RMB',
@@ -17,13 +19,21 @@ const blank = {
 }
 
 export default function RangeQuoteForm() {
-  const t = useT()
   const { id: componentId, quoteId } = useParams()
+  return <RangeQuoteEditor key={JSON.stringify([componentId, quoteId])} componentId={componentId} quoteId={quoteId} />
+}
+
+function RangeQuoteEditor({ componentId, quoteId }) {
+  const t = useT()
   const isEdit = Boolean(quoteId)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const backUrl = searchParams.get('back') || `/components/critical/${componentId}`
   const fileIdRef = useRef(0)
+  const originalQuoteRef = useRef(null)
+  const mounted = useRef(false)
+  const busy = useRef(false)
+  const quoteRef = () => doc(db, 'range_components', componentId, 'supplier_quotes', quoteId)
 
   const [component, setComponent] = useState(null)
   const [suppliers, setSuppliers] = useState([])
@@ -34,36 +44,61 @@ export default function RangeQuoteForm() {
   const [dragOver, setDragOver] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const saveErrorRef = useRef(null)
   const [fetching, setFetching] = useState(true)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
+    if (saveError) saveErrorRef.current?.focus()
+  }, [saveError])
+
+  useEffect(() => {
+    mounted.current = true
+    let active = true
     const loads = [
-      getDocs(query(collection(db, 'suppliers'), orderBy('name'))).then(snap =>
-        setSuppliers(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
-      getComponent(componentId).then(setComponent),
+      getDocs(query(collection(db, 'suppliers'), orderBy('name'))).then(snap => {
+        if (active) setSuppliers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      }),
+      getComponent(componentId).then(component => {
+        if (!component) throw new Error('The cost component could not be found.')
+        if (active) setComponent(component)
+      }),
     ]
     if (isEdit) {
-      loads.push(getDoc(doc(db, 'range_components', componentId, 'supplier_quotes', quoteId)).then(snap => {
-        if (snap.exists()) {
-          const d = snap.data()
-          setForm({
-            supplier_id: d.supplier_id || '', supplier_name: d.supplier_name || '',
-            unit_cost: d.unit_cost ?? '', unit_cost_currency: d.unit_cost_currency || 'RMB',
-            moq: d.moq ?? '', tooling_sample_cost: d.tooling_sample_cost ?? '',
-            tooling_sample_cost_currency: d.tooling_sample_cost_currency || 'RMB',
-            sampling_lead_time_days: d.sampling_lead_time_days ?? '',
-            tooling_lead_time_days: d.tooling_lead_time_days ?? '',
-            production_lead_time_days: d.production_lead_time_days ?? '',
-            is_preferred: d.is_preferred || false, notes: d.notes || '',
-          })
-          setVolumeTiers(d.volume_tiers || [])
-          setExistingAttachments(d.attachments || [])
+      loads.push(getDoc(quoteRef()).then(snap => {
+        if (!active) return
+        if (!snap.exists()) throw new Error('The supplier quote could not be found.')
+        const d = snap.data()
+        const loaded = {
+          supplier_id: d.supplier_id || '', supplier_name: d.supplier_name || '',
+          unit_cost: d.unit_cost ?? '', unit_cost_currency: d.unit_cost_currency || 'RMB',
+          moq: d.moq ?? '', tooling_sample_cost: d.tooling_sample_cost ?? '',
+          tooling_sample_cost_currency: d.tooling_sample_cost_currency || 'RMB',
+          sampling_lead_time_days: d.sampling_lead_time_days ?? '',
+          tooling_lead_time_days: d.tooling_lead_time_days ?? '',
+          production_lead_time_days: d.production_lead_time_days ?? '',
+          is_preferred: d.is_preferred || false, notes: d.notes || '',
         }
+        const tiers = d.volume_tiers || []
+        const attachments = d.attachments || []
+        originalQuoteRef.current = { form: loaded, tiers, attachments }
+        setForm(loaded)
+        setVolumeTiers(tiers)
+        setExistingAttachments(attachments)
       }))
     }
-    Promise.all(loads).finally(() => setFetching(false))
+    Promise.all(loads).catch(error => {
+      if (active) setLoadError(error.message)
+    }).finally(() => {
+      if (active) setFetching(false)
+    })
+    return () => {
+      active = false
+      mounted.current = false
+    }
   }, [componentId, quoteId, isEdit])
 
   const set = field => e => setForm(f => ({ ...f, [field]: e.target.value }))
@@ -79,10 +114,8 @@ export default function RangeQuoteForm() {
       isPdf: file.type === 'application/pdf',
       preview: file.type === 'application/pdf' ? null : URL.createObjectURL(file),
     }))
-    setFiles(prev => {
-      if (next.length === 1 && prev.length === 0) extractFromFile(next[0].file)
-      return [...prev, ...next]
-    })
+    setFiles(prev => [...prev, ...next])
+    if (!isEdit && next.length === 1 && files.length === 0) extractFromFile(next[0].file)
   }
 
   function handleDrop(e) {
@@ -121,6 +154,9 @@ export default function RangeQuoteForm() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (busy.current || extracting || fetching || loadError) return
+    busy.current = true
+    setSaveError('')
     setSaving(true)
     try {
       const path = `range_components/${componentId}/quotes`
@@ -132,19 +168,32 @@ export default function RangeQuoteForm() {
         const url = await getDownloadURL(fileRef)
         return { file_url: url, file_name: file.name, file_type: isPdf ? 'pdf' : 'image', uploaded_at: new Date().toISOString() }
       }))
-      await saveComponentQuote(componentId, isEdit ? quoteId : null, {
-        ...form,
-        volume_tiers: volumeTiers,
-        attachments: [...existingAttachments, ...uploaded],
-      })
-      navigate(backUrl)
+      if (!mounted.current) return
+      const attachments = [...existingAttachments, ...uploaded]
+      const original = originalQuoteRef.current
+      if (isEdit && hasUnchangedQuoteTerms(original, form, volumeTiers)) {
+        await saveQuoteAttachments(quoteRef(), original.attachments, attachments, {
+          isOpen: () => mounted.current,
+        })
+      } else {
+        await saveComponentQuote(componentId, isEdit ? quoteId : null, { ...form, volume_tiers: volumeTiers, attachments })
+      }
+      if (mounted.current) navigate(backUrl)
     } catch (err) {
-      setExtractError(err.message || t('Save failed.'))
-      setSaving(false)
+      if (mounted.current) setSaveError(err.message || t('Save failed.'))
+    } finally {
+      busy.current = false
+      if (mounted.current) setSaving(false)
     }
   }
 
   if (fetching) return <div className="p-6 text-ink-60">{t('Loading…')}</div>
+  if (loadError) return (
+    <div className="p-6 space-y-3">
+      <Link to={backUrl} className="text-sm text-brand-600">{t('Back to component')}</Link>
+      <p role="alert" className="text-sm text-brand-600">{t(loadError)}</p>
+    </div>
+  )
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
@@ -160,7 +209,9 @@ export default function RangeQuoteForm() {
       {/* Image upload + OCR */}
       <div className="card p-4 mb-4">
         <h2 className="text-sm text-ink-80 mb-3">{t('Quote Images / Screenshots')}</h2>
-        <p className="text-xs text-ink-60 mb-3">{t('Upload WeChat / WhatsApp screenshots or a PDF — AI will try to extract the pricing automatically.')}</p>
+        <p className="text-xs text-ink-60 mb-3">{isEdit
+          ? t('Attach screenshots or PDFs as source documents.')
+          : t('Upload WeChat / WhatsApp screenshots or a PDF — AI will try to extract the pricing automatically.')}</p>
         <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
  ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -183,7 +234,7 @@ export default function RangeQuoteForm() {
                 <button type="button" onClick={() => setFiles(prev => prev.filter(x => x._id !== f._id))} className="text-xs text-red-500 hover:text-red-700">{t('Remove')}</button>
               </div>
             ))}
-            {files.length > 1 && (
+            {!isEdit && files.length > 1 && (
               <button type="button" className="btn-secondary w-full justify-center text-xs" onClick={() => extractFromFile(files[0].file)} disabled={extracting}>
                 {extracting ? t('Extracting…') : t('Extract data from first image')}
               </button>
@@ -224,7 +275,8 @@ export default function RangeQuoteForm() {
         <div>
           <label className="label">{t('Unit Cost *')}</label>
           <div className="flex gap-2">
-            <input className="input flex-1" type="number" step="0.01" min="0" value={form.unit_cost} onChange={set('unit_cost')} required placeholder="0.00" />
+            <SupplierUnitCostInput className="input min-w-0 flex-1" value={form.unit_cost}
+                                   storedValue={originalQuoteRef.current?.form.unit_cost} onChange={set('unit_cost')} required />
             <select className="input w-28" value={form.unit_cost_currency} onChange={set('unit_cost_currency')}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
           </div>
         </div>
@@ -241,7 +293,8 @@ export default function RangeQuoteForm() {
                 <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
                   <input className="input py-1.5 text-sm" type="number" min="1" placeholder="e.g. 500" value={tier.min_qty}
                          onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, min_qty: e.target.value } : r))} />
-                  <input className="input py-1.5 text-sm" type="number" step="0.01" min="0" placeholder="0.00" value={tier.unit_cost}
+                  <SupplierUnitCostInput className="input min-w-0 py-1.5 text-sm" value={tier.unit_cost}
+                         storedValue={originalQuoteRef.current?.tiers[i]?.unit_cost}
                          onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, unit_cost: e.target.value } : r))} />
                   <button type="button" onClick={() => setVolumeTiers(prev => prev.filter((_, j) => j !== i))} className="text-red-300 hover:text-red-500 text-lg leading-none px-1">×</button>
                 </div>
@@ -282,9 +335,10 @@ export default function RangeQuoteForm() {
           <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder={t('Conditions, remarks, context…')} />
         </div>
 
+        {saveError && <p ref={saveErrorRef} tabIndex={-1} role="alert" className="text-sm text-brand-600 break-words">{t(saveError)}</p>}
         <div className="flex items-center justify-between pt-2">
           <div className="flex gap-3">
-            <button type="submit" className="btn-primary" disabled={saving}>{saving ? t('Saving…') : isEdit ? t('Save Changes') : t('Add Quote')}</button>
+            <button type="submit" className="btn-primary" disabled={saving || extracting}>{saving ? t('Saving…') : isEdit ? t('Save Changes') : t('Add Quote')}</button>
             <button type="button" className="btn-secondary" onClick={() => navigate(backUrl)}>{t('Cancel')}</button>
           </div>
           {isEdit && <button type="button" className="text-sm text-red-500 hover:text-red-700" onClick={() => setConfirmDelete(true)}>{t('Delete Quote')}</button>}

@@ -50,7 +50,12 @@ it links the original URL/path and source file ID, without another upload.
 When the form and tiers are unchanged, Save Changes runs an attachment-only
 transaction. It preserves every other stored field, including concurrent pricing,
 notes and preference changes, and rejects a concurrent attachment-array change.
-Actual pricing/form edits retain the existing full quote-save workflow.
+Corporate Gift edits send the fields changed in the editor. The quote editor
+and supplier quick-add save the preferred quote and clear the previous
+preference in one transaction. Both writers touch the component record when
+changing preference so concurrent selections retry against the latest quotes.
+`qa/corporate-supplier-quotes-emulator.mjs` covers competing selections and an
+atomic commit rejected by Firestore.
 V8.20 save-conflict fix (29 October 2026): comparisons use shared
 `src/firestoreValue.js`, ignoring map key order while preserving array order,
 field presence, types and values. Identical cached/server attachment maps must

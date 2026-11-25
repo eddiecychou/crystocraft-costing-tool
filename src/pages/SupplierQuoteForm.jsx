@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, runTransaction, serverTimestamp, orderBy, query } from 'firebase/firestore'
+import { collection, doc, deleteDoc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage, authHeader } from '../firebase'
 import { CURRENCIES } from '../constants'
 import { FolderOpen, Paperclip, FileText, X, Copy, ChevronUp, ChevronDown } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { sameFirestoreValue } from '../firestoreValue'
+import SupplierUnitCostInput from '../components/SupplierUnitCostInput'
+import { hasUnchangedQuoteTerms, saveQuoteAttachments } from '../supplierQuoteAttachments'
+import { corporateQuoteEditPatch, saveCorporateSupplierQuote } from '../corporateSupplierQuotes'
 import { saveComponentQuote, deleteComponentQuote } from '../criticalComponents'
 
 export default function SupplierQuoteForm({ mode = 'corp' }) {
@@ -111,7 +113,7 @@ function SupplierQuoteEditor({ mode }) {
         isEdit ? getDoc(quoteRef()) : Promise.resolve(null),
       ])
       if (!alive) return
-      if (isRange && isEdit && !quote.exists()) throw new Error('This supplier quote could not be found. Return to the component before adding a new quote.')
+      if (isEdit && !quote.exists()) throw new Error('This supplier quote could not be found. Return to the component before adding a new quote.')
       setSuppliers(supplierSnap.docs.map(d => ({ id: d.id, ...d.data() })))
       setProductName(details.product?.name || (isRange ? 'Components' : ''))
       setComponentName(isCrystal
@@ -325,20 +327,10 @@ function SupplierQuoteEditor({ mode }) {
       setUploading(false)
 
       const original = originalQuoteRef.current
-      const attachmentsOnly = isEdit && original &&
-        sameFirestoreValue(form, original.form) &&
-        sameFirestoreValue(volumeTiers, original.tiers)
-      if (attachmentsOnly) {
-        const existingQuoteRef = quoteRef()
-        await runTransaction(db, async tx => {
-          if (isRange) await readRangeContext(ref => tx.get(ref))
-          const latest = await tx.get(existingQuoteRef)
-          if (!mounted.current) throw new Error('This quote editor is no longer open. Reopen the quote before saving.')
-          if (!latest.exists() || !sameFirestoreValue(latest.data().attachments || [], original.attachments)) {
-            throw new Error('Attachments changed in another session. Reopen this quote before saving.')
-          }
-          // Never rewrite approved prices, notes or supplier preference from an open form.
-          tx.update(existingQuoteRef, {attachments:[...existingAttachments, ...uploadedAttachments]})
+      if (isEdit && hasUnchangedQuoteTerms(original, form, volumeTiers)) {
+        await saveQuoteAttachments(quoteRef(), original.attachments, [...existingAttachments, ...uploadedAttachments], {
+          validateContext: isRange ? readRangeContext : undefined,
+          isOpen: () => mounted.current,
         })
         if (mounted.current) navigate(backUrl)
         return
@@ -368,20 +360,12 @@ function SupplierQuoteEditor({ mode }) {
         // Ordinary Range callers keep the existing save/preference semantics.
         await saveComponentQuote(componentId, isEdit ? quoteId : null, payload, context)
       } else {
-        const basePath = collection(db, 'products', productId, 'components', componentId, 'supplier_quotes')
-        // If marking as preferred, clear is_preferred on all other quotes for this component first
-        if (payload.is_preferred) {
-          const existing = await getDocs(basePath)
-          if (!mounted.current) return
-          await Promise.all(
-            existing.docs
-              .filter(d => d.id !== quoteId)
-              .map(d => updateDoc(d.ref, { is_preferred: false }))
-          )
-        }
-        if (!mounted.current) return
-        if (isEdit) await updateDoc(quoteRef(), payload)
-        else await addDoc(basePath, { ...payload, createdAt: serverTimestamp() })
+        await saveCorporateSupplierQuote({
+          productId, componentId, quoteId,
+          data: isEdit ? corporateQuoteEditPatch(payload, form, volumeTiers, original) : payload,
+          originalAttachments: original?.attachments,
+          isOpen: () => mounted.current,
+        })
       }
 
       if (mounted.current) navigate(backUrl)
@@ -547,7 +531,8 @@ function SupplierQuoteEditor({ mode }) {
         <div>
           <label className="label">Unit Cost *</label>
           <div className="flex gap-2">
-            <input className="input min-w-0 flex-1" type="number" step="0.001" min="0" value={form.unit_cost} onChange={set('unit_cost')} required placeholder="0.000" />
+            <SupplierUnitCostInput className="input min-w-0 flex-1" value={form.unit_cost}
+                                   storedValue={originalQuoteRef.current?.form.unit_cost} onChange={set('unit_cost')} required />
             <select className="input w-28" value={form.unit_cost_currency} onChange={set('unit_cost_currency')}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
@@ -570,8 +555,9 @@ function SupplierQuoteEditor({ mode }) {
                 <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
                   <input className="input min-w-0 py-1.5 text-sm" type="number" min="1" placeholder="e.g. 500"
                     value={t.min_qty} onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, min_qty: e.target.value } : r))} />
-                  <input className="input min-w-0 py-1.5 text-sm" type="number" step="0.001" min="0" placeholder="0.000"
-                    value={t.unit_cost} onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, unit_cost: e.target.value } : r))} />
+                  <SupplierUnitCostInput className="input min-w-0 py-1.5 text-sm" value={t.unit_cost}
+                    storedValue={originalQuoteRef.current?.tiers[i]?.unit_cost}
+                    onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, unit_cost: e.target.value } : r))} />
                   <button type="button" onClick={() => setVolumeTiers(t => t.filter((_, j) => j !== i))}
                     className="text-red-300 hover:text-red-500 text-lg leading-none px-1">×</button>
                 </div>

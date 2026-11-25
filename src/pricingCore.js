@@ -4,12 +4,15 @@ import { costToHKD } from './costCurrency.js'
 // path. Pricing is calculated by code, never inferred by a model.
 export const DEFAULT_MARKUP = 2.0
 
+const hasCost = value => value != null && (typeof value !== 'string' || value.trim() !== '')
+
 export function componentUnitCostAtQty(q, orderQty) {
-  if (!q || q.unit_cost == null) return null
-  const applicable = (q.volume_tiers || [])
-    .filter(t => t.min_qty <= orderQty)
+  if (!hasCost(q?.unit_cost)) return null
+  const tiers = Array.isArray(q.volume_tiers) ? q.volume_tiers : []
+  const applicable = tiers
+    .filter(t => t && t.min_qty <= orderQty)
     .sort((a, b) => b.min_qty - a.min_qty)[0]
-  return Number(applicable?.unit_cost ?? q.unit_cost)
+  return Number(hasCost(applicable?.unit_cost) ? applicable.unit_cost : q.unit_cost)
 }
 
 export function unitCostHKDAtQty(components, rates, orderQty) {

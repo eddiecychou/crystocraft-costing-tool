@@ -10,13 +10,15 @@ const serve=process.argv.includes('--serve')
 await mkdir(out,{recursive:true})
 const stub=`
 export const db={}, storage={}, authHeader=async()=>({});
-export const doc=(_, ...p)=>p.join('/'), collection=doc, orderBy=x=>x, query=x=>x, serverTimestamp=()=> 'timestamp';
+const path=(base,parts)=>[typeof base==='string'?base:'',...parts].filter(Boolean).join('/');
+export const collection=(base,...p)=>path(base,p),doc=(base,...p)=>path(base,p.length?p:['new']),orderBy=x=>x,query=x=>x,serverTimestamp=()=> 'timestamp';
 const qp='products/p/components/c/supplier_quotes/q';
 const initial={supplier_id:'s',supplier_name:'Feihong',unit_cost:1.222,unit_cost_currency:'USD',moq:1000,tooling_sample_cost:155,tooling_sample_cost_currency:'USD',is_preferred:true,notes:'Keep existing approved notes. 中文',volume_tiers:[{min_qty:2000,unit_cost:1.111}],attachments:${serve?"[{file_url:'/source.pdf',file_name:'source.pdf',file_type:'pdf',ai_extracted:false}]":"[]"},createdAt:'original'};
 let records={},writes=[],uploads=0;
 const snap=p=>({id:p.split('/').at(-1),ref:p,exists:()=>!!records[p],data:()=>structuredClone(records[p])});
 export const getDoc=async p=>snap(p);
 export const getDocs=async p=>({docs:Object.keys(records).filter(k=>k.startsWith(p+'/')&&!k.slice(p.length+1).includes('/')).map(snap)});
+export const getDocsFromServer=getDocs;
 export const updateDoc=async(p,d)=>{writes.push({path:p,data:structuredClone(d)});records[p]={...records[p],...d}};
 export const addDoc=async(p,d)=>{await updateDoc(p+'/new',d);return{id:'new'}};
 export const deleteDoc=async()=>{throw Error('Unexpected deletion')};
@@ -36,12 +38,12 @@ const require=createRequire(root+'/.qa-playwright/package.json'),{chromium}=requ
 page.on('pageerror',e=>errors.push(e.message))
 let extractions=0
 await page.route('**/api/process-quote',async route=>{extractions++;await route.fulfill({json:{unit_cost:9.999,moq:99,tooling_sample_cost:999}})})
-const url=base+'/products/p/components/c/quotes/q',qp='products/p/components/c/supplier_quotes/q',pdf={name:'quote.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-test')},main=page.locator('input[step="0.001"]').first(),tier=page.locator('input[step="0.001"]').nth(1)
+const url=base+'/products/p/components/c/quotes/q',qp='products/p/components/c/supplier_quotes/q',pdf={name:'quote.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-test')},main=page.locator('input[placeholder="0.000"]').first(),tier=page.locator('input[placeholder="0.000"]').nth(1)
 const load=async()=>{await page.goto(url);await main.waitFor();await page.waitForFunction(()=>document.querySelector('input[step="0.001"]').value==='1.222')}
 const unchanged=async()=>{assert.equal(await main.inputValue(),'1.222');assert.equal(await page.locator('input[placeholder="e.g. 200"]').inputValue(),'1000');assert.equal(await page.locator('input[step="0.01"]').inputValue(),'155');assert.equal(await page.locator('textarea').inputValue(),'Keep existing approved notes. 中文');assert.ok(await page.locator('#preferred').isChecked());assert.equal(await tier.inputValue(),'1.111')}
 const results=[]
 try{
- await load();await unchanged();assert.equal(await page.locator('h1').count(),1);assert.equal(await main.getAttribute('placeholder'),'0.000');assert.equal(await tier.getAttribute('placeholder'),'0.000');assert.ok(await main.evaluate(el=>el.checkValidity()));assert.ok(await tier.evaluate(el=>el.checkValidity()))
+ await load();await unchanged();assert.equal(await page.locator('h1').count(),1);assert.equal(await main.getAttribute('step'),'0.001');assert.equal(await tier.getAttribute('step'),'0.001');assert.ok(await main.evaluate(el=>el.checkValidity()));assert.ok(await tier.evaluate(el=>el.checkValidity()))
  for(const width of [320,375,414,1280]){await page.setViewportSize({width,height:1000});await page.waitForTimeout(150);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'overflow at '+width);if(width===320||width===1280)await page.screenshot({path:out+'/fixture-'+width+'.png'})}
  results.push('Three-decimal native validity, exact initial values and four widths')
  await page.locator('input[type=file]').setInputFiles(pdf);await unchanged();assert.equal(extractions,0)

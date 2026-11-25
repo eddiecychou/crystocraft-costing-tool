@@ -38,36 +38,49 @@
 //        + plating adder + crystal BOM cost  (+ tooling amortised over qty)
 // Sell = ceil(cost × markup).
 
-import { resolveRef } from './criticalComponents'
-import { DEFAULT_MARKUP } from './pricing'
+import { resolveRef } from './availability'
+import { DEFAULT_MARKUP, componentUnitCostAtQty } from './pricingCore'
 import { resolveCrystalCost } from './crystalCosting'
-import { costToHKD } from './costCurrency'
+import { costToHKD, hkdRateForCostCurrency, normalizeCostCurrency } from './costCurrency'
 import { bomRefApplies, colourScope } from './rangeBomScope'
 
-const toHKD = (amount, currency, rates) =>
-  costToHKD(amount, currency, rates) ?? 0
+class RangeCostingInputError extends Error {
+  constructor(reason, code) {
+    super(code ? `${code}: ${reason}` : reason)
+    this.reason = reason
+  }
+}
+
+export function readRangeCost(calculate) {
+  try {
+    return { value: calculate(), reason: '' }
+  } catch (error) {
+    if (!(error instanceof RangeCostingInputError)) throw error
+    return { value: null, reason: error.reason }
+  }
+}
+
+function toHKD(amount, currency, rates) {
+  const cost = costToHKD(amount, currency, rates)
+  if (cost != null) return cost
+  const code = normalizeCostCurrency(currency)
+  if (!code) throw new RangeCostingInputError('Cost currency is missing.')
+  if (hkdRateForCostCurrency(code, rates) == null) {
+    throw new RangeCostingInputError(`Exchange rate unavailable for ${code}.`)
+  }
+  throw new RangeCostingInputError(`Invalid ${code} cost.`)
+}
 
 const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
 
 function requireColourSelection(refs, lib, variant) {
   if (!refs.some(colourScope)) return
-  if (!variant?.crystal_code) throw new Error('BOM_VARIANT_REQUIRED: select an explicit colour before costing')
+  if (!variant?.crystal_code) throw new RangeCostingInputError('Select a colour before costing.', 'BOM_VARIANT_REQUIRED')
   const selected = refs.filter(r => colourScope(r) && bomRefApplies(r, resolveRef(r, lib), variant))
-  if (!selected.length) throw new Error('BOM_COLOUR_COMPONENT_MISSING: no component is linked for this colour')
+  if (!selected.length) throw new RangeCostingInputError('No component is linked for this colour.', 'BOM_COLOUR_COMPONENT_MISSING')
 }
 
-// Unit cost of one component at an order quantity, honouring its volume tiers.
-export function componentCostAtQty(component, orderQty) {
-  if (!component || component.unit_cost == null) return null
-  const tiers = component.volume_tiers
-  if (Array.isArray(tiers) && tiers.length) {
-    const applicable = tiers
-      .filter(t => t.min_qty <= orderQty)
-      .sort((a, b) => b.min_qty - a.min_qty)[0]
-    if (applicable) return Number(applicable.unit_cost)
-  }
-  return Number(component.unit_cost)
-}
+export { componentUnitCostAtQty as componentCostAtQty }
 
 // Recurring component cost (HKD) for one finished piece at a given order qty.
 // When variant is provided, refs tagged with a plating_code only contribute if
@@ -81,8 +94,10 @@ export function componentsCostHKD(product, lib, rates, orderQty, variant = null)
     // Plating scope: `all_variants` forces shared; else ref override, else the
     // component's own plating (Decision 2). '' ⇒ applies to every variant.
     if (variant && !bomRefApplies(r, c, variant)) return sum
-    const unit = componentCostAtQty(c, orderQty)
-    if (unit == null) return sum
+    const unit = componentUnitCostAtQty(c, orderQty)
+    if (unit == null) {
+      throw new RangeCostingInputError(`Unit cost unavailable for ${c?.code || r.code || r.id || 'a linked component'}.`)
+    }
     return sum + toHKD(unit, c.unit_cost_currency, rates) * perUnit(r)
   }, 0)
 }
@@ -102,11 +117,7 @@ const lineAppliesTo = (line, variantBrandCode) => {
 }
 
 // Crystal BOM cost (HKD) for one finished piece of a specific variant. Each
-// line's qty is fixed per design; a line out of scope for this variant (see
-// `lineAppliesTo`) contributes 0 — that's an intentional exclusion, not a
-// missing price. A line in scope with no resolvable (size, brand) price also
-// contributes 0 — callers that need to warn about that should check
-// `missingCrystalLines` instead of relying on a silent zero.
+// line's qty is fixed per design. Only in-scope lines require a price.
 export function crystalBomCostHKD(product, rates, variant, crystalLib) {
   const bom = Array.isArray(product?.costing?.crystal_bom) ? product.costing.crystal_bom : []
   if (!bom.length) return 0
@@ -116,9 +127,10 @@ export function crystalBomCostHKD(product, rates, variant, crystalLib) {
     if (!qty || !line.size) return sum
     if (!lineAppliesTo(line, variantBrandCode)) return sum
     const brand = (line.brand || '').trim()
-    if (!brand) return sum
     const item = resolveCrystalCost(crystalLib, line.size, brand)
-    if (!item || item.cost == null) return sum
+    if (!brand || item?.cost == null) {
+      throw new RangeCostingInputError(`Crystal cost unavailable for ${[line.size, brand].filter(Boolean).join(' · ')}.`)
+    }
     return sum + toHKD(item.cost, item.currency, rates) * qty
   }, 0)
 }
@@ -185,15 +197,12 @@ export function productMarkup(product) {
   return Number.isFinite(m) && m > 0 ? m : DEFAULT_MARKUP
 }
 
-// Sell price (HKD, rounded up) for a variant at a qty under a given markup.
-export function variantSellHKD(product, lib, rates, variant, orderQty, markup, crystalLib) {
-  const mk = Number.isFinite(markup) && markup > 0 ? markup : productMarkup(product)
-  return Math.ceil(variantAllInCostHKD(product, lib, rates, variant, orderQty, crystalLib) * mk)
-}
-
-// True when a product has any usable costing data to publish.
-export function hasCosting(product, lib, rates) {
-  const refs = Array.isArray(product?.critical_components) ? product.critical_components : []
-  const anyComp = refs.some(r => componentCostAtQty(resolveRef(r, lib), 1) != null)
-  return anyComp || extraLinesHKD(product, rates) > 0
+export function rangePriceEstimate(product, lib, rates, variant, orderQty, crystalLib) {
+  return readRangeCost(() => {
+    const costHKD = variantAllInCostHKD(product, lib, rates, variant, orderQty, crystalLib)
+    const sellHKD = Math.ceil(costHKD * productMarkup(product))
+    // The same rate validation applies to the USD display conversion.
+    const usdRate = toHKD(1, 'USD', rates)
+    return { costUSD: costHKD / usdRate, sellUSD: sellHKD / usdRate }
+  })
 }

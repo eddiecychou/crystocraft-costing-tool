@@ -17,7 +17,7 @@ Object.defineProperty(globalThis, 'navigator', {value:dom.window.navigator, conf
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const {createRoot} = await import('react-dom/client')
 const {Simulate} = await import('react-dom/test-utils')
-let scratch, Form
+let scratch, Form, RangeForm, QuickAdd
 const attachment = {file_url:'/source.pdf',file_name:'source.pdf',file_type:'pdf',metadata:{source:'supplier',revision:1}}
 const initial = {
   supplier_id:'s',supplier_name:'Supplier',unit_cost:1.222,unit_cost_currency:'USD',moq:1000,
@@ -27,39 +27,78 @@ const initial = {
 }
 before(async () => {
   scratch = await mkdtemp(join(tmpdir(),'oc-quote-save-'))
-  await build({entryPoints:['src/pages/SupplierQuoteForm.jsx'],outfile:join(scratch,'form.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{
+  await build({entryPoints:{SupplierQuoteForm:'src/pages/SupplierQuoteForm.jsx',RangeQuoteForm:'src/pages/RangeQuoteForm.jsx',SupplierAddQuoteModal:'src/components/SupplierAddQuoteModal.jsx'},outdir:scratch,outExtension:{'.js':'.mjs'},bundle:true,platform:'node',format:'esm',jsx:'automatic',plugins:[{
     name:'isolated-quote-boundaries',setup(b) {
       b.onResolve({filter:/^(react(?:\/.*)?|lucide-react)$/},a=>({path:require.resolve(a.path),external:true}))
-      b.onResolve({filter:/^(react-router-dom|firebase\/firestore|firebase\/storage)$|(^|\/)(firebase|criticalComponents)$/},a=>({path:a.path,namespace:'fixture'}))
+      b.onResolve({filter:/^(react-router-dom|firebase\/firestore|firebase\/storage)$|(^|\/)(firebase|criticalComponents|i18n)$/},a=>({path:a.path,namespace:'fixture'}))
       b.onLoad({filter:/.*/,namespace:'fixture'},a=>({loader:'js',contents:
-        a.path==='react-router-dom' ? `import React from 'react';export const useParams=()=>({productId:'p',componentId:'c',quoteId:'q'});export const useNavigate=()=>to=>globalThis.__quoteSave.destination=to;export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children);` :
+        a.path==='react-router-dom' ? `import React from 'react';
+          export const useParams=()=>({id:'c',productId:'p',componentId:'c',quoteId:'q'});
+          export const useSearchParams=()=>[new URLSearchParams('back=%2Frange%2Fexample%2Fcosting')];
+          export const useNavigate=()=>to=>globalThis.__quoteSave.destination=to;
+          export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children);` :
         a.path==='firebase/firestore' ? `
           const state=()=>globalThis.__quoteSave;
-          export const doc=(_, ...p)=>p.join('/'),collection=doc,query=x=>x,orderBy=x=>x,serverTimestamp=()=> 'timestamp';
+          const path=(base, parts)=>[typeof base==='string'?base:'',...parts].filter(Boolean).join('/');
+          export const collection=(base,...p)=>path(base,p),doc=(base,...p)=>path(base,p.length?p:['new-quote']);
+          export const query=x=>x,orderBy=x=>x,serverTimestamp=()=> 'timestamp';
           const snap=(p,data)=>({id:p.split('/').at(-1),ref:p,exists:()=>!!data,data:()=>structuredClone(data)});
           export const getDoc=async p=>snap(p,p.endsWith('/q')?state().quote:{name:'Fixture product/component'});
-          export const getDocs=async p=>({docs:p==='suppliers'?[snap('suppliers/s',{name:'Supplier'})]:p.endsWith('/catalogs')?[snap(p+'/f',{file_name:'Additional.pdf',file_url:'/additional.pdf',file_type:'application/pdf'})]:[]});
-          export const updateDoc=async(p,data)=>{state().writes.push({path:p,data:structuredClone(data)});state().quote={...state().quote,...data}};
+          export const getDocs=async p=>({docs:p==='suppliers'?[snap('suppliers/s',{name:'Supplier'})]:
+            p.endsWith('/catalogs')?[snap(p+'/f',{file_name:'Additional.pdf',file_url:'/additional.pdf',file_type:'application/pdf'})]:
+            p==='products'?[snap(p+'/p',{name:'Fixture gift'})]:
+            p==='products/p/components'?[snap(p+'/c',{name:'Fixture component'})]:
+            p.endsWith('/supplier_quotes')?[snap(p+'/q',state().quote)]:[]});
+          export const getDocsFromServer=getDocs;
+          const dataAt=p=>p.endsWith('/q')?(state().transactionQuote??state().quote):p.endsWith('/new-quote')?state().newQuote:{name:'Fixture component'};
+          const write=(p,data)=>{state().writes.push({path:p,data:structuredClone(data)});if(p.endsWith('/q'))state().quote={...state().quote,...data};if(p.endsWith('/new-quote'))state().newQuote={...data};};
           export async function runTransaction(_,fn){
-            const pending=[];await fn({get:async p=>{if(state().error)throw Error(state().error);return snap(p,state().transactionQuote??state().quote)},update:(p,d)=>pending.push([p,d])});
-            for(const [p,d] of pending)await updateDoc(p,d);
+            const pending=[],stage=(p,d)=>pending.push([p,d]);
+            await fn({get:async p=>{if(state().error)throw Error(state().error);return snap(p,dataAt(p))},update:stage,set:stage});
+            if(state().commitError) throw Error(state().commitError);
+            if(state().transactionQuote) state().quote=structuredClone(state().transactionQuote);
+            for(const [p,d] of pending)write(p,d);
           }
-          export const addDoc=async()=>{throw Error('No duplicate quotes')},deleteDoc=async()=>{throw Error('No deletions')};` :
-        /(^|\/)criticalComponents$/.test(a.path) ? `const fail=async()=>{throw Error('Corporate quotes must not use the Range writer')};export{fail as saveComponentQuote,fail as deleteComponentQuote};` :
-        a.path==='firebase/storage' ? `export const ref=()=>{},uploadBytes=async()=>{throw Error('No upload expected')},getDownloadURL=async()=>{throw Error('No upload expected')};` :
+          export const deleteDoc=async()=>{throw Error('No deletions')};` :
+        a.path.endsWith('/i18n') ? 'export const useT = () => text => text' :
+        /(^|\/)criticalComponents$/.test(a.path) ? `
+          export const getComponent=async id=>({id,name:'Fixture range component'});
+          export const saveComponentQuote=async (id,quoteId,data)=>{
+            const state=globalThis.__quoteSave;
+            if(!state.range) throw Error('Corporate quotes must use their own writer');
+            state.writes.push({path:'range_components/'+id+'/supplier_quotes/'+quoteId,data});
+            state.quote={...state.quote,...data};
+          };
+          export const deleteComponentQuote=async()=>{throw Error('No deletions')};` :
+        a.path==='firebase/storage' ? `
+          export const ref=(_storage,path)=>path;
+          export const uploadBytes=async(path,file,metadata)=>{
+            const state=globalThis.__quoteSave;
+            if(!state.range) throw Error('No upload expected');
+            state.uploads.push({path,file,metadata});
+          };
+          export const getDownloadURL=async()=>'/uploaded.pdf';` :
         `export const db={},storage={},authHeader=async()=>{throw Error('No extraction expected')};`
       }))
     },
   }]})
-  Form = (await import(pathToFileURL(join(scratch,'form.mjs')))).default
+  Form = (await import(pathToFileURL(join(scratch,'SupplierQuoteForm.mjs')))).default
+  RangeForm = (await import(pathToFileURL(join(scratch,'RangeQuoteForm.mjs')))).default
+  QuickAdd = (await import(pathToFileURL(join(scratch,'SupplierAddQuoteModal.mjs')))).default
 })
 after(async()=>{dom.window.close();delete globalThis.__quoteSave;await rm(scratch,{recursive:true,force:true})})
-async function withForm(fn, quote=initial) {
-  const state = globalThis.__quoteSave = {quote:structuredClone(quote),writes:[],destination:null}
+async function withForm(fn, quote=initial, Editor=Form) {
+  const state = globalThis.__quoteSave = {
+    quote:structuredClone(quote),writes:[],uploads:[],destination:null,range:Editor===RangeForm,
+  }
   const host = document.createElement('div'); document.body.append(host)
   const root = createRoot(host)
   try {
-    await act(async()=>root.render(React.createElement(Form)))
+    await act(async()=>root.render(React.createElement(Editor, {
+      supplier: { id: 'supplier-new', name: 'Fictional new supplier' },
+      onSaved: () => { state.saved = true },
+      onClose: () => { state.closed = true },
+    })))
     assert.ok(host.querySelector('form'))
     await fn(host,state)
   } finally { await act(async()=>root.unmount()); host.remove() }
@@ -137,3 +176,119 @@ test('intentional main and tier cost edits retain exact three-decimal values',()
   assert.equal(state.quote.moq,1000); assert.equal(state.quote.tooling_sample_cost,155)
   assert.equal(state.quote.notes,initial.notes); assert.equal(state.quote.is_preferred,true)
 }))
+
+test('Range accepts and reopens three-decimal main and tier costs through the real submit button', async () => {
+  let saved
+  await withForm(async (host, state) => {
+    const [unit, tier] = host.querySelectorAll('input[placeholder="0.000"]')
+    assert.equal(unit.step, '0.001')
+    assert.equal(tier.step, '0.001')
+    assert.equal(unit.value, '1.222')
+    assert.equal(tier.value, '1.111')
+    await act(async () => {
+      Simulate.change(unit, { target: { value: '1.223' } })
+      Simulate.change(tier, { target: { value: '1.112' } })
+    })
+    assert.equal(host.querySelector('form').checkValidity(), true)
+    await act(async () => host.querySelector('button[type="submit"]').click())
+    assert.equal(state.destination, '/range/example/costing')
+    assert.equal(state.writes.length, 1)
+    assert.equal(state.writes[0].path, 'range_components/c/supplier_quotes/q')
+    assert.equal(Number(state.quote.unit_cost), 1.223)
+    assert.equal(Number(state.quote.volume_tiers[0].unit_cost), 1.112)
+    assert.equal(state.quote.notes, initial.notes)
+    assert.equal(state.quote.is_preferred, true)
+    assert.equal(state.quote.tooling_sample_cost, 155)
+    assert.deepEqual(state.quote.attachments, initial.attachments)
+    saved = state.quote
+  }, initial, RangeForm)
+  await withForm(async host => {
+    const [unit, tier] = host.querySelectorAll('input[placeholder="0.000"]')
+    assert.equal(unit.value, '1.223')
+    assert.equal(tier.value, '1.112')
+  }, saved, RangeForm)
+})
+
+test('Range PDF attachment preserves current approved terms and original source upon reopen', async () => {
+  let saved
+  await withForm(async (host, state) => {
+    const pdf = new dom.window.File(['%PDF-fictional'], 'reference.pdf', { type: 'application/pdf' })
+    const input = host.querySelector('input[type="file"]')
+    Object.defineProperty(input, 'files', { value: [pdf] })
+    await act(async () => input.dispatchEvent(new dom.window.Event('change', { bubbles: true })))
+    assert.match(host.textContent, /reference\.pdf/)
+    assert.doesNotMatch(host.textContent, /Extracting|Could not extract/)
+    state.transactionQuote = { ...initial, unit_cost: 1.333, notes: 'Concurrent approved terms', is_preferred: false }
+    await act(async () => host.querySelector('button[type="submit"]').click())
+    assert.equal(state.destination, '/range/example/costing')
+    assert.equal(state.uploads.length, 1)
+    assert.match(state.uploads[0].path, /^range_components\/c\/quotes\//)
+    assert.equal(state.uploads[0].file, pdf)
+    assert.deepEqual(Object.keys(state.writes[0].data), ['attachments'])
+    assert.equal(state.quote.unit_cost, 1.333)
+    assert.equal(state.quote.notes, 'Concurrent approved terms')
+    assert.equal(state.quote.is_preferred, false)
+    assert.equal(state.quote.attachments.length, 2)
+    assert.deepEqual(state.quote.attachments[0], attachment)
+    saved = state.quote
+  }, initial, RangeForm)
+  await withForm(async host => {
+    assert.equal(host.querySelector('input[placeholder="0.000"]').value, '1.333')
+    assert.ok(host.querySelector('a[href="/source.pdf"]'))
+    assert.ok(host.querySelector('a[href="/uploaded.pdf"]'))
+  }, saved, RangeForm)
+})
+
+test('both editors can save existing finer precision without rounding either price', async () => {
+  const higherPrecision = {
+    ...initial, unit_cost: 1.22249, volume_tiers: [{ min_qty: 2000, unit_cost: 1.11149 }],
+  }
+  for (const Editor of [Form, RangeForm]) {
+    await withForm(async (host, state) => {
+      const [unit, tier] = host.querySelectorAll('input[placeholder="0.000"]')
+      assert.equal(unit.value, '1.22249')
+      assert.equal(tier.value, '1.11149')
+      assert.equal(host.querySelector('form').checkValidity(), true)
+      await act(async () => host.querySelector('button[type="submit"]').click())
+      assert.equal(state.writes.length, 1)
+      assert.deepEqual(Object.keys(state.writes[0].data), ['attachments'])
+      assert.deepEqual(state.quote, higherPrecision)
+    }, higherPrecision, Editor)
+  }
+})
+
+test('a Corporate Gifts cost edit does not reselect a quote or replace concurrent attachments', () => withForm(async (host, state) => {
+  const concurrentAttachments = [...initial.attachments, { file_url: '/newer.pdf' }]
+  state.transactionQuote = { ...initial, is_preferred: false, notes: 'Concurrent approved note', attachments: concurrentAttachments }
+  await act(async () => Simulate.change(host.querySelector('input[placeholder="0.000"]'), { target: { value: '1.333' } }))
+  await submit(host)
+  assert.equal(state.destination, '/products/p/components/c')
+  assert.deepEqual(state.writes, [{ path: 'products/p/components/c/supplier_quotes/q', data: { unit_cost: 1.333 } }])
+  assert.deepEqual(state.quote, { ...state.transactionQuote, unit_cost: 1.333 })
+}))
+
+test('supplier quick-add keeps the existing preference on rejected commit and can retry with its draft', () => withForm(async (host, state) => {
+  const button = text => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
+  await act(async () => Simulate.focus(host.querySelector('input[placeholder="Search products…"]')))
+  await act(async () => Simulate.mouseDown(button('Fixture gift')))
+  await act(async () => button('Fixture component').click())
+  const price = host.querySelector('input[placeholder="0.000"]')
+  await act(async () => {
+    Simulate.change(price, { target: { value: '1.234' } })
+    Simulate.change(host.querySelector('input[type="checkbox"]'), { target: { checked: true } })
+  })
+  state.commitError = 'Fictional transaction rejected at commit'
+  await submit(host)
+  assert.deepEqual(state.writes, [])
+  assert.equal(state.quote.is_preferred, true)
+  assert.equal(price.value, '1.234')
+  assert.match(host.textContent, /Fictional transaction rejected/)
+  state.commitError = null
+  await submit(host)
+  assert.equal(state.quote.is_preferred, false)
+  assert.equal(state.newQuote.is_preferred, true)
+  assert.equal(state.newQuote.unit_cost, 1.234)
+  assert.deepEqual(state.quote.attachments, initial.attachments)
+  assert.equal(state.saved, true)
+  assert.equal(state.closed, true)
+}, initial, QuickAdd))

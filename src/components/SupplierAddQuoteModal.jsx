@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
-import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { useState, useEffect, useRef } from 'react'
+import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CURRENCIES } from '../constants'
 import { useT } from '../i18n'
+import SupplierUnitCostInput from './SupplierUnitCostInput'
+import { saveCorporateSupplierQuote } from '../corporateSupplierQuotes'
 
 export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
   const t = useT()
@@ -15,6 +17,8 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
   const [error, setError]             = useState('')
   const [productSearch, setProductSearch] = useState('')
   const [productOpen, setProductOpen] = useState(false)
+  const busy = useRef(false)
+  const mounted = useRef(false)
 
   const [form, setForm] = useState({
     unit_cost: '',
@@ -31,9 +35,11 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
   const [volumeTiers, setVolumeTiers] = useState([])
 
   useEffect(() => {
+    mounted.current = true
     getDocs(query(collection(db, 'products'), orderBy('name'))).then(snap =>
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     )
+    return () => { mounted.current = false }
   }, [])
 
   async function handleProductSelect(product) {
@@ -52,21 +58,15 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (busy.current) return
     if (!selectedProduct) { setError(t('Please select a product.')); return }
     if (!selectedComponent) { setError(t('Please select a component.')); return }
     if (!form.unit_cost) { setError(t('Unit cost is required.')); return }
+    busy.current = true
     setSaving(true)
     setError('')
     try {
-      const basePath = collection(db, 'products', selectedProduct.id, 'components', selectedComponent.id, 'supplier_quotes')
-
-      // If preferred, clear others first
-      if (form.is_preferred) {
-        const existing = await getDocs(basePath)
-        await Promise.all(existing.docs.map(d => updateDoc(d.ref, { is_preferred: false })))
-      }
-
-      await addDoc(basePath, {
+      const data = {
         supplier_id:   supplier.id,
         supplier_name: supplier.name_cn ? `${supplier.name} (${supplier.name_cn})` : supplier.name,
         unit_cost:     Number(form.unit_cost),
@@ -84,14 +84,19 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
           .filter(vt => vt.min_qty !== '' && vt.unit_cost !== '')
           .map(vt => ({ min_qty: Number(vt.min_qty), unit_cost: Number(vt.unit_cost) }))
           .sort((a, b) => a.min_qty - b.min_qty),
-        createdAt: serverTimestamp(),
+      }
+      await saveCorporateSupplierQuote({
+        productId: selectedProduct.id,
+        componentId: selectedComponent.id,
+        data,
+        isOpen: () => mounted.current,
       })
-      onSaved()
-      onClose()
+      if (mounted.current) { onSaved(); onClose() }
     } catch (err) {
-      setError(err.message)
+      if (mounted.current) setError(err.message)
     } finally {
-      setSaving(false)
+      busy.current = false
+      if (mounted.current) setSaving(false)
     }
   }
 
@@ -178,7 +183,7 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
             <div>
               <label className="label">{t('Unit Cost *')}</label>
               <div className="flex gap-2">
-                <input className="input flex-1" type="number" step="0.01" min="0" value={form.unit_cost} onChange={set('unit_cost')} placeholder="0.00" />
+                <SupplierUnitCostInput className="input min-w-0 flex-1" value={form.unit_cost} onChange={set('unit_cost')} />
                 <select className="input w-28" value={form.unit_cost_currency} onChange={set('unit_cost_currency')}>
                   {CURRENCIES.map(c => <option key={c}>{c}</option>)}
                 </select>
@@ -196,7 +201,7 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
                 <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center mb-2">
                   <input className="input py-1.5 text-sm" type="number" min="1" placeholder={t('Min qty')}
                     value={tier.min_qty} onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, min_qty: e.target.value } : r))} />
-                  <input className="input py-1.5 text-sm" type="number" step="0.01" min="0" placeholder={t('Unit cost')}
+                  <SupplierUnitCostInput className="input min-w-0 py-1.5 text-sm" aria-label={t('Unit cost')}
                     value={tier.unit_cost} onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, unit_cost: e.target.value } : r))} />
                   <button type="button" onClick={() => setVolumeTiers(prev => prev.filter((_, j) => j !== i))}
                     className="text-red-300 hover:text-red-500 text-lg leading-none px-1">×</button>
