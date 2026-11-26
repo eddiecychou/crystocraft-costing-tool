@@ -8,9 +8,13 @@ export function normalizeCostCurrency(currency) {
   return code === 'CNY' ? 'RMB' : code
 }
 
+export function isPositiveExchangeRate(rate) {
+  return Number.isFinite(rate) && rate > 0
+}
+
 export function hkdRateForCostCurrency(currency, rates) {
   const rate = Number(rates?.[normalizeCostCurrency(currency)])
-  return Number.isFinite(rate) && rate > 0 ? rate : null
+  return isPositiveExchangeRate(rate) ? rate : null
 }
 
 // A missing rate is never a 1:1 conversion. Returning null forces the caller

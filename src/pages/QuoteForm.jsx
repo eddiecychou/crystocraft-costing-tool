@@ -1,13 +1,16 @@
 import { ocDateOnly } from '../ocTime.js'
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { collection, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CURRENCIES } from '../constants'
 import { loadCustomers, primaryContact, contactAddress, CRM_CATEGORIES, RETAIL_TAG } from '../domain/customer'
 import ContactPicker from '../components/ContactPicker'
+import { DEFAULT_RATES } from '../domain/customerCurrency.js'
+import { isPositiveExchangeRate } from '../costCurrency.js'
+import useConfiguredExchangeRates from '../hooks/useConfiguredExchangeRates'
 
-const DEFAULT_RATES = { rmb_to_hkd: 1.09, usd_to_hkd: 7.78, eur_to_hkd: 8.60 }
+const RATE_FIELDS = [['RMB', 'rmb_to_hkd'], ['USD', 'usd_to_hkd'], ['EUR', 'eur_to_hkd']]
 
 export default function QuoteForm() {
   const navigate = useNavigate()
@@ -25,27 +28,37 @@ export default function QuoteForm() {
     contact_phone: '', contact_address: '', notes: '', status: 'draft',
     quote_currency: 'HKD',
     quote_date: todayISO,
-    rmb_to_hkd: DEFAULT_RATES.rmb_to_hkd,
-    usd_to_hkd: DEFAULT_RATES.usd_to_hkd,
-    eur_to_hkd: DEFAULT_RATES.eur_to_hkd,
   })
   const [loading, setLoading] = useState(false)
+  const [editedRates, setEditedRates] = useState({})
+  const { status: rateStatus, rates: settingsRates, retry: retryRates } = useConfiguredExchangeRates()
 
-  // Load customers list + exchange rates
   useEffect(() => {
     loadCustomers().then(setCustomers)
-    getDoc(doc(db, 'settings', 'exchange_rates')).then(s => {
-      if (s.exists()) {
-        const d = s.data()
-        setForm(f => ({
-          ...f,
-          rmb_to_hkd: d.RMB ?? f.rmb_to_hkd,
-          usd_to_hkd: d.USD ?? f.usd_to_hkd,
-          eur_to_hkd: d.EUR ?? f.eur_to_hkd,
-        }))
-      }
-    })
   }, [])
+
+  // An edited field, including one deliberately cleared, takes precedence over Settings.
+  const rateValues = Object.fromEntries(RATE_FIELDS.map(([currency, field]) =>
+    [field, editedRates[field] ?? settingsRates[currency] ?? '']
+  ))
+  const quoteRates = Object.fromEntries(RATE_FIELDS.map(([, field]) => [field, Number(rateValues[field])]))
+  const invalidRates = RATE_FIELDS.filter(([, field]) => !isPositiveExchangeRate(quoteRates[field]))
+  const ratesToReview = invalidRates.filter(([currency]) => settingsRates[currency] == null)
+  const reviewCurrencies = ratesToReview.map(([currency]) => currency).join(', ')
+  let rateMessage = ''
+  if (rateStatus === 'loading') {
+    rateMessage = 'Loading exchange rates from Settings…'
+  } else if (ratesToReview.length) {
+    const settingsIssue = rateStatus === 'error' ? 'Could not load exchange rates from Settings.' : 'Settings has missing or invalid rates.'
+    rateMessage = `${settingsIssue} Enter a positive rate for ${reviewCurrencies} or use the suggested values.`
+  } else if (invalidRates.length) {
+    rateMessage = `Enter a positive rate for ${invalidRates.map(([currency]) => currency).join(', ')}.`
+  }
+
+  function applySuggestedRates() {
+    const suggested = Object.fromEntries(ratesToReview.map(([currency, field]) => [field, DEFAULT_RATES[currency]]))
+    setEditedRates(rates => ({ ...rates, ...suggested }))
+  }
 
   // Pre-fill from customer_id in URL
   useEffect(() => {
@@ -119,14 +132,13 @@ export default function QuoteForm() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (loading || invalidRates.length) return
     setLoading(true)
     try {
       const ref = await addDoc(collection(db, 'client_quotes'), {
         ...form,
         customer_id: selectedCustomerId || null,
-        rmb_to_hkd: Number(form.rmb_to_hkd),
-        usd_to_hkd: Number(form.usd_to_hkd),
-        eur_to_hkd: Number(form.eur_to_hkd),
+        ...quoteRates,
         item_count: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -245,23 +257,31 @@ export default function QuoteForm() {
             <p className="text-xs text-ink-60 mt-1">All prices in this quote will be shown in this currency.</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="label">RMB → HKD</label>
-              <input className="input" type="number" step="0.01" value={form.rmb_to_hkd} onChange={set('rmb_to_hkd')} />
-            </div>
-            <div>
-              <label className="label">USD → HKD</label>
-              <input className="input" type="number" step="0.01" value={form.usd_to_hkd} onChange={set('usd_to_hkd')} />
-            </div>
-            <div>
-              <label className="label">EUR → HKD</label>
-              <input className="input" type="number" step="0.01" value={form.eur_to_hkd} onChange={set('eur_to_hkd')} />
-            </div>
+            {RATE_FIELDS.map(([currency, field]) => (
+              <div key={currency}>
+                <label className="label" htmlFor={`quote-${field}`}>{currency} → HKD</label>
+                <input id={`quote-${field}`} className="input" type="number" step="any" required
+                  aria-describedby={rateMessage ? 'quote-rate-status' : undefined}
+                  value={rateValues[field]}
+                  placeholder={rateStatus !== 'loading' && settingsRates[currency] == null ? String(DEFAULT_RATES[currency]) : undefined}
+                  onChange={e => {
+                    const value = e.target.value
+                    setEditedRates(rates => ({ ...rates, [field]: value }))
+                  }} />
+              </div>
+            ))}
           </div>
+          <div role="status" id="quote-rate-status" className="text-xs text-ink-60">{rateMessage}</div>
+          {rateStatus !== 'loading' && ratesToReview.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn-secondary text-xs" onClick={applySuggestedRates}>Use suggested rates</button>
+              <button type="button" className="btn-secondary text-xs" onClick={retryRates}>Retry rates</button>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3">
-          <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Creating…' : 'Create Quote'}</button>
+          <button type="submit" className="btn-primary" disabled={loading || invalidRates.length > 0}>{loading ? 'Creating…' : 'Create Quote'}</button>
           <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
         </div>
       </form>

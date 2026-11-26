@@ -101,6 +101,7 @@ test('quote Duplicate drops only conversion ownership and keeps commercial field
     id: 'original',
     ...quote,
     notes: 'Original notes',
+    rmb_to_hkd: '1.1686', usd_to_hkd: 8.25, eur_to_hkd: 9.45,
     attachments: [{ name: '原件.pdf', url: 'https://example.invalid/original.pdf' }],
     custom_unknown: 'Keep me'
   }
@@ -112,6 +113,7 @@ test('quote Duplicate drops only conversion ownership and keeps commercial field
   assert.deepEqual(copy.attachments, source.attachments)
   assert.equal(copy.notes, source.notes)
   assert.equal(copy.custom_unknown, source.custom_unknown)
+  assert.deepEqual([copy.rmb_to_hkd, copy.usd_to_hkd, copy.eur_to_hkd], ['1.1686', 8.25, 9.45])
   assert.deepEqual(source, before)
 })
 test('shared normalization preserves first-tier precision, units, images, deposits, charge lines and source file', () => {

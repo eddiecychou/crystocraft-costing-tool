@@ -12,7 +12,7 @@ const stubs = {
     export const addDoc = async () => ({ id: 'new-quote' })
     export const serverTimestamp = () => new Date()
     export const doc = () => ({})
-    export const getDoc = async () => ({ exists: () => false })
+    export const getDocFromServer = async () => ({ exists: () => false, data: () => undefined })
   `,
   customer: `
     export const CRM_CATEGORIES = ['Distributor', 'Small B2B', 'Gift / OEM', 'Crystal Fabric']

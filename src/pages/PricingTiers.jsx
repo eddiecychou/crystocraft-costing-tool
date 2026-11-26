@@ -3,7 +3,7 @@ import { formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
-  doc, getDoc, getDocFromServer, collection, getDocs, onSnapshot,
+  doc, getDoc, collection, getDocs, onSnapshot,
   addDoc, updateDoc, deleteDoc, setDoc, writeBatch, orderBy, query, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -15,8 +15,7 @@ import {
   componentUnitCostAtQty, unitCostHKDAtQty, toolingCostHKD, totalUnitCostAtQty,
 } from '../pricing'
 import { costToHKD, hkdRateForCostCurrency, normalizeCostCurrency } from '../costCurrency'
-
-const HKD_ONLY = { HKD: 1 }
+import useConfiguredExchangeRates from '../hooks/useConfiguredExchangeRates'
 
 function pricingSignature({ rates, ...inputs }, currencies) {
   return JSON.stringify({ ...inputs, rates: Object.fromEntries(currencies.map(code => [code, rates?.[code]])) })
@@ -31,8 +30,7 @@ function PricingTiersEditor({ id }) {
   const [product, setProduct]       = useState(null)
   const [components, setComponents] = useState([])
   const [tiers, setTiers]           = useState([])
-  const [rateRead, setRateRead]     = useState(null)
-  const [rateAttempt, setRateAttempt] = useState(0)
+  const { status: rateStatus, rates, retry: retryRates } = useConfiguredExchangeRates()
   const [loading, setLoading]       = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const { groups }                  = usePricingGroups()
@@ -51,20 +49,6 @@ function PricingTiersEditor({ id }) {
       if (s.exists()) setProduct({ id: s.id, ...s.data() })
     })
   }, [id])
-
-  useEffect(() => {
-    let active = true
-    getDocFromServer(doc(db, 'settings', 'exchange_rates')).then(s => {
-      if (!active) return
-      const configured = Object.fromEntries(Object.entries(s.data() ?? {}).filter(([, value]) =>
-        Number.isFinite(value) && value > 0
-      ))
-      setRateRead({ status: s.exists() ? 'ready' : 'missing', rates: { ...configured, ...HKD_ONLY } })
-    }).catch(() => {
-      if (active) setRateRead({ status: 'error', rates: HKD_ONLY })
-    })
-    return () => { active = false }
-  }, [rateAttempt])
 
   useEffect(() => {
     const fetchComponents = async () => {
@@ -88,7 +72,6 @@ function PricingTiersEditor({ id }) {
     return onSnapshot(q, snap => setTiers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [id])
 
-  const rates = rateRead?.rates ?? HKD_ONLY
   const referenceQty = tiers[0]?.quantity || 200
   const unitCostHKD = unitCostHKDAtQty(components, rates, referenceQty)
   const hasVolumeTiers = components.some(c => c.preferred_quote?.volume_tiers?.length > 0)
@@ -106,9 +89,9 @@ function PricingTiersEditor({ id }) {
   let rateBlock = ''
   if (unavailableCurrencies.length) {
     const required = unavailableCurrencies.map(code => code || 'a quote with no currency').join(', ')
-    if (!rateRead) rateBlock = `Loading exchange rates for ${required}…`
-    else if (rateRead.status === 'error') rateBlock = `Could not load exchange rates from Settings. Required for ${required}.`
-    else if (rateRead.status === 'missing') rateBlock = `No exchange rates have been configured in Settings. Required for ${required}.`
+    if (rateStatus === 'loading') rateBlock = `Loading exchange rates for ${required}…`
+    else if (rateStatus === 'error') rateBlock = `Could not load exchange rates from Settings. Required for ${required}.`
+    else if (rateStatus === 'missing') rateBlock = `No exchange rates have been configured in Settings. Required for ${required}.`
     else rateBlock = `No valid HKD exchange rate for ${required}. Check Settings and the supplier quote currencies.`
   }
   const pricedTiers = tiers.map(tier => ({ ...tier, costHKD: totalUnitCostAtQty(components, rates, tier.quantity) }))
@@ -324,11 +307,8 @@ function PricingTiersEditor({ id }) {
       {publishBlock && (
         <div role="status" className="bg-amber-50 border border-amber-200 rounded-none px-4 py-3 mb-4 text-sm text-amber-800">
           <AlertTriangle size={13} className="inline align-[-2px] mr-1" />{publishBlock} Price publishing is paused.
-          {rateBlock && rateRead && (
-            <button type="button" className="ml-2 underline" onClick={() => {
-              setRateRead(null)
-              setRateAttempt(n => n + 1)
-            }}>Retry rates</button>
+          {rateBlock && rateStatus !== 'loading' && (
+            <button type="button" className="ml-2 underline" onClick={retryRates}>Retry rates</button>
           )}
         </div>
       )}
