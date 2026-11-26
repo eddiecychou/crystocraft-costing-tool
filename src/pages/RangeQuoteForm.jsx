@@ -9,7 +9,12 @@ import { FolderOpen, Paperclip, FileText, X } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useT } from '../i18n'
 import SupplierUnitCostInput from '../components/SupplierUnitCostInput'
-import { hasUnchangedQuoteTerms, saveQuoteAttachments } from '../supplierQuoteAttachments'
+import {
+  hasUnchangedQuoteTerms,
+  prepareSupplierQuoteExtraction,
+  prepareSupplierQuoteUpload,
+  saveQuoteAttachments,
+} from '../supplierQuoteAttachments'
 
 const blank = {
   supplier_id: '', supplier_name: '', unit_cost: '', unit_cost_currency: 'RMB',
@@ -127,12 +132,10 @@ function RangeQuoteEditor({ componentId, quoteId }) {
   async function extractFromFile(file) {
     setExtracting(true); setExtractError('')
     try {
-      let base64, mimeType
-      if (file.type === 'application/pdf') { base64 = await toBase64(file); mimeType = 'application/pdf' }
-      else { base64 = await toBase64(await preprocessForGemini(file)); mimeType = 'image/png' }
+      const payload = await prepareSupplierQuoteExtraction(file)
       const res = await fetch('/api/process-quote', {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-        body: JSON.stringify({ image: base64, mimeType }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error('Extraction failed')
       const data = await res.json()
@@ -161,12 +164,11 @@ function RangeQuoteEditor({ componentId, quoteId }) {
     try {
       const path = `range_components/${componentId}/quotes`
       const uploaded = await Promise.all(files.map(async ({ file }) => {
-        const isPdf = file.type === 'application/pdf'
         const fileRef = storageRef(storage, `${path}/${Date.now()}_${file.name}`)
-        if (isPdf) await uploadBytes(fileRef, file, { contentType: 'application/pdf' })
-        else await uploadBytes(fileRef, await resizeToJpeg(file), { contentType: 'image/jpeg' })
+        const { blob, contentType, fileType } = await prepareSupplierQuoteUpload(file)
+        await uploadBytes(fileRef, blob, { contentType })
         const url = await getDownloadURL(fileRef)
-        return { file_url: url, file_name: file.name, file_type: isPdf ? 'pdf' : 'image', uploaded_at: new Date().toISOString() }
+        return { file_url: url, file_name: file.name, file_type: fileType, uploaded_at: new Date().toISOString() }
       }))
       if (!mounted.current) return
       const attachments = [...existingAttachments, ...uploaded]
@@ -352,49 +354,4 @@ function RangeQuoteEditor({ componentId, quoteId }) {
       )}
     </div>
   )
-}
-
-// ── Image utilities (mirrors SupplierQuoteForm) ──────────────────────────────
-async function resizeToJpeg(file, maxPx = 2400, quality = 0.93) {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height))
-  const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale)
-  const canvas = new OffscreenCanvas(w, h)
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h)
-  return canvas.convertToBlob({ type: 'image/jpeg', quality })
-}
-
-async function preprocessForGemini(file, maxPx = 2400) {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height))
-  const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale)
-  const canvas = new OffscreenCanvas(w, h)
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(bitmap, 0, 0, w, h)
-  const imageData = ctx.getImageData(0, 0, w, h)
-  const data = imageData.data
-  for (let i = 0; i < data.length; i += 4) {
-    const grey = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-    data[i] = data[i + 1] = data[i + 2] = grey
-  }
-  const greys = []
-  for (let i = 0; i < data.length; i += 4) greys.push(data[i])
-  greys.sort((a, b) => a - b)
-  const lo = greys[Math.floor(greys.length * 0.01)], hi = greys[Math.floor(greys.length * 0.99)]
-  const range = hi - lo || 1
-  for (let i = 0; i < data.length; i += 4) {
-    const v = Math.round(((data[i] - lo) / range) * 255)
-    data[i] = data[i + 1] = data[i + 2] = Math.max(0, Math.min(255, v))
-  }
-  ctx.putImageData(imageData, 0, 0)
-  return canvas.convertToBlob({ type: 'image/png' })
-}
-
-async function toBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result.split(',')[1])
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
 }
