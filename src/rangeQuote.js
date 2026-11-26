@@ -65,13 +65,19 @@ export function hasIncompleteRangeLine(item) {
   return !tiers.length || tiers.some(t => !(Number(t.quantity) > 0 && Number(t.price) > 0))
 }
 
-export function rangeQuoteItem(choice, quoteCurrency, rates) {
+export function rangeWholesaleUsd(choice) {
   const usd = Number(choice.usdPrice)
+  return Number.isFinite(usd) && usd > 0 ? usd : null
+}
+
+export function rangeQuoteItem(choice, quoteCurrency, rates) {
+  const usd = rangeWholesaleUsd(choice)
   const usdRate = Number(rates.USD)
   const targetRate = quoteCurrency === 'HKD' ? 1 : Number(rates[quoteCurrency])
-  const hasPrice = choice.usdPrice !== '' && choice.usdPrice != null && Number.isFinite(usd) && usd > 0
   const canConvert = Number.isFinite(usdRate) && usdRate > 0 && Number.isFinite(targetRate) && targetRate > 0
-  const price = hasPrice && canConvert ? +(usd * usdRate / targetRate).toFixed(2) : ''
+  let price = ''
+  if (usd != null && quoteCurrency === 'USD') price = +usd.toFixed(2)
+  else if (usd != null && canConvert) price = +(usd * usdRate / targetRate).toFixed(2)
 
   return {
     product_id: choice.productId,

@@ -13,7 +13,10 @@ export default function QuoteProductPicker({ existingKeys, onAdd, onClose }) {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState({ products: true, range_products: false })
   const [errors, setErrors] = useState({})
+  const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState('')
   const requested = useRef(new Set())
+  const pendingAdd = useRef(false)
 
   useEffect(() => {
     if (requested.current.has(catalogue)) return
@@ -33,11 +36,33 @@ export default function QuoteProductPicker({ existingKeys, onAdd, onClose }) {
   const filtered = filterQuoteChoices(candidates, search, existingKeys)
 
   function toggle(p) {
+    setAddError('')
     setSelected(s => s.some(x => x.key === p.key) ? s.filter(x => x.key !== p.key) : [...s, p])
   }
 
+  function close() {
+    if (!pendingAdd.current) onClose()
+  }
+
+  async function addSelection() {
+    if (pendingAdd.current || !selected.length) return
+    pendingAdd.current = true
+    setAdding(true)
+    setAddError('')
+    try {
+      await onAdd(selected)
+    } catch (error) {
+      setAddError(error?.code || !error?.message
+        ? 'Could not confirm the save. Retry to check which products were saved.'
+        : error.message)
+    } finally {
+      pendingAdd.current = false
+      setAdding(false)
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={close}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b border-warm-grey">
@@ -67,7 +92,7 @@ export default function QuoteProductPicker({ existingKeys, onAdd, onClose }) {
             const isSelected = selected.some(x => x.key === p.key)
             const image = p.source === 'range_products' ? p.image : p.heroImage
             return (
-              <button type="button" key={p.key} onClick={() => toggle(p)} aria-pressed={isSelected}
+              <button type="button" key={p.key} onClick={() => toggle(p)} disabled={adding} aria-pressed={isSelected}
                 className={`flex items-center gap-3 p-3 w-full text-left rounded-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-300 ${isSelected ? 'bg-brand-50 border border-brand-200' : 'hover:bg-ivory border border-transparent'}`}>
                 <div className="w-12 h-12 rounded-none bg-ivory-dark shrink-0 overflow-hidden flex items-center justify-center">
                   {image ? <img src={image} alt="" className="w-full h-full object-cover" />
@@ -84,12 +109,13 @@ export default function QuoteProductPicker({ existingKeys, onAdd, onClose }) {
           })}
         </div>
 
+        {addError && <p role="alert" className="px-4 py-2 text-sm text-red-700 break-words">{addError}</p>}
         <div className="p-4 border-t border-warm-grey flex gap-3 justify-between items-center">
           <p className="text-sm text-ink-60">{selected.length} selected</p>
           <div className="flex gap-2">
-            <button className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn-primary" disabled={selected.length === 0} onClick={() => onAdd(selected)}>
-              Add {selected.length > 0 ? selected.length : ''} Product{selected.length !== 1 ? 's' : ''}
+            <button type="button" className="btn-secondary" disabled={adding} onClick={close}>Cancel</button>
+            <button type="button" className="btn-primary" disabled={adding || selected.length === 0} onClick={addSelection}>
+              {adding ? 'Adding…' : `Add ${selected.length || ''} Product${selected.length !== 1 ? 's' : ''}`}
             </button>
           </div>
         </div>

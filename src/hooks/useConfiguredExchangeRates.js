@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react'
-import { doc, getDocFromServer } from 'firebase/firestore'
-import { db } from '../firebase'
-import { isPositiveExchangeRate } from '../costCurrency.js'
+import { HKD_ONLY, loadConfiguredExchangeRates } from '../configuredExchangeRates'
 
-const HKD_ONLY = { HKD: 1 }
 const LOADING = { status: 'loading', rates: HKD_ONLY }
 
 export default function useConfiguredExchangeRates() {
@@ -12,10 +9,8 @@ export default function useConfiguredExchangeRates() {
 
   useEffect(() => {
     let active = true
-    getDocFromServer(doc(db, 'settings', 'exchange_rates')).then(snapshot => {
-      if (!active) return
-      const configured = Object.fromEntries(Object.entries(snapshot.data() ?? {}).filter(([, rate]) => isPositiveExchangeRate(rate)))
-      setResult({ status: snapshot.exists() ? 'ready' : 'missing', rates: { ...configured, ...HKD_ONLY } })
+    loadConfiguredExchangeRates().then(configured => {
+      if (active) setResult(configured)
     }).catch(() => {
       if (active) setResult({ status: 'error', rates: HKD_ONLY })
     })

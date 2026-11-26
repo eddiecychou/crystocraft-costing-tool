@@ -37,6 +37,7 @@ assert.equal(legacyOrder.matched_product_ref.collection, 'products')
 assert.equal(quoteItemToOrderLine({ is_custom: true, product_name: 'Sample' }, 2).line_type, 'ad_hoc')
 
 const usd = rangeQuoteItem(choices[0], 'USD', { USD: 7.8 })
+assert.equal(rangeQuoteItem(choices[0], 'USD', {}).tiers[0].price, usd.tiers[0].price)
 assert.equal(usd.tiers[0].price, 4.11)
 const unpriced = rangeQuoteItem({ ...choices[0], usdPrice: null }, 'HKD', { USD: 7.8 })
 assert.equal(unpriced.tiers[0].price, '')

@@ -31,6 +31,7 @@ globalThis.quoteRateFixture = {
 }
 const stubs = {
   '../firebase': 'export const db = {}',
+  './firebase': 'export const db = {}',
   'firebase/firestore': `const {reference, getDocFromServer, addDoc} = globalThis.quoteRateFixture;
     export { reference as collection, reference as doc, getDocFromServer, addDoc };
     export const serverTimestamp = () => 'fictional timestamp';`,

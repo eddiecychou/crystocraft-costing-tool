@@ -21,9 +21,9 @@ import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { loadCustomerAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
-import { quoteItemKey, rangeQuoteItem, hasIncompleteRangeLine, rangeQuoteSubtitle } from '../rangeQuote'
+import { quoteItemKey, hasIncompleteRangeLine, rangeQuoteSubtitle } from '../rangeQuote'
 import QuoteProductPicker from '../components/QuoteProductPicker'
-import { costToHKD } from '../costCurrency'
+import { addCustomQuoteItem, addQuoteProducts, removeQuoteItem } from '../quoteItems'
 import {duplicateQuoteFields} from '../quoteConversionModel.js'
 import {QuoteOrderHistory} from '../components/shipping/QuoteOrderRecovery'
 import {useCan} from '../access'
@@ -215,8 +215,13 @@ export default function QuoteDetail() {
   }
 
   async function handleRemoveItem(itemId) {
-    await deleteDoc(doc(db, 'client_quotes', id, 'items', itemId))
-    await updateDoc(doc(db, 'client_quotes', id), { item_count: Math.max(0, (items.length - 1)) })
+    setActionError('')
+    try {
+      const item_count = await removeQuoteItem(id, itemId)
+      setQuote(q => q?.id === id ? { ...q, item_count } : q)
+    } catch {
+      setActionError('Could not remove the quote line. Check the current quote and try again.')
+    }
   }
 
   async function handleTiersChange(itemId, tiers) {
@@ -254,104 +259,18 @@ export default function QuoteDetail() {
   // typing it is the very next thing that happens, same as "+ Add line"
   // dropping a blank, fill-in-place row on the order form.
   async function handleAddCustomItem() {
-    await addDoc(collection(db, 'client_quotes', id, 'items'), {
-      product_id: null,
-      product_name: '',
-      product_category: '',
-      product_description: '',
-      hero_image: null,
-      product_unit: 'pcs',
-      unit_cost_hkd: null,
-      tooling_cost_hkd: null,
-      tiers: [{ quantity: '', price: '', currency: quote.quote_currency || 'HKD' }],
-      is_custom: true,
-      status: 'active',
-      createdAt: serverTimestamp(),
-    })
-    await updateDoc(doc(db, 'client_quotes', id), { item_count: items.length + 1, updatedAt: serverTimestamp() })
+    setActionError('')
+    try {
+      const item_count = await addCustomQuoteItem(id)
+      setQuote(q => q?.id === id ? { ...q, item_count } : q)
+    } catch {
+      setActionError('Could not confirm the custom line save. Check the current quote before trying again.')
+    }
   }
 
   async function handleAddProducts(products) {
-    const quoteCurrency = quote.quote_currency || 'HKD'
-    const rates = { HKD: 1, RMB: quote.rmb_to_hkd, USD: quote.usd_to_hkd, EUR: quote.eur_to_hkd }
-
-    function toQuoteCurrency(price_hkd) {
-      return quoteCurrency === 'HKD' ? price_hkd : +(price_hkd / (rates[quoteCurrency] || 1)).toFixed(2)
-    }
-
-    await Promise.all(products.map(async p => {
-      if (p.source === 'range_products') {
-        await addDoc(collection(db, 'client_quotes', id, 'items'), {
-          ...rangeQuoteItem(p, quoteCurrency, { HKD: 1, RMB: quote.rmb_to_hkd, USD: quote.usd_to_hkd, EUR: quote.eur_to_hkd }),
-          createdAt: serverTimestamp(),
-        })
-        return
-      }
-      const [tierSnap, compSnap, ratesSnap] = await Promise.all([
-        getDocs(query(collection(db, 'products', p.id, 'pricing_tiers'), orderBy('quantity'))),
-        getDocs(collection(db, 'products', p.id, 'components')),
-        getDoc(doc(db, 'settings', 'exchange_rates')),
-      ])
-
-      // Compute unit cost in HKD from preferred supplier quotes
-      const fxRates = { HKD: 1, ...(ratesSnap.exists()
-        ? Object.fromEntries(Object.entries(ratesSnap.data()).filter(([, v]) => typeof v === 'number'))
-        : { RMB: 1.09, USD: 7.78, EUR: 8.60 }) }
-
-      let unit_cost_hkd = 0
-      let tooling_cost_hkd = 0
-      await Promise.all(compSnap.docs.map(async cDoc => {
-        const qSnap = await getDocs(collection(db, 'products', p.id, 'components', cDoc.id, 'supplier_quotes'))
-        const preferred = qSnap.docs.map(d => d.data()).find(q => q.is_preferred)
-        if (preferred?.unit_cost) {
-          const qty = Number(cDoc.data().qty_per_product) || 1
-          const converted = costToHKD(preferred.unit_cost, preferred.unit_cost_currency, fxRates)
-          if (converted == null) throw new Error(`Cannot add ${p.name}: no HKD exchange rate for ${preferred.unit_cost_currency || 'this supplier currency'}.`)
-          unit_cost_hkd += converted * qty
-        }
-        if (preferred?.tooling_sample_cost) {
-          const converted = costToHKD(preferred.tooling_sample_cost, preferred.tooling_sample_cost_currency, fxRates)
-          if (converted == null) throw new Error(`Cannot add ${p.name}: no HKD exchange rate for ${preferred.tooling_sample_cost_currency || 'this tooling currency'}.`)
-          tooling_cost_hkd += converted
-        }
-      }))
-
-      const tiers = tierSnap.docs.length > 0
-        ? tierSnap.docs.map(d => {
-            const td = d.data()
-            // `sell_price` is the OLD USD-era schema and PricingTiers.publish()
-            // now deletes it outright while writing sell_currency:'HKD'. With a
-            // default-HKD quote the first branch therefore matched, read the
-            // deleted field, and every added product landed at 0.00 — with the
-            // real figure sitting unread in price_hkd. Only take the legacy
-            // field when it actually has a value. See LESSONS-LEARNED L-36.
-            const price = (td.sell_currency === quoteCurrency && td.sell_price != null)
-              ? td.sell_price
-              : toQuoteCurrency(td.price_hkd || 0)
-            return { quantity: td.quantity || 200, price, currency: quoteCurrency }
-          })
-        : [{ quantity: 200, price: 0, currency: quoteCurrency }]
-
-      await addDoc(collection(db, 'client_quotes', id, 'items'), {
-        product_id: p.id,
-        product_collection: 'products',
-        product_name: p.name,
-        product_category: p.category,
-        product_description: p.description || '',
-        hero_image: p.heroImage || null,
-        product_unit: p.unit || 'pcs',
-        unit_cost_hkd: unit_cost_hkd || null,
-        tooling_cost_hkd: tooling_cost_hkd || null,
-        tiers,
-        status: p.status,
-        createdAt: serverTimestamp(),
-      })
-    }))
-
-    await updateDoc(doc(db, 'client_quotes', id), {
-      item_count: items.length + products.length,
-      updatedAt: serverTimestamp(),
-    })
+    const item_count = await addQuoteProducts(id, quote, products)
+    setQuote(q => q?.id === id ? { ...q, item_count } : q)
     setShowProductPicker(false)
   }
 
@@ -628,6 +547,7 @@ export default function QuoteDetail() {
       {/* Product Picker Modal */}
       {showProductPicker && (
         <QuoteProductPicker
+          key={id}
           existingKeys={items.map(quoteItemKey).filter(Boolean)}
           onAdd={handleAddProducts}
           onClose={() => setShowProductPicker(false)}
