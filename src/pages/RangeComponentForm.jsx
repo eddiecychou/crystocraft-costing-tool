@@ -34,14 +34,25 @@ export default function RangeComponentForm() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [quotes, setQuotes] = useState([])
+  const [selectingQuote, setSelectingQuote] = useState(false)
+  const [quoteError, setQuoteError] = useState('')
   const { categories: catOptions } = useComponentCategories()
 
   const refreshQuotes = () => { if (!isNew) loadComponentQuotes(routeId).then(setQuotes) }
   useEffect(() => { refreshQuotes() }, [routeId, isNew])
 
   async function preferQuote(qid) {
-    await setPreferredQuote(routeId, qid)
-    refreshQuotes()
+    if (selectingQuote) return
+    setSelectingQuote(true)
+    setQuoteError('')
+    try {
+      await setPreferredQuote(routeId, qid)
+      setQuotes(await loadComponentQuotes(routeId))
+    } catch (err) {
+      setQuoteError(err.message || t('Could not select the preferred quote.'))
+    } finally {
+      setSelectingQuote(false)
+    }
   }
 
   useEffect(() => {
@@ -169,6 +180,7 @@ export default function RangeComponentForm() {
             {!isNew && <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="btn-secondary text-sm">{t('+ Add quote')}</Link>}
           </div>
           <p className="text-xs text-ink-60 mb-3">{t('Upload supplier screenshots / PDFs; AI extracts the price. Star one as preferred — its cost is used in costing.')}</p>
+          {quoteError && <p role="alert" className="text-sm text-brand-600 mb-3">{t(quoteError)}</p>}
 
           {!isNew && <LastActualPaid componentId={routeId} />}
 
@@ -180,7 +192,7 @@ export default function RangeComponentForm() {
             <div className="divide-y divide-ivory-dark">
               {quotes.map(q => (
                 <div key={q.id} className="py-2.5 flex items-center gap-3">
-                  <button type="button" onClick={() => preferQuote(q.id)} title={q.is_preferred ? t('Preferred') : t('Mark preferred')}
+                  <button type="button" disabled={selectingQuote} onClick={() => preferQuote(q.id)} title={q.is_preferred ? t('Preferred') : t('Mark preferred')}
                           className={q.is_preferred ? 'text-amber-500' : 'text-ink-60 hover:text-amber-400'}>
                     <Star size={16} fill={q.is_preferred ? 'currentColor' : 'none'} />
                   </button>

@@ -34,7 +34,9 @@ function RangeQuoteEditor({ componentId, quoteId }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const backUrl = searchParams.get('back') || `/components/critical/${componentId}`
+  const [draftId] = useState(() => crypto.randomUUID())
   const fileIdRef = useRef(0)
+  const uploads = useRef(new Map())
   const originalQuoteRef = useRef(null)
   const mounted = useRef(false)
   const busy = useRef(false)
@@ -54,6 +56,7 @@ function RangeQuoteEditor({ componentId, quoteId }) {
   const saveErrorRef = useRef(null)
   const [fetching, setFetching] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
@@ -89,7 +92,7 @@ function RangeQuoteEditor({ componentId, quoteId }) {
         }
         const tiers = d.volume_tiers || []
         const attachments = d.attachments || []
-        originalQuoteRef.current = { form: loaded, tiers, attachments }
+        originalQuoteRef.current = { form: loaded, tiers, attachments, stored: d }
         setForm(loaded)
         setVolumeTiers(tiers)
         setExistingAttachments(attachments)
@@ -114,6 +117,7 @@ function RangeQuoteEditor({ componentId, quoteId }) {
   }
 
   function addFiles(raw) {
+    if (busy.current) return
     const next = raw.map(file => ({
       _id: ++fileIdRef.current, file,
       isPdf: file.type === 'application/pdf',
@@ -155,6 +159,26 @@ function RangeQuoteEditor({ componentId, quoteId }) {
     } finally { setExtracting(false) }
   }
 
+  async function uploadAttachment({ _id, file }) {
+    const cached = uploads.current.get(_id)
+    if (cached?.attachment) return cached.attachment
+    const fileRef = storageRef(storage, `range_components/${componentId}/quotes/${draftId}_${_id}_${file.name}`)
+    let upload = cached
+    if (!upload) {
+      const { blob, contentType, fileType } = await prepareSupplierQuoteUpload(file)
+      await uploadBytes(fileRef, blob, { contentType })
+      upload = { fileType, uploadedAt: new Date().toISOString() }
+      uploads.current.set(_id, upload)
+    }
+    upload.attachment = {
+      file_url: await getDownloadURL(fileRef),
+      file_name: file.name,
+      file_type: upload.fileType,
+      uploaded_at: upload.uploadedAt,
+    }
+    return upload.attachment
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (busy.current || extracting || fetching || loadError) return
@@ -162,23 +186,21 @@ function RangeQuoteEditor({ componentId, quoteId }) {
     setSaveError('')
     setSaving(true)
     try {
-      const path = `range_components/${componentId}/quotes`
-      const uploaded = await Promise.all(files.map(async ({ file }) => {
-        const fileRef = storageRef(storage, `${path}/${Date.now()}_${file.name}`)
-        const { blob, contentType, fileType } = await prepareSupplierQuoteUpload(file)
-        await uploadBytes(fileRef, blob, { contentType })
-        const url = await getDownloadURL(fileRef)
-        return { file_url: url, file_name: file.name, file_type: fileType, uploaded_at: new Date().toISOString() }
-      }))
+      const uploaded = await Promise.allSettled(files.map(uploadAttachment))
       if (!mounted.current) return
-      const attachments = [...existingAttachments, ...uploaded]
+      const failed = uploaded.find(result => result.status === 'rejected')
+      if (failed) throw failed.reason
+      const attachments = [...existingAttachments, ...uploaded.map(result => result.value)]
       const original = originalQuoteRef.current
+      const isOpen = () => mounted.current
       if (isEdit && hasUnchangedQuoteTerms(original, form, volumeTiers)) {
         await saveQuoteAttachments(quoteRef(), original.attachments, attachments, {
-          isOpen: () => mounted.current,
+          isOpen, allowAlreadySaved: true,
         })
       } else {
-        await saveComponentQuote(componentId, isEdit ? quoteId : null, { ...form, volume_tiers: volumeTiers, attachments })
+        await saveComponentQuote(componentId, isEdit ? quoteId : null, { ...form, volume_tiers: volumeTiers, attachments }, undefined, {
+          original, createId: draftId, isOpen,
+        })
       }
       if (mounted.current) navigate(backUrl)
     } catch (err) {
@@ -186,6 +208,28 @@ function RangeQuoteEditor({ componentId, quoteId }) {
     } finally {
       busy.current = false
       if (mounted.current) setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (busy.current) return
+    busy.current = true
+    setSaveError('')
+    setDeleting(true)
+    try {
+      await deleteComponentQuote(componentId, quoteId, undefined, {
+        original: originalQuoteRef.current?.stored,
+        isOpen: () => mounted.current,
+      })
+      if (mounted.current) navigate(backUrl)
+    } catch (err) {
+      if (mounted.current) {
+        setConfirmDelete(false)
+        setSaveError(err.message || t('Delete failed.'))
+      }
+    } finally {
+      busy.current = false
+      if (mounted.current) setDeleting(false)
     }
   }
 
@@ -221,7 +265,7 @@ function RangeQuoteEditor({ componentId, quoteId }) {
           <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <Paperclip size={22} />}</span>
           <span className="text-sm text-ink-70">{dragOver ? t('Drop to upload') : t('Click to upload or drag & drop')}</span>
           <span className="text-xs text-ink-60 mt-0.5">JPG, PNG, WebP, HEIC, PDF</span>
-          <input type="file" accept="image/*,.pdf" multiple className="hidden"
+          <input type="file" accept="image/*,.pdf" multiple className="hidden" disabled={saving || deleting}
                  onChange={e => { addFiles(Array.from(e.target.files)); e.target.value = '' }} />
         </label>
 
@@ -233,11 +277,11 @@ function RangeQuoteEditor({ componentId, quoteId }) {
                   ? <div className="w-12 h-12 rounded-none bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><FileText size={20} className="text-red-400" /></div>
                   : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded-none shrink-0" />}
                 <span className="text-xs text-ink-70 flex-1 truncate">{f.file.name}</span>
-                <button type="button" onClick={() => setFiles(prev => prev.filter(x => x._id !== f._id))} className="text-xs text-red-500 hover:text-red-700">{t('Remove')}</button>
+                <button type="button" disabled={saving || deleting} onClick={() => setFiles(prev => prev.filter(x => x._id !== f._id))} className="text-xs text-red-500 hover:text-red-700">{t('Remove')}</button>
               </div>
             ))}
             {!isEdit && files.length > 1 && (
-              <button type="button" className="btn-secondary w-full justify-center text-xs" onClick={() => extractFromFile(files[0].file)} disabled={extracting}>
+              <button type="button" className="btn-secondary w-full justify-center text-xs" onClick={() => extractFromFile(files[0].file)} disabled={extracting || saving || deleting}>
                 {extracting ? t('Extracting…') : t('Extract data from first image')}
               </button>
             )}
@@ -255,7 +299,7 @@ function RangeQuoteEditor({ componentId, quoteId }) {
                   {a.file_type === 'pdf'
                     ? <a href={a.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-2 py-1 rounded-none border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100"><FileText size={14} /><span className="truncate max-w-32">{a.file_name}</span></a>
                     : <a href={a.file_url} target="_blank" rel="noreferrer"><img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded-none border" /></a>}
-                  <button type="button" onClick={() => setExistingAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                  <button type="button" disabled={saving || deleting} onClick={() => setExistingAttachments(prev => prev.filter((_, idx) => idx !== i))}
                           className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full leading-none flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity" title="Remove"><X size={10} /></button>
                 </div>
               ))}
@@ -264,92 +308,94 @@ function RangeQuoteEditor({ componentId, quoteId }) {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="card p-6 space-y-5">
-        <div>
-          <label className="label">{t('Supplier')}</label>
-          <select className="input" value={form.supplier_id} onChange={onSupplier}>
-            <option value="">{form.supplier_name || t('— select supplier —')}</option>
-            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}{s.name_cn ? ` (${s.name_cn})` : ''}</option>)}
-          </select>
-          <Link to="/suppliers/new" target="_blank" className="text-xs text-brand-600 hover:underline mt-1 inline-block">{t('+ Add new supplier')}</Link>
-        </div>
-
-        <div>
-          <label className="label">{t('Unit Cost *')}</label>
-          <div className="flex gap-2">
-            <SupplierUnitCostInput className="input min-w-0 flex-1" value={form.unit_cost}
-                                   storedValue={originalQuoteRef.current?.form.unit_cost} onChange={set('unit_cost')} required />
-            <select className="input w-28" value={form.unit_cost_currency} onChange={set('unit_cost_currency')}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+      <form onSubmit={handleSubmit} className="card p-6">
+        <fieldset disabled={saving || deleting} className="space-y-5">
+          <div>
+            <label className="label">{t('Supplier')}</label>
+            <select className="input" value={form.supplier_id} onChange={onSupplier}>
+              <option value="">{form.supplier_name || t('— select supplier —')}</option>
+              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}{s.name_cn ? ` (${s.name_cn})` : ''}</option>)}
+            </select>
+            <Link to="/suppliers/new" target="_blank" className="text-xs text-brand-600 hover:underline mt-1 inline-block">{t('+ Add new supplier')}</Link>
           </div>
-        </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="label mb-0">{t('Volume Price Tiers')} <span className="text-ink-60 font-normal text-xs">{t('(optional)')}</span></label>
-            <button type="button" onClick={() => setVolumeTiers(prev => [...prev, { min_qty: '', unit_cost: '' }])} className="text-xs text-brand-600 hover:text-brand-800 font-medium">{t('+ Add Tier')}</button>
-          </div>
-          {volumeTiers.length > 0 && (
-            <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-ink-60 px-1"><span>{t('Min Qty')}</span><span>{t('Unit Cost')} ({form.unit_cost_currency})</span><span></span></div>
-              {volumeTiers.map((tier, i) => (
-                <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
-                  <input className="input py-1.5 text-sm" type="number" min="1" placeholder="e.g. 500" value={tier.min_qty}
-                         onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, min_qty: e.target.value } : r))} />
-                  <SupplierUnitCostInput className="input min-w-0 py-1.5 text-sm" value={tier.unit_cost}
-                         storedValue={originalQuoteRef.current?.tiers[i]?.unit_cost}
-                         onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, unit_cost: e.target.value } : r))} />
-                  <button type="button" onClick={() => setVolumeTiers(prev => prev.filter((_, j) => j !== i))} className="text-red-300 hover:text-red-500 text-lg leading-none px-1">×</button>
-                </div>
-              ))}
+          <div>
+            <label className="label">{t('Unit Cost *')}</label>
+            <div className="flex gap-2">
+              <SupplierUnitCostInput className="input min-w-0 flex-1" value={form.unit_cost}
+                                     storedValue={originalQuoteRef.current?.form.unit_cost} onChange={set('unit_cost')} required />
+              <select className="input w-28" value={form.unit_cost_currency} onChange={set('unit_cost_currency')}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
             </div>
-          )}
-        </div>
-
-        <div>
-          <label className="label">{t('MOQ (Minimum Order Quantity)')}</label>
-          <input className="input" type="number" min="0" value={form.moq} onChange={set('moq')} placeholder="e.g. 500" />
-        </div>
-
-        <div>
-          <label className="label">{t('Tooling / Sample Cost')}</label>
-          <div className="flex gap-2">
-            <input className="input flex-1" type="number" step="0.01" min="0" value={form.tooling_sample_cost} onChange={set('tooling_sample_cost')} placeholder="0.00" />
-            <select className="input w-28" value={form.tooling_sample_cost_currency} onChange={set('tooling_sample_cost_currency')}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
           </div>
-        </div>
 
-        <div>
-          <label className="label">{t('Lead Times (days)')}</label>
-          <div className="grid grid-cols-3 gap-3">
-            <div><p className="text-xs text-ink-60 mb-1">{t('Sampling')}</p><input className="input" type="number" min="0" value={form.sampling_lead_time_days} onChange={set('sampling_lead_time_days')} placeholder="12" /></div>
-            <div><p className="text-xs text-ink-60 mb-1">{t('Tooling')}</p><input className="input" type="number" min="0" value={form.tooling_lead_time_days} onChange={set('tooling_lead_time_days')} placeholder="15" /></div>
-            <div><p className="text-xs text-ink-60 mb-1">{t('Production')}</p><input className="input" type="number" min="0" value={form.production_lead_time_days} onChange={set('production_lead_time_days')} placeholder="30" /></div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">{t('Volume Price Tiers')} <span className="text-ink-60 font-normal text-xs">{t('(optional)')}</span></label>
+              <button type="button" onClick={() => setVolumeTiers(prev => [...prev, { min_qty: '', unit_cost: '' }])} className="text-xs text-brand-600 hover:text-brand-800 font-medium">{t('+ Add Tier')}</button>
+            </div>
+            {volumeTiers.length > 0 && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-ink-60 px-1"><span>{t('Min Qty')}</span><span>{t('Unit Cost')} ({form.unit_cost_currency})</span><span></span></div>
+                {volumeTiers.map((tier, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                    <input className="input py-1.5 text-sm" type="number" min="1" placeholder="e.g. 500" value={tier.min_qty}
+                           onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, min_qty: e.target.value } : r))} />
+                    <SupplierUnitCostInput className="input min-w-0 py-1.5 text-sm" value={tier.unit_cost}
+                           storedValue={originalQuoteRef.current?.tiers[i]?.unit_cost}
+                           onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, unit_cost: e.target.value } : r))} />
+                    <button type="button" onClick={() => setVolumeTiers(prev => prev.filter((_, j) => j !== i))} className="text-red-300 hover:text-red-500 text-lg leading-none px-1">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="pref" className="w-4 h-4 accent-brand-600" checked={form.is_preferred} onChange={e => setForm(f => ({ ...f, is_preferred: e.target.checked }))} />
-          <label htmlFor="pref" className="text-sm text-ink-80">{t('Mark as preferred — this quote drives the figurine cost')}</label>
-        </div>
-
-        <div>
-          <label className="label">{t('Notes')}</label>
-          <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder={t('Conditions, remarks, context…')} />
-        </div>
-
-        {saveError && <p ref={saveErrorRef} tabIndex={-1} role="alert" className="text-sm text-brand-600 break-words">{t(saveError)}</p>}
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex gap-3">
-            <button type="submit" className="btn-primary" disabled={saving || extracting}>{saving ? t('Saving…') : isEdit ? t('Save Changes') : t('Add Quote')}</button>
-            <button type="button" className="btn-secondary" onClick={() => navigate(backUrl)}>{t('Cancel')}</button>
+          <div>
+            <label className="label">{t('MOQ (Minimum Order Quantity)')}</label>
+            <input className="input" type="number" min="0" value={form.moq} onChange={set('moq')} placeholder="e.g. 500" />
           </div>
-          {isEdit && <button type="button" className="text-sm text-red-500 hover:text-red-700" onClick={() => setConfirmDelete(true)}>{t('Delete Quote')}</button>}
-        </div>
+
+          <div>
+            <label className="label">{t('Tooling / Sample Cost')}</label>
+            <div className="flex gap-2">
+              <input className="input flex-1" type="number" step="0.01" min="0" value={form.tooling_sample_cost} onChange={set('tooling_sample_cost')} placeholder="0.00" />
+              <select className="input w-28" value={form.tooling_sample_cost_currency} onChange={set('tooling_sample_cost_currency')}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">{t('Lead Times (days)')}</label>
+            <div className="grid grid-cols-3 gap-3">
+              <div><p className="text-xs text-ink-60 mb-1">{t('Sampling')}</p><input className="input" type="number" min="0" value={form.sampling_lead_time_days} onChange={set('sampling_lead_time_days')} placeholder="12" /></div>
+              <div><p className="text-xs text-ink-60 mb-1">{t('Tooling')}</p><input className="input" type="number" min="0" value={form.tooling_lead_time_days} onChange={set('tooling_lead_time_days')} placeholder="15" /></div>
+              <div><p className="text-xs text-ink-60 mb-1">{t('Production')}</p><input className="input" type="number" min="0" value={form.production_lead_time_days} onChange={set('production_lead_time_days')} placeholder="30" /></div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="pref" className="w-4 h-4 accent-brand-600" checked={form.is_preferred} onChange={e => setForm(f => ({ ...f, is_preferred: e.target.checked }))} />
+            <label htmlFor="pref" className="text-sm text-ink-80">{t('Mark as preferred — this quote drives the figurine cost')}</label>
+          </div>
+
+          <div>
+            <label className="label">{t('Notes')}</label>
+            <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder={t('Conditions, remarks, context…')} />
+          </div>
+
+          {saveError && <p ref={saveErrorRef} tabIndex={-1} role="alert" className="text-sm text-brand-600 break-words">{t(saveError)}</p>}
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex gap-3">
+              <button type="submit" className="btn-primary" disabled={saving || extracting}>{saving ? t('Saving…') : isEdit ? t('Save Changes') : t('Add Quote')}</button>
+              <button type="button" className="btn-secondary" onClick={() => navigate(backUrl)}>{t('Cancel')}</button>
+            </div>
+            {isEdit && <button type="button" className="text-sm text-red-500 hover:text-red-700" onClick={() => setConfirmDelete(true)}>{t('Delete Quote')}</button>}
+          </div>
+        </fieldset>
       </form>
 
       {confirmDelete && (
-        <ConfirmDialog title={t('Delete Quote')} message={t('Delete this supplier quote? This cannot be undone.')}
-          onConfirm={async () => { await deleteComponentQuote(componentId, quoteId); navigate(backUrl) }}
+        <ConfirmDialog message={t('Delete this supplier quote? This cannot be undone.')} busy={deleting}
+          onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)} />
       )}
     </div>

@@ -33,7 +33,7 @@ before(async () => {
       b.onResolve({filter:/^(react-router-dom|firebase\/firestore|firebase\/storage)$|(^|\/)(firebase|criticalComponents|i18n)$/},a=>({path:a.path,namespace:'fixture'}))
       b.onLoad({filter:/.*/,namespace:'fixture'},a=>({loader:'js',contents:
         a.path==='react-router-dom' ? `import React from 'react';
-          export const useParams=()=>({id:'c',productId:'p',componentId:'c',quoteId:'q'});
+          export const useParams=()=>({id:'c',productId:'p',componentId:'c',quoteId:globalThis.__quoteSave.newRange ? undefined : 'q'});
           export const useSearchParams=()=>[new URLSearchParams('back=%2Frange%2Fexample%2Fcosting')];
           export const useNavigate=()=>to=>globalThis.__quoteSave.destination=to;
           export const Link=({to,children,...p})=>React.createElement('a',{href:to,...p},children);` :
@@ -63,18 +63,28 @@ before(async () => {
         a.path.endsWith('/i18n') ? 'export const useT = () => text => text' :
         /(^|\/)criticalComponents$/.test(a.path) ? `
           export const getComponent=async id=>({id,name:'Fixture range component'});
-          export const saveComponentQuote=async (id,quoteId,data)=>{
+          export const saveComponentQuote=async (id,quoteId,data,_context,options)=>{
             const state=globalThis.__quoteSave;
             if(!state.range) throw Error('Corporate quotes must use their own writer');
-            state.writes.push({path:'range_components/'+id+'/supplier_quotes/'+quoteId,data});
+            const path='range_components/'+id+'/supplier_quotes/'+(quoteId || options.createId);
+            const attempt={path,data,original:options.original?.stored};
+            state.rangeAttempts.push(attempt);
+            if(state.commitError) throw Error(state.commitError);
+            state.writes.push({path,data});
             state.quote={...state.quote,...data};
           };
-          export const deleteComponentQuote=async()=>{throw Error('No deletions')};` :
+          export const deleteComponentQuote=async (id,quoteId,_context,options)=>{
+            const state=globalThis.__quoteSave;
+            state.deleteAttempts.push({id,quoteId,original:options.original});
+            if(state.commitError) throw Error(state.commitError);
+            state.quote=null;
+          };` :
         a.path==='firebase/storage' ? `
           export const ref=(_storage,path)=>path;
           export const uploadBytes=async(path,file,metadata)=>{
             const state=globalThis.__quoteSave;
             if(!state.range) throw Error('No upload expected');
+            if(state.uploadError===file.name) throw Error('Fictional upload rejected');
             state.uploads.push({path,file,metadata});
           };
           export const getDownloadURL=async()=>'/uploaded.pdf';` :
@@ -87,9 +97,10 @@ before(async () => {
   QuickAdd = (await import(pathToFileURL(join(scratch,'SupplierAddQuoteModal.mjs')))).default
 })
 after(async()=>{dom.window.close();delete globalThis.__quoteSave;await rm(scratch,{recursive:true,force:true})})
-async function withForm(fn, quote=initial, Editor=Form) {
+async function withForm(fn, quote=initial, Editor=Form, options={}) {
   const state = globalThis.__quoteSave = {
     quote:structuredClone(quote),writes:[],uploads:[],destination:null,range:Editor===RangeForm,
+    rangeAttempts:[],deleteAttempts:[],...options,
   }
   const host = document.createElement('div'); document.body.append(host)
   const root = createRoot(host)
@@ -238,6 +249,76 @@ test('Range PDF attachment preserves current approved terms and original source 
     assert.ok(host.querySelector('a[href="/uploaded.pdf"]'))
   }, saved, RangeForm)
 })
+
+test('Range new quote keeps the same ID and staged files when upload and save both need retry', () => withForm(async (host, state) => {
+  const price = host.querySelector('input[placeholder="0.000"]')
+  const notes = host.querySelector('textarea')
+  const first = new dom.window.File(['%PDF-fictional'], 'quote.pdf', { type: 'application/pdf' })
+  const second = new dom.window.File(['%PDF-fictional'], 'details.pdf', { type: 'application/pdf' })
+  const fileInput = host.querySelector('input[type="file"]')
+  Object.defineProperty(fileInput, 'files', { value: [first, second] })
+  await act(async () => {
+    fileInput.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
+    Simulate.change(price, { target: { value: '1.234' } })
+    Simulate.change(notes, { target: { value: 'Fictional new quote terms' } })
+  })
+
+  state.uploadError = second.name
+  await submit(host)
+  assert.match(host.querySelector('[role=alert]').textContent, /Fictional upload rejected/)
+  assert.equal(state.rangeAttempts.length, 0)
+  assert.deepEqual(state.uploads.map(item => item.file.name), [first.name])
+
+  state.uploadError = null
+  state.commitError = 'Fictional commit rejected'
+  await submit(host)
+  assert.match(host.querySelector('[role=alert]').textContent, /Fictional commit rejected/)
+  assert.equal(state.destination, null)
+  assert.equal(notes.value, 'Fictional new quote terms')
+  assert.equal(price.value, '1.234')
+  assert.match(host.textContent, /quote\.pdf/)
+  assert.match(host.textContent, /details\.pdf/)
+  assert.deepEqual(state.uploads.map(item => item.file.name), [first.name, second.name])
+
+  state.commitError = null
+  await submit(host)
+  assert.equal(state.destination, '/range/example/costing')
+  assert.equal(state.rangeAttempts.length, 2)
+  assert.deepEqual(state.rangeAttempts[0], state.rangeAttempts[1])
+  assert.match(state.rangeAttempts[0].path, /^range_components\/c\/supplier_quotes\/[0-9a-f-]+$/)
+  assert.deepEqual(state.uploads.map(item => item.file.name), [first.name, second.name])
+}, null, RangeForm, { newRange: true }))
+
+test('Range conflicting edit and rejected delete keep the open quote draft and original baseline', () => withForm(async (host, state) => {
+  const notes = host.querySelector('textarea')
+  await act(async () => Simulate.change(notes, { target: { value: 'My unsaved Range draft' } }))
+  state.commitError = 'These quote terms changed in another session.'
+  await submit(host)
+  let alert = host.querySelector('[role=alert]')
+  assert.match(alert.textContent, /changed in another session/)
+  assert.equal(document.activeElement, alert)
+  assert.equal(notes.value, 'My unsaved Range draft')
+  assert.deepEqual(state.rangeAttempts[0].original, initial)
+  assert.equal(state.destination, null)
+
+  const button = name => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === name)
+  await act(async () => button('Delete Quote').click())
+  assert.ok(host.querySelector('[role=dialog]'))
+  state.commitError = 'Fictional delete rejected'
+  await act(async () => button('Delete').click())
+  alert = host.querySelector('[role=alert]')
+  assert.match(alert.textContent, /Fictional delete rejected/)
+  assert.equal(document.activeElement, alert)
+  assert.equal(notes.value, 'My unsaved Range draft')
+  assert.equal(state.destination, null)
+  assert.deepEqual(state.deleteAttempts[0].original, initial)
+
+  state.commitError = null
+  await act(async () => button('Delete Quote').click())
+  await act(async () => button('Delete').click())
+  assert.equal(state.destination, '/range/example/costing')
+  assert.equal(state.quote, null)
+}, initial, RangeForm))
 
 test('both editors can save existing finer precision without rounding either price', async () => {
   const higherPrecision = {

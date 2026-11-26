@@ -24,6 +24,7 @@ const firestore=`
  const f=()=>globalThis.__crystalAccessFixture;
  export const collection=(...args)=>({path:args.map(x=>typeof x==='string'?x:x?.path||'').filter(Boolean).join('/')});
  export const doc=collection,query=(ref,...filters)=>({...ref,filters}),where=(...values)=>values,limit=value=>value,orderBy=(...values)=>values;
+ export const getDocsFromServer=ref=>getDocs(ref);
  export const getDocs=async ref=>{
   if(ref.path==='range_components'){f().privateCalls.push(ref.path);return{docs:[]}}
   if(ref.path==='crystal_products'){f().publicCalls.push(ref.path);return{docs:[{id:'cp_example',data:()=>f().product}]}}

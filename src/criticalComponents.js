@@ -1,10 +1,12 @@
 import { ocDateOnly } from './ocTime.js'
 import { useState, useEffect } from 'react'
 import {
-  collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc,
+  collection, doc, getDoc, getDocs, getDocsFromServer, setDoc, deleteDoc,
   onSnapshot, query, orderBy, serverTimestamp, writeBatch, increment, runTransaction,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { sameFirestoreValue } from './firestoreValue'
+import { supplierQuoteEditPatch } from './supplierQuoteEdit'
 import { persistRangeComponent } from './rangePersistence'
 import { numOrNull, trimUpper, result, addError, addWarning, addInfo, merge } from './domain/validation'
 import { colourScope } from './rangeBomScope'
@@ -164,20 +166,94 @@ const denormFrom = q => q ? {
   preferred_supplier_name: '', preferred_quote_id: null,
 }
 
-// Re-read quotes, mark exactly one preferred (or none), and refresh the
-// component's denormalised cost snapshot accordingly.
-async function recomputeDenorm(componentId, preferId) {
-  const snap = await getDocs(QUOTES(componentId))
-  let chosen = null
-  await Promise.all(snap.docs.map(d => {
-    const pref = preferId != null ? d.id === preferId : !!d.data().is_preferred
-    if (pref && !chosen) chosen = { id: d.id, ...d.data() }
-    return d.data().is_preferred !== pref ? updateDoc(d.ref, { is_preferred: pref }) : null
-  }))
-  await updateDoc(doc(db, 'range_components', componentId), {
-    ...denormFrom(chosen), updatedAt: serverTimestamp(),
+function checkRangeQuoteEdit(current, original, patch) {
+  const fields = new Set(Object.keys(patch))
+  if (fields.has('unit_cost_currency')) {
+    fields.add('unit_cost')
+    fields.add('volume_tiers')
+    // Older quotes without a tooling currency use the unit currency.
+    if (!current.tooling_sample_cost_currency || !original.tooling_sample_cost_currency) fields.add('tooling_sample_cost')
+  }
+  if (fields.has('unit_cost') || fields.has('volume_tiers')) fields.add('unit_cost_currency')
+  if (fields.has('tooling_sample_cost_currency') || fields.has('tooling_sample_cost')) {
+    fields.add('tooling_sample_cost_currency')
+    fields.add('tooling_sample_cost')
+    if (!current.tooling_sample_cost_currency || !original.tooling_sample_cost_currency) fields.add('unit_cost_currency')
+  }
+  if (fields.has('supplier_id') || fields.has('supplier_name')) {
+    fields.add('supplier_id')
+    fields.add('supplier_name')
+  }
+  for (const field of fields) {
+    const latest = field === 'attachments' ? current.attachments || [] : current[field]
+    const before = field === 'attachments' ? original.attachments || [] : original[field]
+    if (sameFirestoreValue(latest, before) || (Object.hasOwn(patch, field) && sameFirestoreValue(latest, patch[field]))) continue
+    throw new Error(field === 'attachments'
+      ? 'Attachments changed in another session. Review the saved quote before retrying.'
+      : 'These quote terms changed in another session. Your edits are still here. Review the saved quote before retrying.')
+  }
+}
+
+async function rangeQuoteChange(componentId, quoteId, operation, { patch = {}, original, createId, isOpen } = {}) {
+  const creating = operation === 'save' && !quoteId
+  const componentRef = doc(db, 'range_components', componentId)
+  const quotes = QUOTES(componentId)
+  const target = quoteId || createId ? doc(quotes, quoteId || createId) : doc(quotes)
+  // The fingerprint identifies the original create even if another editor later changes the quote.
+  const createHash = creating && Array.from(
+    new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(patch)))),
+    byte => byte.toString(16).padStart(2, '0'),
+  ).join('')
+  return runTransaction(db, async tx => {
+    const parent = await tx.get(componentRef)
+    if (!parent.exists()) throw new Error('The cost component could not be found.')
+    const targetSnap = await tx.get(target)
+    const current = targetSnap.data()
+    if (creating && current) {
+      if (current.create_payload_hash === createHash) return target.id
+      throw new Error('This draft was already saved with different terms. Open the saved quote before applying these edits.')
+    }
+    if (!creating && !current) {
+      if (operation === 'delete') return target.id
+      throw new Error('This quote no longer exists. Reopen the component before saving.')
+    }
+    if (original && operation === 'save') checkRangeQuoteEdit(current, original, patch)
+    if (original && operation === 'delete' && !sameFirestoreValue(current, original)) {
+      throw new Error('This quote changed in another session. Review the saved quote before deleting it.')
+    }
+
+    const listed = await getDocsFromServer(quotes)
+    const previouslyPreferred = listed.docs.filter(q => q.id !== target.id && q.data().is_preferred)
+    const others = (await Promise.all(previouslyPreferred.map(q => tx.get(q.ref))))
+      .filter(q => q.exists() && q.data().is_preferred)
+      .map(q => ({ ...q.data(), id: q.id, ref: q.ref }))
+    const flagged = current?.is_preferred ? [...others, { ...current, id: target.id, ref: target }] : others
+    const selectedId = parent.data().preferred_quote_id
+    const chooseTarget = operation === 'prefer' || patch.is_preferred === true
+    if (!chooseTarget && (flagged.length > 1 || (selectedId && flagged[0]?.id !== selectedId))) {
+      // If a concurrent writer changed the parent during the list, let Firestore retry.
+      await tx.get(componentRef)
+      throw new Error('The preferred quote and component costing disagree. Confirm the preferred quote on the component before retrying.')
+    }
+    let chosen = flagged[0]
+    if (chooseTarget || (chosen?.id === target.id && operation === 'save')) {
+      chosen = { ...current, ...patch, id: target.id }
+    }
+    if (chosen?.id === target.id && (operation === 'delete' || patch.is_preferred === false)) chosen = null
+    if (isOpen && !isOpen()) throw new Error('This quote editor is no longer open. Reopen the quote before saving.')
+
+    for (const quote of others) {
+      if (quote.id !== chosen?.id) tx.update(quote.ref, { is_preferred: false })
+    }
+    if (operation === 'delete') tx.delete(target)
+    else if (operation === 'prefer') tx.update(target, { is_preferred: true })
+    else if (creating) tx.set(target, { ...patch, create_payload_hash: createHash, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    else tx.update(target, { ...patch, updatedAt: serverTimestamp() })
+    // Preserve legacy standalone component costs until a quote becomes their source.
+    const costing = chosen || flagged.length || selectedId ? denormFrom(chosen) : {}
+    tx.update(componentRef, { ...costing, updatedAt: serverTimestamp() })
+    return target.id
   })
-  return chosen
 }
 
 // Crystal catalogue callers retain the existing private quote tree, but bind a
@@ -230,31 +306,22 @@ async function crystalQuoteChange(componentId, quoteId, data, context, operation
   })
 }
 
-export async function saveComponentQuote(componentId, quoteId, data, context) {
+export async function saveComponentQuote(componentId, quoteId, data, context, { original, createId, isOpen } = {}) {
   if (context) return crystalQuoteChange(componentId, quoteId, data, context, 'save')
-  const payload = { ...normQuote(data), updatedAt: serverTimestamp() }
-  let id = quoteId
-  if (quoteId) {
-    await updateDoc(doc(db, 'range_components', componentId, 'supplier_quotes', quoteId), payload)
-  } else {
-    const ref = await addDoc(QUOTES(componentId), { ...payload, createdAt: serverTimestamp() })
-    id = ref.id
-  }
-  // Preferred selection (or editing the current preferred) refreshes the snapshot.
-  if (payload.is_preferred) await recomputeDenorm(componentId, id)
-  else await recomputeDenorm(componentId, null)
-  return id
+  const { volume_tiers, attachments, ...form } = data
+  const payload = normQuote(data)
+  const patch = quoteId && original ? supplierQuoteEditPatch(payload, form, volume_tiers, original) : payload
+  return rangeQuoteChange(componentId, quoteId, 'save', { patch, original: original?.stored, createId, isOpen })
 }
 
 export async function setPreferredQuote(componentId, quoteId, context) {
   if (context) return crystalQuoteChange(componentId, quoteId, null, context, 'prefer')
-  await recomputeDenorm(componentId, quoteId)
+  return rangeQuoteChange(componentId, quoteId, 'prefer')
 }
 
-export async function deleteComponentQuote(componentId, quoteId, context) {
+export async function deleteComponentQuote(componentId, quoteId, context, options) {
   if (context) return crystalQuoteChange(componentId, quoteId, null, context, 'delete')
-  await deleteDoc(doc(db, 'range_components', componentId, 'supplier_quotes', quoteId))
-  await recomputeDenorm(componentId, null)
+  return rangeQuoteChange(componentId, quoteId, 'delete', options)
 }
 
 // Bulk create (CSV import / Excel migration). Skips rows with no code.

@@ -74,14 +74,17 @@ export function hasUnchangedQuoteTerms(original, form, tiers) {
   return original && sameFirestoreValue(form, original.form) && sameFirestoreValue(tiers, original.tiers)
 }
 
-export function saveQuoteAttachments(quoteRef, originalAttachments, attachments, { validateContext, isOpen }) {
+export function saveQuoteAttachments(quoteRef, originalAttachments, attachments, { validateContext, isOpen, allowAlreadySaved }) {
   return runTransaction(db, async tx => {
     if (validateContext) await validateContext(ref => tx.get(ref))
     const latest = await tx.get(quoteRef)
     if (!isOpen()) throw new Error('This quote editor is no longer open. Reopen the quote before saving.')
-    if (!latest.exists() || !sameFirestoreValue(latest.data().attachments || [], originalAttachments)) {
-      throw new Error('Attachments changed in another session. Reopen this quote before saving.')
+    const current = latest.data()?.attachments || []
+    if (latest.exists() && sameFirestoreValue(current, originalAttachments)) {
+      tx.update(quoteRef, { attachments })
+      return
     }
-    tx.update(quoteRef, { attachments })
+    if (allowAlreadySaved && latest.exists() && sameFirestoreValue(current, attachments)) return
+    throw new Error('Attachments changed in another session. Reopen this quote before saving.')
   })
 }

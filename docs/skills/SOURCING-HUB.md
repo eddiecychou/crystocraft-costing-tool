@@ -56,6 +56,15 @@ preference in one transaction. Both writers touch the component record when
 changing preference so concurrent selections retry against the latest quotes.
 `qa/corporate-supplier-quotes-emulator.mjs` covers competing selections and an
 atomic commit rejected by Firestore.
+
+Ordinary Range component quotes also commit the chosen quote, preferred flags
+and the component's cost copy together. Save edited fields against the open
+quote's baseline so a pricing conflict leaves the draft in the editor and a
+note-only edit preserves a newer price or attachment. A new quote keeps its
+draft ID and successful uploads through Save retries. Attachment-only edits
+still touch only the quote. The existing Crystal variant and supplier checks
+remain on their own path. [Range review and fictional regression cases](../plans/V8.20-RANGE-PREFERRED-SUPPLIER-QUOTE-REVIEW.md)
+
 V8.20 save-conflict fix (29 October 2026): comparisons use shared
 `src/firestoreValue.js`, ignoring map key order while preserving array order,
 field presence, types and values. Identical cached/server attachment maps must
