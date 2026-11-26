@@ -13,6 +13,7 @@
 // at this repo's files). Deliberately not a project dependency — same posture
 // as qa/eslint.no-undef.mjs.
 import { readFileSync } from 'node:fs'
+import assert from 'node:assert/strict'
 import {
   initializeTestEnvironment, assertSucceeds, assertFails,
 } from '@firebase/rules-unit-testing'
@@ -20,6 +21,7 @@ import {
   doc, getDoc, getDocs, collection, collectionGroup, setDoc, deleteDoc, updateDoc, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadString } from 'firebase/storage'
+import { publishRangeCosting, setRangeCostingHold } from '../src/rangePersistence.js'
 
 const PROJECT = process.env.FIREBASE_TEST_PROJECT || 'crystocraft-rbac-test'
 let pass = 0, fail = 0
@@ -53,6 +55,13 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(d, 'products/p1/pricing_tiers/t0'), { price: 1 })
   await setDoc(doc(d, 'products/p1/customer_prices/cust1'), { price: 1 })
   await setDoc(doc(d, 'range_products/rp1'), { name: 'Crystal Bear' })
+  await setDoc(doc(d, 'range_products/costing-hold'), {
+    design_no: '9980', format_code: '001', active: true, variants: [{ ws_price_usd: 12 }],
+  })
+  await setDoc(doc(d, 'range_products/legacy-b0016'), {
+    design_no: '0016', format_code: '000', active: false, status: 'concept',
+    variants: [{ ws_price_usd: null }],
+  })
   await setDoc(doc(d, 'suppliers/s1'),   { name: 'Foundry' })
   await setDoc(doc(d, 'sourcing_captures/sc1'), { captured_by_uid: 'supply1', status: 'needs_review' })
   await setDoc(doc(d, 'purchase_orders/po1'), { supplier_id: 's1' })
@@ -132,6 +141,70 @@ await ok('supply rw b2c_stock',         assertSucceeds(setDoc(doc(supply, 'b2c_s
 await ok('supply rw catalogues',        assertSucceeds(setDoc(doc(supply, 'catalogues/cat2'), { title: 'D' })))
 await ok('supply write counters/pu_',   assertSucceeds(setDoc(doc(supply, 'counters/pu_26'), { seq: 2 })))
 await ok('supply write crystal_swatch_notes', assertSucceeds(setDoc(doc(supply, 'crystal_swatch_notes/n2'), { note: 'y' })))
+
+// Range holds protect both the current publish transaction and older clients.
+{
+  const id = 'costing-hold'
+  const path = 'range_products/' + id
+  const stale = (await getDoc(doc(admin, path))).data()
+  const act = { active: true, reason: 'Fictional packaging cost' }
+  const holdPatch = (uid, reason = act.reason) => ({
+    pricing_hold: { active: true, reason, updated_by: uid, updated_at: serverTimestamp() },
+  })
+  await ok('Figurine without Pricing cannot set a costing hold', assertFails(updateDoc(doc(supply, path), holdPatch('supply1'))))
+  await ok('Pricing hold requires the signed-in actor and a non-blank reason', Promise.all([
+    assertFails(updateDoc(doc(broad, path), holdPatch('admin1'))),
+    assertFails(updateDoc(doc(broad, path), holdPatch('broad1', '   '))),
+    assertFails(updateDoc(doc(broad, path), holdPatch('broad1', 'x'.repeat(241)))),
+  ]))
+  await ok('Pricing operator sets a hold on an existing Range product', assertSucceeds(
+    setRangeCostingHold(broad, id, { ...act, uid: 'broad1' }),
+  ))
+  await ok('stale costing publish reads the hold set from another session', assert.rejects(
+    publishRangeCosting(admin, id, { originalCosting: stale.costing, costing: { markup: 3 }, markup: 3 }),
+    /Fictional packaging cost/,
+  ))
+  await ok('held Range costing rejects publication from an older editor', assertFails(
+    updateDoc(doc(admin, path), { costing: { markup: 3, published_at: serverTimestamp() } }),
+  ))
+  await ok('Range hold permits draft and ordinary catalogue updates', (async () => {
+    await updateDoc(doc(admin, path), { costing: { markup: 2.75 } })
+    await updateDoc(doc(supply, path), { description: 'Fictional catalogue update' })
+    const current = (await getDoc(doc(admin, path))).data()
+    assert.equal(current.pricing_hold.reason, act.reason)
+    assert.equal(current.pricing_hold.updated_by, 'broad1')
+    assert.equal(current.pricing_hold.active, true)
+    assert.deepEqual(current.costing, { markup: 2.75 })
+    assert.deepEqual(current.variants, stale.variants)
+    assert.equal(current.active, true)
+  })())
+  await ok('ordinary Range editor cannot clear a Pricing hold', assertFails(updateDoc(doc(supply, path), {
+    pricing_hold: { active: false, reason: '', updated_by: 'supply1', updated_at: serverTimestamp() },
+  })))
+  await ok('buyer cannot read an internal costing hold', assertFails(getDoc(doc(cust, path))))
+  await ok('explicitly clearing a hold restores normal costing publication', (async () => {
+    const current = (await getDoc(doc(broad, path))).data()
+    await setRangeCostingHold(broad, id, { previousHold: current.pricing_hold, active: false, uid: 'broad1' })
+    await publishRangeCosting(admin, id, { originalCosting: current.costing, costing: { markup: 2.75 }, markup: 2.75 })
+    const released = (await getDoc(doc(admin, path))).data()
+    assert.equal(released.pricing_hold.active, false)
+    assert.equal(released.costing.markup_used, 2.75)
+    assert.ok(released.costing.published_at)
+    assert.deepEqual(released.variants, stale.variants)
+  })())
+  const b0016 = doc(admin, 'range_products/legacy-b0016')
+  await ok('legacy B0016 accepts a draft and keeps its hold', (async () => {
+    await updateDoc(b0016, { costing: { markup: 2 } })
+    await assertFails(updateDoc(b0016, { costing: { markup: 2, published_at: serverTimestamp() } }))
+    await assertFails(updateDoc(b0016, {
+      pricing_hold: { active: false, reason: '', updated_by: 'admin1', updated_at: serverTimestamp() },
+    }))
+    const current = (await getDoc(b0016)).data()
+    assert.deepEqual(current.costing, { markup: 2 })
+    assert.equal(current.active, false)
+    assert.deepEqual(current.variants, [{ ws_price_usd: null }])
+  })())
+}
 
 // ---- staff(supply) DENIED — no customers/quotes/pricing/finance/uc ------
 await ok('supply DENIED customers',     assertFails(getDoc(doc(supply, 'customers/c1'))))

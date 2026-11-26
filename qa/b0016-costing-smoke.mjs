@@ -8,7 +8,24 @@ import { designDraft } from '../netlify/edge-functions/lib/mcpFigurineRange.js'
 const colours=['BK','BL','C1','MT','PE','VL']
 const refs=[{id:'metal',code:'FM-B0016BY00-G',qty_per_unit:1,all_variants:true},...colours.map(c=>({id:c,code:'FM-CF003-'+c,qty_per_unit:1,all_variants:true,crystal_code:c}))]
 const fixture={product:{...designDraft(),critical_components:refs},lib:refs.map(r=>({id:r.id,code:r.code,name:r.code,unit_cost:r.id==='metal'?11.3:9,unit_cost_currency:'RMB',tooling_sample_cost:r.id==='metal'?2912:null,tooling_sample_cost_currency:'RMB'})),writes:0}
-const stubs={firebase:'export const db={};',firestore:`export const doc=(...a)=>({path:a.filter(x=>typeof x==='string').join('/')}); export const getDoc=async r=>({exists:()=>true,data:()=>r.path.startsWith('range_products/')?window.fixture.product:{RMB:1.1686,USD:7.8}});export const updateDoc=async()=>{window.fixture.writes++;throw Error('No writes in smoke test')};export const serverTimestamp=()=>0;`,components:`export const useComponents=()=>({components:window.fixture.lib});export const resolveRef=(r,lib)=>lib.find(c=>c.id===r.id||c.code===r.code);`,crystal:`export const useCrystalUnitCosts=()=>({items:[]});export const crystalSizesOf=()=>[];export const crystalBrandsForSize=()=>[];export const resolveCrystalCost=()=>null;`,pricing:'export const DEFAULT_MARKUP=2;',erp:'export const checkBomCoverage=async()=>({});'}
+const stubs = {
+  firebase: 'export const db = {}; export const authedUser = async () => ({ uid: "fictional-pricing" })',
+  firestore: `
+    export const doc = (...parts) => ({ path: parts.filter(part => typeof part === 'string').join('/') })
+    export const getDoc = async ref => ({
+      exists: () => true,
+      data: () => ref.path.startsWith('range_products/') ? window.fixture.product : { RMB: 1.1686, USD: 7.8 },
+    })
+    const unexpected = () => { window.fixture.writes++; throw Error('No writes in smoke test') }
+    export { unexpected as updateDoc, unexpected as runTransaction, unexpected as collection,
+      unexpected as getDocs, unexpected as query, unexpected as where, unexpected as limit }
+    export const serverTimestamp = () => 0
+  `,
+  components: 'export const useComponents = () => ({ components: window.fixture.lib }); export const resolveRef = (r, lib) => lib.find(c => c.id === r.id || c.code === r.code)',
+  crystal: 'export const useCrystalUnitCosts = () => ({ items: [] }); export const crystalSizesOf = () => []; export const crystalBrandsForSize = () => []; export const resolveCrystalCost = () => null',
+  pricing: 'export const DEFAULT_MARKUP = 2',
+  erp: 'export const checkBomCoverage = async () => ({})',
+}
 const mapping={firebase:/(^|\/)firebase$/,firestore:/^firebase\/firestore$/,components:/(^|\/)criticalComponents$/,crystal:/(^|\/)crystalCosting$/,pricing:/(^|\/)pricing$/,erp:/(^|\/)erpBomCoverage$/}
 await build({entryPoints:['qa/b0016-costing-preview.jsx'],bundle:true,outfile:'qa/b0016-costing-preview-seeded.js',format:'esm',jsx:'automatic',loader:{'.ttf':'file','.png':'file','.jpg':'file'},plugins:[{name:'fixtures',setup(b){for(const[k,filter]of Object.entries(mapping))b.onResolve({filter},()=>({path:k,namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},a=>({contents:stubs[a.path],loader:'js'}))}}]})
 execFileSync('node_modules/.bin/tailwindcss',['-i','src/index.css','-o','qa/b0016-costing-preview-seeded.css','--content','./src/**/*.{js,jsx},./qa/b0016-costing-preview.jsx'])

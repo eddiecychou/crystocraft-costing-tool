@@ -1,5 +1,65 @@
 import { collection, doc, getDocs, query, where, limit, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { familyKey, punctuationKey } from './domain/rangeUpload.js'
+import { sameFirestoreValue } from './firestoreValue.js'
+
+export const RANGE_COSTING_HOLD_REASON_LIMIT = 240
+
+export const isB0016CostingHold = product =>
+  product?.design_no === '0016' && product?.format_code === '000'
+
+export function rangeCostingHoldReason(product) {
+  if (isB0016CostingHold(product)) return 'B0016 pricing is on hold pending assembly and packaging costs.'
+  return product?.pricing_hold?.active === true
+    ? product.pricing_hold.reason || 'A costing hold is active.'
+    : ''
+}
+
+function costingConflictSnapshot(costing = {}) {
+  const { published_at, ...terms } = costing || {}
+  // The UI shows a local time immediately after saving a server timestamp.
+  return { terms, published: published_at != null }
+}
+
+function withLatestRangeHold(message, product) {
+  const { design_no, format_code, pricing_hold } = product
+  return Object.assign(new Error(message), { latestHold: { design_no, format_code, pricing_hold } })
+}
+
+export function publishRangeCosting(db, id, { originalCosting, costing, markup }) {
+  const ref = doc(db, 'range_products', id)
+  return runTransaction(db, async tx => {
+    const current = await tx.get(ref)
+    if (!current.exists()) throw new Error('Product was removed. Reopen the latest record before publishing.')
+    const product = current.data()
+    const reason = rangeCostingHoldReason(product)
+    if (reason) throw withLatestRangeHold(reason, product)
+    if (!sameFirestoreValue(costingConflictSnapshot(originalCosting), costingConflictSnapshot(product.costing))) {
+      throw new Error('Costing changed in another tab. Your draft is still here. Review the latest costing before publishing.')
+    }
+    tx.update(ref, { costing: { ...costing, published_at: serverTimestamp(), markup_used: markup } })
+  })
+}
+
+export function setRangeCostingHold(db, id, { previousHold, active, reason = '', uid }) {
+  const ref = doc(db, 'range_products', id)
+  const text = active ? reason.trim() : ''
+  if (active && (!text || text.length > RANGE_COSTING_HOLD_REASON_LIMIT)) {
+    throw new Error(`Enter a hold reason of up to ${RANGE_COSTING_HOLD_REASON_LIMIT} characters.`)
+  }
+  return runTransaction(db, async tx => {
+    const current = await tx.get(ref)
+    if (!current.exists()) throw new Error('Product was removed. Reopen the latest record before changing the hold.')
+    const product = current.data()
+    if (isB0016CostingHold(product)) throw withLatestRangeHold(rangeCostingHoldReason(product), product)
+    const latest = product.pricing_hold
+    if (latest?.active !== previousHold?.active || latest?.reason !== previousHold?.reason) {
+      throw withLatestRangeHold('The costing hold changed in another tab. Review the current hold before saving.', product)
+    }
+    const hold = { active, reason: text, updated_by: uid }
+    tx.update(ref, { pricing_hold: { ...hold, updated_at: serverTimestamp() } })
+    return hold
+  })
+}
 
 // Shared reservation contract with the MCP. Existing code/format families must
 // be corrected in place. Rules require the same claim on create/identity changes,

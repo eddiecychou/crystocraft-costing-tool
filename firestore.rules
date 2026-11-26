@@ -8,6 +8,8 @@ service cloud.firestore {
     // revision and server timestamps/actors. Admin/CRM staff may read; all
     // client creates/updates/deletes are denied. The validated Node API is the
     // only writer. Customer-visible Brand Assets remain a separate collection.
+    // Range products optionally carry an internal pricing_hold map. Its
+    // active flag, reason and server-stamped actor/time are set by Pricing.
 
     function signedIn() {
       return request.auth != null && request.auth.uid != 'mcp-range-upload-service';
@@ -471,6 +473,34 @@ service cloud.firestore {
       return resource.data.get('design_no', '') == request.resource.data.get('design_no', '')
         && resource.data.get('format_code', '') == request.resource.data.get('format_code', '');
     }
+    function legacyB0016CostingHold(data) {
+      return data.get('design_no', '') == '0016' && data.get('format_code', '') == '000';
+    }
+    function rangeCostingOnHold(data) {
+      let hold = data.get('pricing_hold', {});
+      return legacyB0016CostingHold(data) || (hold is map && hold.get('active', false) == true);
+    }
+    function rangeHasPublishedCosting(data) {
+      let costing = data.get('costing', {});
+      return costing is map && costing.get('published_at', null) != null;
+    }
+    function validRangePricingHold(hold) {
+      return hold is map && hold.keys().hasOnly(['active', 'reason', 'updated_by', 'updated_at'])
+        && hold.active is bool && hold.reason is string && hold.reason.size() <= 240
+        && (hold.active ? !hold.reason.matches('^\\s*$') : hold.reason == '')
+        && hold.updated_by == request.auth.uid && hold.updated_at == request.time;
+    }
+    function validRangeCostingUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let changed = after.diff(before).affectedKeys();
+      return (!changed.hasAny(['pricing_hold'])
+          || (changed.hasOnly(['pricing_hold']) && can('pricing')
+            && !legacyB0016CostingHold(before)
+            && validRangePricingHold(after.get('pricing_hold', null))))
+        && (!changed.hasAny(['costing']) || !rangeHasPublishedCosting(after)
+          || !(rangeCostingOnHold(before) || rangeCostingOnHold(after)));
+    }
     match /range_family_claims/{key} {
       allow read: if can('figurine');
       allow create: if can('figurine') && validRangeFamilyClaim(key, request.resource.data)
@@ -509,8 +539,13 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/range_products/$(rangeId));
       allow get, list: if can('figurine') || can('quotes')
         || (isB0016Mcp() && resource.data.design_no == '0016');
-      allow create: if (can('figurine') && rangeFamilyReserved(rangeId, request.resource.data)) || (b0016WritesApproved() && b0016RangeCreate(rangeId));
-      allow update: if (can('figurine') && (rangeIdentityUnchanged() || rangeFamilyReserved(rangeId, request.resource.data))) || (b0016WritesApproved() && colourRangeLink(rangeId));
+      allow create: if (can('figurine') && rangeFamilyReserved(rangeId, request.resource.data)
+          && !request.resource.data.keys().hasAny(['pricing_hold'])
+          && !(legacyB0016CostingHold(request.resource.data) && rangeHasPublishedCosting(request.resource.data)))
+        || (b0016WritesApproved() && b0016RangeCreate(rangeId));
+      allow update: if (can('figurine') && (rangeIdentityUnchanged() || rangeFamilyReserved(rangeId, request.resource.data))
+          && validRangeCostingUpdate())
+        || (b0016WritesApproved() && colourRangeLink(rangeId));
       allow delete: if can('figurine');
       match /{subcollection}/{documentId}/{allPaths=**} {
         allow read: if can('figurine') || can('quotes');

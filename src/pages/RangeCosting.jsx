@@ -2,8 +2,13 @@ import { formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { colourScope, scopedVariants } from '../rangeBomScope'
 import { useParams, Link } from 'react-router-dom'
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../firebase'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { authedUser, db } from '../firebase'
+import { useCan } from '../access'
+import {
+  isB0016CostingHold, publishRangeCosting, rangeCostingHoldReason,
+  RANGE_COSTING_HOLD_REASON_LIMIT, setRangeCostingHold,
+} from '../rangePersistence'
 import { X, AlertTriangle, BadgeCheck, ListChecks } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { CURRENCIES, RANGE_CRYSTAL_BRANDS } from '../constants'
@@ -204,6 +209,7 @@ function serialize(state) {
 
 export default function RangeCosting() {
   const { id } = useParams()
+  const can = useCan()
   const [product, setProduct] = useState(null)
   const [configuredRates, setConfiguredRates] = useState(null)
   const [ratesError, setRatesError] = useState(false)
@@ -211,6 +217,7 @@ export default function RangeCosting() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
+  const [holdReasonInput, setHoldReasonInput] = useState('')
   // ERP BOM cross-check — on demand, not on load: it's an extra round trip
   // and only matters when someone is actually reviewing the costing.
   const [bom, setBom] = useState({ result: null, loading: false, error: '' })
@@ -302,7 +309,8 @@ export default function RangeCosting() {
   // Chrome piece never also uses the Gold part) — show a per-plating subtotal.
   const hasPlatingParts = refs.some(refPlatOf)
   const hasColourParts = refs.some(colourScope)
-  const b0016PriceBlocked = product?.design_no === '0016' && product?.format_code === '000'
+  const holdReason = rangeCostingHoldReason(product)
+  const canManageHold = can('pricing') && can('figurine') && !isB0016CostingHold(product)
   const colourVariants = hasColourParts ? scopedVariants(draft) : []
   const summaryVariant = hasColourParts ? colourVariants[0] : null
   const componentSubtotal = variant => formatSubtotal(() => componentsCostHKD(draft, lib, rates, 1, variant))
@@ -318,12 +326,12 @@ export default function RangeCosting() {
     if (!hasColourParts || !Array.isArray(variant.crystal_colors) || !variant.crystal_colors.length) return [variant]
     return variant.crystal_colors.map(crystal_code => ({ ...variant, crystal_code, crystal_colors: [crystal_code] }))
   })
-  const priceRows = b0016PriceBlocked || inputsLoading || ratesError ? [] : pricedVariants.map(variant => ({
+  const priceRows = holdReason || inputsLoading || ratesError ? [] : pricedVariants.map(variant => ({
     variant,
     estimates: qtyCols.map(qty => rangePriceEstimate(draft, lib, rates, variant, qty, crystalItems)),
   }))
   let publishIssue = ''
-  if (b0016PriceBlocked) publishIssue = 'B0016 pricing is on hold pending assembly and packaging costs.'
+  if (holdReason) publishIssue = holdReason
   else if (inputsLoading) publishIssue = 'Loading costing inputs…'
   else if (ratesError) publishIssue = 'Exchange rates could not load. Refresh this page to retry.'
   else if (!priceRows.length) publishIssue = 'Add a variant before publishing.'
@@ -360,12 +368,32 @@ export default function RangeCosting() {
     if (publish && publishIssue) { setMsg('Error: ' + publishIssue); return }
     setSaving(true); setMsg(null)
     try {
-      const costing = publish ? { ...draft.costing, published_at: serverTimestamp(), markup_used: markup } : draft.costing
-      await updateDoc(doc(db, 'range_products', id), { costing })
-      setProduct(p => ({ ...p, costing: publish ? { ...costing, published_at: new Date() } : costing }))
-      setMsg(publish ? 'Costing saved and published.' : 'Costing saved.')
-      setTimeout(() => setMsg(null), 3500)
+      const costing = draft.costing
+      if (publish) await publishRangeCosting(db, id, { originalCosting: product.costing, costing, markup })
+      else await updateDoc(doc(db, 'range_products', id), { costing })
+      setProduct(p => ({ ...p, costing: publish ? { ...costing, published_at: new Date(), markup_used: markup } : costing }))
+      const message = publish ? 'Costing saved and published.' : 'Costing saved.'
+      setMsg(message)
+      setTimeout(() => setMsg(value => value === message ? null : value), 3500)
     } catch (e) {
+      if (e.latestHold) setProduct(p => ({ ...p, ...e.latestHold }))
+      setMsg('Error: ' + e.message)
+    } finally { setSaving(false) }
+  }
+
+  async function changeHold(active) {
+    setSaving(true); setMsg(null)
+    try {
+      const user = await authedUser()
+      if (!user) throw new Error('Sign in again to change the costing hold.')
+      const pricing_hold = await setRangeCostingHold(db, id, {
+        previousHold: product.pricing_hold, active, reason: holdReasonInput, uid: user.uid,
+      })
+      setProduct(p => ({ ...p, pricing_hold }))
+      setHoldReasonInput('')
+      setMsg(active ? 'Costing hold set.' : 'Costing hold cleared.')
+    } catch (e) {
+      if (e.latestHold) setProduct(p => ({ ...p, ...e.latestHold }))
       setMsg('Error: ' + e.message)
     } finally { setSaving(false) }
   }
@@ -604,7 +632,15 @@ export default function RangeCosting() {
       </div>
 
       {/* Per-variant cost + sell table */}
-      {b0016PriceBlocked ? <div className="card p-5 mb-5"><h2 className="text-sm text-ink-80 mb-2">Finished-product pricing unavailable</h2><p className="text-sm text-ink-60">B0016 component costs are provisional. Assembly and packaging remain unresolved. No finished-product selling price is calculated or published.</p></div> : <div className="card p-5 mb-5">
+      {holdReason ? <div className="card p-5 mb-5">
+        <h2 className="text-sm text-ink-80 mb-2">Finished-product pricing unavailable</h2>
+        <p className="text-sm text-ink-60 break-words" role="status">{holdReason}</p>
+        {canManageHold && (
+          <button type="button" onClick={() => changeHold(false)} disabled={saving} className="btn-secondary text-sm mt-3">
+            Clear costing hold
+          </button>
+        )}
+      </div> : <div className="card p-5 mb-5">
         <h2 className="text-sm text-ink-80 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup, USD)</span></h2>
         <p className="text-xs text-ink-60 mb-3">
           All-in cost includes components, extras, plating, crystals and tooling per piece. Sell price rounds up in HKD before converting to USD.
@@ -661,6 +697,17 @@ export default function RangeCosting() {
 
       {/* Actions */}
       <div className="card p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
+        {canManageHold && !holdReason && (
+          <div className="w-full flex flex-wrap items-end gap-2 border-b border-warm-grey pb-3">
+            <label className="text-xs text-ink-70 flex-1 min-w-40" htmlFor="range-costing-hold-reason">
+              Costing hold reason
+              <input id="range-costing-hold-reason" className="input mt-1 w-full" value={holdReasonInput}
+                onChange={event => setHoldReasonInput(event.target.value)} maxLength={RANGE_COSTING_HOLD_REASON_LIMIT} />
+            </label>
+            <button type="button" className="btn-secondary text-sm" onClick={() => changeHold(true)}
+              disabled={saving || !holdReasonInput.trim()}>Set costing hold</button>
+          </div>
+        )}
         <div className="text-xs text-ink-60">
           {product.costing?.published_at
             ? <span className="inline-flex items-center gap-1 text-green-600"><BadgeCheck size={14} /> Published {formatOcDateTime(product.costing.published_at)}</span>
@@ -670,8 +717,9 @@ export default function RangeCosting() {
           <button onClick={() => save()} disabled={saving} className="btn-secondary text-sm">{saving ? 'Saving…' : 'Save costing'}</button>
           <button onClick={() => save({ publish: true })} disabled={saving || !!publishIssue} className="btn-primary text-sm">{saving ? 'Saving…' : 'Save & publish'}</button>
         </div>
-        {publishIssue && <p className="w-full text-xs text-ink-60" role="status">{publishIssue}</p>}
-        {msg && <p className={`w-full text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
+        {publishIssue && !holdReason && <p className="w-full text-xs text-ink-60" role="status">{publishIssue}</p>}
+        {msg && <p role={msg.startsWith('Error') ? 'alert' : 'status'}
+          className={`w-full text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
       </div>
     </div>
   )
