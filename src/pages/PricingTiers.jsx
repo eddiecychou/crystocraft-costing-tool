@@ -3,7 +3,7 @@ import { formatOcDateTime } from '../ocTime.js'
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
-  doc, getDoc, collection, getDocs, onSnapshot,
+  doc, getDoc, getDocFromServer, collection, getDocs, onSnapshot,
   addDoc, updateDoc, deleteDoc, setDoc, writeBatch, orderBy, query, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -12,19 +12,27 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import {
   usePricingGroups, effectiveMarkup, DEFAULT_MARKUP,
-  unitCostHKDAtQty, toolingCostHKD, totalUnitCostAtQty,
+  componentUnitCostAtQty, unitCostHKDAtQty, toolingCostHKD, totalUnitCostAtQty,
 } from '../pricing'
 import { costToHKD, hkdRateForCostCurrency, normalizeCostCurrency } from '../costCurrency'
 
-const DEFAULT_RATES = { RMB: 1.09, USD: 7.78, EUR: 8.60, HKD: 1 }
+const HKD_ONLY = { HKD: 1 }
+
+function pricingSignature({ rates, ...inputs }, currencies) {
+  return JSON.stringify({ ...inputs, rates: Object.fromEntries(currencies.map(code => [code, rates?.[code]])) })
+}
 
 export default function PricingTiers() {
   const { id } = useParams()
+  return <PricingTiersEditor key={id} id={id} />
+}
 
+function PricingTiersEditor({ id }) {
   const [product, setProduct]       = useState(null)
   const [components, setComponents] = useState([])
   const [tiers, setTiers]           = useState([])
-  const [rates, setRates]           = useState(DEFAULT_RATES)
+  const [rateRead, setRateRead]     = useState(null)
+  const [rateAttempt, setRateAttempt] = useState(0)
   const [loading, setLoading]       = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const { groups }                  = usePricingGroups()
@@ -42,14 +50,21 @@ export default function PricingTiers() {
     getDoc(doc(db, 'products', id)).then(s => {
       if (s.exists()) setProduct({ id: s.id, ...s.data() })
     })
-    getDoc(doc(db, 'settings', 'exchange_rates')).then(s => {
-      if (s.exists()) {
-        const data = s.data()
-        const picked = Object.fromEntries(Object.entries(data).filter(([, v]) => typeof v === 'number'))
-        setRates(r => ({ ...r, ...picked }))
-      }
-    })
   }, [id])
+
+  useEffect(() => {
+    let active = true
+    getDocFromServer(doc(db, 'settings', 'exchange_rates')).then(s => {
+      if (!active) return
+      const configured = Object.fromEntries(Object.entries(s.data() ?? {}).filter(([, value]) =>
+        Number.isFinite(value) && value > 0
+      ))
+      setRateRead({ status: s.exists() ? 'ready' : 'missing', rates: { ...configured, ...HKD_ONLY } })
+    }).catch(() => {
+      if (active) setRateRead({ status: 'error', rates: HKD_ONLY })
+    })
+    return () => { active = false }
+  }, [rateAttempt])
 
   useEffect(() => {
     const fetchComponents = async () => {
@@ -73,23 +88,37 @@ export default function PricingTiers() {
     return onSnapshot(q, snap => setTiers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [id])
 
-  const unitCostHKD = unitCostHKDAtQty(components, rates, tiers[0]?.quantity || 200)
+  const rates = rateRead?.rates ?? HKD_ONLY
+  const referenceQty = tiers[0]?.quantity || 200
+  const unitCostHKD = unitCostHKDAtQty(components, rates, referenceQty)
   const hasVolumeTiers = components.some(c => c.preferred_quote?.volume_tiers?.length > 0)
   const toolingHKD = toolingCostHKD(components, rates)
   const missingPreferred = components.some(c => !c.preferred_quote)
-  const unavailableCurrencies = [...new Set(components.flatMap(c => {
+  const requiredCurrencies = useMemo(() => [...new Set(components.flatMap(c => {
     const q = c.preferred_quote
     if (!q) return []
     const currencies = []
-    if (q.unit_cost != null && hkdRateForCostCurrency(q.unit_cost_currency, rates) == null) currencies.push(q.unit_cost_currency)
-    if (q.tooling_sample_cost && hkdRateForCostCurrency(q.tooling_sample_cost_currency, rates) == null) currencies.push(q.tooling_sample_cost_currency)
-    return currencies
-  }))]
+    if (componentUnitCostAtQty(q, referenceQty) != null) currencies.push(q.unit_cost_currency)
+    if (q.tooling_sample_cost) currencies.push(q.tooling_sample_cost_currency)
+    return currencies.map(normalizeCostCurrency)
+  }))].sort(), [components, referenceQty])
+  const unavailableCurrencies = requiredCurrencies.filter(code => hkdRateForCostCurrency(code, rates) == null)
+  let rateBlock = ''
+  if (unavailableCurrencies.length) {
+    const required = unavailableCurrencies.map(code => code || 'a quote with no currency').join(', ')
+    if (!rateRead) rateBlock = `Loading exchange rates for ${required}…`
+    else if (rateRead.status === 'error') rateBlock = `Could not load exchange rates from Settings. Required for ${required}.`
+    else if (rateRead.status === 'missing') rateBlock = `No exchange rates have been configured in Settings. Required for ${required}.`
+    else rateBlock = `No valid HKD exchange rate for ${required}. Check Settings and the supplier quote currencies.`
+  }
+  const pricedTiers = tiers.map(tier => ({ ...tier, costHKD: totalUnitCostAtQty(components, rates, tier.quantity) }))
+  const invalidCost = pricedTiers.some(tier => !Number.isFinite(tier.costHKD))
+  const publishBlock = rateBlock || (invalidCost ? 'Check the preferred supplier costs and currencies before publishing.' : '')
 
   // Signature of everything that feeds published prices (cost inputs, the qty
   // ladder, and the group markups). Compared to what was stored at last publish
   // so we can flag when the live prices are stale.
-  const signature = useMemo(() => JSON.stringify({
+  const signature = useMemo(() => pricingSignature({
     tiers: tiers.map(t => [t.quantity, t.production_lead_time_days ?? null]),
     cost: components.map(c => {
       const q = c.preferred_quote
@@ -99,10 +128,18 @@ export default function PricingTiers() {
     }),
     groups: groups.map(g => [g.id, g.markup]),
     rates,
-  }), [tiers, components, groups, rates])
+  }, requiredCurrencies), [tiers, components, groups, rates, requiredCurrencies])
 
   const published = product?.prices_published_at != null
-  const stale = !published || product?.prices_signature !== signature
+  const stale = useMemo(() => {
+    if (!published || !product.prices_signature) return true
+    try {
+      // Earlier publishes stored all configured rates, including unused currencies.
+      return pricingSignature(JSON.parse(product.prices_signature), requiredCurrencies) !== signature
+    } catch {
+      return true
+    }
+  }, [published, product?.prices_signature, requiredCurrencies, signature])
 
   async function handleAddTier(e) {
     e.preventDefault()
@@ -135,9 +172,9 @@ export default function PricingTiers() {
   // Compute each customer's price list (cost × their markup) and write one
   // customer_prices doc each. Raw cost never leaves the admin tool this way.
   async function publish() {
-    if (!tiers.length) { setPublishMsg('Add at least one quantity tier first.'); return }
-    if (tiers.some(t => totalUnitCostAtQty(components, rates, t.quantity) == null)) {
-      setPublishMsg(`Cannot publish: no HKD exchange rate for ${unavailableCurrencies.join(', ') || 'a supplier-cost currency'}.`)
+    if (publishing || !tiers.length) return
+    if (publishBlock) {
+      setPublishMsg(`Error: ${publishBlock}`)
       return
     }
     setPublishing(true); setPublishMsg(null)
@@ -154,9 +191,9 @@ export default function PricingTiers() {
         const batch = writeBatch(db)
         for (const u of customers.slice(i, i + chunkSize)) {
           const mk = effectiveMarkup(u, groups)
-          const priced = tiers.map(t => ({
+          const priced = pricedTiers.map(t => ({
             quantity: t.quantity,
-            price_hkd: Math.ceil(totalUnitCostAtQty(components, rates, t.quantity) * mk),
+            price_hkd: Math.ceil(t.costHKD * mk),
             lead_time_days: t.production_lead_time_days ?? null,
           }))
           batch.set(doc(db, 'products', id, 'customer_prices', u.id), {
@@ -169,9 +206,9 @@ export default function PricingTiers() {
       // Stamp a representative price (at the default markup) back onto each tier
       // doc so the admin Products grid has a figure to show. Customer-specific
       // prices still live in customer_prices.
-      await Promise.all(tiers.map(t =>
+      await Promise.all(pricedTiers.map(t =>
         updateDoc(doc(db, 'products', id, 'pricing_tiers', t.id), {
-          price_hkd: Math.ceil(totalUnitCostAtQty(components, rates, t.quantity) * DEFAULT_MARKUP),
+          price_hkd: Math.ceil(t.costHKD * DEFAULT_MARKUP),
           sell_currency: 'HKD',
           // Clear legacy fields from the old USD schema so stale values can't resurface.
           sell_price: deleteField(),
@@ -183,9 +220,9 @@ export default function PricingTiers() {
         prices_signature: signature,
         // Card-ready public/admin reference prices. Keeping this bounded copy
         // on the parent avoids one pricing_tiers query per catalogue card.
-        pricing_summary: tiers.map(t => ({
+        pricing_summary: pricedTiers.map(t => ({
           quantity: Number(t.quantity),
-          price_hkd: Math.ceil(totalUnitCostAtQty(components, rates, t.quantity) * DEFAULT_MARKUP),
+          price_hkd: Math.ceil(t.costHKD * DEFAULT_MARKUP),
         })),
       }, { merge: true })
       setProduct(p => ({ ...p, prices_published_at: new Date(), prices_signature: signature }))
@@ -271,7 +308,7 @@ export default function PricingTiers() {
             </div>
 
             <div className="mt-3 text-xs text-ink-60">
-              Rates used: {Object.entries(rates).filter(([k, v]) => k !== 'HKD' && typeof v === 'number').map(([k, v]) => `${k}→HKD ${v}`).join(' · ')}
+              Rates used: {Object.entries(rates).filter(([k]) => k !== 'HKD').map(([k, v]) => `${k}→HKD ${v}`).join(' · ') || 'HKD only'}
               {' · '}<Link to="/settings" className="text-brand-500 hover:underline">Update in Settings</Link>
             </div>
           </>
@@ -284,9 +321,15 @@ export default function PricingTiers() {
         </div>
       )}
 
-      {unavailableCurrencies.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-none px-4 py-3 mb-4 text-sm text-red-700">
-          <AlertTriangle size={13} className="inline align-[-2px] mr-1" />No HKD exchange rate for {unavailableCurrencies.join(', ')}. Costs and price publishing are blocked until the quote currency is corrected or a rate is configured.
+      {publishBlock && (
+        <div role="status" className="bg-amber-50 border border-amber-200 rounded-none px-4 py-3 mb-4 text-sm text-amber-800">
+          <AlertTriangle size={13} className="inline align-[-2px] mr-1" />{publishBlock} Price publishing is paused.
+          {rateBlock && rateRead && (
+            <button type="button" className="ml-2 underline" onClick={() => {
+              setRateRead(null)
+              setRateAttempt(n => n + 1)
+            }}>Retry rates</button>
+          )}
         </div>
       )}
 
@@ -312,10 +355,10 @@ export default function PricingTiers() {
                 <tr><td colSpan={6} className="pb-1"><div className="border-b border-warm-grey" /></td></tr>
               </thead>
               <tbody>
-                {tiers.map((tier, idx) => {
+                {pricedTiers.map((tier, idx) => {
                   const tierUnitCost = unitCostHKDAtQty(components, rates, tier.quantity)
                   const toolingPerUnit = toolingHKD == null ? null : toolingHKD / tier.quantity
-                  const allInCost = totalUnitCostAtQty(components, rates, tier.quantity)
+                  const allInCost = tier.costHKD
                   const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-ivory'
                   return (
                     <tr key={tier.id} className={rowBg}>
@@ -379,8 +422,8 @@ export default function PricingTiers() {
                 <tr><td colSpan={previewGroups.length + 1} className="pb-1"><div className="border-b border-warm-grey" /></td></tr>
               </thead>
               <tbody>
-                {tiers.map((tier, idx) => {
-                  const allIn = totalUnitCostAtQty(components, rates, tier.quantity)
+                {pricedTiers.map((tier, idx) => {
+                  const allIn = tier.costHKD
                   const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-ivory'
                   return (
                     <tr key={tier.id} className={rowBg}>
@@ -404,14 +447,15 @@ export default function PricingTiers() {
             <h2 className="text-sm text-ink-80">Publish to customers</h2>
             <p className="text-xs text-ink-60 mt-0.5">
               {!published ? 'Not published yet — customers see no corporate price until you publish.'
-                : stale ? 'Costs, tiers or markups changed since the last publish.'
-                : `Up to date · last published ${formatOcDateTime(product.prices_published_at?.toDate?.(), {}) || ''}`}
+                : publishBlock ? `Last published prices are kept · ${formatOcDateTime(product.prices_published_at)}`
+                : stale ? 'Costs, rates, tiers or markups changed since the last publish.'
+                : `Up to date · last published ${formatOcDateTime(product.prices_published_at)}`}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {published && !stale && <span className="inline-flex items-center gap-1 text-xs text-green-600"><BadgeCheck size={14} /> Up to date</span>}
-            {stale && published && <span className="text-xs text-amber-600">Out of date</span>}
-            <button onClick={publish} disabled={publishing || !tiers.length || unavailableCurrencies.length > 0} className="btn-primary text-sm">
+            {published && !stale && !publishBlock && <span className="inline-flex items-center gap-1 text-xs text-green-600"><BadgeCheck size={14} /> Up to date</span>}
+            {stale && published && !publishBlock && <span className="text-xs text-amber-600">Out of date</span>}
+            <button onClick={publish} disabled={publishing || !tiers.length || !!publishBlock} className="btn-primary text-sm">
               {publishing ? 'Publishing…' : stale ? 'Publish prices' : 'Re-publish'}
             </button>
           </div>
