@@ -12,6 +12,8 @@ import { amountInWords } from '../constants'
 import { pdfFileTitle } from '../pdfFilename'
 import { downloadOrderInvoiceExcel } from '../invoiceExcel'
 import { invoicePaymentTotals } from '../invoicePayments'
+import { documentVoidAction } from '../documentVoids'
+import { canonicalSalesInvoiceNo } from '../documentVoidModel'
 import { useCan } from '../access'
 import logoUrl from '../assets/logo.png'
 
@@ -54,6 +56,20 @@ function InvoiceDocument({ id, requestedSi }) {
   const [stampUrl, setStampUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [voidedNo, setVoidedNo] = useState('')
+
+  async function exportActiveInvoice(run) {
+    try {
+      const no = canonicalSalesInvoiceNo(invoiceNo)
+      if (no) {
+        const latest = await documentVoidAction('si_status', { no })
+        if (latest.status === 'void') { setVoidedNo(invoiceNo); return }
+      }
+      run()
+    } catch (failure) {
+      setError(failure.message)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -66,6 +82,11 @@ function InvoiceDocument({ id, requestedSi }) {
         const o = snapshot ? snapshot.order : await getOrder(id)
         if (!o) throw new Error('Order not found.')
         if (requestedSi !== null && (!requestedSi || orderSi(o) !== requestedSi)) throw new Error(historicalMessage)
+        const no = canonicalSalesInvoiceNo(orderSi(o))
+        if (no && (await documentVoidAction('si_status', { no })).status === 'void') {
+          if (alive) setVoidedNo(no)
+          return
+        }
         const [ls, customers] = await Promise.all([snapshot ? snapshot.lines : getOrderLines(id), loadCustomers()])
         if (!alive) return
         setOrder(o)
@@ -108,6 +129,7 @@ function InvoiceDocument({ id, requestedSi }) {
 
   if (loading) return <p style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading…</p>
   if (error) return <p role="alert" style={{ padding: 40, textAlign: 'center', color: '#c00' }}>{error}</p>
+  if (voidedNo) return <p role="status" className="p-6 text-center text-brand-600">Invoice {voidedNo} · VOID</p>
 
   const issueDate = order.invoice_date || order.invoiced_at || order.order_date
   const issuer = hongKongDocumentIssuer(issueDate)
@@ -241,8 +263,8 @@ function InvoiceDocument({ id, requestedSi }) {
         .si-foot .nm { font-weight: 600; color: #555; }
       `}</style>
 
-      <button className="print-btn" onClick={() => window.print()}>Print / Save as PDF</button>
-      <button className="print-btn" onClick={() => downloadOrderInvoiceExcel(order, lines, 'sales', { subtotal, chargesTotal, discountAmount, total })}>Download Excel</button>
+      <button className="print-btn" onClick={() => exportActiveInvoice(() => window.print())}>Print / Save as PDF</button>
+      <button className="print-btn" onClick={() => exportActiveInvoice(() => downloadOrderInvoiceExcel(order, lines, 'sales', { subtotal, chargesTotal, discountAmount, total }))}>Download Excel</button>
 
       {/* An invoice with no number is not an invoice — say so before it is sent,
           not after the customer asks what to quote on the remittance. */}

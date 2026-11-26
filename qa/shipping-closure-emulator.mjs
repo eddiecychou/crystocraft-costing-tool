@@ -90,6 +90,8 @@ async function loadBundle() {
       b.onResolve({filter:/\/firebase(?:\.js)?$/},a=>a.path.startsWith('.')?{path:'db',namespace:'fixture'}:null)
       b.onResolve({filter:/\/customerOrderHistoryApi$/},()=>({path:'history',namespace:'history-fixture'}))
       b.onLoad({filter:/.*/,namespace:'history-fixture'},()=>({contents:'export const myOcInvoiceDetail=globalThis.__closureCustomerInvoice;export const myInvoiceDetail=()=>{throw Error("Fictional OC only")}' }))
+      b.onResolve({filter:/\/documentVoids$/},()=>({path:'document-status',namespace:'document-status-fixture'}))
+      b.onLoad({filter:/.*/,namespace:'document-status-fixture'},()=>({contents:'export const documentVoidAction=async()=>({status:"issued"})'}))
       b.onResolve({filter:/\/erpApi$/},()=>({path:'erp',namespace:'erp-fixture'}))
       b.onLoad({filter:/.*/,namespace:'erp-fixture'},()=>({contents:`export const erpLines=async()=>[];export const erpLookup=async()=>[{code:'FICTIONAL-SO',customer:'Fictional ERP duplicate'}]`,loader:'js'}))
       b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const db=globalThis.__shippingDeletionDb;

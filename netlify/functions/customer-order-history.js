@@ -13,7 +13,8 @@ export default async (req) => {
     const db = getFirestore(),
       deps = { SUPABASE_URL, SERVICE_KEY }
     const oc = customerOcSource(db, (numbers) => customerInvoiceLedger(deps, numbers))
-    return await createCustomerOrderHistoryHandler({ ...customerDependencies(db, getAuth()), ...deps, oc })(
+    const voidedOcNumbers = async numbers => new Set((await customerInvoiceLedger(deps, numbers, true)).map(row => row.si_no))
+    return await createCustomerOrderHistoryHandler({ ...customerDependencies(db, getAuth()), ...deps, oc, voidedOcNumbers })(
       req,
     )
   } catch {

@@ -45,7 +45,7 @@ const stubs = {
   customer: 'export const useCustomers=()=>({customers:[]})',
   erpApi: `export const erpLookup=async(entity,filters)=>{const f=globalThis.fixture;f.calls.push([entity,filters.q]);if(f.erpFailure)throw Error('Fictional archive failure');return f[entity]};export const erpLines=async(of,id)=>{globalThis.fixture.calls.push([of,id]);return {rows:[{seq:1,item_code:'FICT-ARCHIVE-ITEM',description:'Fictional ERP line',qty:7,unit:'pcs',unit_price:3}],surcharges:[]}}`,
 }
-const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'InvoiceOriginalButton', 'InvoiceFinanceLookup', 'LogisticsVendorForm', 'ErpDocModal', 'ExportFilterBar', 'InvoiceFollowups', 'i18n', 'access', 'useProfile'])
+const real = new Set(['App', 'Storefront', 'Shipping', 'SalesInvoices', 'InvoiceOriginalButton', 'InvoiceFinanceLookup', 'InvoiceVoidPanel', 'DocumentVoidConfirmation', 'LogisticsVendorForm', 'ErpDocModal', 'ExportFilterBar', 'InvoiceFollowups', 'i18n', 'access', 'useProfile'])
 const routeOutput = name => `import React from 'react';import{useParams}from 'react-router-dom';export default function RouteProbe(){return React.createElement('div',{'data-route':${JSON.stringify(name)}},JSON.stringify(Object.fromEntries(Object.entries(useParams()).filter(([key])=>key!=='*'))))}`
 before(async () => {
   const result = await build({ entryPoints: ['src/App.jsx'], bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic', external: [], plugins: [{ name: 'local-route-fixture',setup(builder) {
@@ -66,6 +66,13 @@ before(async () => {
   app = (await import(pathToFileURL(bundle).href)).default
   originalFetch = globalThis.fetch
   globalThis.fetch = (path, options) => {
+    if (path === '/api/document-void') {
+      assert.equal(options.headers.Authorization, 'Bearer fictional-token')
+      const body = JSON.parse(options.body)
+      if (body.action === 'si_voids') return Response.json({ numbers: globalThis.fixture.voidedInvoices ?? [] })
+      assert.ok(globalThis.fixture.documentVoid)
+      return globalThis.fixture.documentVoid(body)
+    }
     if (path.startsWith('/api/oc-invoice-summaries?lookup=') && globalThis.fixture?.lookup) {
       assert.equal(options.method ?? 'GET', 'GET')
       assert.equal(options.headers.Authorization, 'Bearer fictional-token')
@@ -433,6 +440,47 @@ test('invoice-only staff can open only an available exact original and the CSV r
       ])
     }, { summaries: rows })
   } finally { globalThis.fetch = fetchBefore }
+})
+
+test('Finance can find and void an exact historical SI while invoice-only staff cannot', async () => {
+  await withPage('/sales-invoices', profile('staff', ['invoices']), () => {
+    assert.doesNotMatch(host.textContent, /Void sales invoice/)
+  }, { summaries: [] })
+
+  const target = { id: 88, no: 'SI269988', status: 'issued', customer: 'Fictional split invoice',
+    currency: 'USD', total: 128, uc: 'UC9901', updatedAt: '2026-11-16T00:00:00Z' }
+  const requests = []
+  const documentVoid = body => {
+    requests.push(body)
+    if (body.action === 'review_si') return Response.json(target)
+    return Response.json({ no: target.no, status: 'void', reason: body.reason })
+  }
+  await withPage('/sales-invoices', profile('staff', ['invoices', 'uc']), async () => {
+    const panel = [...host.querySelectorAll('details')].find(element => element.querySelector('summary')?.textContent === 'Void sales invoice')
+    assert.ok(panel)
+    await act(async () => {
+      const number = panel.querySelector('input')
+      number.value = 'si269988'
+      Simulate.change(number)
+    })
+    await click(buttons('Find invoice'))
+    assert.match(panel.textContent, /SI269988 · Fictional split invoice/)
+    await click(buttons('Void SI'))
+    const dialog = panel.querySelector('[role=dialog]')
+    const confirm = dialog.querySelector('button[type=submit]')
+    assert.equal(confirm.disabled, true)
+    await act(async () => {
+      const reason = dialog.querySelector('textarea')
+      reason.value = 'Fictional split was cancelled'
+      Simulate.change(reason)
+    })
+    await click(confirm)
+    assert.match(panel.textContent, /VOIDFictional split was cancelled/)
+    assert.deepEqual(requests, [
+      { action: 'review_si', no: target.no },
+      { action: 'void_si', id: target.id, no: target.no, updatedAt: target.updatedAt, reason: 'Fictional split was cancelled' },
+    ])
+  }, { summaries: [], documentVoid })
 })
 
 test('Shipping and Invoices staff can choose OC without ERP or UC and export their visible rows', async () => {

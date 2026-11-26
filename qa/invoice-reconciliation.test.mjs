@@ -87,6 +87,11 @@ before(async () => {
   originalFetch = globalThis.fetch; originalDeno = globalThis.Deno
   globalThis.Deno = { env: { get: key => ({ SUPABASE_URL: 'https://fictional-rest.invalid', SUPABASE_SECRET_KEY: 'FICTIONAL-KEY', VITE_FIREBASE_PROJECT_ID: 'demo-reconciliation' }[key]) } }
   globalThis.fetch = async (input, init = {}) => {
+    if (input === '/api/document-void') {
+      assert.equal(init.method, 'POST')
+      assert.equal(JSON.parse(init.body).action, 'si_voids')
+      return Response.json({ numbers: [...f.ledger.values()].filter(row => row.status === 'void').map(row => row.si_no) })
+    }
     if (input === '/api/uc') {
       assert.equal(init.method, 'POST'); const body = JSON.parse(init.body)
       assert.ok(['list_invoices', 'upsert_invoice'].includes(body.op), 'Only invoice read/recovery operations are permitted')

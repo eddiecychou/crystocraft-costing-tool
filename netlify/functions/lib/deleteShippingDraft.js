@@ -18,7 +18,7 @@ export async function deleteShippingDraft(db, uid, id, base, hasFinancialHistory
     if (reason) throw blocked(reason)
 
     const byOrder = collection => db.collection(collection).where('order_id', '==', id).limit(1)
-    const [packing, freight, decision, rfq, allocations, followup, registry, credit, movement] = await Promise.all([
+    const [packing, freight, decision, rfq, allocations, followup, registry, credit, movement, audit] = await Promise.all([
       tx.get(byOrder('packing_lists')),
       tx.get(byOrder('freight_quotes')),
       tx.get(db.collection('freight_decisions').doc(id)),
@@ -28,7 +28,9 @@ export async function deleteShippingDraft(db, uid, id, base, hasFinancialHistory
       tx.get(byOrder('uc_invoices')),
       tx.get(byOrder('credit_notes')),
       tx.get(db.collectionGroup('movements').where('order_id', '==', id).limit(1)),
+      tx.get(order.collection('closure_audit').limit(1)),
     ])
+    if (!audit.empty) throw blocked('This order has document or closure history. Keep the order for reference.')
     if (!movement.empty) throw blocked('This order has stock movements. Keep it for stock history.')
     if (!packing.empty) throw blocked('This draft has a saved Packing List. Keep the order for reference.')
     if (!freight.empty || decision.exists || !rfq.empty) throw blocked('This draft has Freight history. Keep the order for reference.')

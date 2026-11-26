@@ -86,6 +86,14 @@ before(async () => {
   SalesInvoice = pagesModule.SalesInvoice
   originalFetch = globalThis.fetch
   globalThis.fetch = (path, options) => {
+    if (path === '/api/document-void') {
+      const { action, orderId } = JSON.parse(options.body)
+      if (action === 'si_status') return Response.json({ status: 'issued' })
+      assert.equal(action, 'pi_status')
+      assert.equal(orderId, 'created-order')
+      const header = f.created.find(entry => !entry.path.flat(Infinity).includes('lines')).data
+      return Response.json({ current: { no: header.erp_so_no, revision: header.pi_revision ?? 0 }, version: 'fixture', history: [] })
+    }
     if (path !== '/api/extract-pi') throw Error('Unexpected network request')
     const payload = JSON.parse(options.body), pdf = Buffer.from(payload.image, 'base64').toString('utf8')
     const id = pdf.includes('PDF-A') ? 'A' : 'B', response = deferred()

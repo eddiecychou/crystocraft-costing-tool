@@ -12,6 +12,9 @@ import { downloadCsv } from '../exportCsv'
 import { amountInWords } from '../constants'
 import { pdfFileTitle } from '../pdfFilename'
 import { downloadOrderInvoiceExcel } from '../invoiceExcel'
+import { documentVoidAction } from '../documentVoids'
+import { piDocumentIdentity } from '../documentVoidModel'
+import DocumentVoidConfirmation from '../components/shipping/DocumentVoidConfirmation'
 import logoUrl from '../assets/logo.png'
 
 // Proforma Invoice — the document CuiLing currently generates in JES and prints
@@ -33,8 +36,24 @@ const fmtDate = (s) => {
   return isNaN(d) ? s : formatOcDate(d, { day: '2-digit', month: 'short', year: 'numeric' }, 'en-GB')
 }
 
+function PiVoidHistory({ entries }) {
+  if (!entries.length) return null
+  return (
+    <details className="no-print mb-4 text-sm">
+      <summary>PI void history</summary>
+      <ul>{entries.map(entry => <li key={JSON.stringify([entry.no, entry.revision])}>
+        {entry.no}{entry.revision > 0 && ` · Rev ${entry.revision}`}{entry.voidedAt && ` · ${fmtDate(entry.voidedAt)}`} · {entry.reason}
+      </li>)}</ul>
+    </details>
+  )
+}
+
 export default function ProformaInvoicePrint() {
   const { id } = useParams()
+  return <ProformaInvoiceDocument key={id} id={id} />
+}
+
+function ProformaInvoiceDocument({ id }) {
   const [order, setOrder] = useState(null)
   const [lines, setLines] = useState([])
   const [customer, setCustomer] = useState(null)
@@ -46,6 +65,53 @@ export default function ProformaInvoicePrint() {
   const [stampUrl, setStampUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [review, setReview] = useState(null)
+  const [showVoid, setShowVoid] = useState(false)
+  const [statusError, setStatusError] = useState('')
+  const [statusAttempt, setStatusAttempt] = useState(0)
+  const pi = piDocumentIdentity(order)
+  const reviewed = review?.orderId === id && review?.current?.no === pi?.no && review?.current?.revision === pi?.revision
+  const voided = reviewed && review.history.find(entry => entry.no === pi?.no && entry.revision === pi?.revision)
+
+  useEffect(() => {
+    if (!pi) return
+    const controller = new AbortController()
+    setReview(null)
+    setStatusError('')
+    documentVoidAction('pi_status', { orderId: id }, controller.signal).then(result => {
+      if (controller.signal.aborted) return
+      if (result.current?.no !== pi.no || result.current?.revision !== pi.revision) {
+        setStatusError('The saved PI changed. Reload this page to see the current document.')
+        return
+      }
+      setReview({ ...result, orderId: id })
+    }).catch(failure => {
+      if (!controller.signal.aborted) setStatusError(failure.message)
+    })
+    return () => controller.abort()
+  }, [id, pi?.no, pi?.revision, statusAttempt])
+
+  async function voidPi(reason) {
+    const saved = await documentVoidAction('void_pi', { orderId: id, target: pi, version: review.version, reason })
+    setReview(current => ({ ...review, ...current, history: [saved.void, ...(current ?? review).history.filter(
+      entry => entry.no !== pi.no || entry.revision !== pi.revision
+    )] }))
+    setShowVoid(false)
+  }
+
+  async function exportActivePi(run) {
+    if (!pi) { run(); return }
+    try {
+      const latest = await documentVoidAction('pi_status', { orderId: id })
+      if (latest.current?.no !== pi.no || latest.current?.revision !== pi.revision || latest.version !== review.version)
+        throw Error('The saved PI changed. Reload this page to see the current document.')
+      setReview({ ...latest, orderId: id })
+      if (!latest.history.some(entry => entry.no === pi.no && entry.revision === pi.revision)) run()
+    } catch (failure) {
+      setReview(null)
+      setStatusError(failure.message)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -95,6 +161,20 @@ export default function ProformaInvoicePrint() {
 
   if (loading) return <p style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading…</p>
   if (error) return <p style={{ padding: 40, textAlign: 'center', color: '#c00' }}>{error}</p>
+  if (pi && !reviewed) return (
+    <div className="p-6 text-center">
+      <p role={statusError ? 'alert' : 'status'}>{statusError || 'Checking PI status…'}</p>
+      {statusError && <button type="button" className="btn-secondary mt-3" onClick={() => setStatusAttempt(i => i + 1)}>Retry</button>}
+    </div>
+  )
+  if (voided) return (
+    <section className="card p-6 max-w-xl mx-auto mt-6">
+      <h1 role="status" className="text-lg text-brand-600 mb-3">
+        PI {voided.no}{voided.revision > 0 && ` · Rev ${voided.revision}`} · VOID
+      </h1>
+      <PiVoidHistory entries={review.history} />
+    </section>
+  )
 
   const issueDate = order.order_date
   const issuer = hongKongDocumentIssuer(issueDate)
@@ -161,7 +241,7 @@ export default function ProformaInvoicePrint() {
     <div className="pi-doc">
       <style>{`
         @page { size: A4 portrait; margin: 1.8cm; }
-        @media print { body { margin: 0; } .print-btn, .pi-warn, .pi-tools { display: none !important; } }
+        @media print { body { margin: 0; } .print-btn, .pi-warn, .pi-tools, .no-print { display: none !important; } }
         .pi-tools { display: flex; justify-content: center; gap: 10px; margin: 0 auto 18px; flex-wrap: wrap; }
         .pi-tools button { padding: 7px 16px; background: #fff; color: #444; border: 1px solid #d8d8d8;
           border-radius: 6px; cursor: pointer; font-size: 12px; }
@@ -280,8 +360,8 @@ export default function ProformaInvoicePrint() {
         }
       `}</style>
 
-      <button className="print-btn" onClick={() => window.print()}>Print / Save as PDF</button>
-      <button className="print-btn" onClick={() => downloadOrderInvoiceExcel(order, lines, 'proforma', { subtotal, chargesTotal, discountAmount, total })}>Download Excel</button>
+      <button className="print-btn" onClick={() => exportActivePi(() => window.print())}>Print / Save as PDF</button>
+      <button className="print-btn" onClick={() => exportActivePi(() => downloadOrderInvoiceExcel(order, lines, 'proforma', { subtotal, chargesTotal, discountAmount, total }))}>Download Excel</button>
 
       {/* CSV of the line table (XiangXia, 2026-07-23). Two buttons rather than a
           checkbox so the choice is one click and, more importantly, so the
@@ -290,9 +370,13 @@ export default function ProformaInvoicePrint() {
           reach the factory floor. Lines only: totals as trailing rows would
           break the table for Excel, and a sum is one formula away. */}
       <div className="pi-tools">
-        <button type="button" onClick={() => exportCsv(true)}>Export CSV</button>
-        <button type="button" onClick={() => exportCsv(false)}>Export CSV — no prices</button>
+        <button type="button" onClick={() => exportActivePi(() => exportCsv(true))}>Export CSV</button>
+        <button type="button" onClick={() => exportActivePi(() => exportCsv(false))}>Export CSV — no prices</button>
+        {pi && <button type="button" onClick={() => setShowVoid(true)}>Void PI</button>}
       </div>
+      {showVoid && <DocumentVoidConfirmation label="Void PI" document={pi.no + (pi.revision ? ` · Rev ${pi.revision}` : '')}
+        onCancel={() => setShowVoid(false)} onConfirm={voidPi} />}
+      {reviewed && <PiVoidHistory entries={review.history} />}
 
       {currencyMismatch && (
         <div className="pi-warn">

@@ -1,5 +1,6 @@
 import { customerContext, privateJson as json, validId } from './customerAccess.js'
 import { isConfirmedErpInvoice } from '../../../src/domain/salesInvoiceHistory.js'
+import { canonicalSalesInvoiceNo } from '../../../src/documentVoidModel.js'
 
 const headerFields = ['code', 'date', 'status', 'amount', 'currency', 'customer_po', 'ref', 'discount']
 const lineFields = ['item_code', 'description', 'qty', 'unit_price', 'amount']
@@ -27,15 +28,16 @@ export async function invoiceTable(deps, table, params) {
   return rows
 }
 
-export async function customerInvoiceLedger(deps, numbers) {
+export async function customerInvoiceLedger(deps, numbers, voidOnly = false) {
   const rows = []
   for (let i = 0; i < numbers.length; i += 40) {
     const values = numbers.slice(i, i + 40).map((v) => '"' + v.replace(/["\\]/g, '\\$&') + '"')
     rows.push(
       ...(await invoiceTable(deps, 'app_sales_invoice', {
-        select:
+        select: voidOnly ? 'si_no,status' :
           'id,si_no,status,order_id,uc_no,currency,invoice_date,invoiced_at,total,accounting_total,uc_registry(customer_id)',
         si_no: 'in.(' + values.join(',') + ')',
+        ...(voidOnly && { status: 'eq.void' }),
       })),
     )
   }
@@ -89,11 +91,15 @@ export function createCustomerOrderHistoryHandler(deps) {
           typeof h.code === 'string' &&
           h.code.trim(),
       )
+      const voided = deps.voidedOcNumbers
+        ? await deps.voidedOcNumbers([...new Set(owned.map(row => canonicalSalesInvoiceNo(row.code)).filter(Boolean))])
+        : new Set()
+      const available = owned.filter(row => !voided.has(canonicalSalesInvoiceNo(row.code)))
       if (!detail)
         return json({
-          rows: owned.map((h) => pick(h, ['code', 'date', 'status', 'amount', 'currency', 'ref'])),
+          rows: available.map((h) => pick(h, ['code', 'date', 'status', 'amount', 'currency', 'ref'])),
         })
-      if (headers.length !== 1 || owned[0]?.code !== code) return json({ error: 'Invoice not found.' }, 404)
+      if (headers.length !== 1 || available[0]?.code !== code) return json({ error: 'Invoice not found.' }, 404)
       const lines = []
       for (let offset = 0; ; offset += 200) {
         const page = await invoiceTable(deps, 'erp_sales_invoice_line', {
@@ -106,7 +112,7 @@ export function createCustomerOrderHistoryHandler(deps) {
         lines.push(...page.map((line) => pick(line, lineFields)))
         if (page.length < 200) break
       }
-      return json({ header: pick(owned[0], headerFields), lines })
+      return json({ header: pick(available[0], headerFields), lines })
     } catch (e) {
       return json(
         { error: e.status ? e.message : 'Invoice history could not load. Please try again.' },

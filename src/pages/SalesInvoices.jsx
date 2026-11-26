@@ -16,6 +16,9 @@ import ErpDocModal from '../components/ErpDocModal'
 import InvoiceOriginalButton from '../components/shipping/InvoiceOriginalButton'
 import InvoiceFinanceLookup from '../components/shipping/InvoiceFinanceLookup'
 import useOcInvoiceSummaries from '../hooks/useOcInvoiceSummaries'
+import InvoiceVoidPanel from '../components/shipping/InvoiceVoidPanel'
+import { documentVoidAction } from '../documentVoids'
+import { canonicalSalesInvoiceNo } from '../documentVoidModel'
 import { OC_PDF_AVAILABLE, OC_PDF_RETRY } from '../ocInvoicePdfStatus'
 
 // Sales Invoices. An invoice is not a separate record here — it is an order
@@ -130,6 +133,8 @@ export default function SalesInvoices({uid}) {
   const [showDrift, setShowDrift] = useState(false)
   const mounted = useRef(false)
   const ledgerRequest = useRef(0)
+  const [voidCheck, setVoidCheck] = useState(null)
+  const [voidAttempt, setVoidAttempt] = useState(0)
   const syncInFlight = useRef(false)
   const invoiceKey = useMemo(() => JSON.stringify([...new Set(orders.map(o => financialOrderSource(o).erp_si_no).filter(isFinancialInvoiceNo))].sort()), [orders])
   const latestInvoiceKey = useRef(invoiceKey)
@@ -140,6 +145,26 @@ export default function SalesInvoices({uid}) {
   }, [])
 
   const erp = useErpInvoices(search.trim(), canReadErp)
+  const needsVoidIndex = !summaryMode || canReadErp
+  useEffect(() => {
+    if (!needsVoidIndex) return
+    const controller = new AbortController()
+    documentVoidAction('si_voids', {}, controller.signal).then(({ numbers }) => {
+      if (!Array.isArray(numbers)) throw Error('Could not confirm voided invoice numbers.')
+      if (!controller.signal.aborted) setVoidCheck({ uid, attempt: voidAttempt, numbers })
+    }).catch(error => {
+      if (!controller.signal.aborted) setVoidCheck({ uid, attempt: voidAttempt, error })
+    })
+    return () => controller.abort()
+  }, [needsVoidIndex, uid, voidAttempt])
+  const voidStatus = voidCheck?.uid === uid ? voidCheck : null
+  const voidStatusReady = !needsVoidIndex || (voidStatus?.attempt === voidAttempt && Array.isArray(voidStatus.numbers))
+  function refreshVoided(no) {
+    setVoidCheck(current => ({ uid, attempt: voidAttempt, numbers: [...new Set([...(current?.numbers || []), no])] }))
+    setVoidAttempt(n => n + 1)
+    summaries.retry()
+    if (canReviewLedger) readFinancialRecord()
+  }
   const jesReady = canReadErp && !erp.loading && !erp.error
   const canReviewLedger = canCheckFinancial && ocReady
 
@@ -227,6 +252,7 @@ export default function SalesInvoices({uid}) {
   // differs. App rows print; JES rows are history.
   const merged = useMemo(() => {
     const query = search.trim().toLowerCase()
+    const voidNos = new Set(voidStatus?.numbers)
     const app = summaryMode ? (summaries.rows || EMPTY_ROWS)
       .filter(row => `${row.no} ${row.customer}`.toLowerCase().includes(query))
       .map(row => ({ ...row, key: `app-${row.no}`, src: 'app' })) : invoiced.map((o) => ({
@@ -237,7 +263,7 @@ export default function SalesInvoices({uid}) {
       no: o.erp_si_no || o.erp_so_no, date: o.invoice_date || o.invoiced_at || o.order_date,
       so: o.erp_si_no ? o.erp_so_no : null, uc: o.uc_no, customer: o.customer_name,
       code: erpCodeByCustomerId[o.customer_id] || null,
-      currency: o.currency, amount: o.total_amount ?? o.subtotal, status: null,
+      currency: o.currency, amount: o.total_amount ?? o.subtotal, status: voidNos.has(canonicalSalesInvoiceNo(o.erp_si_no || o.erp_so_no)) ? 'VOID' : null,
       adjustment: o.adjustment || 0, accountingTotal: o.accounting_total,
       customerPo: o.customer_po || '', remarks: o.notes || '', adjustmentReason: o.adjustment_reason || '',
       channel: o.channel || null, externalOrderNo: o.woo_order_no || '',
@@ -253,11 +279,11 @@ export default function SalesInvoices({uid}) {
         no: (r.code || '').trim(), date: r.date,
         so: null, uc: (r.ref || '').trim(), customer: r.customer,
         code: r.customer_code || null,
-        currency: r.currency, amount: r.amount, status: (r.status || '').trim().toUpperCase(),
+        currency: r.currency, amount: r.amount, status: voidNos.has(canonicalSalesInvoiceNo(r.code)) ? 'VOID' : (r.status || '').trim().toUpperCase(),
         raw: r,
       }))
     return [...app, ...jes].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
-  }, [summaryMode, summaries.rows, search, invoiced, erp.rows, erpCodeByCustomerId])
+  }, [summaryMode, summaries.rows, search, invoiced, erp.rows, erpCodeByCustomerId, voidStatus])
 
   // Compare the complete source-owned financial projection. A failed/partial
   // read is unknown, never an empty ledger that licenses recovery writes.
@@ -324,7 +350,8 @@ export default function SalesInvoices({uid}) {
     if (srcFilter && r.src !== srcFilter) return false
     return inDateRange(r.date, from, to)
   }), [merged, srcFilter, from, to])
-  const exportReady = srcFilter === 'app' ? ocReady : srcFilter === 'jes' ? jesReady : ocReady && jesReady
+  const appExportReady = ocReady && (summaryMode || voidStatusReady)
+  const exportReady = srcFilter === 'app' ? appExportReady : srcFilter === 'jes' ? jesReady && voidStatusReady : appExportReady && jesReady
   const ocCount = exportable.filter(r => r.src === 'app').length
   const jesCount = exportable.length - ocCount
   const selectedSource = srcFilter || (exportReady && (ocCount > 0) !== (jesCount > 0) ? (ocCount ? 'app' : 'jes') : '')
@@ -376,8 +403,8 @@ export default function SalesInvoices({uid}) {
   // column exists for her to fill in by hand, per spec §12 Q14's own
   // "state it in Fee details" framing, not for the app to guess at.
   const wooAccountingRows = useMemo(
-    () => merged.filter((r) => r.channel === 'woocommerce' && inDateRange(r.date, from, to)),
-    [merged, from, to],
+    () => voidStatusReady ? merged.filter((r) => r.channel === 'woocommerce' && r.status !== 'VOID' && inDateRange(r.date, from, to)) : [],
+    [merged, from, to, voidStatusReady],
   )
   const WOO_ACCOUNTING_COLUMNS = [
     { label: 'Customer name',            value: (r) => r.customer, text: true },
@@ -420,9 +447,18 @@ export default function SalesInvoices({uid}) {
 
       <div className="p-4 md:p-6">
         {can('invoices') && <InvoiceFinanceLookup key={uid} />}
+        {can('invoices') && can('uc') && <InvoiceVoidPanel key={'void-invoice-' + uid} onVoided={refreshVoided} />}
         {uid && canOpenShipping && <SavedOrderRequests key={uid} uid={uid} />}
         {ocSource.loading && <LoadingBar />}
         {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
+        {!voidStatusReady && (
+          <div className="text-sm mb-3" role={voidStatus?.error ? 'alert' : 'status'}>
+            {voidStatus?.error ? <>
+              {voidStatus.error.message}{' '}
+              <button type="button" className="text-brand-600 underline" onClick={() => setVoidAttempt(n => n + 1)}>Retry void status</button>
+            </> : 'Checking voided invoices…'}
+          </div>
+        )}
 
         {/* A failed check stays visible and cannot license a recovery write. */}
         {canReviewLedger && ledgerError && (
@@ -670,11 +706,12 @@ export default function SalesInvoices({uid}) {
                   const readOnlySummary = summaryMode && isApp
                   // App rows open the order; JES rows open a read-only viewer.
                   // Both are clickable — read-only should not mean opaque.
-                  const open = readOnlySummary ? undefined : () => isApp ? navigate(`/shipments/${r.id}`) : setErpDoc(r.raw)
-                  const cursor = open ? 'cursor-pointer' : ''
                   // A voided JES invoice is not a live document — it is excluded
                   // from the PBIS import, so it must not read as a normal row.
                   const void_ = r.status === 'VOID'
+                  const open = readOnlySummary || (!isApp && (void_ || !voidStatusReady)) ? undefined
+                    : () => isApp ? navigate(`/shipments/${r.id}`) : setErpDoc(r.raw)
+                  const cursor = open ? 'cursor-pointer' : ''
                   return (
                     <tr key={r.key} className={`transition-colors hover:bg-ivory ${void_ ? 'opacity-60' : ''}`}>
                       <td className={`px-4 py-3 whitespace-nowrap font-mono text-xs font-medium ${cursor} ${isApp ? 'text-ink' : 'text-ink-70'}`}
@@ -714,12 +751,12 @@ export default function SalesInvoices({uid}) {
                           r.documentStatus === OC_PDF_AVAILABLE
                             ? <InvoiceOriginalButton key={uid} invoiceNo={r.no} uid={uid} />
                             : <span className="text-xs text-ink-70">{r.documentStatus}</span>
-                        ) : isApp ? (
-                          <Link to={`/shipments/${r.id}/invoice`} target="_blank" rel="noreferrer"
+                        ) : isApp ? (!void_ && voidStatusReady && (
+                          <Link to={`/shipments/${r.id}/invoice?si=${encodeURIComponent(r.no)}`} target="_blank" rel="noreferrer"
                                 className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
                             <FileText size={12} /> Print
                           </Link>
-                        ) : (
+                        )) : (
                           <span title="Historical invoice from JES — read-only archive"
                                 className="text-2xs font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
                             <Database size={10} /> JES

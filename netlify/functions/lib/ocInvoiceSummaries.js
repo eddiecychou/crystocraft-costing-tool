@@ -70,14 +70,16 @@ export function projectOcInvoiceSummaries(ledger, orders, allocations) {
   return resolveOcInvoices(ledger, orders, allocations).map(({ row }) => row)
 }
 
-export async function readOcInvoiceLedger(base, key, fetcher = fetch) {
+export async function readOcInvoiceLedger(base, key, fetcher = fetch, status) {
   if (!base || !key) throw Error('Invoice ledger is not configured')
   const signal = AbortSignal.timeout(10000)
   const rows = []
   let id = 0
   for (;;) {
-    const params = new URLSearchParams({ select: 'id,si_no,order_id,invoice_date,invoiced_at,customer,currency,status,total,accounting_total',
+    const params = new URLSearchParams({ select: status === 'void' ? 'id,si_no,status'
+      : 'id,si_no,order_id,invoice_date,invoiced_at,customer,currency,status,total,accounting_total',
       order: 'id.asc', id: `gt.${id}`, limit: '500' })
+    if (status) params.set('status', 'eq.' + status)
     const response = await fetcher(`${base.replace(/\/$/, '')}/rest/v1/app_sales_invoice?${params}`, {
       headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json', Prefer: 'count=exact' },
       signal, redirect: 'error',

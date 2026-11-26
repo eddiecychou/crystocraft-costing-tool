@@ -49,6 +49,17 @@ const fixture={order:{customer_id:'qa-customer',customer_name:'QA invoice units'
 ]}
 globalThis.__invoiceFixture=fixture
 const stubs={
+ documentVoids:`export async function documentVoidAction(action, body) {
+   const f = globalThis.__invoiceFixture;
+   if (action === 'pi_status') return {current: {no:f.order.erp_so_no, revision:f.order.pi_revision??0},version:'fixture',history:f.piVoids||[]};
+   if (action === 'void_pi') {
+     const entry = {...body.target, reason: body.reason};
+     f.piVoids = [...(f.piVoids||[]), entry];
+     return {void:entry};
+   }
+   if (action === 'si_status') return {status:body.no===f.voidedSi?'void':'issued'};
+   throw Error('Unexpected fictional document request');
+ }`,
  firebase:'export const db={},storage={};export const authHeader=async()=>{throw Error("No live requests")}',
  firestore:`const f=()=>globalThis.__invoiceFixture;export const doc=(...a)=>Object.assign(a,{id:typeof a.at(-1)==='string'?a.at(-1):'qa-new-line'});export const collection=(...a)=>a;export const query=(...a)=>a;export const orderBy=()=>{};export const where=()=>{};
  export {getDocs as getDocsFromServer};export const getDoc=async p=>({id:'qa-order',exists:()=>p.includes('orders')&&!f().missingOrder,data:()=>f().order});
@@ -142,6 +153,60 @@ for(const kind of ['pi','sales','customer']){
 test('quote conversion preserves selected units into order lines',()=>{
  for(const unit of units)assert.equal(quoteItemToOrderLine({product_unit:unit,tiers:[{quantity:80,price:10}]},0).unit,unit)
 })
+
+test('Void PI requires a reason, reopens as VOID, and leaves the next revision printable', async () => {
+ const original = fixture.order
+ fixture.order = { ...original, erp_so_no: 'SO992001', pi_revision: 2 }
+ try {
+  await withPage('pi', async host => {
+   const open = [...host.querySelectorAll('button')].find(button => button.textContent === 'Void PI')
+   await act(async () => open.click())
+   const dialog = host.querySelector('[role=dialog]')
+   const confirm = dialog.querySelector('button[type=submit]')
+   assert.equal(confirm.disabled, true)
+   await act(async () => {
+    const input = dialog.querySelector('textarea')
+    input.value = 'Fictional PI replaced'
+    Simulate.change(input)
+   })
+   assert.equal(confirm.disabled, false)
+   await act(async () => confirm.click())
+   assert.match(host.textContent, /PI SO992001 · Rev 2 · VOID/)
+   assert.match(host.textContent, /Fictional PI replaced/)
+   assert.equal(host.querySelectorAll('button').length, 0)
+  })
+  await withPage('pi', async host => assert.match(host.textContent, /SO992001 · Rev 2 · VOID/))
+  fixture.order.pi_revision = 3
+  await withPage('pi', async host => {
+   assert.match(host.textContent, /PROFORMA INVOICE — REV 3/)
+   assert.match(host.textContent, /SO992001 · Rev 2 · Fictional PI replaced/)
+   const before = printed
+   await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent === 'Print / Save as PDF').click())
+   assert.equal(printed, before + 1)
+  })
+ } finally { fixture.order = original; delete fixture.piVoids }
+})
+
+test('An SI voided in another tab loses its Excel and print actions and reopens as VOID', async () => {
+ const original = fixture.order
+ fixture.order = { ...original, erp_si_no: 'SI992001' }
+ try {
+  await withPage('sales', async host => {
+   const print = [...host.querySelectorAll('button')].find(button => button.textContent === 'Print / Save as PDF')
+   const before = printed
+   fixture.voidedSi = 'SI992001'
+   await act(async () => print.click())
+   assert.equal(printed, before)
+   assert.match(host.textContent, /Invoice SI992001 · VOID/)
+   assert.equal(host.querySelectorAll('button').length, 0)
+  })
+  await withPage('sales', async host => {
+   assert.match(host.textContent, /Invoice SI992001 · VOID/)
+   assert.equal(host.querySelector('table.si-lines'), null)
+  }, { search: 'si=SI992001' })
+ } finally { fixture.order = original; delete fixture.voidedSi }
+})
+
 test('customer cannot export another customer invoice',async()=>withPage('customer',async host=>{assert.match(host.textContent,/Invoice not found|Original unavailable/);assert.equal(host.querySelectorAll('button').length,0)},{customer:'other-customer'}))
 
 test('customer draft and uninvoiced links stop before reading commercial lines',async()=>{
@@ -302,7 +367,7 @@ test('an order with an SO but no invoice still warns and never uses its SO as th
 
 for(const priced of [true,false])test(`PI CSV keeps units with prices=${priced}`,async()=>withPage('pi',async host=>{
  const label=priced?'Export CSV':'Export CSV — no prices'
- const button=[...host.querySelectorAll('button')].find(x=>x.textContent===label);assert.ok(button);button.click()
+ const button=[...host.querySelectorAll('button')].find(x=>x.textContent===label);assert.ok(button);await act(async()=>button.click())
  const csv=await downloaded.text();assert.match(csv, /"Unit"/)
  for(const unit of units)assert.ok(csv.includes(`"${unit}"`),unit)
  assert.equal(csv.includes('Unit Price'),priced)

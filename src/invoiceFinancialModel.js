@@ -146,6 +146,7 @@ export function invoiceReconciliation(orders, ledger) {
     .flatMap((order) => {
       const no = String(order.erp_si_no),
         row = byNo.get(no.trim().toUpperCase())
+      if (row?.status === 'void') return []
       const payload = savedInvoiceRegistryFields(order)
       const problems = reviewProblems(order, row, payload)
       if (problems.length)

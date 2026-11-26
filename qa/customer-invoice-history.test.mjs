@@ -137,3 +137,30 @@ test('history filters JES before limiting and projects only exact confirmed comp
   )
   assert.doesNotMatch(JSON.stringify(rows), /PRIVATE|customer_code/)
 })
+
+test('a voided local SI cannot reappear through a confirmed JES mirror or saved buyer link', async () => {
+  const wanted = numbers[1], sibling = numbers[2]
+  const deps = {
+    verifyToken: async () => ({ uid: 'buyer' }),
+    getProfile: async () => ({ role: 'customer', status: 'approved', customer_id: customerId }),
+    getCustomer: async () => ({ erp_code: 'QA' }),
+    voidedOcNumbers: async codes => new Set(codes.filter(code => code === wanted)),
+    fetcher: async url => {
+      const parsed = new URL(url)
+      assert.ok(parsed.pathname.endsWith('/erp_sales_invoice'), 'Do not read lines for a voided SI')
+      const code = parsed.searchParams.get('code')?.slice(3)
+      return Response.json([wanted, sibling].filter(no => !code || code === no).map(no => ({
+        code: no, customer_code: 'QA', status: 'confirmed', amount: 30,
+      })))
+    },
+    SUPABASE_URL: 'https://fixture.test', SERVICE_KEY: 'fixture',
+  }
+  const handler = createCustomerOrderHistoryHandler(deps)
+  const call = body => handler(new Request('https://fixture.test/api/customer-order-history', {
+    method: 'POST', headers: { Authorization: 'Bearer QA' }, body: JSON.stringify(body),
+  }))
+  const list = await call({})
+  assert.equal(list.status, 200)
+  assert.deepEqual((await list.json()).rows.map(row => row.code), [sibling])
+  assert.equal((await call({ action: 'lines', code: wanted })).status, 404)
+})
