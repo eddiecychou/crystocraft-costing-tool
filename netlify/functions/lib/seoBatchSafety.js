@@ -12,7 +12,8 @@ export function supersedesIds(value) {
       || new Set(value).size !== value.length) throw new Error('supersedes must contain up to 20 unique batch IDs')
   return value
 }
-export const withdrawable = b => !!b && ['pending_review', 'approved'].includes(b.status)
+const queuedStatuses = ['pending_review', 'reviewed', 'approved', 'executing']
+export const withdrawable = b => !!b && queuedStatuses.includes(b.status) && b.status !== 'executing'
   && !b.superseded_by && !b.execution_started_at && !(b.items || []).some(it => it.result)
 const activeItems = b => (b.items || []).filter(it => it.decision !== 'reject' && !it.result)
 export function queuePlan(items, batches, supersedes = []) {
@@ -26,13 +27,16 @@ export function queuePlan(items, batches, supersedes = []) {
     if (!activeItems(b).some(it => targets.includes(entityKey(it)))) throw new QueueConflict('Superseded batch does not overlap this replacement: ' + id)
   }
   const conflicts = batches.filter(b => !supersedes.includes(b.id) && !b.superseded_by
-    && ['pending_review', 'approved', 'executing'].includes(b.status)
+    && queuedStatuses.includes(b.status)
     && activeItems(b).some(it => targets.includes(entityKey(it))))
     .map(b => b.id)
   return { conflicts, supersedes }
 }
 export function releaseBatch(batch) {
   if (batch.status !== 'approved' || batch.superseded_by || batch.execution_started_at) return null
+  if (batch.review_packet && (batch.review_decision !== 'approve'
+    || !(batch.items || []).length
+    || !batch.items.every(it => it.decision === 'approve' && it.validation?.passed === true))) return null
   let blocked = 0
   const items = (batch.items || []).map(it => {
     if (it.decision === 'approve' && it.validation?.passed !== true) {
@@ -41,7 +45,8 @@ export function releaseBatch(batch) {
     }
     return it
   })
-  return { ...batch, items, ...(blocked ? { blocked_count: blocked } : {}) }
+  const { review_packet: reviewPacket, ...execution } = batch
+  return { ...execution, items, ...(blocked ? { blocked_count: blocked } : {}) }
 }
 
 // Exported with injected store so tests exercise the actual transaction writes.
@@ -49,7 +54,7 @@ export async function storeQueuedBatch(db, col, ref, doc, supersedes) {
   return db.runTransaction(async tx => {
     // Query and replacement writes share one serialisable transaction.
     // Concurrent creates cannot both miss an overlapping pending batch.
-    const active = await tx.get(col.where('status', 'in', ['pending_review', 'approved', 'executing']))
+    const active = await tx.get(col.where('status', 'in', queuedStatuses))
     const batches = active.docs.map(d => ({ ...d.data(), id: d.id }))
     for (const id of supersedes) if (!batches.some(b => b.id === id)) {
       const old = await tx.get(col.doc(id))

@@ -51,6 +51,7 @@ import { supersedesIds, storeQueuedBatch, releaseBatch, claimBatch, withdrawBatc
 // one. Same SSOT file DSH vendors verbatim; if it ever forks, the OC copy
 // wins and DSH must re-vendor (seo-control-plane/README.md).
 import { validatePayload, validateAllow } from '../../seo-control-plane/validate-payload.mjs'
+import { readReviewPacket } from './lib/seoReviewPacket.js'
 
 const json = (b, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } })
@@ -133,6 +134,9 @@ export default async function handler(req) {
     const items = Array.isArray(body.batch?.items) ? body.batch.items : null
     if (!items?.length) return json({ error: 'batch.items required' }, 400)
     if (items.length > 500) return json({ error: 'batch too large (max 500 items)' }, 400)
+    let reviewPacket
+    try { reviewPacket = readReviewPacket(body.batch.review_packet) }
+    catch (e) { return json({ error: e.message }, 400) }
 
     const emptyPayloads = emptyPayloadIndexes(items)
     if (emptyPayloads.length) {
@@ -191,6 +195,10 @@ export default async function handler(req) {
       oc_validated: true,
       failed_validation: failed,
       items: outItems,
+      ...(reviewPacket ? { review_packet: reviewPacket, review_decision: 'pending' } : {}),
+    }
+    if (reviewPacket && Buffer.byteLength(JSON.stringify(doc)) > 750_000) {
+      return json({ error: 'Combined review batch exceeds 750 KB' }, 400)
     }
     let supersedes
     try { supersedes = supersedesIds(body.batch.supersedes) }

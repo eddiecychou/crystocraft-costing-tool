@@ -111,6 +111,27 @@ test('approval tolerates Firestore map key order, but blocks changed values and 
       assert.equal(reloads, 1)
       assert.deepEqual(state.batch, expected, 'reload must never approve or mutate stale work')
     }
+    await mount('combined')
+    const state = globalThis.__queueFixture
+    state.batch = {
+      ...state.batch,
+      review_decision: 'pending',
+      review_packet: {
+        copy: [{ label: '繁體中文', fields: [{ label: 'Heading', before: '徽章', after: '襟章訂製' }] }],
+        photos: [{ title: 'Pin', placement: 'Gallery position 10', alt_en: 'Pin',
+          alt_zh_hant: '襟章', reference: 'pin.webp', thumbnail: 'data:image/webp;base64,AA==' }],
+      },
+    }
+    await act(async () => state.listeners.forEach(emit => emit()))
+    assert.match(document.body.textContent, /襟章訂製/)
+    assert.match(document.body.textContent, /Gallery position 10/)
+    assert.ok(document.querySelector('img[alt="Pin"]'))
+    assert.equal(findButton('Send to DSH'), undefined)
+    await act(async () => findButton('Approve copy and photos').click())
+    assert.equal(state.batch.status, 'reviewed')
+    assert.equal(state.batch.review_decision, 'approve')
+    await act(async () => findButton('Send to DSH').click())
+    assert.equal(state.batch.status, 'approved')
   } finally {
     await act(async () => root.unmount()); dom.window.close()
     delete globalThis.window; delete globalThis.document; delete globalThis.__queueFixture; delete globalThis.IS_REACT_ACT_ENVIRONMENT
@@ -130,4 +151,29 @@ test('review value comparison retains Firestore timestamp and numeric meaning; b
     assert.equal(reviewFieldValue(entity, 'meta._elementor_data'), 'old')
   assert.equal(reviewFieldValue({ title: { raw: 'Authored', rendered: 'Built' } }, 'title'), 'Authored')
   assert.equal(reviewFieldValue({ 'meta.empty': '', meta: { empty: 'wrong fallback' } }, 'meta.empty'), '')
+})
+
+test('the combined approval keeps English, Traditional Chinese and photos pending until reviewed together', async () => {
+  const { releaseBatch } = await import('../netlify/functions/lib/seoBatchSafety.js')
+  const { readReviewPacket } = await import('../netlify/functions/lib/seoReviewPacket.js')
+  const thumbnail = 'data:image/webp;base64,' + Buffer.from('RIFF\u0004\u0000\u0000\u0000WEBP').toString('base64')
+  const proposed = {
+    copy: [{ label: '繁體中文', fields: [{ label: 'Title', before: '徽章', after: '襟章訂製' }] }],
+    photos: [{ title: 'Sample pin', placement: 'Gallery position 10', alt_en: 'Sample pin',
+      alt_zh_hant: '襟章樣本', reference: 'photo.webp', thumbnail }],
+  }
+  const packet = readReviewPacket(proposed)
+  assert.deepEqual(packet.copy[0].fields[0], proposed.copy[0].fields[0])
+  assert.throws(() => readReviewPacket({ ...proposed, photos: [
+    { ...proposed.photos[0], thumbnail: 'https://example.com/read-on-open.webp' },
+  ] }), /inline WebP/)
+
+  const batch = { status: 'reviewed', items: [item], review_packet: packet, review_decision: 'approve' }
+  assert.equal(releaseBatch(batch), null, 'approval must not release any writes')
+  assert.equal(releaseBatch({ ...batch, status: 'approved', review_decision: 'pending' }), null)
+  assert.equal(releaseBatch({ ...batch, status: 'approved',
+    items: [{ ...item, validation: { passed: false } }] }), null)
+  const released = releaseBatch({ ...batch, status: 'approved' })
+  assert.deepEqual(released.items, [item])
+  assert.equal(Object.hasOwn(released, 'review_packet'), false, 'photos and editor notes never enter the worker payload')
 })

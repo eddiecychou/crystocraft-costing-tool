@@ -14,6 +14,7 @@ import { ClipboardCheck, Check, X, AlertTriangle, CircleSlash, PanelLeftClose, P
 
 const STATUS_BADGE = {
   pending_review: 'bg-amber-50 text-amber-700',
+  reviewed: 'bg-green-50 text-green-700',
   approved: 'bg-sky-50 text-sky-700',
   executing: 'bg-sky-50 text-sky-700',
   withdrawn: 'bg-ivory text-ink-70',
@@ -51,6 +52,59 @@ function cell(key, val) {
   return <span className="text-xs break-all whitespace-pre-wrap">{short(val)}</span>
 }
 
+function ReviewPacket({ packet }) {
+  return (
+    <div className="space-y-3">
+      {packet.copy.map(section => (
+        <section key={section.label} className="card p-4">
+          <h2 className="text-base">{section.label}</h2>
+          {section.instructions && <p className="mt-1 text-sm text-ink-70">{section.instructions}</p>}
+          <dl className="mt-3 divide-y divide-warm-grey">
+            {section.fields.map(field => (
+              <div key={field.label} className="py-3">
+                <dt className="mb-1.5 text-sm text-ink">{field.label}</dt>
+                <dd className="grid gap-2 sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-ink-60">Before</p>
+                    <p className="whitespace-pre-wrap break-words text-sm">{field.before || '—'}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-ink-60">After</p>
+                    <p className="whitespace-pre-wrap break-words text-sm">{field.after}</p>
+                  </div>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ))}
+      {packet.photos.length > 0 && (
+        <section className="card p-4">
+          <h2 className="text-base mb-3">Photo placement</h2>
+          <div className="grid grid-cols-1 gap-px bg-warm-grey sm:grid-cols-2 xl:grid-cols-3">
+            {packet.photos.map(photo => (
+              <figure key={photo.reference} className="min-w-0 bg-white">
+                <img src={photo.thumbnail} alt={photo.alt_en} loading="lazy"
+                  className="w-full aspect-square object-contain bg-white" />
+                <figcaption className="space-y-1 p-3 text-sm">
+                  <p>{photo.title}</p>
+                  <p className="text-ink-70">{photo.placement}</p>
+                  <p>{photo.alt_en}</p>
+                  <p lang="zh-Hant">{photo.alt_zh_hant}</p>
+                  <details className="text-xs text-ink-60">
+                    <summary className="cursor-pointer">Image reference</summary>
+                    <p className="break-all">{photo.reference}</p>
+                  </details>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
 export default function SeoReview() {
   const [batches, setBatches] = useState([])
   const [selId, setSelId] = useState(null)
@@ -68,14 +122,14 @@ export default function SeoReview() {
       history = snap.docs.map(d => ({ ...d.data(), id: d.id })); merge()
     }, error)
     const stopActive = onSnapshot(query(collection(db, 'seo_batches'),
-      where('status', 'in', ['pending_review', 'approved', 'executing'])), snap => {
+      where('status', 'in', ['pending_review', 'reviewed', 'approved', 'executing'])), snap => {
       active = snap.docs.map(d => ({ ...d.data(), id: d.id })); merge()
     }, error)
     return () => { stopHistory(); stopActive() }
   }, [])
 
   const sel = useMemo(() => batches.find(b => b.id === selId) || batches[0] || null, [batches, selId])
-  const canWithdraw = b => b && ['pending_review', 'approved'].includes(b.status)
+  const canWithdraw = b => b && ['pending_review', 'reviewed', 'approved'].includes(b.status)
     && !b.superseded_by && !b.execution_started_at && !b.items.some(it => it.result)
   async function withdraw() {
     if (!sel) return
@@ -92,6 +146,7 @@ export default function SeoReview() {
     finally { setBusy(false) }
   }
   const editable = sel?.status === 'pending_review' && !sel?.superseded_by
+  const packet = sel?.review_packet
 
   async function setItems(items, extra = {}) {
     if (!sel) return
@@ -100,11 +155,14 @@ export default function SeoReview() {
       await runTransaction(db, async tx => {
         const ref = doc(db, 'seo_batches', sel.id)
         const current = await tx.get(ref)
-        if (!current.exists() || current.data().status !== 'pending_review' || current.data().superseded_by) {
+        if (!current.exists() || current.data().status !== sel.status || current.data().superseded_by
+          || !(editable || (packet && sel.status === 'reviewed'))) {
           throw new Error('This batch is no longer awaiting review. Reload the queue.')
         }
         // Avoid overwriting another reviewer's decisions from a stale screen.
-        if (!sameReviewValue(current.data().items, sel.items)) {
+        if (!sameReviewValue(current.data().items, sel.items)
+          || !sameReviewValue(current.data().review_packet, packet)
+          || current.data().review_decision !== sel.review_decision) {
           throw new Error('Review decisions changed. Reload the queue before continuing.')
         }
         tx.update(ref, { items, ...extra })
@@ -125,6 +183,11 @@ export default function SeoReview() {
     const anyApproved = sel.items.some(it => it.decision === 'approve')
     setItems(sel.items, { status: anyApproved ? 'approved' : 'rejected' })
   }
+  const decidePacket = decision => setItems(
+    sel.items.map(it => ({ ...it, decision })),
+    { review_decision: decision, status: decision === 'approve' ? 'reviewed' : 'rejected',
+      reviewed_at: serverTimestamp() },
+  )
 
   const counts = sel ? {
     approve: sel.items.filter(i => i.decision === 'approve').length,
@@ -203,7 +266,22 @@ export default function SeoReview() {
                 {sel.status === 'withdrawn' && <p className="text-xs text-ink-60 mt-2">Withdrawn: {sel.withdrawal_reason}</p>}
                 {canWithdraw(sel) && <button onClick={withdraw} disabled={busy}
                   className="btn-secondary text-xs mt-3">Withdraw unused batch</button>}
-                {editable && (
+                {packet && editable && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button onClick={() => decidePacket('approve')}
+                      disabled={busy || !sel.items.every(it => it.validation?.passed === true)}
+                      className="btn-primary text-xs">Approve copy and photos</button>
+                    <button onClick={() => decidePacket('reject')} disabled={busy}
+                      className="btn-secondary text-xs">Reject batch</button>
+                  </div>
+                )}
+                {packet && sel.status === 'reviewed' && (
+                  <div className="mt-3">
+                    <p className="text-sm text-ink-70">Copy and photos approved. Send to DSH when ready to release the WordPress update. The linked translation and media placement follow their editor workflows.</p>
+                    <button onClick={sendToDsh} disabled={busy} className="btn-primary text-xs mt-2">Send to DSH</button>
+                  </div>
+                )}
+                {!packet && editable && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     <button onClick={() => bulk('approve', true)} disabled={busy}
                       className="btn-secondary text-xs py-1 px-2.5">Approve all passing</button>
@@ -218,6 +296,7 @@ export default function SeoReview() {
                 )}
               </div>
 
+              {packet && <div className="mb-3"><ReviewPacket packet={packet} /></div>}
               <div className="space-y-3">
                 {sel.items.map(it => {
                   const before = it.before || {}
@@ -238,7 +317,7 @@ export default function SeoReview() {
                             {it.endpoint}{it.kind ? ` · ${it.kind}` : ''}{it.lang ? ` · ${it.lang}` : ''}{it.id ? ` · #${it.id}` : ''}
                           </p>
                         </div>
-                        {editable ? (
+                        {!packet && editable ? (
                           <div className="flex gap-1 shrink-0">
                             <button onClick={() => decide(it.index, 'approve')} disabled={busy}
                               className={`text-2xs px-2 py-1 rounded-none inline-flex items-center gap-1 ${it.decision === 'approve' ? 'bg-green-600 text-white' : 'bg-ivory-dark text-ink-70 hover:bg-green-50'}`}>

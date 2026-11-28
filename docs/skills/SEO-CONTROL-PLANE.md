@@ -144,6 +144,18 @@ Rules: `read, update` if admin (the human, via `/seo-review`); `create, delete`
 denied (DSH creates via Admin SDK, bypassing rules).
 
 ### `/seo-review` (OC page, admin)
+
+An optional `review_packet` on create contains language sections with plain-text
+before/after fields and inline WebP photo thumbnails with placement and alt text.
+Use it for a joint review of WordPress changes, copy for an existing linked WPML
+editor and media placement awaiting WordPress attachment IDs. The executable
+`items` still carry the actual validated writes. Copy and photos are approved as
+one decision, which moves the batch to `reviewed`. **Send to DSH** remains a
+separate action. The queue still reserves the affected WordPress items while the
+batch is reviewed. Poll and claim release only the executable items and omit the
+review packet. Use `get` to confirm the recorded approval and read the manual
+editor and media instructions. Those steps retain their existing WPML and media
+workflow and verification.
 Lists batches; for the selected one, renders each item as a `before → after`
 field diff with per-item Approve / Reject (plus "approve all passing
 validation" / "reject all"). **Send to DSH** flips `status` to `approved` (if
